@@ -14,13 +14,6 @@ interface JobCardProps {
     description: string;
     site: string;
     company_logo?: string;
-    min_amount?: number | null;
-    max_amount?: number | null;
-    currency?: string | null;
-    interval?: string | null;
-    experience_range?: string | null;
-    skills?: string | null;
-    company_rating?: number | null;
     date_posted?: string | null;
   };
   isSelected?: boolean;
@@ -30,17 +23,6 @@ interface JobCardProps {
 export const JobCard = ({ job, isSelected, onClick }: JobCardProps) => {
   const companyName = job.company || 'Confidential';
   const getInitial = (name: string) => name ? name.charAt(0).toUpperCase() : '?';
-
-  const formatSalary = () => {
-    if (job.min_amount && job.max_amount) {
-      return `${job.currency || '$'}${Math.round(job.min_amount)}k - ${job.currency || '$'}${Math.round(job.max_amount)}k ${job.interval ? `/ ${job.interval}` : ''}`;
-    } else if (job.min_amount) {
-      return `${job.currency || '$'}${Math.round(job.min_amount)}k+ ${job.interval ? `/ ${job.interval}` : ''}`;
-    }
-    return null;
-  };
-
-  const salaryString = formatSalary();
 
   return (
     <div 
@@ -80,7 +62,7 @@ export const JobCard = ({ job, isSelected, onClick }: JobCardProps) => {
           <div className="flex flex-wrap gap-2 mb-3">
             <div className="flex items-center gap-1 text-[11px] text-[#666] bg-[#1a1a1a] px-2 py-1 rounded-full border border-[#222]">
               <MapPin size={12} />
-              {job.location}
+              {job.location || 'Not specified'}
             </div>
             {job.is_remote && (
               <div className="flex items-center gap-1 text-[11px] text-green-500/80 bg-green-500/5 px-2 py-1 rounded-full border border-green-500/10">
@@ -93,17 +75,8 @@ export const JobCard = ({ job, isSelected, onClick }: JobCardProps) => {
                 {job.job_type.split(',')[0]}
               </div>
             )}
-            {salaryString && (
-              <div className="flex items-center gap-1 text-[11px] text-blue-400 bg-blue-500/10 px-2 py-1 rounded-full border border-blue-500/20 font-medium">
-                {salaryString}
-              </div>
-            )}
-            {job.experience_range && (
-              <div className="flex items-center gap-1 text-[11px] text-purple-400 bg-purple-500/10 px-2 py-1 rounded-full border border-purple-500/20">
-                <Clock size={12} />
-                {job.experience_range}
-              </div>
-            )}
+
+
           </div>
 
           <p className="text-xs text-[#555] line-clamp-2 leading-relaxed mb-4">

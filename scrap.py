@@ -151,6 +151,15 @@ def run_scraping():
                 return None
 
             import numpy as np
+            
+            columns_to_keep = [
+                "id", "title", "company", "location", "is_remote", 
+                "job_type", "job_url", "description", "site", 
+                "company_logo", "date_posted", "latitude", "longitude"
+            ]
+            actual_cols = [c for c in columns_to_keep if c in jobs.columns]
+            jobs = jobs[actual_cols]
+            
             jobs_clean = jobs.replace({np.nan: None, np.inf: None, -np.inf: None})
             
             jobs_list = jobs_clean.to_dict(orient="records")
