@@ -9,22 +9,29 @@ export default function LandingPage() {
   return (
     <main className="min-h-screen bg-[#0a0a0a] text-white overflow-hidden relative">
       {/* Background Glow */}
-      <div className="absolute top-0 left-1/2 -translate-x-1/2 w-[1000px] h-[600px] bg-blue-500/10 blur-[120px] rounded-full pointer-events-none" />
+      <div className="absolute top-0 left-1/2 -translate-x-1/2 w-[1000px] h-[600px] bg-emerald-500/10 blur-[120px] rounded-full pointer-events-none" />
 
       {/* Navbar */}
       <nav className="h-20 px-8 flex items-center justify-between relative z-10 max-w-7xl mx-auto w-full">
-        <div className="text-2xl font-bold tracking-tighter">KAAMLEE</div>
+        <div className="text-2xl font-black tracking-tighter text-transparent bg-clip-text bg-gradient-to-r from-emerald-400 to-cyan-400">KAAMLEE</div>
         <div className="hidden md:flex items-center gap-8 text-sm font-medium text-[#888]">
-          <Link href="#" className="hover:text-white transition-colors">Pricing</Link>
-          <Link href="#" className="hover:text-white transition-colors">Resources</Link>
-          <Link href="#" className="hover:text-white transition-colors">Companies</Link>
+          <Link href="/resume" className="hover:text-white transition-colors">ATS Checker</Link>
+          <Link href="/contact-hr" className="hover:text-white transition-colors">Contact HR</Link>
         </div>
-        <Link 
-          href="/explore" 
-          className="bg-white text-black px-5 py-2 rounded-full text-sm font-semibold hover:bg-[#ededed] transition-all"
-        >
-          Explore Jobs
-        </Link>
+        <div className="flex gap-4 items-center">
+          <Link
+            href="/login"
+            className="bg-[#111] text-white px-5 py-2 border border-white/20 rounded-full text-sm font-semibold hover:bg-[#222] transition-all"
+          >
+            Sign In
+          </Link>
+          <Link
+            href="/explore"
+            className="bg-white text-black px-5 py-2 rounded-full text-sm font-semibold hover:bg-[#ededed] transition-all"
+          >
+            Explore Jobs
+          </Link>
+        </div>
       </nav>
 
       {/* Hero Section */}
@@ -35,26 +42,26 @@ export default function LandingPage() {
           transition={{ duration: 0.6 }}
         >
           <div className="inline-flex items-center gap-2 bg-[#161616] border border-[#222] px-3 py-1 rounded-full text-xs font-medium text-[#888] mb-8">
-            <span className="w-1.5 h-1.5 rounded-full bg-blue-500" />
-            Aggregating 50,000+ jobs daily
+            <span className="w-1.5 h-1.5 rounded-full bg-emerald-500" />
+            Aggregating 50,000+ jobs dynamically
           </div>
-          
+
           <h1 className="text-6xl md:text-7xl font-bold tracking-tight mb-8 leading-[1.1]">
             Find your next <br />
-            <span className="text-transparent bg-clip-text bg-gradient-to-r from-blue-400 to-indigo-600">
+            <span className="text-transparent bg-clip-text bg-gradient-to-r from-emerald-400 to-cyan-400">
               ambitious role.
             </span>
           </h1>
-          
+
           <p className="text-lg text-[#888] mb-12 max-w-2xl mx-auto leading-relaxed">
-            Kaamlee aggregates the best roles from LinkedIn, Indeed, Glassdoor, and more. 
+            Kaamlee aggregates the best roles from LinkedIn, Indeed, Glassdoor, and more.
             No more jumping between tabs. Just one clean, map-based interface.
           </p>
 
           <div className="flex flex-col md:flex-row items-center justify-center gap-4">
-            <Link 
+            <Link
               href="/explore"
-              className="bg-[#3b82f6] text-white px-8 py-4 rounded-full font-bold text-lg hover:bg-blue-600 transition-all flex items-center gap-2 group shadow-lg shadow-blue-500/20"
+              className="bg-emerald-500 text-white px-8 py-4 rounded-full font-bold text-lg hover:bg-emerald-400 transition-all flex items-center gap-2 group shadow-lg shadow-emerald-500/20"
             >
               Start Exploring
               <ArrowRight size={20} className="group-hover:translate-x-1 transition-transform" />
@@ -70,11 +77,11 @@ export default function LandingPage() {
       <section className="py-20 px-8 max-w-7xl mx-auto relative z-10">
         <div className="grid grid-cols-1 md:grid-cols-3 gap-8">
           {[
-            { icon: <Zap className="text-blue-500" />, title: "Instant Aggregation", desc: "Real-time updates from over 10 different job boards simultaneously." },
-            { icon: <Globe className="text-indigo-500" />, title: "Map-Based Search", desc: "Visualize your future commute or find remote roles across the globe." },
-            { icon: <Shield className="text-purple-500" />, title: "Filtered Results", desc: "Our AI-powered filters remove duplicates and unrelated job postings." }
+            { icon: <Zap className="text-emerald-500" />, title: "Instant Aggregation", desc: "Real-time updates from over 10 different job boards simultaneously." },
+            { icon: <Globe className="text-cyan-500" />, title: "Map-Based Search", desc: "Visualize your future commute or find remote roles across the globe." },
+            { icon: <Shield className="text-purple-500" />, title: "ATS Score Checks", desc: "Our AI-powered filters instantly evaluate your resume against live job descriptions." }
           ].map((feature, i) => (
-            <motion.div 
+            <motion.div
               key={i}
               initial={{ opacity: 0, y: 20 }}
               animate={{ opacity: 1, y: 0 }}
@@ -90,9 +97,6 @@ export default function LandingPage() {
           ))}
         </div>
       </section>
-
-      {/* Footer Decoration */}
-      <div className="absolute bottom-0 left-0 w-full h-[300px] bg-gradient-to-t from-blue-500/5 to-transparent pointer-events-none" />
     </main>
   );
 }
