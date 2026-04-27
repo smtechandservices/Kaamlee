@@ -3,9 +3,12 @@
 import React from 'react';
 import Link from 'next/link';
 import { motion } from 'framer-motion';
-import { ArrowRight, Search, Zap, Globe, Shield } from 'lucide-react';
+import { ArrowRight, Search, Zap, Globe, Shield, LogOut } from 'lucide-react';
+import { useAuth } from '@/context/AuthContext';
 
 export default function LandingPage() {
+  const { user, logout } = useAuth();
+
   return (
     <main className="min-h-screen bg-[#0a0a0a] text-white overflow-hidden relative">
       {/* Background Glow */}
@@ -19,12 +22,38 @@ export default function LandingPage() {
           <Link href="#" className="hover:text-white transition-colors">Resources</Link>
           <Link href="#" className="hover:text-white transition-colors">Companies</Link>
         </div>
-        <Link
-          href="/explore"
-          className="bg-white text-black px-5 py-2 rounded-full text-sm font-semibold hover:bg-[#ededed] transition-all"
-        >
-          Explore Jobs
-        </Link>
+        
+        <div className="flex items-center gap-4">
+          {user ? (
+            <>
+              <Link
+                href="/explore"
+                className="text-white text-sm font-semibold hover:text-blue-400 transition-all"
+              >
+                Go to Explore
+              </Link>
+              <button
+                onClick={logout}
+                className="bg-[#161616] text-white px-5 py-2 rounded-full text-sm font-semibold border border-[#222] hover:border-[#333] transition-all flex items-center gap-2"
+              >
+                <LogOut size={14} />
+                Logout
+              </button>
+            </>
+          ) : (
+            <>
+              <Link href="/login" className="text-[#888] hover:text-white transition-colors text-sm font-medium">
+                Log in
+              </Link>
+              <Link
+                href="/signup"
+                className="bg-white text-black px-5 py-2 rounded-full text-sm font-semibold hover:bg-[#ededed] transition-all"
+              >
+                Sign up
+              </Link>
+            </>
+          )}
+        </div>
       </nav>
 
       {/* Hero Section */}

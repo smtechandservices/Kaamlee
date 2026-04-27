@@ -1,12 +1,17 @@
 'use client';
 
 import React, { useState, useEffect } from 'react';
-import { Search, Map as MapIcon, List, Filter, SlidersHorizontal, ChevronDown, Monitor } from 'lucide-react';
+import { Search, Map as MapIcon, List, Filter, SlidersHorizontal, ChevronDown, Monitor, ArrowLeft, LogOut, User as UserIcon } from 'lucide-react';
 import { JobCard } from '@/components/JobCard';
 import Map from '@/components/Map';
+import Link from 'next/link';
+import { useAuth } from '@/context/AuthContext';
+import { useRouter } from 'next/navigation';
 
 
 export default function ExplorePage() {
+  const { user, token, logout, isLoading } = useAuth();
+  const router = useRouter();
   const [jobs, setJobs] = useState<any[]>([]);
   const [locations, setLocations] = useState<any[]>([]);
   const [selectedJobId, setSelectedJobId] = useState<string | null>(null);
@@ -15,14 +20,39 @@ export default function ExplorePage() {
   const [viewMode, setViewMode] = useState<'split' | 'map' | 'list'>('split');
   const [activeCountry, setActiveCountry] = useState<string>('All');
   const [remoteOnly, setRemoteOnly] = useState(false);
+  const [currentPage, setCurrentPage] = useState(1);
+  const jobsPerPage = 20;
+
+  useEffect(() => {
+    if (!isLoading && !token) {
+      router.push('/login');
+    }
+  }, [token, isLoading, router]);
+
+  useEffect(() => {
+    setCurrentPage(1);
+  }, [searchQuery, locationQuery, activeCountry, remoteOnly]);
 
   useEffect(() => {
     const fetchData = async () => {
+      if (!token) return;
+      
       try {
         const [jobsRes, locsRes] = await Promise.all([
-          fetch('http://127.0.0.1:8000/api/jobs/'),
-          fetch('http://127.0.0.1:8000/api/locations/')
+          fetch('http://127.0.0.1:8000/api/jobs/', {
+            headers: { 'Authorization': `Token ${token}` }
+          }),
+          fetch('http://127.0.0.1:8000/api/locations/', {
+            headers: { 'Authorization': `Token ${token}` }
+          })
         ]);
+        
+        if (!jobsRes.ok || !locsRes.ok) {
+           if (jobsRes.status === 401 || locsRes.status === 401) {
+             logout();
+           }
+           return;
+        }
         
         const jobsData = await jobsRes.json();
         const locsData = await locsRes.json();
@@ -39,18 +69,27 @@ export default function ExplorePage() {
       }
     };
     fetchData();
-  }, []);
-
-
+  }, [token, logout]);
 
   useEffect(() => {
     if (selectedJobId) {
-      const element = document.getElementById(`job-card-${selectedJobId}`);
-      if (element) {
-        element.scrollIntoView({ behavior: 'smooth', block: 'nearest' });
-      }
+      const timer = setTimeout(() => {
+        const element = document.getElementById(`job-card-${selectedJobId}`);
+        if (element) {
+          element.scrollIntoView({ behavior: 'smooth', block: 'center' });
+        }
+      }, 150);
+      return () => clearTimeout(timer);
     }
-  }, [selectedJobId]);
+  }, [selectedJobId, currentPage, viewMode]);
+
+  if (isLoading || !token) {
+    return (
+      <div className="h-screen bg-[#0a0a0a] flex items-center justify-center">
+        <div className="w-8 h-8 border-2 border-blue-500 border-t-transparent rounded-full animate-spin" />
+      </div>
+    );
+  }
 
   const countries = ['All', ...Array.from(new Set(locations.map(loc => {
     if (loc.country === 'United States') return 'USA';
@@ -76,18 +115,32 @@ export default function ExplorePage() {
     return matchesSearch && matchesLocation && matchesRemote && matchesCountry;
   });
 
+  const totalPages = Math.ceil(filteredJobs.length / jobsPerPage);
+  const currentJobs = filteredJobs.slice((currentPage - 1) * jobsPerPage, currentPage * jobsPerPage);
 
-
+  const handleMapJobClick = (jobId: string) => {
+    const jobIndex = filteredJobs.findIndex(j => j.id === jobId);
+    if (jobIndex !== -1) {
+      const page = Math.floor(jobIndex / jobsPerPage) + 1;
+      setCurrentPage(page);
+    }
+    setSelectedJobId(jobId);
+    if (viewMode === 'map') {
+      setViewMode('split');
+    }
+  };
 
   return (
     <main className="h-screen flex flex-col bg-[#0a0a0a] overflow-hidden">
       {/* Header */}
       <header className="h-16 border-b border-[#222] px-6 flex items-center justify-between glass z-20 shrink-0">
-        <div className="flex items-center gap-8 flex-1">
-          <h1 className="text-xl font-black tracking-tighter text-white mr-4">KAAMLEE</h1>
+        <div className="flex items-center gap-4 flex-1">
+          <Link href="/">
+            <h1 className="text-xl font-black tracking-tighter text-white mr-4 cursor-pointer">KAAMLEE</h1>
+          </Link>
         </div>
 
-        <div className="flex items-center gap-4">
+        <div className="flex items-center gap-2">
           <div className="flex items-center gap-2 bg-[#161616] rounded-full p-1 border border-[#222]">
             <button 
               onClick={() => setViewMode('split')}
@@ -102,6 +155,23 @@ export default function ExplorePage() {
               <MapIcon size={14} />
             </button>
           </div>
+          <Link 
+            href="/profile"
+            className="hidden sm:flex items-center gap-3 px-4 py-2 bg-[#161616] border border-[#222] rounded-full hover:border-[#333] transition-all group"
+          >
+             <div className="w-6 h-6 rounded-full bg-gradient-to-br from-blue-500 to-indigo-600 flex items-center justify-center text-[10px] font-bold shadow-lg shadow-blue-500/10 group-hover:scale-110 transition-transform">
+               {user?.first_name?.[0]}{user?.last_name?.[0]}
+             </div>
+             <span className="text-xs font-medium text-[#888] group-hover:text-white transition-colors">{user?.first_name} {user?.last_name}</span>
+          </Link>
+
+          <button 
+            onClick={logout}
+            className="cursor-pointer flex items-center gap-2 text-[#888] hover:text-white transition-colors text-sm font-medium group"
+          >
+            <LogOut size={18} className="group-hover:translate-x-0.5 transition-transform" />
+            <span className="hidden sm:inline">Logout</span>
+          </button>
         </div>
       </header>
 
@@ -174,7 +244,7 @@ export default function ExplorePage() {
 
           
           <div className="flex-1 overflow-y-auto p-4 space-y-4 custom-scrollbar">
-            {filteredJobs.map(job => (
+            {currentJobs.map(job => (
               <div key={job.id} id={`job-card-${job.id}`}>
                 <JobCard 
                   job={job} 
@@ -183,6 +253,39 @@ export default function ExplorePage() {
                 />
               </div>
             ))}
+            
+            {totalPages > 1 && (
+              <div className="flex items-center justify-between pt-6 pb-2 px-2 border-t border-[#222]/50 mt-4">
+                <button 
+                  onClick={() => {
+                    setCurrentPage(p => Math.max(1, p - 1));
+                    document.querySelector('.flex-1.overflow-y-auto')?.scrollTo(0, 0);
+                  }}
+                  disabled={currentPage === 1}
+                  className="cursor-pointer px-4 py-2 rounded-xl text-xs font-semibold bg-[#161616] text-[#888] border border-[#222] hover:text-white hover:border-[#333] hover:bg-[#1a1a1a] disabled:opacity-50 disabled:cursor-not-allowed transition-all shadow-sm"
+                >
+                  Previous
+                </button>
+                <div className="flex flex-col items-center">
+                  <span className="text-xs text-white font-bold">
+                    Page {currentPage} of {totalPages}
+                  </span>
+                  <span className="text-[10px] text-[#555] font-medium mt-0.5">
+                    {filteredJobs.length} total jobs
+                  </span>
+                </div>
+                <button 
+                  onClick={() => {
+                    setCurrentPage(p => Math.min(totalPages, p + 1));
+                    document.querySelector('.flex-1.overflow-y-auto')?.scrollTo(0, 0);
+                  }}
+                  disabled={currentPage === totalPages}
+                  className="cursor-pointer px-4 py-2 rounded-xl text-xs font-semibold bg-[#161616] text-[#888] border border-[#222] hover:text-white hover:border-[#333] hover:bg-[#1a1a1a] disabled:opacity-50 disabled:cursor-not-allowed transition-all shadow-sm"
+                >
+                  Next
+                </button>
+              </div>
+            )}
           </div>
         </aside>
 
@@ -191,7 +294,7 @@ export default function ExplorePage() {
           <Map 
             jobs={filteredJobs} 
             selectedJobId={selectedJobId || undefined} 
-            onJobClick={setSelectedJobId} 
+            onJobClick={handleMapJobClick} 
           />
         </section>
       </div>

@@ -10,6 +10,7 @@ def log_to_db(session, message, level='info'):
         print(f"Failed to log to DB: {e}")
         
 from django.utils import timezone
+from datetime import timedelta
 import numpy as np
 import time
 import random
@@ -54,8 +55,12 @@ def get_coordinates(loc_str, company=None, fallback_lat=None, fallback_lon=None)
 
 
 def run_background_scraping():
+    # Delete jobs older than 72 hours
+    threshold = timezone.now() - timedelta(hours=72)
+    deleted_count, _ = Job.objects.filter(created_at__lt=threshold).delete()
+    
     session = ScrapeSession.objects.create(status='running')
-    log_to_db(session, "Global scrape session initialized", "success")
+    log_to_db(session, f"Global scrape session initialized. Cleaned up {deleted_count} old jobs.", "success")
     total_found = 0
     
     try:
