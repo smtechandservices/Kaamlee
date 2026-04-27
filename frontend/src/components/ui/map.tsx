@@ -579,12 +579,19 @@ function MarkerPopup({
   }, [map]);
 
   useEffect(() => {
+    if (!map || !marker || !marker.getElement()) return;
+    
+    // Ensure marker is actually on the map before trying to toggle its popup
+    const isMarkerOnMap = !!(marker as any)._map;
+    if (!isMarkerOnMap) return;
+
     if (show === true && !popup.isOpen()) {
       marker.togglePopup();
     } else if (show === false && popup.isOpen()) {
       marker.togglePopup();
     }
-  }, [show, popup, marker]);
+  }, [show, popup, marker, map]);
+
 
   if (popup.isOpen()) {
     const prev = prevPopupOptions.current;

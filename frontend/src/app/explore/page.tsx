@@ -4,25 +4,44 @@ import React, { useState, useEffect } from 'react';
 import { Search, Map as MapIcon, List, Filter, SlidersHorizontal, ChevronDown, Monitor } from 'lucide-react';
 import { JobCard } from '@/components/JobCard';
 import Map from '@/components/Map';
-import jobsData from '@/data/jobs.json';
+
 
 export default function ExplorePage() {
   const [jobs, setJobs] = useState<any[]>([]);
+  const [locations, setLocations] = useState<any[]>([]);
   const [selectedJobId, setSelectedJobId] = useState<string | null>(null);
   const [searchQuery, setSearchQuery] = useState('');
   const [locationQuery, setLocationQuery] = useState('');
   const [viewMode, setViewMode] = useState<'split' | 'map' | 'list'>('split');
-  const [activeCategory, setActiveCategory] = useState<string>('Engineering');
+  const [activeCountry, setActiveCountry] = useState<string>('All');
   const [remoteOnly, setRemoteOnly] = useState(false);
 
   useEffect(() => {
-    // Process IDs if not present
-    const processed = (jobsData as any[]).map((job, idx) => ({
-      ...job,
-      id: job.id || `job-${idx}`
-    }));
-    setJobs(processed);
+    const fetchData = async () => {
+      try {
+        const [jobsRes, locsRes] = await Promise.all([
+          fetch('http://127.0.0.1:8000/api/jobs/'),
+          fetch('http://127.0.0.1:8000/api/locations/')
+        ]);
+        
+        const jobsData = await jobsRes.json();
+        const locsData = await locsRes.json();
+        
+        const processedJobs = jobsData.map((job: any) => ({
+          ...job,
+          location: job.location_name
+        }));
+        
+        setJobs(processedJobs);
+        setLocations(locsData);
+      } catch (error) {
+        console.error("Failed to fetch data:", error);
+      }
+    };
+    fetchData();
   }, []);
+
+
 
   useEffect(() => {
     if (selectedJobId) {
@@ -33,20 +52,32 @@ export default function ExplorePage() {
     }
   }, [selectedJobId]);
 
+  const countries = ['All', ...Array.from(new Set(locations.map(loc => {
+    if (loc.country === 'United States') return 'USA';
+    if (loc.country === 'United Kingdom') return 'UK';
+    return loc.country;
+  })))];
+
   const filteredJobs = jobs.filter(job => {
     const matchesSearch = job.title.toLowerCase().includes(searchQuery.toLowerCase()) ||
                          job.company.toLowerCase().includes(searchQuery.toLowerCase());
     const matchesLocation = job.location.toLowerCase().includes(locationQuery.toLowerCase());
     const matchesRemote = remoteOnly ? job.is_remote : true;
     
-    // Categorization logic
-    const matchesCategory = activeCategory === 'All' || 
-                            (activeCategory === 'Engineering' && (job.title.toLowerCase().includes('developer') || job.title.toLowerCase().includes('engineer'))) ||
-                            (activeCategory === 'Design' && job.title.toLowerCase().includes('design')) ||
-                            (activeCategory === 'Product' && job.title.toLowerCase().includes('product'));
+    // Country logic
+    let matchesCountry = activeCountry === 'All';
+    if (!matchesCountry) {
+      if (activeCountry === 'India') matchesCountry = job.location.includes('India') || job.location.includes('IN');
+      else if (activeCountry === 'USA') matchesCountry = job.location.includes('USA') || job.location.includes('US') || job.location.includes('United States');
+      else if (activeCountry === 'UK') matchesCountry = job.location.includes('UK') || job.location.includes('GB') || job.location.includes('United Kingdom');
+      else matchesCountry = job.location.includes(activeCountry);
+    }
     
-    return matchesSearch && matchesLocation && matchesRemote && matchesCategory;
+    return matchesSearch && matchesLocation && matchesRemote && matchesCountry;
   });
+
+
+
 
   return (
     <main className="h-screen flex flex-col bg-[#0a0a0a] overflow-hidden">
@@ -107,26 +138,28 @@ export default function ExplorePage() {
           </div>
 
           {/* Category Filters - Moved to Sidebar */}
-          <div className="px-4 py-3 border-b border-[#222] bg-[#0a0a0a] flex items-center gap-2 overflow-x-auto no-scrollbar">
-            {['Engineering', 'Design', 'Product'].map((cat) => (
-              <button
-                key={cat}
-                onClick={() => setActiveCategory(cat)}
-                className={`px-4 py-1.5 rounded-lg text-[11px] font-bold transition-all duration-300 border whitespace-nowrap ${
-                  activeCategory === cat 
-                    ? 'bg-white text-black border-white' 
-                    : 'bg-[#161616] text-[#888] border-[#222] hover:border-[#333] hover:text-white'
-                }`}
-              >
-                {cat}
-              </button>
-            ))}
+          <div className="px-4 py-3 border-b border-[#222] bg-[#0a0a0a] flex items-center justify-between gap-3">
+            <div className="flex items-center gap-2 overflow-x-auto no-scrollbar flex-1">
+              {countries.map((country) => (
+                <button
+                  key={country}
+                  onClick={() => setActiveCountry(country)}
+                  className={`cursor-pointer px-4 py-1.5 rounded-lg text-[11px] font-bold transition-all duration-300 border whitespace-nowrap ${
+                    activeCountry === country 
+                      ? 'bg-white text-black border-white' 
+                      : 'bg-[#161616] text-[#888] border-[#222] hover:border-[#333] hover:text-white'
+                  }`}
+                >
+                  {country}
+                </button>
+              ))}
+            </div>
             
-            <div className="w-px h-4 bg-[#222] mx-1 shrink-0" />
+            <div className="w-px h-4 bg-[#222] shrink-0" />
             
             <button
               onClick={() => setRemoteOnly(!remoteOnly)}
-              className={`px-4 py-1.5 rounded-lg text-[11px] font-bold flex items-center gap-2 transition-all duration-300 border whitespace-nowrap ${
+              className={`cursor-pointer px-4 py-1.5 rounded-lg text-[11px] font-bold flex items-center gap-2 transition-all duration-300 border whitespace-nowrap shrink-0 ${
                 remoteOnly 
                   ? 'bg-[#3b82f6] text-white border-[#3b82f6]' 
                   : 'bg-[#161616] text-[#888] border-[#222] hover:border-[#333] hover:text-white'
@@ -136,6 +169,7 @@ export default function ExplorePage() {
               Remote
             </button>
           </div>
+
 
 
           
