@@ -54,12 +54,18 @@ class JobViewSet(viewsets.ReadOnlyModelViewSet):
 class StatsView(views.APIView):
     permission_classes = [permissions.AllowAny]
     def get(self, request):
+        from django.utils import timezone
+        from datetime import timedelta
+        three_days_ago = timezone.now() - timedelta(hours=72)
+        
         total_jobs = Job.objects.count()
+        jobs_last_3_days = Job.objects.filter(created_at__gte=three_days_ago).count()
         total_locations = Location.objects.count()
         last_session = ScrapeSession.objects.order_by('-start_time').first()
         
         return Response({
             'total_jobs': total_jobs,
+            'jobs_last_3_days': jobs_last_3_days,
             'total_locations': total_locations,
             'last_scrape_session': ScrapeSessionSerializer(last_session).data if last_session else None,
             'jobs_by_site': Job.objects.values('site').annotate(count=Count('id'))
@@ -105,3 +111,8 @@ class LogsView(views.APIView):
             
         logs = ScrapeLog.objects.filter(session_id=session_id).order_by('timestamp')
         return Response(ScrapeLogSerializer(logs, many=True).data)
+
+class RecentJobsView(generics.ListAPIView):
+    queryset = Job.objects.order_by('-created_at')[:10]
+    serializer_class = JobSerializer
+    permission_classes = [permissions.AllowAny]

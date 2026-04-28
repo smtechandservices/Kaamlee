@@ -3,7 +3,7 @@ from rest_framework.routers import DefaultRouter
 from rest_framework.authtoken.views import obtain_auth_token
 from .views import (
     LocationViewSet, JobViewSet, StatsView, TriggerScrapeView, 
-    StopScrapeView, ForceResetView, LogsView, SignupView, UserView
+    StopScrapeView, ForceResetView, LogsView, SignupView, UserView, RecentJobsView
 )
 
 router = DefaultRouter()
@@ -20,5 +20,5 @@ urlpatterns = [
     path('stop-scrape/', StopScrapeView.as_view(), name='stop-scrape'),
     path('force-reset/', ForceResetView.as_view(), name='force-reset'),
     path('logs/', LogsView.as_view(), name='logs'),
+    path('recent-jobs/', RecentJobsView.as_view(), name='recent-jobs'),
 ]
-
