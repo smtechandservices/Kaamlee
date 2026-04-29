@@ -3,7 +3,7 @@
 import React, { useState, useEffect } from 'react';
 import { useRouter } from 'next/navigation';
 import { motion } from 'framer-motion';
-import { ArrowLeft, User, Phone, Link as LinkIcon, Loader2, Save, CheckCircle2 } from 'lucide-react';
+import { ArrowLeft, User, Phone, Link as LinkIcon, Loader2, Save, CheckCircle2, Briefcase, X } from 'lucide-react';
 import { useAuth } from '@/context/AuthContext';
 import Link from 'next/link';
 
@@ -16,6 +16,7 @@ export default function ProfilePage() {
   const [phone, setPhone] = useState('');
   const [linkedinUrl, setLinkedinUrl] = useState('');
   
+  const [resume, setResume] = useState<File | null>(null);
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [error, setError] = useState('');
   const [success, setSuccess] = useState(false);
@@ -42,23 +43,27 @@ export default function ProfilePage() {
     setSuccess(false);
 
     try {
+      const formData = new FormData();
+      formData.append('first_name', firstName);
+      formData.append('last_name', lastName);
+      formData.append('phone', phone);
+      formData.append('linkedin_url', linkedinUrl);
+      if (resume) {
+        formData.append('resume', resume);
+      }
+
       const response = await fetch(`${process.env.NEXT_PUBLIC_API_URL}/api/user/`, {
         method: 'PATCH',
         headers: {
-          'Content-Type': 'application/json',
           'Authorization': `Token ${token}`
         },
-        body: JSON.stringify({
-          first_name: firstName,
-          last_name: lastName,
-          phone,
-          linkedin_url: linkedinUrl
-        }),
+        body: formData,
       });
 
       if (response.ok) {
         await refreshUser();
         setSuccess(true);
+        setResume(null); // Clear local file after success
         setTimeout(() => setSuccess(false), 3000);
       } else {
         const data = await response.json();
@@ -85,20 +90,10 @@ export default function ProfilePage() {
       <div className="absolute top-0 left-1/2 -translate-x-1/2 w-[800px] h-[500px] bg-blue-500/5 blur-[120px] rounded-full pointer-events-none" />
 
       <div className="max-w-2xl mx-auto z-10 relative pt-12">
-        <Link href="/explore" className="inline-flex items-center gap-2 text-[#888] hover:text-white transition-colors mb-10 group">
+        <Link href="/explore" className="inline-flex items-center gap-2 text-[#888] hover:text-white transition-colors mb-4 group">
           <ArrowLeft size={18} className="group-hover:-translate-x-1 transition-transform" />
           Back to Explore
         </Link>
-
-        <div className="flex items-center justify-between mb-8">
-          <div>
-            <h1 className="text-4xl font-black tracking-tight mb-2">Edit Profile</h1>
-            <p className="text-[#888]">Update your professional information</p>
-          </div>
-          <div className="w-16 h-16 rounded-3xl bg-gradient-to-br from-blue-500 to-indigo-600 flex items-center justify-center text-2xl font-bold shadow-lg shadow-blue-500/20">
-            {user?.first_name?.[0]}{user?.last_name?.[0]}
-          </div>
-        </div>
 
         <div className="bg-[#111] border border-[#222] rounded-[32px] p-8 md:p-10 shadow-2xl">
           <form onSubmit={handleSubmit} className="space-y-8">
@@ -171,6 +166,82 @@ export default function ProfilePage() {
                   onChange={(e) => setLinkedinUrl(e.target.value)}
                   className="w-full bg-[#0a0a0a] border border-[#222] rounded-2xl pl-12 pr-4 py-4 text-sm focus:border-blue-500/50 outline-none transition-all"
                 />
+              </div>
+            </div>
+
+            <div className="space-y-3">
+              <label className="text-xs font-bold text-[#555] uppercase tracking-widest ml-1">Resume (PDF Recommended)</label>
+              <div className="relative">
+                {!user?.resume && !resume ? (
+                  <div className="w-full bg-[#0a0a0a] border border-[#222] border-dashed rounded-2xl p-6 flex flex-col items-center justify-center gap-3 hover:border-blue-500/50 transition-all cursor-pointer relative">
+                    <Briefcase size={24} className="text-[#444]" />
+                    <span className="text-xs font-medium text-[#888]">Click to upload or drag & drop</span>
+                    <input 
+                      type="file"
+                      accept=".pdf,.doc,.docx"
+                      onChange={(e) => setResume(e.target.files?.[0] || null)}
+                      className="absolute inset-0 opacity-0 cursor-pointer"
+                    />
+                  </div>
+                ) : (
+                  <div className="w-full bg-[#161616] border border-[#222] rounded-2xl p-4 flex items-center justify-between gap-4">
+                    <div className="flex items-center gap-3 overflow-hidden">
+                      <div className="w-10 h-10 rounded-xl bg-blue-500/10 flex items-center justify-center shrink-0">
+                        <Briefcase size={20} className="text-blue-500" />
+                      </div>
+                      <div className="overflow-hidden">
+                        <p className="text-xs font-bold text-white truncate">
+                          {resume ? resume.name : (user?.resume ? 'Resume uploaded' : '')}
+                        </p>
+                        {user?.resume_text && (
+                          <p className="text-[10px] text-green-500/60 font-medium">AI Matching Active</p>
+                        )}
+                      </div>
+                    </div>
+                    <button 
+                      type="button"
+                      onClick={async () => {
+                        if (resume) {
+                          setResume(null);
+                        } else if (user?.resume) {
+                          if (confirm('Are you sure you want to remove your current resume? This will disable AI job matching.')) {
+                            // Call API to remove
+                            setIsSubmitting(true);
+                            try {
+                              const res = await fetch(`${process.env.NEXT_PUBLIC_API_URL}/api/user/`, {
+                                method: 'PATCH',
+                                headers: {
+                                  'Content-Type': 'application/json',
+                                  'Authorization': `Token ${token}`
+                                },
+                                body: JSON.stringify({ resume: null }),
+                              });
+                              if (res.ok) {
+                                await refreshUser();
+                                setSuccess(true);
+                                setTimeout(() => setSuccess(false), 3000);
+                              }
+                            } catch (e) {
+                              setError('Failed to remove resume');
+                            } finally {
+                              setIsSubmitting(false);
+                            }
+                          }
+                        }
+                      }}
+                      className="cursor-pointer p-2 hover:bg-red-500/10 rounded-xl transition-colors group"
+                      title="Remove Resume"
+                    >
+                      <X size={18} className="text-[#444] group-hover:text-red-500" />
+                    </button>
+                  </div>
+                )}
+                
+                {resume && (
+                  <p className="text-[10px] text-blue-500/60 mt-2 ml-1 italic">
+                    Click "Save Changes" to upload the new resume.
+                  </p>
+                )}
               </div>
             </div>
 
