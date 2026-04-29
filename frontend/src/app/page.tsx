@@ -330,6 +330,76 @@ export default function LandingPage() {
           </div>
         </section>
 
+        {/* New Feature Spotlight: AI Match */}
+        <section className="px-12 py-20 border-t border-white/40 bg-[#050505] relative overflow-hidden">
+          <div className="absolute top-1/2 left-1/2 -translate-x-1/2 -translate-y-1/2 w-[600px] h-[600px] bg-blue-500/5 blur-[120px] rounded-full pointer-events-none" />
+          
+          <div className="grid grid-cols-1 lg:grid-cols-2 gap-24 items-center">
+            <motion.div
+              initial={{ opacity: 0, scale: 0.9 }}
+              whileInView={{ opacity: 1, scale: 1 }}
+              viewport={{ once: true }}
+              className="relative aspect-video rounded-2xl border border-white/5 bg-black p-8 flex flex-col justify-center gap-6 group shadow-2xl"
+            >
+              <div className="absolute top-4 right-4 flex gap-2">
+                <div className="w-2 h-2 rounded-full bg-red-500/20" />
+                <div className="w-2 h-2 rounded-full bg-yellow-500/20" />
+                <div className="w-2 h-2 rounded-full bg-green-500/20" />
+              </div>
+              
+              <div className="flex items-center gap-4 p-4 rounded-xl bg-white/5 border border-white/10 group-hover:border-blue-500/30 transition-all">
+                <div className="w-12 h-12 rounded-lg bg-blue-500/10 flex items-center justify-center">
+                  <Briefcase className="text-blue-500" size={24} />
+                </div>
+                <div className="flex-1">
+                  <div className="flex items-center justify-between mb-1">
+                    <div className="h-4 w-32 bg-white/10 rounded animate-pulse" />
+                    <div className="px-2 py-0.5 rounded bg-blue-500/20 border border-blue-500/30 text-[10px] font-black text-blue-500 uppercase tracking-widest">89.4% Match</div>
+                  </div>
+                  <div className="h-3 w-48 bg-white/5 rounded animate-pulse" />
+                </div>
+              </div>
+
+              <div className="space-y-3 opacity-50">
+                <div className="h-2 w-full bg-white/5 rounded" />
+                <div className="h-2 w-3/4 bg-white/5 rounded" />
+              </div>
+
+              <div className="absolute -bottom-6 -right-6 p-6 rounded-2xl bg-blue-600 shadow-2xl shadow-blue-600/20 max-w-[200px]">
+                <p className="text-[10px] font-black uppercase tracking-widest text-white/60 mb-2">AI Engine Active</p>
+                <p className="text-xs font-bold leading-relaxed text-white">Your resume was analyzed. We found 12 roles that match your DNA perfectly.</p>
+              </div>
+            </motion.div>
+
+            <div>
+              <div className="flex items-center gap-4 mb-4">
+                <div className="h-px w-20 bg-blue-500" />
+                <span className="font-mono text-xs text-blue-500 tracking-widest uppercase">// RESUME_AI.MOD</span>
+              </div>
+              <h2 className="text-5xl font-black tracking-tight mb-8 leading-[1.1]">
+                Stop guessing.<br />
+                Start <span className="text-serif font-normal italic lowercase text-blue-500">matching.</span>
+              </h2>
+              <p className="text-xl text-[#888] leading-relaxed mb-10">
+                Upload your resume once. Our AI parses your experience and calculates a <span className="text-white font-bold">real time match percentage</span> for every single listing on the map.
+              </p>
+              <ul className="space-y-4">
+                {[
+                  "Semantic keyword analysis",
+                  "Job Title weighted matching",
+                  "Automated experience extraction",
+                  "Zero configuration setup"
+                ].map((feature, i) => (
+                  <li key={i} className="flex items-center gap-3 text-sm font-mono text-[#555] uppercase tracking-widest">
+                    <Zap size={14} className="text-blue-500" />
+                    {feature}
+                  </li>
+                ))}
+              </ul>
+            </div>
+          </div>
+        </section>
+
         {/* Section 02: How it Works */}
         <section className="px-12 py-32 border-t border-white/40 mx-auto">
           <div className="flex items-center justify-between mb-20">
@@ -409,6 +479,10 @@ export default function LandingPage() {
               {
                 q: "Can I cancel my subscription easily?",
                 a: "Yes. One click in your dashboard. No 'call us to cancel' loops. No hidden retention tricks. We're here to help you get a job, not hold you hostage."
+              },
+              {
+                q: "How does the AI Resume Matching work?",
+                a: "Once you upload your resume in your profile, our AI engine parses your technical skills, experience, and career history. It then performs a real-time semantic comparison against every job listing to give you a personalized match percentage, helping you prioritize the roles you're most likely to land."
               },
               {
                 q: "How fresh is the data on the map?",
