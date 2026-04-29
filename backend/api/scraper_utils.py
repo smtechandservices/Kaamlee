@@ -79,7 +79,8 @@ def run_background_scraping(search_term="frontend developer", results_wanted=5):
     session = ScrapeSession.objects.create(
         status='running', 
         search_term=search_term, 
-        results_limit=results_wanted
+        results_limit=results_wanted,
+        jobs_deleted=deleted_count
     )
     log_to_db(session, f"Global scrape session initialized for '{search_term}' (limit: {results_wanted}). Cleaned up {deleted_count} old jobs.", "success")
     total_found = 0
@@ -185,6 +186,8 @@ def run_background_scraping(search_term="frontend developer", results_wanted=5):
                                     site_found += 1
                                     total_found += 1
                                     
+                            session.jobs_found = total_found
+                            session.save()
                             log_to_db(session, f"Successfully saved {site_found} jobs from {site} to database", "info")
                         else:
                             log_to_db(session, f"No jobs found on {site}", "warning")

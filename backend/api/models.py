@@ -63,6 +63,7 @@ class ScrapeSession(models.Model):
     end_time = models.DateTimeField(null=True, blank=True)
     status = models.CharField(max_length=50, default='running')
     jobs_found = models.IntegerField(default=0)
+    jobs_deleted = models.IntegerField(default=0)
     current_location = models.CharField(max_length=255, null=True, blank=True)
     search_term = models.CharField(max_length=255, default='frontend developer')
     results_limit = models.IntegerField(default=5)
@@ -84,3 +85,13 @@ class ScrapeLog(models.Model):
     def __str__(self):
         return f"[{self.timestamp.strftime('%H:%M:%S')}] {self.message}"
 
+class Bookmark(models.Model):
+    user = models.ForeignKey(User, on_delete=models.CASCADE, related_name='bookmarks')
+    job = models.ForeignKey(Job, on_delete=models.CASCADE, related_name='bookmarked_by')
+    created_at = models.DateTimeField(auto_now_add=True)
+
+    class Meta:
+        unique_together = ('user', 'job')
+
+    def __str__(self):
+        return f"{self.user.username} bookmarked {self.job.title}"

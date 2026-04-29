@@ -90,10 +90,20 @@ export default function ProfilePage() {
       <div className="absolute top-0 left-1/2 -translate-x-1/2 w-[800px] h-[500px] bg-blue-500/5 blur-[120px] rounded-full pointer-events-none" />
 
       <div className="max-w-2xl mx-auto z-10 relative pt-12">
-        <Link href="/explore" className="inline-flex items-center gap-2 text-[#888] hover:text-white transition-colors mb-4 group">
+        <button 
+          onClick={(e) => {
+            e.preventDefault();
+            if (!user?.is_subscribed) {
+              router.push('/');
+            } else {
+              router.push('/explore');
+            }
+          }}
+          className="cursor-pointer inline-flex items-center gap-2 text-[#888] hover:text-white transition-colors mb-4 group"
+        >
           <ArrowLeft size={18} className="group-hover:-translate-x-1 transition-transform" />
           Back to Explore
-        </Link>
+        </button>
 
         <div className="bg-[#111] border border-[#222] rounded-[32px] p-8 md:p-10 shadow-2xl">
           <form onSubmit={handleSubmit} className="space-y-8">

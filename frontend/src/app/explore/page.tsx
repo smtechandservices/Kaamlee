@@ -1,7 +1,7 @@
 'use client';
 
 import React, { useState, useEffect } from 'react';
-import { Search, Map as MapIcon, List, Filter, SlidersHorizontal, ChevronDown, Monitor, ArrowLeft, LogOut, User as UserIcon } from 'lucide-react';
+import { Search, Map as MapIcon, List, Filter, SlidersHorizontal, ChevronDown, Monitor, ArrowLeft, LogOut, User as UserIcon, Bookmark } from 'lucide-react';
 import { JobCard } from '@/components/JobCard';
 import Map from '@/components/Map';
 import Link from 'next/link';
@@ -23,6 +23,7 @@ export default function ExplorePage() {
   const [viewMode, setViewMode] = useState<'split' | 'map' | 'list'>('split');
   const [activeCountry, setActiveCountry] = useState<string>('All');
   const [remoteOnly, setRemoteOnly] = useState(false);
+  const [bookmarkedOnly, setBookmarkedOnly] = useState(false);
   const [currentPage, setCurrentPage] = useState(1);
   const jobsPerPage = 20;
 
@@ -34,11 +35,11 @@ export default function ExplorePage() {
 
   useEffect(() => {
     setCurrentPage(1);
-  }, [searchQuery, locationQuery, activeCountry, remoteOnly]);
+  }, [searchQuery, locationQuery, activeCountry, remoteOnly, bookmarkedOnly]);
 
   useEffect(() => {
     const fetchData = async () => {
-      if (!token) return;
+      if (!token || !user?.is_subscribed) return;
       
       try {
         const [jobsRes, locsRes] = await Promise.all([
@@ -79,7 +80,7 @@ export default function ExplorePage() {
       }
     };
     fetchData();
-  }, [token, logout]);
+  }, [token, user?.is_subscribed, logout]);
 
   const countries = React.useMemo(() => ['All', ...Array.from(new Set(locations.map(loc => {
     if (loc.country === 'United States') return 'USA';
@@ -103,19 +104,25 @@ export default function ExplorePage() {
         else matchesCountry = job.location.includes(activeCountry);
       }
       
-      return matchesSearch && matchesLocation && matchesRemote && matchesCountry;
+      const matchesBookmarked = bookmarkedOnly ? job.is_bookmarked : true;
+      
+      return matchesSearch && matchesLocation && matchesRemote && matchesCountry && matchesBookmarked;
     });
-  }, [jobs, searchQuery, locationQuery, activeCountry, remoteOnly]);
+  }, [jobs, searchQuery, locationQuery, activeCountry, remoteOnly, bookmarkedOnly]);
 
-  const handleMapJobClick = React.useCallback((jobId: string) => {
-    const jobIndex = filteredJobs.findIndex(j => j.id === jobId);
-    if (jobIndex !== -1) {
-      const page = Math.floor(jobIndex / jobsPerPage) + 1;
-      setCurrentPage(page);
-    }
-    setSelectedJobId(jobId);
-    if (viewMode === 'map') {
-      setViewMode('split');
+  const handleMapJobClick = React.useCallback((jobId: string | null) => {
+    if (jobId) {
+      const jobIndex = filteredJobs.findIndex(j => j.id === jobId);
+      if (jobIndex !== -1) {
+        const page = Math.floor(jobIndex / jobsPerPage) + 1;
+        setCurrentPage(page);
+      }
+      setSelectedJobId(jobId);
+      if (viewMode === 'map') {
+        setViewMode('split');
+      }
+    } else {
+      setSelectedJobId(null);
     }
   }, [filteredJobs, viewMode]);
 
@@ -166,6 +173,33 @@ export default function ExplorePage() {
 
   const timeLeft = getTimeLeft(user?.subscription_expires_at);
   const daysLeft = getDaysLeft(user?.subscription_expires_at);
+  
+  const handleToggleBookmark = async (e: React.MouseEvent, jobId: string) => {
+    e.stopPropagation();
+    if (!token) return;
+    
+    try {
+      const response = await fetch(`${process.env.NEXT_PUBLIC_API_URL}/api/jobs/${jobId}/toggle_bookmark/`, {
+        method: 'POST',
+        headers: {
+          'Authorization': `Token ${token}`,
+          'Content-Type': 'application/json'
+        }
+      });
+      
+      if (response.ok) {
+        const data = await response.json();
+        // Update local state
+        setJobs(prevJobs => prevJobs.map(j => 
+          j.id === jobId ? { ...j, is_bookmarked: data.is_bookmarked } : j
+        ));
+      } else if (response.status === 403) {
+        alert("Only subscribed users can bookmark jobs.");
+      }
+    } catch (error) {
+      console.error("Failed to toggle bookmark:", error);
+    }
+  };
 
   return (
     <main className="h-screen flex flex-col bg-[#0a0a0a] overflow-hidden relative">
@@ -213,15 +247,7 @@ export default function ExplorePage() {
               <MapIcon size={14} />
             </button>
           </div>
-          <Link 
-            href="/profile"
-            className="hidden sm:flex items-center gap-3 px-4 py-2 bg-[#161616] border border-[#222] rounded-full hover:border-[#333] transition-all group"
-          >
-             <div className="w-6 h-6 rounded-full bg-gradient-to-br from-blue-500 to-indigo-600 flex items-center justify-center text-[10px] font-bold shadow-lg shadow-blue-500/10 group-hover:scale-110 transition-transform">
-               {user?.first_name?.[0]}{user?.last_name?.[0]}
-             </div>
-             <span className="text-xs font-medium text-[#888] group-hover:text-white transition-colors">{user?.first_name} {user?.last_name}</span>
-          </Link>
+          <div className="w-px h-6 bg-[#222] mx-2" />
 
           <button 
             onClick={logout}
@@ -331,6 +357,18 @@ export default function ExplorePage() {
               <Monitor size={12} />
               Remote
             </button>
+
+            <button
+              onClick={() => setBookmarkedOnly(!bookmarkedOnly)}
+              className={`cursor-pointer px-4 py-1.5 rounded-lg text-[11px] font-bold flex items-center gap-2 transition-all duration-300 border whitespace-nowrap shrink-0 ${
+                bookmarkedOnly 
+                  ? 'bg-blue-600 text-white border-blue-600' 
+                  : 'bg-[#161616] text-[#888] border-[#222] hover:border-[#333] hover:text-white'
+              }`}
+            >
+              <Bookmark size={12} fill={bookmarkedOnly ? "currentColor" : "none"} />
+              Bookmarks
+            </button>
           </div>
           
           <div className="flex-1 overflow-y-auto p-4 space-y-4 custom-scrollbar">
@@ -340,6 +378,7 @@ export default function ExplorePage() {
                   job={job} 
                   isSelected={selectedJobId === job.id}
                   onClick={() => setSelectedJobId(job.id)}
+                  onToggleBookmark={(e) => handleToggleBookmark(e, job.id)}
                 />
               </div>
             ))}

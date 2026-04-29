@@ -1644,15 +1644,25 @@ function MapClusterLayer<
         "circle-radius": [
           "step",
           ["get", "point_count"],
-          20,
+          22,
           clusterThresholds[0],
-          30,
+          32,
           clusterThresholds[1],
-          40,
+          42,
         ],
-        "circle-stroke-width": 1,
-        "circle-stroke-color": "#fff",
-        "circle-opacity": 0.85,
+        "circle-blur": 0.2,
+        "circle-opacity": 0.6,
+        "circle-stroke-width": 4,
+        "circle-stroke-color": [
+          "step",
+          ["get", "point_count"],
+          clusterColors[0],
+          clusterThresholds[0],
+          clusterColors[1],
+          clusterThresholds[1],
+          clusterColors[2],
+        ],
+        "circle-stroke-opacity": 0.2,
       },
     });
 
@@ -1666,6 +1676,7 @@ function MapClusterLayer<
         "text-field": "{point_count_abbreviated}",
         "text-font": ["Open Sans"],
         "text-size": 12,
+        "text-allow-overlap": true,
       },
       paint: {
         "text-color": "#fff",
@@ -1680,9 +1691,9 @@ function MapClusterLayer<
       filter: ["!", ["has", "point_count"]],
       paint: {
         "circle-color": pointColor,
-        "circle-radius": 5,
-        "circle-stroke-width": 2,
-        "circle-stroke-color": "#fff",
+        "circle-radius": 6,
+        "circle-blur": 0.4,
+        "circle-opacity": 0.9,
       },
     });
 

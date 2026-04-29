@@ -1,10 +1,10 @@
 'use client';
 
-import { Map as Mapcn, MapControls, MapMarker, MarkerContent, MarkerPopup, MarkerLabel } from "@/components/ui/map";
+import { Map as Mapcn, MapControls, MapMarker, MarkerContent, MarkerPopup, MarkerLabel, MapClusterLayer, type MapViewport } from "@/components/ui/map";
 import { ChevronLeft, ChevronRight, ExternalLink, X, Loader2 } from 'lucide-react';
 import { motion, AnimatePresence } from 'framer-motion';
 
-import { useRef, useEffect, useState } from 'react';
+import { useRef, useEffect, useState, useMemo } from 'react';
 
 // Haversine formula to calculate distance between two points in km
 const getDistance = (lat1: number, lon1: number, lat2: number, lon2: number) => {
@@ -22,7 +22,7 @@ const getDistance = (lat1: number, lon1: number, lat2: number, lon2: number) => 
 interface MapProps {
   jobs: any[];
   selectedJobId?: string | null;
-  onJobClick?: (id: string) => void;
+  onJobClick?: (id: string | null) => void;
 }
 
 const Map = ({ jobs, selectedJobId, onJobClick }: MapProps) => {
@@ -33,6 +33,10 @@ const Map = ({ jobs, selectedJobId, onJobClick }: MapProps) => {
   const [currentIndex, setCurrentIndex] = useState(0);
   const [userLocation, setUserLocation] = useState<{lat: number, lng: number} | null>(null);
   const [isSearching, setIsSearching] = useState(false);
+  
+  // Performance states
+  const [zoom, setZoom] = useState(4);
+  const [bounds, setBounds] = useState<any>(null);
 
   useEffect(() => {
     if (selectedJobId && mapRef.current) {
@@ -40,7 +44,7 @@ const Map = ({ jobs, selectedJobId, onJobClick }: MapProps) => {
       if (selectedJob && selectedJob.latitude && selectedJob.longitude) {
         mapRef.current.flyTo({
           center: [selectedJob.longitude, selectedJob.latitude],
-          zoom: 12,
+          zoom: 14,
           duration: 1200
         });
       }
@@ -50,6 +54,55 @@ const Map = ({ jobs, selectedJobId, onJobClick }: MapProps) => {
   useEffect(() => {
     setNearbyJobs([]);
   }, [jobs]);
+
+  // Convert jobs to GeoJSON for MapClusterLayer
+  const geojson = useMemo(() => {
+    return {
+      type: "FeatureCollection" as const,
+      features: jobs
+        .filter(job => job.latitude && job.longitude)
+        .map(job => ({
+          type: "Feature" as const,
+          id: job.id,
+          properties: {
+            id: job.id,
+            company: job.company,
+            title: job.title,
+            location: job.location
+          },
+          geometry: {
+            type: "Point" as const,
+            coordinates: [job.longitude, job.latitude] as [number, number]
+          }
+        }))
+    };
+  }, [jobs]);
+
+  // Filter jobs that are currently visible in the viewport (for zoom >= 10)
+  const visibleJobs = useMemo(() => {
+    if (!bounds || zoom < 10) return [];
+    
+    return jobs.filter(job => {
+      if (!job.latitude || !job.longitude) return false;
+      
+      // Simple bound check
+      const { _sw, _ne } = bounds;
+      return (
+        job.longitude >= _sw.lng &&
+        job.longitude <= _ne.lng &&
+        job.latitude >= _sw.lat &&
+        job.latitude <= _ne.lat
+      );
+    });
+  }, [jobs, bounds, zoom]);
+
+  const handleViewportChange = (viewport: MapViewport) => {
+    setZoom(viewport.zoom);
+    if (mapRef.current) {
+      const newBounds = mapRef.current.getBounds();
+      setBounds(newBounds);
+    }
+  };
 
   const findNearestStartup = () => {
     if (!navigator.geolocation) return;
@@ -109,10 +162,22 @@ const Map = ({ jobs, selectedJobId, onJobClick }: MapProps) => {
       <Mapcn 
         ref={mapRef}
         center={center} 
-        zoom={4}
+        zoom={zoom}
         theme="dark"
         className="w-full h-full"
-        onClick={() => setNearbyJobs([])}
+        onClick={(e) => {
+          // Don't deselect if we clicked on a cluster or point
+          const features = mapRef.current?.queryRenderedFeatures(e.point);
+          const hasFeature = features?.some((f: any) => 
+            f.layer.id.includes('cluster') || f.layer.id.includes('unclustered')
+          );
+          
+          if (hasFeature) return;
+
+          setNearbyJobs([]);
+          onJobClick?.(null);
+        }}
+        onViewportChange={handleViewportChange}
       >
         <MapControls 
           position="bottom-right" 
@@ -121,17 +186,35 @@ const Map = ({ jobs, selectedJobId, onJobClick }: MapProps) => {
           showFullscreen={false}
         />
 
-        {jobs.map((job, index) => {
-          // Use real coordinates from geocoding, with a fallback if missing
-          const lat = job.latitude || (20.5937 + (Math.random() - 0.5) * 5);
-          const lng = job.longitude || (78.9629 + (Math.random() - 0.5) * 5);
+        {/* Clustering layer for zoomed out view */}
+        {zoom < 10 && (
+          <MapClusterLayer 
+            data={geojson} 
+            clusterMaxZoom={10}
+            clusterRadius={50}
+            clusterColors={["#3b82f6", "#2563eb", "#1d4ed8"]}
+            onPointClick={(feature) => {
+               const jobId = feature.properties?.id;
+               if (jobId) onJobClick?.(jobId);
+            }}
+          />
+        )}
+
+        {/* Individual markers with logos for zoomed in view (or if selected) */}
+        {(zoom >= 10 ? visibleJobs : jobs.filter(j => j.id === selectedJobId)).map((job, index) => {
+          const lat = job.latitude;
+          const lng = job.longitude;
+          if (!lat || !lng) return null;
 
           return (
             <MapMarker 
               key={job.id || index} 
               longitude={lng} 
               latitude={lat}
-              onClick={() => onJobClick?.(job.id)}
+              onClick={(e) => {
+                e.stopPropagation();
+                onJobClick?.(selectedJobId === job.id ? null : job.id);
+              }}
             >
               <MarkerContent className="group">
                 <div className={`w-8 h-8 rounded-full flex items-center justify-center text-sm font-black border-2 transition-all duration-300 overflow-hidden ${

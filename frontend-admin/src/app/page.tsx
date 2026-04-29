@@ -16,7 +16,8 @@ import {
   X,
   AlertTriangle,
   LogOut,
-  Users
+  Users,
+  ChevronDown
 } from 'lucide-react';
 import { useRouter } from 'next/navigation';
 import Link from 'next/link';
@@ -40,6 +41,7 @@ interface ScrapeSession {
   end_time: string | null;
   status: string;
   jobs_found: number;
+  jobs_deleted: number;
   current_location: string | null;
   error_message: string | null;
   stop_requested: boolean;
@@ -346,7 +348,7 @@ export default function AdminDashboard() {
           <StatCard
             icon={<CheckCircle2 className="text-green-500" />}
             label="Last Success"
-            value={stats?.last_scrape_session?.jobs_found ? `+${stats.last_scrape_session.jobs_found} jobs` : 'N/A'}
+            value={stats?.last_scrape_session?.jobs_found ? `+ ${stats.last_scrape_session.jobs_found} jobs` : 'no jobs found'}
           />
           <StatCard
             icon={<AlertCircle className="text-orange-500" />}
@@ -472,7 +474,7 @@ export default function AdminDashboard() {
       </div>
 
       <AnimatePresence>
-        {isLogsModalOpen && <LogsModal onClose={() => setIsLogsModalOpen(false)} />}
+        {isLogsModalOpen && <LogsModal onClose={() => setIsLogsModalOpen(false)} stats={stats} />}
         {isSettingsModalOpen && (
           <ScrapeSettingsModal 
             onClose={() => setIsSettingsModalOpen(false)} 
@@ -499,8 +501,9 @@ function StatCard({ icon, label, value }: { icon: React.ReactNode, label: string
   );
 }
 
-function LogsModal({ onClose }: { onClose: () => void }) {
+function LogsModal({ onClose, stats }: { onClose: () => void, stats: Stats | null }) {
   const [logs, setLogs] = useState<ScrapeLog[]>([]);
+  const [currentSession, setCurrentSession] = useState<ScrapeSession | null>(stats?.last_scrape_session || null);
   const logsEndRef = React.useRef<HTMLDivElement>(null);
   const containerRef = React.useRef<HTMLDivElement>(null);
   const [autoScroll, setAutoScroll] = useState(true);
@@ -514,7 +517,10 @@ function LogsModal({ onClose }: { onClose: () => void }) {
         });
         if (res.ok) {
           const data = await res.json();
-          setLogs(data);
+          setLogs(data.logs);
+          if (data.session) {
+            setCurrentSession(data.session);
+          }
         }
       } catch (error) {
         console.error("Failed to fetch logs:", error);
@@ -559,9 +565,24 @@ function LogsModal({ onClose }: { onClose: () => void }) {
             <Terminal size={20} className="text-blue-500" />
             Live Scraper Logs
           </h2>
-          <button onClick={onClose} className="cursor-pointer p-2 hover:bg-[#333] rounded-lg transition-colors text-[#888] hover:text-white">
-            <X size={20} />
-          </button>
+          <div className="flex items-center gap-8">
+            {currentSession && (
+              <div className="hidden md:flex items-center gap-3">
+                <div className="flex items-center gap-1.5">
+                  <span className="text-md font-bold text-[#555] uppercase tracking-widest">Found</span>
+                  <span className="text-md font-black text-green-500">{currentSession.jobs_found}</span>
+                </div>
+                <div className="w-px h-3 bg-white/10" />
+                <div className="flex items-center gap-1.5">
+                  <span className="text-md font-bold text-[#555] uppercase tracking-widest">Deleted</span>
+                  <span className="text-md font-black text-red-400">{currentSession.jobs_deleted}</span>
+                </div>
+              </div>
+            )}
+            <button onClick={onClose} className="cursor-pointer p-2 hover:bg-[#333] rounded-lg transition-colors text-[#888] hover:text-white">
+              <X size={20} />
+            </button>
+          </div>
         </div>
         
         <div 
@@ -603,6 +624,7 @@ function ScrapeSettingsModal({ onClose, onStart, loading, jobRoles }: { onClose:
   const [limit, setLimit] = useState(5);
   const [customTerm, setCustomTerm] = useState('');
   const [isCustom, setIsCustom] = useState(false);
+  const [isDropdownOpen, setIsDropdownOpen] = useState(false);
 
   useEffect(() => {
     if (!term && jobRoles.length > 0) {
@@ -638,22 +660,53 @@ function ScrapeSettingsModal({ onClose, onStart, loading, jobRoles }: { onClose:
             <label className="text-xs font-bold uppercase tracking-wider text-[#555] mb-2 block">Job Role / Search Term</label>
             <div className="space-y-3">
               {!isCustom ? (
-                <select 
-                  value={term} 
-                  onChange={(e) => {
-                    if (e.target.value === 'CUSTOM') {
-                      setIsCustom(true);
-                    } else {
-                      setTerm(e.target.value);
-                    }
-                  }}
-                  className="w-full bg-[#0a0a0a] border border-[#222] rounded-xl px-4 py-3 text-white focus:border-blue-500 outline-none cursor-pointer"
-                >
-                  {jobRoles.map(role => (
-                    <option key={role} value={role}>{role}</option>
-                  ))}
-                  <option value="CUSTOM">+ Other Role...</option>
-                </select>
+                <div className="relative">
+                  <button 
+                    onClick={() => setIsDropdownOpen(!isDropdownOpen)}
+                    className="w-full bg-[#0a0a0a] border border-[#222] rounded-xl px-4 py-2.5 text-white flex items-center justify-between hover:border-blue-500 transition-all text-sm font-medium"
+                  >
+                    <span>{term}</span>
+                    <ChevronDown size={16} className={`text-[#444] transition-transform ${isDropdownOpen ? 'rotate-180' : ''}`} />
+                  </button>
+
+                  <AnimatePresence>
+                    {isDropdownOpen && (
+                      <>
+                        <div className="fixed inset-0 z-10" onClick={() => setIsDropdownOpen(false)} />
+                        <motion.div
+                          initial={{ opacity: 0, y: -10 }}
+                          animate={{ opacity: 1, y: 0 }}
+                          exit={{ opacity: 0, y: -10 }}
+                          className="absolute z-20 w-full mt-2 bg-[#1a1a1a] border border-[#333] rounded-xl shadow-2xl overflow-hidden"
+                        >
+                          <div className="max-h-48 overflow-y-auto custom-scrollbar">
+                            {jobRoles.map(role => (
+                              <button
+                                key={role}
+                                onClick={() => {
+                                  setTerm(role);
+                                  setIsDropdownOpen(false);
+                                }}
+                                className={`w-full text-left px-4 py-2 text-xs hover:bg-blue-600/10 hover:text-blue-400 transition-colors ${term === role ? 'bg-blue-600/5 text-blue-500' : 'text-[#888]'}`}
+                              >
+                                {role}
+                              </button>
+                            ))}
+                            <button
+                              onClick={() => {
+                                setIsCustom(true);
+                                setIsDropdownOpen(false);
+                              }}
+                              className="w-full text-left px-4 py-2 text-xs text-blue-500 hover:bg-blue-600/10 border-t border-[#222] font-bold"
+                            >
+                              + Other Role...
+                            </button>
+                          </div>
+                        </motion.div>
+                      </>
+                    )}
+                  </AnimatePresence>
+                </div>
               ) : (
                 <div className="flex gap-2">
                   <input 

@@ -1,7 +1,7 @@
 'use client';
 
 import React from 'react';
-import { MapPin, Briefcase, ExternalLink, Clock } from 'lucide-react';
+import { MapPin, Briefcase, ExternalLink, Clock, Bookmark } from 'lucide-react';
 
 interface JobCardProps {
   job: {
@@ -16,19 +16,22 @@ interface JobCardProps {
     company_logo?: string;
     date_posted?: string | null;
     match_score?: number;
+    is_bookmarked?: boolean;
+    id: string;
   };
   isSelected?: boolean;
   onClick?: () => void;
+  onToggleBookmark?: (e: React.MouseEvent) => void;
 }
 
-export const JobCard = ({ job, isSelected, onClick }: JobCardProps) => {
+export const JobCard = ({ job, isSelected, onClick, onToggleBookmark }: JobCardProps) => {
   const companyName = job.company || 'Confidential';
   const getInitial = (name: string) => name ? name.charAt(0).toUpperCase() : '?';
 
   return (
     <div 
       onClick={onClick}
-      className={`job-card p-4 rounded-xl border border-[#222] bg-[#111] hover:border-[#3b82f6] cursor-pointer group transition-all relative overflow-hidden ${
+      className={`cursor-default job-card p-4 rounded-xl border border-[#222] bg-[#111] hover:border-[#3b82f6] group transition-all relative overflow-hidden ${
         isSelected ? 'border-[#3b82f6] bg-[#161616]' : ''
       }`}
     >
@@ -76,22 +79,37 @@ export const JobCard = ({ job, isSelected, onClick }: JobCardProps) => {
         </div>
       )}
       <div className="flex gap-4 items-start">
-        <div className="w-12 h-12 rounded-lg bg-white flex items-center justify-center border border-[#333] overflow-hidden group-hover:border-[#3b82f6] transition-colors shrink-0">
-          {job.company_logo ? (
-            <img 
-              src={job.company_logo} 
-              alt={companyName} 
-              className="w-full h-full object-contain"
-              onError={(e) => {
-                (e.target as HTMLImageElement).style.display = 'none';
-                (e.target as HTMLImageElement).parentElement!.innerHTML = `<span class="text-xl font-bold text-[#333]">${getInitial(companyName)}</span>`;
-              }}
-            />
-          ) : (
-            <span className="text-xl font-bold text-[#333]">
-              {getInitial(companyName)}
-            </span>
-          )}
+        <div className="flex flex-col items-center shrink-0">
+          <div className="w-12 h-12 rounded-lg bg-white flex items-center justify-center border border-[#333] overflow-hidden group-hover:border-[#3b82f6] transition-colors">
+            {job.company_logo ? (
+              <img 
+                src={job.company_logo} 
+                alt={companyName} 
+                className="w-full h-full object-contain"
+                onError={(e) => {
+                  (e.target as HTMLImageElement).style.display = 'none';
+                  (e.target as HTMLImageElement).parentElement!.innerHTML = `<span class="text-xl font-bold text-[#333]">${getInitial(companyName)}</span>`;
+                }}
+              />
+            ) : (
+              <span className="text-xl font-bold text-[#333]">
+                {getInitial(companyName)}
+              </span>
+            )}
+          </div>
+          
+          {/* Bookmark Toggle below logo */}
+          <button 
+            onClick={onToggleBookmark}
+            className={`w-full flex justify-center cursor-pointer mt-2 p-2 rounded-lg border transition-all ${
+              job.is_bookmarked 
+                ? 'bg-blue-500/10 border-blue-500/30 text-blue-500' 
+                : 'bg-transparent border-[#222] text-[#444] hover:border-[#333] hover:text-[#666]'
+            }`}
+            title={job.is_bookmarked ? "Unbookmark" : "Bookmark"}
+          >
+            <Bookmark size={18} fill={job.is_bookmarked ? "currentColor" : "none"} />
+          </button>
         </div>
         
         <div className="flex-1 min-w-0">
@@ -111,6 +129,12 @@ export const JobCard = ({ job, isSelected, onClick }: JobCardProps) => {
             {job.is_remote && (
               <div className="flex items-center gap-1 text-[11px] text-green-500/80 bg-green-500/5 px-2 py-1 rounded-full border border-green-500/10">
                 Remote
+              </div>
+            )}
+            {job.is_bookmarked && (
+              <div className="flex items-center gap-1 text-[11px] text-blue-500/80 bg-blue-500/5 px-2 py-1 rounded-full border border-blue-500/10">
+                <Bookmark size={10} fill="currentColor" />
+                Bookmarked
               </div>
             )}
             {job.job_type && (

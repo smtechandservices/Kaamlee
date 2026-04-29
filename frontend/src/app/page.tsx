@@ -5,6 +5,7 @@ import Link from 'next/link';
 import { motion, AnimatePresence } from 'framer-motion';
 import { ArrowRight, Search, Zap, Globe, Shield, LogOut, Briefcase, MapPin, Building2, Plus, Minus, RotateCcw } from 'lucide-react';
 import { useAuth } from '@/context/AuthContext';
+import { useRouter } from 'next/navigation';
 import MapComponent from '@/components/Map';
 import { Map as Mapcn, MapMarker, MarkerContent } from "@/components/ui/map";
 import PricingModal from '@/components/PricingModal';
@@ -49,10 +50,22 @@ function FAQItem({ faq, index, isOpen, onToggle }: { faq: { q: string, a: string
 
 export default function LandingPage() {
   const { user, logout } = useAuth();
+  const router = useRouter();
   const [recentJobs, setRecentJobs] = useState<any[]>([]);
   const [stats, setStats] = useState<any>(null);
   const [openFaqIndex, setOpenFaqIndex] = useState<number | null>(null);
   const [isPricingOpen, setIsPricingOpen] = useState(false);
+
+  const handleExploreClick = (e: React.MouseEvent) => {
+    e.preventDefault();
+    if (!user) {
+      router.push('/login');
+    } else if (!user.is_subscribed) {
+      setIsPricingOpen(true);
+    } else {
+      router.push('/explore');
+    }
+  };
 
   useEffect(() => {
     fetch(`${process.env.NEXT_PUBLIC_API_URL}/api/recent-jobs/`)
@@ -65,6 +78,22 @@ export default function LandingPage() {
       .then(data => setStats(data))
       .catch(err => console.error("Error fetching stats:", err));
   }, []);
+
+  const timeAgo = (dateString: string | null, createdString: string | null = null) => {
+    const referenceDate = createdString ? new Date(createdString) : (dateString ? new Date(dateString) : null);
+    if (!referenceDate) return 'recently';
+    
+    const now = new Date();
+    const diffInMs = now.getTime() - referenceDate.getTime();
+    const diffInHours = Math.floor(diffInMs / (1000 * 60 * 60));
+    const diffInDays = Math.floor(diffInMs / (1000 * 60 * 60 * 24));
+    
+    if (diffInHours < 1) return 'just now';
+    if (diffInHours < 24) return `${diffInHours}h ago`;
+    if (diffInDays === 1) return 'yesterday';
+    if (diffInDays < 7) return `${diffInDays}d ago`;
+    return `recently`;
+  };
 
   return (
     <main className="min-h-screen bg-black text-white selection:bg-blue-500 selection:text-white font-sans overflow-x-hidden">
@@ -80,22 +109,33 @@ export default function LandingPage() {
           KAAMLEE
         </div>
 
-        <div className="flex items-center gap-8">
+        <div className="flex items-center gap-4">
+          <button
+            onClick={handleExploreClick}
+            className="cursor-pointer bg-white text-black px-6 py-2.5 rounded-sm text-xs font-black uppercase tracking-widest flex items-center gap-2 hover:bg-[#ededed] transition-all"
+          >
+            Find Jobs <ArrowRight size={14} />
+          </button>
           {!user ? (
             <Link href="/login" className="cursor-pointer text-sm font-medium text-[#888] hover:text-white transition-colors">
               Log in
             </Link>
           ) : (
-            <button onClick={logout} className="cursor-pointer text-sm font-medium text-[#888] hover:text-white transition-colors">
-              Logout
-            </button>
+            <div className="flex items-center gap-4">
+              <Link 
+                href="/profile"
+                className="hidden sm:flex items-center gap-3 px-2 py-2 bg-white/5 border border-white/10 rounded-full hover:border-white/20 transition-all group"
+              >
+                 <div className="w-6 h-6 rounded-full bg-gradient-to-br from-blue-500 to-indigo-600 flex items-center justify-center text-[10px] font-bold shadow-lg shadow-blue-500/10 group-hover:scale-110 transition-transform">
+                   {user?.first_name?.[0]}{user?.last_name?.[0]}
+                 </div>
+                 <span className="text-xs font-medium text-[#888] group-hover:text-white transition-colors">{user?.first_name} {user?.last_name}</span>
+              </Link>
+              <div onClick={logout} className='flex items-center gap-2 group cursor-pointer hover:text-white transition-colors'>
+                <LogOut size={18}/>
+              </div>
+            </div>
           )}
-          <Link
-            href="/explore"
-            className="bg-white text-black px-6 py-2.5 rounded-sm text-xs font-black uppercase tracking-widest flex items-center gap-2 hover:bg-[#ededed] transition-all"
-          >
-            Find Jobs <ArrowRight size={14} />
-          </Link>
         </div>
       </nav>
 
@@ -130,12 +170,12 @@ export default function LandingPage() {
             </p>
 
             <div className="flex items-center gap-4">
-              <Link
-                href="/explore"
-                className="bg-white text-black px-10 py-5 rounded-sm font-black uppercase tracking-widest text-sm flex items-center gap-2 hover:bg-[#ededed] transition-all group"
+              <button
+                onClick={handleExploreClick}
+                className="cursor-pointer bg-white text-black px-10 py-5 rounded-sm font-black uppercase tracking-widest text-sm flex items-center gap-2 hover:bg-[#ededed] transition-all group"
               >
                 Open the map <ArrowRight size={18} className="group-hover:translate-x-1 transition-transform" />
-              </Link>
+              </button>
               <button
                 onClick={() => setIsPricingOpen(true)}
                 className="cursor-pointer border border-[#222] text-white px-10 py-5 rounded-sm font-black uppercase tracking-widest text-sm hover:border-white transition-all"
@@ -207,19 +247,10 @@ export default function LandingPage() {
             </div>
 
             {/* Map UI Overlay (Preserved from design) */}
-            <div className="absolute inset-0 p-8 flex flex-col justify-between z-10 pointer-events-none">
-              <div className="flex items-center justify-end">
-                <div className="flex flex-col gap-2 pointer-events-auto">
-                  {[Plus, Minus, RotateCcw].map((Icon, i) => (
-                    <button key={i} className="w-8 h-8 rounded-sm bg-black border border-white/10 flex items-center justify-center hover:bg-white/5 transition-colors">
-                      <Icon size={14} className="text-white/60" />
-                    </button>
-                  ))}
-                </div>
-              </div>
+            <div className="absolute inset-0 p-8 flex flex-col justify-end z-10 pointer-events-none">
 
               <div className="flex items-end justify-between">
-                <div className="flex gap-12 font-mono text-[10px] text-white/30">
+                <div className="flex gap-12 font-mono text-[14px] text-white/30">
                   <div className="flex flex-col gap-1">
                     <span className="uppercase tracking-widest">Lat</span>
                     <span className="text-white/60">-53.46</span>
@@ -239,7 +270,7 @@ export default function LandingPage() {
           <div className="max-w-[1400px] mx-auto grid grid-cols-2 md:grid-cols-4 gap-12">
             {[
               { label: "LIVE_LISTINGS", value: stats?.total_jobs.toLocaleString() || "420" },
-              { label: "COMPANIES", value: "500 +" },
+              { label: "COMPANIES", value: "1000 +" },
               { label: "SOURCES", value: "12 boards" },
               { label: "UPTIME", value: "98.99%" }
             ].map((stat, i) => (
@@ -274,19 +305,15 @@ export default function LandingPage() {
               {/* Double the array for seamless looping */}
               {[...recentJobs.slice(0, 10), ...recentJobs.slice(0, 10)].map((job, i) => (
                 <div key={i} className="flex-shrink-0 w-[350px] group p-8 border border-white/5 bg-[#080808] hover:border-blue-500/30 hover:bg-[#0a0a0a] transition-all relative overflow-hidden">
-                  <div className="flex items-center justify-between mb-8">
-                    <div className="w-10 h-10 rounded-sm bg-white/5 border border-white/10 flex items-center justify-center font-black text-xs">
-                      {job.company[0]}
-                    </div>
-                    <span className="font-mono text-[10px] text-[#444] uppercase tracking-widest">14h ago</span>
+                  <div className="flex items-center justify-between mb-4">
+                    <h4 className="text-xl font-bold tracking-tight text-white mb-4 line-clamp-1 truncate">{job.title}</h4>
                   </div>
 
-                  <div className="mb-8">
-                    <div className="font-mono text-[10px] text-blue-500 uppercase tracking-widest font-bold mb-2 tracking-[0.2em]">{job.company}</div>
-                    <h4 className="text-xl font-bold tracking-tight text-white mb-4 line-clamp-1 truncate">{job.title}</h4>
+                  <div className="flex items-center justify-between mb-8">
+                    <p className="font-mono text-[10px] text-[#444] uppercase tracking-widest">{timeAgo(job.date_posted)}</p>
                     <div className="flex items-center gap-4 text-[10px] text-[#444] font-mono tracking-widest uppercase">
-                      <span>⟡ {job.site}</span>
                       <span>◇ {job.location_name.split(',')[0]}</span>
+                      <span>⟡ {job.site}</span>
                     </div>
                   </div>
 

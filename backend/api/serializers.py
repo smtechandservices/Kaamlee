@@ -1,7 +1,7 @@
 import io
 import PyPDF2
 from rest_framework import serializers
-from .models import Location, Job, ScrapeSession, ScrapeLog
+from .models import Location, Job, ScrapeSession, ScrapeLog, Bookmark
 from django.contrib.auth.models import User
 
 def extract_text_from_pdf(pdf_file):
@@ -152,6 +152,7 @@ class LocationSerializer(serializers.ModelSerializer):
 
 class JobSerializer(serializers.ModelSerializer):
     match_score = serializers.SerializerMethodField()
+    is_bookmarked = serializers.BooleanField(read_only=True)
     
     class Meta:
         model = Job
@@ -177,4 +178,3 @@ class ScrapeLogSerializer(serializers.ModelSerializer):
     class Meta:
         model = ScrapeLog
         fields = '__all__'
-

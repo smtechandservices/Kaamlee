@@ -1,10 +1,11 @@
 from rest_framework import viewsets, views, generics, permissions
+from rest_framework.decorators import action
 from rest_framework.authtoken.views import ObtainAuthToken
 from rest_framework.response import Response
 from rest_framework.authtoken.models import Token
-from .models import Location, Job, ScrapeSession, ScrapeLog
+from .models import Location, Job, ScrapeSession, ScrapeLog, Bookmark
 from .serializers import LocationSerializer, JobSerializer, ScrapeSessionSerializer, ScrapeLogSerializer, UserSerializer, RegisterSerializer
-from django.db.models import Count
+from django.db.models import Count, Exists, OuterRef
 from django.contrib.auth.models import User
 
 class SignupView(generics.CreateAPIView):
@@ -46,11 +47,33 @@ class JobViewSet(viewsets.ReadOnlyModelViewSet):
     permission_classes = [permissions.IsAuthenticated]
 
     def get_queryset(self):
-        queryset = super().get_queryset()
+        queryset = Job.objects.all()
+        if self.request.user.is_authenticated:
+            queryset = queryset.annotate(
+                is_bookmarked=Exists(Bookmark.objects.filter(user=self.request.user, job=OuterRef('pk')))
+            )
+            
         location_id = self.request.query_params.get('location_id')
         if location_id:
             queryset = queryset.filter(location_id=location_id)
+            
+        bookmarked_only = self.request.query_params.get('bookmarked_only')
+        if bookmarked_only == 'true' and self.request.user.is_authenticated:
+            queryset = queryset.filter(bookmarked_by__user=self.request.user)
+            
         return queryset
+
+    @action(detail=True, methods=['post'], permission_classes=[permissions.IsAuthenticated])
+    def toggle_bookmark(self, request, pk=None):
+        if not request.user.profile.is_subscribed:
+            return Response({"error": "Only subscribed users can bookmark jobs"}, status=403)
+            
+        job = self.get_object()
+        bookmark, created = Bookmark.objects.get_or_create(user=request.user, job=job)
+        if not created:
+            bookmark.delete()
+            return Response({"status": "unbookmarked", "is_bookmarked": False})
+        return Response({"status": "bookmarked", "is_bookmarked": True})
 
 class StatsView(views.APIView):
     permission_classes = [permissions.AllowAny]
@@ -116,14 +139,18 @@ class LogsView(views.APIView):
         if not session_id:
             session = ScrapeSession.objects.order_by('-start_time').first()
             if not session:
-                return Response([])
-            session_id = session.id
+                return Response({"logs": [], "session": None})
+        else:
+            session = ScrapeSession.objects.filter(id=session_id).first()
             
-        logs = ScrapeLog.objects.filter(session_id=session_id).order_by('timestamp')
-        return Response(ScrapeLogSerializer(logs, many=True).data)
+        logs = ScrapeLog.objects.filter(session=session).order_by('timestamp')
+        return Response({
+            "logs": ScrapeLogSerializer(logs, many=True).data,
+            "session": ScrapeSessionSerializer(session).data if session else None
+        })
 
 class RecentJobsView(generics.ListAPIView):
-    queryset = Job.objects.order_by('-created_at')[:10]
+    queryset = Job.objects.order_by('-date_posted')[:10]
     serializer_class = JobSerializer
     permission_classes = [permissions.AllowAny]
 
