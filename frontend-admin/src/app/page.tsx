@@ -14,10 +14,14 @@ import {
   Loader2,
   Terminal,
   X,
-  AlertTriangle
+  AlertTriangle,
+  LogOut,
+  Users
 } from 'lucide-react';
+import { useRouter } from 'next/navigation';
+import Link from 'next/link';
 
-const API_BASE = 'http://127.0.0.1:8000/api';
+const API_BASE = `${process.env.NEXT_PUBLIC_API_URL}/api`;
 
 interface Location {
   id: number;
@@ -63,14 +67,31 @@ export default function AdminDashboard() {
   const [searchTerm, setSearchTerm] = useState('');
   const [selectedCountry, setSelectedCountry] = useState('All');
   const [isLogsModalOpen, setIsLogsModalOpen] = useState(false);
+  const router = useRouter();
 
   const fetchData = async () => {
+    const token = localStorage.getItem('admin_token');
+    if (!token) {
+      router.push('/login');
+      return;
+    }
+
     setLoading(true);
     try {
       const [locRes, statsRes] = await Promise.all([
-        fetch(`${API_BASE}/locations/`),
-        fetch(`${API_BASE}/stats/`)
+        fetch(`${API_BASE}/locations/`, {
+          headers: { 'Authorization': `Token ${token}` }
+        }),
+        fetch(`${API_BASE}/stats/`, {
+          headers: { 'Authorization': `Token ${token}` }
+        })
       ]);
+
+      if (locRes.status === 401 || statsRes.status === 401) {
+        localStorage.removeItem('admin_token');
+        router.push('/login');
+        return;
+      }
 
       if (!locRes.ok || !statsRes.ok) {
         throw new Error('Backend responded with an error');
@@ -87,18 +108,32 @@ export default function AdminDashboard() {
     }
   };
 
-
-
   useEffect(() => {
+    const token = localStorage.getItem('admin_token');
+    if (!token) {
+      router.push('/login');
+      return;
+    }
+    
     fetchData();
     const interval = setInterval(fetchData, 10000); // Refresh every 10s
     return () => clearInterval(interval);
   }, []);
 
+  const handleLogout = () => {
+    localStorage.removeItem('admin_token');
+    localStorage.removeItem('admin_user');
+    router.push('/login');
+  };
+
   const triggerScrape = async () => {
+    const token = localStorage.getItem('admin_token');
     setTriggering(true);
     try {
-      await fetch(`${API_BASE}/trigger-scrape/`, { method: 'POST' });
+      await fetch(`${API_BASE}/trigger-scrape/`, { 
+        method: 'POST',
+        headers: { 'Authorization': `Token ${token}` }
+      });
       alert("Scraping started in background!");
       fetchData();
     } catch (error) {
@@ -109,8 +144,12 @@ export default function AdminDashboard() {
   };
 
   const stopScrape = async () => {
+    const token = localStorage.getItem('admin_token');
     try {
-      await fetch(`${API_BASE}/stop-scrape/`, { method: 'POST' });
+      await fetch(`${API_BASE}/stop-scrape/`, { 
+        method: 'POST',
+        headers: { 'Authorization': `Token ${token}` }
+      });
       alert("Stop request sent. Scraper will stop after current city.");
       fetchData();
     } catch (error) {
@@ -119,8 +158,12 @@ export default function AdminDashboard() {
   };
 
   const forceStopScrape = async () => {
+    const token = localStorage.getItem('admin_token');
     try {
-      await fetch(`${API_BASE}/force-reset/`, { method: 'POST' });
+      await fetch(`${API_BASE}/force-reset/`, { 
+        method: 'POST',
+        headers: { 'Authorization': `Token ${token}` }
+      });
       alert("Force stopped all running sessions.");
       fetchData();
     } catch (error) {
@@ -203,6 +246,14 @@ export default function AdminDashboard() {
             >
               <RefreshCcw size={20} className={loading ? 'animate-spin' : ''} />
             </button>
+            <Link
+              href="/users"
+              className="cursor-pointer p-3 rounded-xl bg-[#111] border border-[#222] hover:bg-[#161616] transition-all text-[#888] hover:text-white flex items-center gap-2 px-4"
+              title="User Management"
+            >
+              <Users size={20} />
+              <span className="text-sm font-bold">Users</span>
+            </Link>
             <button
               onClick={() => setIsLogsModalOpen(true)}
               className="cursor-pointer p-3 rounded-xl bg-[#111] border border-[#222] hover:bg-[#161616] transition-all text-[#888] hover:text-white"
@@ -210,6 +261,7 @@ export default function AdminDashboard() {
             >
               <Terminal size={20} />
             </button>
+
             {stats?.last_scrape_session?.status === 'running' ? (
               stats?.last_scrape_session?.stop_requested ? (
                 <button
@@ -240,6 +292,14 @@ export default function AdminDashboard() {
                 Trigger Global Scrape
               </button>
             )}
+
+            <button
+              onClick={handleLogout}
+              className="cursor-pointer p-3 rounded-xl bg-[#111] border border-[#222] hover:bg-red-500/10 hover:border-red-500/50 hover:text-red-500 transition-all text-[#888]"
+              title="Logout"
+            >
+              <LogOut size={20} />
+            </button>
 
           </div>
         </header>
@@ -412,8 +472,11 @@ function LogsModal({ onClose }: { onClose: () => void }) {
 
   useEffect(() => {
     const fetchLogs = async () => {
+      const token = localStorage.getItem('admin_token');
       try {
-        const res = await fetch(`${API_BASE}/logs/`);
+        const res = await fetch(`${API_BASE}/logs/`, {
+          headers: { 'Authorization': `Token ${token}` }
+        });
         if (res.ok) {
           const data = await res.json();
           setLogs(data);

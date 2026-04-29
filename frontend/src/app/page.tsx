@@ -7,13 +7,13 @@ import { ArrowRight, Search, Zap, Globe, Shield, LogOut, Briefcase, MapPin, Buil
 import { useAuth } from '@/context/AuthContext';
 import MapComponent from '@/components/Map';
 import { Map as Mapcn, MapMarker, MarkerContent } from "@/components/ui/map";
+import PricingModal from '@/components/PricingModal';
 
-function FAQItem({ faq, index }: { faq: { q: string, a: string }, index: number }) {
-  const [isOpen, setIsOpen] = React.useState(false);
+function FAQItem({ faq, index, isOpen, onToggle }: { faq: { q: string, a: string }, index: number, isOpen: boolean, onToggle: () => void }) {
   return (
     <div className="border-b border-white/5">
-      <div 
-        onClick={() => setIsOpen(!isOpen)}
+      <div
+        onClick={onToggle}
         className="cursor-pointer py-10 flex items-center justify-between group outline-none"
       >
         <div className="flex items-center gap-12">
@@ -27,7 +27,7 @@ function FAQItem({ faq, index }: { faq: { q: string, a: string }, index: number 
           <Plus className={`${isOpen ? 'text-blue-500' : 'text-[#333] group-hover:text-blue-500'} transition-colors`} size={24} />
         </motion.div>
       </div>
-      
+
       <AnimatePresence>
         {isOpen && (
           <motion.div
@@ -37,7 +37,7 @@ function FAQItem({ faq, index }: { faq: { q: string, a: string }, index: number 
             transition={{ duration: 0.4, ease: "easeInOut" }}
             className="overflow-hidden"
           >
-            <div className="pb-10 pl-24 max-w-2xl text-[#888] leading-relaxed">
+            <div className="pb-10 pl-24 max-w-5xl text-[#888] leading-relaxed">
               {faq.a}
             </div>
           </motion.div>
@@ -51,14 +51,16 @@ export default function LandingPage() {
   const { user, logout } = useAuth();
   const [recentJobs, setRecentJobs] = useState<any[]>([]);
   const [stats, setStats] = useState<any>(null);
+  const [openFaqIndex, setOpenFaqIndex] = useState<number | null>(null);
+  const [isPricingOpen, setIsPricingOpen] = useState(false);
 
   useEffect(() => {
-    fetch('http://127.0.0.1:8000/api/recent-jobs/')
+    fetch(`${process.env.NEXT_PUBLIC_API_URL}/api/recent-jobs/`)
       .then(res => res.json())
       .then(data => setRecentJobs(data))
       .catch(err => console.error("Error fetching recent jobs:", err));
 
-    fetch('http://127.0.0.1:8000/api/stats/')
+    fetch(`${process.env.NEXT_PUBLIC_API_URL}/api/stats/`)
       .then(res => res.json())
       .then(data => setStats(data))
       .catch(err => console.error("Error fetching stats:", err));
@@ -73,18 +75,18 @@ export default function LandingPage() {
       <div className="fixed top-0 left-0 w-full h-[2px] bg-gradient-to-r from-transparent via-blue-500/50 to-transparent z-50" />
 
       {/* Navbar */}
-      <nav className="fixed top-0 left-0 w-full h-20 px-8 flex items-center justify-between z-50 border-b border-white/5 bg-black/50 backdrop-blur-xl">
+      <nav className="fixed top-0 left-0 w-full h-20 px-8 flex items-center justify-between z-50 border-b border-white/40 bg-black/50 backdrop-blur-xl">
         <div className="cursor-default text-xl font-bold tracking-[0.3em] uppercase">
           KAAMLEE
         </div>
 
         <div className="flex items-center gap-8">
           {!user ? (
-            <Link href="/login" className="text-sm font-medium text-[#888] hover:text-white transition-colors">
+            <Link href="/login" className="cursor-pointer text-sm font-medium text-[#888] hover:text-white transition-colors">
               Log in
             </Link>
           ) : (
-            <button onClick={logout} className="text-sm font-medium text-[#888] hover:text-white transition-colors">
+            <button onClick={logout} className="cursor-pointer text-sm font-medium text-[#888] hover:text-white transition-colors">
               Logout
             </button>
           )}
@@ -92,7 +94,7 @@ export default function LandingPage() {
             href="/explore"
             className="bg-white text-black px-6 py-2.5 rounded-sm text-xs font-black uppercase tracking-widest flex items-center gap-2 hover:bg-[#ededed] transition-all"
           >
-            Open the map <ArrowRight size={14} />
+            Find Jobs <ArrowRight size={14} />
           </Link>
         </div>
       </nav>
@@ -134,12 +136,12 @@ export default function LandingPage() {
               >
                 Open the map <ArrowRight size={18} className="group-hover:translate-x-1 transition-transform" />
               </Link>
-              <Link
-                href="#pricing"
-                className="border border-[#222] text-white px-10 py-5 rounded-sm font-black uppercase tracking-widest text-sm hover:border-white transition-all"
+              <button
+                onClick={() => setIsPricingOpen(true)}
+                className="cursor-pointer border border-[#222] text-white px-10 py-5 rounded-sm font-black uppercase tracking-widest text-sm hover:border-white transition-all"
               >
                 See Pricing
-              </Link>
+              </button>
             </div>
           </motion.div>
 
@@ -233,7 +235,7 @@ export default function LandingPage() {
         </section>
 
         {/* Stats Section */}
-        <section className="px-12 py-16 border-y border-white/5 bg-black/20 backdrop-blur-sm relative overflow-hidden">
+        <section className="px-12 py-16 border-y border-white/40 bg-black/20 backdrop-blur-sm relative overflow-hidden">
           <div className="max-w-[1400px] mx-auto grid grid-cols-2 md:grid-cols-4 gap-12">
             {[
               { label: "LIVE_LISTINGS", value: stats?.total_jobs.toLocaleString() || "420" },
@@ -298,7 +300,7 @@ export default function LandingPage() {
         </section>
 
         {/* Sources Grid */}
-        <section className="px-12 py-24 mx-auto border-t border-white/5">
+        <section className="px-12 py-24 mx-auto border-t border-white/40">
           <div className="grid grid-cols-1 lg:grid-cols-3 gap-16">
             <div className="lg:col-span-1">
               <div className="flex items-center gap-4 mb-8">
@@ -329,7 +331,7 @@ export default function LandingPage() {
         </section>
 
         {/* Section 02: How it Works */}
-        <section className="px-12 py-32 border-t border-white/5 mx-auto">
+        <section className="px-12 py-32 border-t border-white/40 mx-auto">
           <div className="flex items-center justify-between mb-20">
             <div className="flex items-center gap-4">
               <span className="font-mono text-xs text-blue-500 font-bold">02</span>
@@ -385,81 +387,16 @@ export default function LandingPage() {
           </div>
         </section>
 
-        {/* Section 03: Pricing Banner */}
-        <section id="pricing" className="px-8 mx-auto mb-40 relative">
-          <div className="mx-auto border border-blue-500/20 bg-[#050505] rounded-sm p-12 relative overflow-hidden group">
-
-            <div className="relative z-10">
-              <div className="grid grid-cols-1 lg:grid-cols-12 gap-12 lg:gap-24 items-center mb-16">
-                {/* Image Section - Now larger */}
-                <div className="lg:col-span-7 relative h-[500px]">
-                  <img
-                    src="/image.png"
-                    alt="job"
-                    className="w-full h-full object-cover rounded-sm grayscale-50"
-                  />
-                  <div className="absolute -bottom-6 left-0 font-mono text-[8px] text-blue-500 uppercase tracking-[0.5em]">System_Interface.img</div>
-                </div>
-
-                {/* Content Section - Now more compact on the right */}
-                <div className="lg:col-span-5 flex flex-col gap-8">
-                  <div>
-                    <div className="inline-flex items-center gap-3 bg-blue-500/5 border border-blue-500/20 px-3 py-1 rounded-full mb-6">
-                      <div className="w-1 h-1 rounded-full bg-blue-500 animate-ping" />
-                      <span className="font-mono text-[9px] text-blue-400 font-bold tracking-[0.2em] uppercase">Status: Available</span>
-                    </div>
-
-                    <h2 className="text-5xl md:text-6xl font-black tracking-tighter mb-6">
-                      One Price.<br />
-                      One Portal.<br />
-                      <span className="text-serif font-normal italic lowercase text-blue-500">unlimited</span> Jobs.
-                    </h2>
-
-                    <div className="flex items-baseline gap-3 mb-4">
-                      <span className="text-3xl font-mono text-blue-500/50">$</span>
-                      <span className="text-8xl font-black tracking-tighter text-white">4.99</span>
-                      <span className="font-mono text-xl text-[#444] uppercase tracking-widest">/ mo</span>
-                    </div>
-
-                    <p className="text-sm text-[#888] leading-relaxed max-w-xs">
-                      Stop overthinking it. Get every role, and every map filter for the price of a coffee. <span className="text-white font-bold italic">We just do jobs.</span>
-                    </p>
-                  </div>
-
-                  <div className="relative group/btn">
-                    <div className="absolute -inset-1 bg-gradient-to-r from-blue-600 to-blue-400 rounded-sm blur opacity-25 group-hover/btn:opacity-50 transition duration-1000 group-hover/btn:duration-200" />
-                    <Link
-                      href="/explore"
-                      className="relative w-full flex items-center justify-center gap-4 bg-white text-black px-12 py-4 rounded-sm font-black uppercase tracking-[0.3em] text-sm hover:bg-[#ededed] transition-all overflow-hidden"
-                    >
-                      <span>Initialize All-Access Now</span>
-                      <ArrowRight size={20} className="group-hover/btn:translate-x-2 transition-transform" />
-
-                      {/* Subtle scanline on button */}
-                      <div className="absolute inset-0 w-full h-[2px] bg-black/5 top-0 group-hover/btn:top-full transition-all duration-700 pointer-events-none" />
-                    </Link>
-                  </div>
-                </div>
-              </div>
-
-              <div className="mt-12 flex flex-wrap justify-end items-center gap-8 border-t border-white/5 pt-12">
-                <div className="font-mono text-[9px] text-[#333] uppercase tracking-widest">
-                  Secure Checkout · Stripe Encryption · 256-bit SSL
-                </div>
-              </div>
-            </div>
-          </div>
-        </section>
 
         {/* Section 04: FAQ */}
-        <section id="faq" className="px-8 mx-auto mb-40">
+        <section id="faq" className="px-12 mx-auto mb-24">
           <div className="flex items-center gap-4 mb-20">
             <span className="font-mono text-xs text-blue-500 font-bold">03</span>
             <div className="h-px w-20 bg-blue-500" />
             <span className="font-mono text-xs text-blue-500 tracking-widest uppercase">// FAQ.MD</span>
           </div>
 
-          <div className="border-t border-white/5">
+          <div className="border-t border-white/10">
             {[
               {
                 q: "Where do these jobs actually come from?",
@@ -467,33 +404,44 @@ export default function LandingPage() {
               },
               {
                 q: "How does the 'All-Access' pass work?",
-                a: "One flat fee of $4.99/mo. No tiers, no 'pro' features locked behind higher paywalls. You get the map, the alerts, the salary insights, and the AI application toolkit in one shot."
+                a: "One flat fee of $4.99/mo. No tiers, no 'pro' features locked behind higher paywalls. You get the map and the jobs."
               },
               {
                 q: "Can I cancel my subscription easily?",
                 a: "Yes. One click in your dashboard. No 'call us to cancel' loops. No hidden retention tricks. We're here to help you get a job, not hold you hostage."
+              },
+              {
+                q: "How fresh is the data on the map?",
+                a: "Our crawlers operate on a 15-minute refresh cycle. When a job is taken down or filled, it's purged from our system within the hour to ensure you're never applying to ghost listings."
+              },
+              {
+                q: "Can I use Kaamlee on my phone?",
+                a: "Yes. The platform is fully responsive and optimized for mobile browsers. You can scout the map while you're on the go, with all data synced to your desktop account."
               }
             ].map((faq, i) => (
-              <FAQItem key={i} faq={faq} index={i} />
+              <FAQItem 
+                key={i} 
+                faq={faq} 
+                index={i} 
+                isOpen={openFaqIndex === i}
+                onToggle={() => setOpenFaqIndex(openFaqIndex === i ? null : i)}
+              />
             ))}
           </div>
         </section>
 
         {/* Footer */}
-        <footer className="px-12 py-24 border-t border-white/5 bg-black relative">
+        <footer className="px-12 py-24 border-t border-white/40 bg-black relative">
           <div className="max-w-[1400px] mx-auto flex flex-col md:flex-row justify-between items-start gap-16">
             <div className="flex flex-col gap-6">
-              <div className="flex items-center gap-2">
-                <div className="w-5 h-5 bg-blue-600 rounded-sm" />
-                <div className="text-lg font-bold tracking-[0.3em] uppercase">KAAMLEE</div>
-              </div>
+              <div className="text-lg font-bold tracking-[0.3em] uppercase">KAAMLEE</div>
               <p className="text-[#444] text-[10px] font-mono tracking-widest uppercase">
-                © 2026 KAAMLEE INC. <br />
-                DESIGNED FOR THE AMBITIOUS.
+                © 2026 KAAMLEE <br />
+                DESIGNED FOR THE AMBITIOUS
               </p>
             </div>
 
-            <div className="grid grid-cols-2 md:grid-cols-3 gap-x-24 gap-y-8">
+            {/* <div className="grid grid-cols-2 md:grid-cols-3 gap-x-24 gap-y-8">
               {['Product', 'Company', 'Legal'].map((group, i) => (
                 <div key={i} className="flex flex-col gap-4">
                   <div className="font-mono text-[10px] text-[#444] font-bold tracking-widest uppercase mb-4">{group}</div>
@@ -502,10 +450,12 @@ export default function LandingPage() {
                   ))}
                 </div>
               ))}
-            </div>
+            </div> */}
           </div>
         </footer>
       </div>
+      
+      <PricingModal isOpen={isPricingOpen} onClose={() => setIsPricingOpen(false)} />
 
       <style jsx global>{`
         @import url('https://fonts.googleapis.com/css2?family=Playfair+Display:ital@1&display=swap');

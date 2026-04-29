@@ -9,6 +9,8 @@ interface User {
   email: string;
   first_name: string;
   last_name: string;
+  is_subscribed: boolean;
+  subscription_expires_at: string | null;
 }
 
 interface AuthContextType {
@@ -40,7 +42,7 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
 
   const fetchUser = async (authToken: string) => {
     try {
-      const response = await fetch('http://127.0.0.1:8000/api/user/', {
+      const response = await fetch(`${process.env.NEXT_PUBLIC_API_URL}/api/user/`, {
         headers: {
           'Authorization': `Token ${authToken}`
         }

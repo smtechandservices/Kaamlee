@@ -56,9 +56,26 @@ def get_coordinates(loc_str, company=None, fallback_lat=None, fallback_lon=None)
 
 def run_background_scraping():
     # Delete jobs older than 72 hours
-    threshold = timezone.now() - timedelta(hours=72)
-    deleted_count, _ = Job.objects.filter(created_at__lt=threshold).delete()
+    threshold_dt = timezone.now() - timedelta(hours=72)
+    threshold_date = threshold_dt.date()
     
+    from django.db.models import Q
+    old_jobs = Job.objects.filter(
+        Q(date_posted__lt=threshold_date) | 
+        Q(date_posted__isnull=True, created_at__lt=threshold_dt)
+    )
+    deleted_count, _ = old_jobs.delete()
+    
+    # Log cleanup: Keep only the last 100 logs to prevent DB bloat
+    log_count = ScrapeLog.objects.count()
+    if log_count > 100:
+        # Get the ID of the 100th log (latest)
+        try:
+            last_keep_log = ScrapeLog.objects.order_by('-timestamp')[999]
+            ScrapeLog.objects.filter(timestamp__lt=last_keep_log.timestamp).delete()
+        except IndexError:
+            pass
+
     session = ScrapeSession.objects.create(status='running')
     log_to_db(session, f"Global scrape session initialized. Cleaned up {deleted_count} old jobs.", "success")
     total_found = 0

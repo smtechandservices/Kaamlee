@@ -1,4 +1,5 @@
 from rest_framework import viewsets, views, generics, permissions
+from rest_framework.authtoken.views import ObtainAuthToken
 from rest_framework.response import Response
 from rest_framework.authtoken.models import Token
 from .models import Location, Job, ScrapeSession, ScrapeLog
@@ -56,10 +57,16 @@ class StatsView(views.APIView):
     def get(self, request):
         from django.utils import timezone
         from datetime import timedelta
-        three_days_ago = timezone.now() - timedelta(hours=72)
+        three_days_ago_dt = timezone.now() - timedelta(hours=72)
+        three_days_ago_date = three_days_ago_dt.date()
         
         total_jobs = Job.objects.count()
-        jobs_last_3_days = Job.objects.filter(created_at__gte=three_days_ago).count()
+        
+        from django.db.models import Q
+        jobs_last_3_days = Job.objects.filter(
+            Q(date_posted__gte=three_days_ago_date) | 
+            Q(date_posted__isnull=True, created_at__gte=three_days_ago_dt)
+        ).count()
         total_locations = Location.objects.count()
         last_session = ScrapeSession.objects.order_by('-start_time').first()
         
@@ -72,7 +79,7 @@ class StatsView(views.APIView):
         })
 
 class TriggerScrapeView(views.APIView):
-    permission_classes = [permissions.AllowAny]
+    permission_classes = [permissions.IsAdminUser]
     def post(self, request):
         if ScrapeSession.objects.filter(status='running').exists():
             return Response({"status": "A scraping session is already running"}, status=400)
@@ -84,7 +91,7 @@ class TriggerScrapeView(views.APIView):
         return Response({"status": "Scraping started in background"})
 
 class StopScrapeView(views.APIView):
-    permission_classes = [permissions.AllowAny]
+    permission_classes = [permissions.IsAdminUser]
     def post(self, request):
         session = ScrapeSession.objects.filter(status='running').order_by('-start_time').first()
         if session:
@@ -94,13 +101,13 @@ class StopScrapeView(views.APIView):
             return Response({"status": "Stop requested. Scraper will terminate shortly."})
         return Response({"status": "No active scraping session found."}, status=400)
 class ForceResetView(views.APIView):
-    permission_classes = [permissions.AllowAny]
+    permission_classes = [permissions.IsAdminUser]
     def post(self, request):
         count = ScrapeSession.objects.filter(status='running').update(status='stopped', stop_requested=False)
         return Response({"status": f"Force reset successful. {count} sessions stopped."})
 
 class LogsView(views.APIView):
-    permission_classes = [permissions.AllowAny]
+    permission_classes = [permissions.IsAdminUser]
     def get(self, request):
         session_id = request.query_params.get('session_id')
         if not session_id:
@@ -116,3 +123,65 @@ class RecentJobsView(generics.ListAPIView):
     queryset = Job.objects.order_by('-created_at')[:10]
     serializer_class = JobSerializer
     permission_classes = [permissions.AllowAny]
+
+class CheckExistenceView(views.APIView):
+    permission_classes = [permissions.AllowAny]
+    def post(self, request):
+        field = request.data.get('field')
+        value = request.data.get('value')
+        
+        if not field or not value:
+            return Response({"error": "Field and value are required"}, status=400)
+            
+        exists = False
+        if field == 'username':
+            exists = User.objects.filter(username=value).exists()
+        elif field == 'email':
+            exists = User.objects.filter(email=value).exists()
+        elif field == 'phone':
+            from .models import Profile
+            exists = Profile.objects.filter(phone=value).exists()
+        else:
+            return Response({"error": "Invalid field"}, status=400)
+            
+        return Response({"exists": exists})
+
+class SubscriptionView(views.APIView):
+    permission_classes = [permissions.IsAuthenticated]
+    
+    def post(self, request):
+        from django.utils import timezone
+        from datetime import timedelta
+        profile = request.user.profile
+        now = timezone.now()
+        
+        if profile.subscription_expires_at and profile.subscription_expires_at > now:
+            profile.subscription_expires_at += timedelta(days=30)
+        else:
+            profile.subscription_expires_at = now + timedelta(days=30)
+        
+        profile.is_subscribed = True
+        profile.save()
+        
+        return Response(UserSerializer(request.user).data)
+
+class AdminLoginView(ObtainAuthToken):
+    def post(self, request, *args, **kwargs):
+        serializer = self.serializer_class(data=request.data,
+                                           context={'request': request})
+        serializer.is_valid(raise_exception=True)
+        user = serializer.validated_data['user']
+        
+        if not user.is_superuser:
+            return Response({"error": "Only superusers can access the admin dashboard."}, status=403)
+            
+        token, created = Token.objects.get_or_create(user=user)
+        return Response({
+            'token': token.key,
+            'user': UserSerializer(user).data
+        })
+
+class AdminUserViewSet(viewsets.ModelViewSet):
+    queryset = User.objects.all().order_by('-date_joined')
+    serializer_class = UserSerializer
+    permission_classes = [permissions.IsAdminUser]

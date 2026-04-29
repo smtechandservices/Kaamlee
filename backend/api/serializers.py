@@ -5,17 +5,17 @@ from django.contrib.auth.models import User
 class UserSerializer(serializers.ModelSerializer):
     phone = serializers.CharField(source='profile.phone', required=False)
     linkedin_url = serializers.URLField(source='profile.linkedin_url', required=False)
+    is_subscribed = serializers.BooleanField(source='profile.is_subscribed', required=False)
+    subscription_expires_at = serializers.DateTimeField(source='profile.subscription_expires_at', required=False, allow_null=True)
 
     class Meta:
         model = User
-        fields = ('id', 'username', 'email', 'first_name', 'last_name', 'phone', 'linkedin_url')
-        read_only_fields = ('id', 'username', 'email') # Don't allow changing core account info here
+        fields = ('id', 'username', 'email', 'first_name', 'last_name', 'phone', 'linkedin_url', 'is_subscribed', 'subscription_expires_at', 'is_superuser', 'is_staff')
+        read_only_fields = ('id', 'username', 'email', 'is_superuser', 'is_staff') # Don't allow changing core account info here
 
     def update(self, instance, validated_data):
         profile_data = validated_data.pop('profile', {})
-        phone = profile_data.get('phone')
-        linkedin_url = profile_data.get('linkedin_url')
-
+        
         # Update User fields
         instance.first_name = validated_data.get('first_name', instance.first_name)
         instance.last_name = validated_data.get('last_name', instance.last_name)
@@ -23,10 +23,14 @@ class UserSerializer(serializers.ModelSerializer):
 
         # Update Profile fields
         profile = instance.profile
-        if phone is not None:
-            profile.phone = phone
-        if linkedin_url is not None:
-            profile.linkedin_url = linkedin_url
+        if 'phone' in profile_data:
+            profile.phone = profile_data['phone']
+        if 'linkedin_url' in profile_data:
+            profile.linkedin_url = profile_data['linkedin_url']
+        if 'is_subscribed' in profile_data:
+            profile.is_subscribed = profile_data['is_subscribed']
+        if 'subscription_expires_at' in profile_data:
+            profile.subscription_expires_at = profile_data['subscription_expires_at']
         profile.save()
 
         return instance

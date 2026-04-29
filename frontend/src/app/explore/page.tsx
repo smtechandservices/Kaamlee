@@ -7,11 +7,13 @@ import Map from '@/components/Map';
 import Link from 'next/link';
 import { useAuth } from '@/context/AuthContext';
 import { useRouter } from 'next/navigation';
+import PricingModal from '@/components/PricingModal';
 
 
 export default function ExplorePage() {
   const { user, token, logout, isLoading } = useAuth();
   const router = useRouter();
+  const [isPricingModalOpen, setIsPricingModalOpen] = useState(false);
   const [jobs, setJobs] = useState<any[]>([]);
   const [locations, setLocations] = useState<any[]>([]);
   const [selectedJobId, setSelectedJobId] = useState<string | null>(null);
@@ -39,10 +41,10 @@ export default function ExplorePage() {
       
       try {
         const [jobsRes, locsRes] = await Promise.all([
-          fetch('http://127.0.0.1:8000/api/jobs/', {
+          fetch(`${process.env.NEXT_PUBLIC_API_URL}/api/jobs/`, {
             headers: { 'Authorization': `Token ${token}` }
           }),
-          fetch('http://127.0.0.1:8000/api/locations/', {
+          fetch(`${process.env.NEXT_PUBLIC_API_URL}/api/locations/`, {
             headers: { 'Authorization': `Token ${token}` }
           })
         ]);
@@ -130,27 +132,73 @@ export default function ExplorePage() {
     }
   };
 
+  const getTimeLeft = (expiry: string | null | undefined) => {
+    if (!expiry) return null;
+    const now = new Date();
+    const expiryDate = new Date(expiry);
+    const diff = expiryDate.getTime() - now.getTime();
+    if (diff <= 0) return 'Expired';
+    
+    const days = Math.floor(diff / (1000 * 60 * 60 * 24));
+    if (days > 0) return `${days}d left`;
+    
+    const hours = Math.floor(diff / (1000 * 60 * 60));
+    return `${hours}h left`;
+  };
+
+  const getDaysLeft = (expiry: string | null | undefined) => {
+    if (!expiry) return 0;
+    const now = new Date();
+    const expiryDate = new Date(expiry);
+    const diff = expiryDate.getTime() - now.getTime();
+    return Math.floor(diff / (1000 * 60 * 60 * 24));
+  };
+
+  const timeLeft = getTimeLeft(user?.subscription_expires_at);
+  const daysLeft = getDaysLeft(user?.subscription_expires_at);
+
   return (
-    <main className="h-screen flex flex-col bg-[#0a0a0a] overflow-hidden">
-      {/* Header */}
+    <main className="h-screen flex flex-col bg-[#0a0a0a] overflow-hidden relative">
+      {/* Header - Always visible for navigation/logout */}
       <header className="h-16 border-b border-[#222] px-6 flex items-center justify-between glass z-20 shrink-0">
         <div className="flex items-center gap-4 flex-1">
-          <Link href="/">
-            <h1 className="text-xl font-black tracking-tighter text-white mr-4 cursor-pointer">KAAMLEE</h1>
+          <Link href="/" className="group flex items-center gap-2 text-[#555] hover:text-white transition-colors mr-2">
+            <ArrowLeft size={16} className="group-hover:-translate-x-1 transition-transform" />
+            <span className="text-[10px] font-bold uppercase tracking-[0.2em] hidden sm:inline">Back</span>
           </Link>
+          <div className="w-px h-4 bg-[#222] mr-2" />
+          <h1 className="text-xl font-black tracking-tighter text-white mr-4 cursor-default">KAAMLEE</h1>
         </div>
 
         <div className="flex items-center gap-2">
+          {/* Subscription Status */}
+          {user?.is_subscribed && (
+            <div className="hidden lg:flex items-center gap-3 px-3 py-1.5 border border-[#222] rounded-full mr-2">
+              <span className="text-[14px] font-bold text-blue-400 leading-none">{timeLeft || ''}</span>
+              {daysLeft <= 20 && (
+                <>
+                  <div className="w-px h-6 bg-blue-500/10" />
+                  <button 
+                    onClick={() => setIsPricingModalOpen(true)}
+                    className="cursor-pointer text-[10px] font-black text-white bg-blue-600 hover:bg-blue-700 px-3 py-1.5 rounded-full transition-all uppercase tracking-wider shadow-lg shadow-blue-600/20"
+                  >
+                    Renew
+                  </button>
+                </>
+              )}
+            </div>
+          )}
+
           <div className="flex items-center gap-2 bg-[#161616] rounded-full p-1 border border-[#222]">
             <button 
               onClick={() => setViewMode('split')}
-              className={`p-1.5 rounded-full transition-all ${viewMode === 'split' ? 'bg-[#3b82f6] text-white' : 'text-[#555] hover:text-[#888]'}`}
+              className={`cursor-pointer p-1.5 rounded-full transition-all ${viewMode === 'split' ? 'bg-[#3b82f6] text-white' : 'text-[#555] hover:text-[#888]'}`}
             >
               <List size={14} />
             </button>
             <button 
               onClick={() => setViewMode('map')}
-              className={`p-1.5 rounded-full transition-all ${viewMode === 'map' ? 'bg-[#3b82f6] text-white' : 'text-[#555] hover:text-[#888]'}`}
+              className={`cursor-pointer p-1.5 rounded-full transition-all ${viewMode === 'map' ? 'bg-[#3b82f6] text-white' : 'text-[#555] hover:text-[#888]'}`}
             >
               <MapIcon size={14} />
             </button>
@@ -175,8 +223,8 @@ export default function ExplorePage() {
         </div>
       </header>
 
-      {/* Main Content */}
-      <div className="flex-1 flex overflow-hidden">
+      {/* Main Content Area - Blurred if not subscribed */}
+      <div className={`flex-1 flex overflow-hidden transition-all duration-700 ${!user?.is_subscribed ? 'blur-3xl grayscale pointer-events-none select-none' : ''}`}>
         {/* Sidebar */}
         <aside className={`${viewMode === 'map' ? 'hidden' : 'flex'} w-full md:w-[450px] flex-col border-r border-[#222] bg-[#0a0a0a] z-10 shrink-0`}>
           
@@ -207,7 +255,7 @@ export default function ExplorePage() {
             </div>
           </div>
 
-          {/* Category Filters - Moved to Sidebar */}
+          {/* Category Filters */}
           <div className="px-4 py-3 border-b border-[#222] bg-[#0a0a0a] flex items-center justify-between gap-3">
             <div className="flex items-center gap-2 overflow-x-auto no-scrollbar flex-1">
               {countries.map((country) => (
@@ -239,9 +287,6 @@ export default function ExplorePage() {
               Remote
             </button>
           </div>
-
-
-
           
           <div className="flex-1 overflow-y-auto p-4 space-y-4 custom-scrollbar">
             {currentJobs.map(job => (
@@ -298,6 +343,13 @@ export default function ExplorePage() {
           />
         </section>
       </div>
+
+      {/* Gating / Renewal Modal */}
+      <PricingModal 
+        isOpen={!user?.is_subscribed || isPricingModalOpen} 
+        onClose={() => setIsPricingModalOpen(false)}
+        showCloseButton={user?.is_subscribed} 
+      />
 
       <style jsx global>{`
         .custom-scrollbar::-webkit-scrollbar {

@@ -1,9 +1,23 @@
 'use client';
 
 import { Map as Mapcn, MapControls, MapMarker, MarkerContent, MarkerPopup, MarkerLabel } from "@/components/ui/map";
-import { ExternalLink } from 'lucide-react';
+import { ChevronLeft, ChevronRight, ExternalLink, X, Loader2 } from 'lucide-react';
+import { motion, AnimatePresence } from 'framer-motion';
 
-import { useRef, useEffect } from 'react';
+import { useRef, useEffect, useState } from 'react';
+
+// Haversine formula to calculate distance between two points in km
+const getDistance = (lat1: number, lon1: number, lat2: number, lon2: number) => {
+  const R = 6371; // Radius of the earth in km
+  const dLat = (lat2 - lat1) * Math.PI / 180;
+  const dLon = (lon2 - lon1) * Math.PI / 180;
+  const a = 
+    Math.sin(dLat/2) * Math.sin(dLat/2) +
+    Math.cos(lat1 * Math.PI / 180) * Math.cos(lat2 * Math.PI / 180) * 
+    Math.sin(dLon/2) * Math.sin(dLon/2);
+  const c = 2 * Math.atan2(Math.sqrt(a), Math.sqrt(1-a));
+  return R * c;
+};
 
 interface MapProps {
   jobs: any[];
@@ -15,6 +29,10 @@ const Map = ({ jobs, selectedJobId, onJobClick }: MapProps) => {
   // Center of India as default
   const center: [number, number] = [78.9629, 20.5937];
   const mapRef = useRef<any>(null);
+  const [nearbyJobs, setNearbyJobs] = useState<any[]>([]);
+  const [currentIndex, setCurrentIndex] = useState(0);
+  const [userLocation, setUserLocation] = useState<{lat: number, lng: number} | null>(null);
+  const [isSearching, setIsSearching] = useState(false);
 
   useEffect(() => {
     if (selectedJobId && mapRef.current) {
@@ -29,6 +47,59 @@ const Map = ({ jobs, selectedJobId, onJobClick }: MapProps) => {
     }
   }, [selectedJobId, jobs]);
 
+  const findNearestStartup = () => {
+    if (!navigator.geolocation) return;
+    
+    setIsSearching(true);
+    navigator.geolocation.getCurrentPosition((position) => {
+      const { latitude, longitude } = position.coords;
+      setUserLocation({ lat: latitude, lng: longitude });
+      
+      const jobsWithDistance = jobs
+        .filter(job => job.latitude && job.longitude)
+        .map(job => ({
+          ...job,
+          distance: getDistance(latitude, longitude, job.latitude, job.longitude)
+        }))
+        .sort((a, b) => a.distance - b.distance)
+        .slice(0, 10);
+      
+      setNearbyJobs(jobsWithDistance);
+      setCurrentIndex(0);
+      setIsSearching(false);
+      
+      if (jobsWithDistance.length > 0) {
+        const closestJob = jobsWithDistance[0];
+        onJobClick?.(closestJob.id);
+        mapRef.current.flyTo({
+          center: [closestJob.longitude, closestJob.latitude],
+          zoom: 18,
+          duration: 2000
+        });
+      }
+    }, (error) => {
+      console.error(error);
+      setIsSearching(false);
+    });
+  };
+
+  const navigateNearby = (direction: 'next' | 'prev') => {
+    let newIndex = direction === 'next' ? currentIndex + 1 : currentIndex - 1;
+    if (newIndex < 0) newIndex = nearbyJobs.length - 1;
+    if (newIndex >= nearbyJobs.length) newIndex = 0;
+    
+    setCurrentIndex(newIndex);
+    const job = nearbyJobs[newIndex];
+    onJobClick?.(job.id);
+    mapRef.current.flyTo({
+      center: [job.longitude, job.latitude],
+      zoom: 18,
+      duration: 1500
+    });
+  };
+
+  const currentNearby = nearbyJobs[currentIndex];
+
   return (
     <div className="w-full h-full relative overflow-hidden">
       <Mapcn 
@@ -37,12 +108,13 @@ const Map = ({ jobs, selectedJobId, onJobClick }: MapProps) => {
         zoom={4}
         theme="dark"
         className="w-full h-full"
+        onClick={() => setNearbyJobs([])}
       >
         <MapControls 
           position="bottom-right" 
           showZoom={true} 
           showLocate={true}
-          showFullscreen={true}
+          showFullscreen={false}
         />
 
         {jobs.map((job, index) => {
@@ -109,11 +181,74 @@ const Map = ({ jobs, selectedJobId, onJobClick }: MapProps) => {
         })}
       </Mapcn>
 
-      <div className="absolute top-4 left-4 z-10 pointer-events-none">
-        <div className="glass px-3 py-1.5 rounded-full text-[11px] font-medium text-white/80 flex items-center gap-2 bg-[#111]/80 backdrop-blur-md border border-[#333]">
+      <div className="absolute top-4 left-4 z-10 flex flex-col gap-2">
+        <div className="glass px-3 py-1.5 rounded-full text-[11px] font-medium text-white/80 w-30 flex items-center gap-2 bg-[#111]/80 backdrop-blur-md border border-[#333] pointer-events-none">
           <div className="w-2 h-2 rounded-full bg-blue-500 animate-pulse" />
           {jobs.length} {jobs.length === 1 ? 'Job' : 'Jobs'} Found
         </div>
+        
+        <AnimatePresence mode="wait">
+          {currentNearby && (
+            <motion.div 
+              key={currentNearby.id}
+              initial={{ opacity: 0, x: -20, y: 0 }}
+              animate={{ opacity: 1, x: 0, y: 0 }}
+              exit={{ opacity: 0, x: 20, y: 0 }}
+              transition={{ type: "spring", stiffness: 300, damping: 30 }}
+              className="glass px-4 py-3 rounded-2xl bg-blue-600/20 backdrop-blur-xl border border-blue-500/30 w-64 shadow-2xl shadow-blue-500/10"
+            >
+              <div className="flex items-center justify-between mb-4">
+                <div className="text-[9px] font-black uppercase tracking-widest text-blue-400">Discovery {currentIndex + 1}/{nearbyJobs.length}</div>
+                <div className="flex items-center gap-1">
+                    <button 
+                     onClick={() => setNearbyJobs([])}
+                     className="cursor-pointer p-1 rounded-md bg-white/10 hover:bg-red-500/20 transition-colors text-white hover:text-red-400"
+                    >
+                      <X size={12} />
+                    </button>
+                    <div className="w-px h-3 bg-white/10 mx-0.5" />
+                   <button 
+                    onClick={() => navigateNearby('prev')}
+                    className="cursor-pointer p-1 rounded-md bg-white/10 hover:bg-white/20 transition-colors text-white"
+                   >
+                     <ChevronLeft size={12} />
+                   </button>
+                    <button 
+                     onClick={() => navigateNearby('next')}
+                     className="cursor-pointer p-1 rounded-md bg-white/10 hover:bg-white/20 transition-colors text-white"
+                    >
+                      <ChevronRight size={12} />
+                    </button>
+                 </div>
+              </div>
+              <div className="mb-2">
+                <div className="text-[10px] font-bold text-white/50 truncate mb-0.5">{currentNearby.title}</div>
+                <div className="text-xs font-bold text-white truncate">{currentNearby.company}</div>
+              </div>
+              <div className="flex items-center justify-between text-[10px] font-bold">
+                 <span className="text-white/60">{currentNearby.distance.toFixed(1)} km away</span>
+                 <span className="text-blue-400">{Math.round(currentNearby.distance * 1.5)} min</span>
+              </div>
+            </motion.div>
+          )}
+        </AnimatePresence>
+      </div>
+
+      <div className="absolute top-2 right-4 z-10">
+        <button 
+          onClick={findNearestStartup}
+          disabled={isSearching}
+          className="cursor-pointer group flex items-center gap-2 bg-white text-black px-6 py-1.5 rounded-2xl font-black text-[14px] uppercase tracking-tighter hover:scale-105 active:scale-95 transition-all shadow-2xl shadow-white/10 border border-gray-300 disabled:opacity-70 disabled:cursor-wait"
+        >
+          {isSearching ? (
+            <>
+              <Loader2 size={14} className="animate-spin text-blue-600" />
+              Searching...
+            </>
+          ) : (
+            'Jobs Near Me'
+          )}
+        </button>
       </div>
     </div>
   );

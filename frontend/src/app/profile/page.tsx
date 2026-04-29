@@ -42,7 +42,7 @@ export default function ProfilePage() {
     setSuccess(false);
 
     try {
-      const response = await fetch('http://127.0.0.1:8000/api/user/', {
+      const response = await fetch(`${process.env.NEXT_PUBLIC_API_URL}/api/user/`, {
         method: 'PATCH',
         headers: {
           'Content-Type': 'application/json',
@@ -178,7 +178,7 @@ export default function ProfilePage() {
               <button 
                 type="submit"
                 disabled={isSubmitting}
-                className="w-full bg-white text-black font-bold py-4 rounded-2xl hover:bg-[#ededed] active:scale-[0.98] transition-all flex items-center justify-center gap-2 disabled:opacity-50"
+                className="cursor-pointer w-full bg-white text-black font-bold py-4 rounded-2xl hover:bg-[#ededed] active:scale-[0.98] transition-all flex items-center justify-center gap-2 disabled:opacity-50"
               >
                 {isSubmitting ? <Loader2 size={20} className="animate-spin" /> : <Save size={20} />}
                 Save Changes

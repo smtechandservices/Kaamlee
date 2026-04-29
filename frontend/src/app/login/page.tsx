@@ -20,7 +20,7 @@ export default function LoginPage() {
     setIsSubmitting(true);
 
     try {
-      const response = await fetch('http://127.0.0.1:8000/api/login/', {
+      const response = await fetch(`${process.env.NEXT_PUBLIC_API_URL}/api/login/`, {
         method: 'POST',
         headers: {
           'Content-Type': 'application/json',
@@ -61,8 +61,8 @@ export default function LoginPage() {
         className="w-full max-w-md z-10"
       >
         <div className="text-center mb-10">
-          <h1 className="text-3xl font-bold tracking-tight mb-2">Welcome back</h1>
-          <p className="text-[#888]">Log in to your Kaamlee account</p>
+          <h1 className="text-4xl font-black font-heading tracking-tight mb-2">Welcome back</h1>
+          <p className="text-[#a1a1a1]">Log in to your Kaamlee account</p>
         </div>
 
         <div className="bg-[#111] border border-[#222] rounded-3xl p-8 shadow-2xl">
@@ -74,7 +74,7 @@ export default function LoginPage() {
             )}
 
             <div className="space-y-2">
-              <label className="text-xs font-bold text-[#555] uppercase ml-1">Username</label>
+              <label className="text-sm font-bold text-[#a1a1a1] uppercase ml-1">Username</label>
               <div className="relative">
                 <User size={16} className="absolute left-4 top-1/2 -translate-y-1/2 text-[#444]" />
                 <input 
@@ -83,15 +83,15 @@ export default function LoginPage() {
                   value={username}
                   onChange={(e) => setUsername(e.target.value)}
                   placeholder="johndoe"
-                  className="w-full bg-[#0a0a0a] border border-[#222] rounded-xl pl-12 pr-4 py-3 text-sm focus:border-blue-500/50 outline-none transition-all placeholder-[#333]"
+                  className="w-full bg-[#0a0a0a] border border-[#222] rounded-xl pl-12 pr-4 py-3 text-md focus:border-blue-500/50 outline-none transition-all placeholder-[#333]"
                 />
               </div>
             </div>
 
             <div className="space-y-2">
               <div className="flex items-center justify-between ml-1">
-                <label className="text-xs font-bold text-[#555] uppercase">Password</label>
-                <Link href="#" className="text-[10px] text-blue-500 hover:underline">Forgot password?</Link>
+                <label className="text-sm font-bold text-[#a1a1a1] uppercase">Password</label>
+                <Link href="#" className="text-xs text-blue-500 hover:underline">Forgot password?</Link>
               </div>
               <div className="relative">
                 <Lock size={16} className="absolute left-4 top-1/2 -translate-y-1/2 text-[#444]" />
@@ -101,7 +101,7 @@ export default function LoginPage() {
                   value={password}
                   onChange={(e) => setPassword(e.target.value)}
                   placeholder="••••••••"
-                  className="w-full bg-[#0a0a0a] border border-[#222] rounded-xl pl-12 pr-12 py-3 text-sm focus:border-blue-500/50 outline-none transition-all placeholder-[#333]"
+                  className="w-full bg-[#0a0a0a] border border-[#222] rounded-xl pl-12 pr-12 py-3 text-md focus:border-blue-500/50 outline-none transition-all placeholder-[#333]"
                 />
                 <button
                   type="button"
@@ -116,13 +116,13 @@ export default function LoginPage() {
             <button 
               type="submit"
               disabled={isSubmitting}
-              className="w-full bg-white text-black font-bold py-3.5 rounded-xl mt-4 hover:bg-[#ededed] transition-all flex items-center justify-center gap-2 disabled:opacity-50"
+              className="cursor-pointer w-full bg-white text-black font-bold py-3.5 rounded-xl mt-4 hover:bg-[#ededed] transition-all flex items-center justify-center gap-2 disabled:opacity-50"
             >
               {isSubmitting ? <Loader2 size={18} className="animate-spin" /> : 'Log In'}
             </button>
           </form>
 
-          <div className="mt-8 text-center text-sm text-[#555]">
+          <div className="mt-8 text-center text-sm text-[#a1a1a1]">
             Don't have an account? <Link href="/signup" className="text-white hover:underline">Sign up</Link>
           </div>
         </div>
