@@ -54,7 +54,7 @@ def get_coordinates(loc_str, company=None, fallback_lat=None, fallback_lon=None)
     return (fallback_lat, fallback_lon)
 
 
-def run_background_scraping():
+def run_background_scraping(search_term="frontend developer", results_wanted=5):
     # Delete jobs older than 72 hours
     threshold_dt = timezone.now() - timedelta(hours=72)
     threshold_date = threshold_dt.date()
@@ -76,8 +76,12 @@ def run_background_scraping():
         except IndexError:
             pass
 
-    session = ScrapeSession.objects.create(status='running')
-    log_to_db(session, f"Global scrape session initialized. Cleaned up {deleted_count} old jobs.", "success")
+    session = ScrapeSession.objects.create(
+        status='running', 
+        search_term=search_term, 
+        results_limit=results_wanted
+    )
+    log_to_db(session, f"Global scrape session initialized for '{search_term}' (limit: {results_wanted}). Cleaned up {deleted_count} old jobs.", "success")
     total_found = 0
     
     try:
@@ -111,12 +115,12 @@ def run_background_scraping():
             log_to_db(session, f"Switching target to: {loc.city}, {loc.country}")
 
             search_params = {
-                "search_term": "frontend developer",
+                "search_term": search_term, 
                 "location": f"{loc.city}, {loc.country}",
-                "results_wanted": 5,
+                "results_wanted": results_wanted,
                 "hours_old": 72,
                 "country_indeed": loc.country,
-                "verbose": 0
+                "verbose": 0 # 0 for no output, 1 for some output, 2 for all output
             }
 
             try:

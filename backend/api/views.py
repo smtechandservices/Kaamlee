@@ -84,11 +84,14 @@ class TriggerScrapeView(views.APIView):
         if ScrapeSession.objects.filter(status='running').exists():
             return Response({"status": "A scraping session is already running"}, status=400)
             
+        search_term = request.data.get('search_term', 'frontend developer')
+        results_wanted = int(request.data.get('results_wanted', 5))
+        
         from .scraper_utils import run_background_scraping
         import threading
-        thread = threading.Thread(target=run_background_scraping)
+        thread = threading.Thread(target=run_background_scraping, args=(search_term, results_wanted))
         thread.start()
-        return Response({"status": "Scraping started in background"})
+        return Response({"status": f"Scraping for '{search_term}' started in background"})
 
 class StopScrapeView(views.APIView):
     permission_classes = [permissions.IsAdminUser]
@@ -185,3 +188,17 @@ class AdminUserViewSet(viewsets.ModelViewSet):
     queryset = User.objects.all().order_by('-date_joined')
     serializer_class = UserSerializer
     permission_classes = [permissions.IsAdminUser]
+
+class RolesView(views.APIView):
+    permission_classes = [permissions.AllowAny]
+    def get(self, request):
+        import os
+        import json
+        from django.conf import settings
+        path = os.path.join(settings.BASE_DIR, 'api', 'roles.json')
+        try:
+            with open(path, 'r') as f:
+                roles = json.load(f)
+            return Response(roles)
+        except Exception as e:
+            return Response({"error": str(e)}, status=500)

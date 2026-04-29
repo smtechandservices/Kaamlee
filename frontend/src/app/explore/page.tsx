@@ -16,6 +16,7 @@ export default function ExplorePage() {
   const [isPricingModalOpen, setIsPricingModalOpen] = useState(false);
   const [jobs, setJobs] = useState<any[]>([]);
   const [locations, setLocations] = useState<any[]>([]);
+  const [jobRoles, setJobRoles] = useState<string[]>([]);
   const [selectedJobId, setSelectedJobId] = useState<string | null>(null);
   const [searchQuery, setSearchQuery] = useState('');
   const [locationQuery, setLocationQuery] = useState('');
@@ -66,12 +67,57 @@ export default function ExplorePage() {
         
         setJobs(processedJobs);
         setLocations(locsData);
+
+        // Fetch roles
+        const rolesRes = await fetch(`${process.env.NEXT_PUBLIC_API_URL}/api/roles/`);
+        if (rolesRes.ok) {
+          const rolesData = await rolesRes.json();
+          setJobRoles(rolesData);
+        }
       } catch (error) {
         console.error("Failed to fetch data:", error);
       }
     };
     fetchData();
   }, [token, logout]);
+
+  const countries = React.useMemo(() => ['All', ...Array.from(new Set(locations.map(loc => {
+    if (loc.country === 'United States') return 'USA';
+    if (loc.country === 'United Kingdom') return 'UK';
+    return loc.country;
+  })))], [locations]);
+
+  const filteredJobs = React.useMemo(() => {
+    return jobs.filter(job => {
+      const matchesSearch = job.title.toLowerCase().includes(searchQuery.toLowerCase()) ||
+                           job.company.toLowerCase().includes(searchQuery.toLowerCase());
+      const matchesLocation = job.location.toLowerCase().includes(locationQuery.toLowerCase());
+      const matchesRemote = remoteOnly ? job.is_remote : true;
+      
+      // Country logic
+      let matchesCountry = activeCountry === 'All';
+      if (!matchesCountry) {
+        if (activeCountry === 'India') matchesCountry = job.location.includes('India') || job.location.includes('IN');
+        else if (activeCountry === 'USA') matchesCountry = job.location.includes('USA') || job.location.includes('US') || job.location.includes('United States');
+        else if (activeCountry === 'UK') matchesCountry = job.location.includes('UK') || job.location.includes('GB') || job.location.includes('United Kingdom');
+        else matchesCountry = job.location.includes(activeCountry);
+      }
+      
+      return matchesSearch && matchesLocation && matchesRemote && matchesCountry;
+    });
+  }, [jobs, searchQuery, locationQuery, activeCountry, remoteOnly]);
+
+  const handleMapJobClick = React.useCallback((jobId: string) => {
+    const jobIndex = filteredJobs.findIndex(j => j.id === jobId);
+    if (jobIndex !== -1) {
+      const page = Math.floor(jobIndex / jobsPerPage) + 1;
+      setCurrentPage(page);
+    }
+    setSelectedJobId(jobId);
+    if (viewMode === 'map') {
+      setViewMode('split');
+    }
+  }, [filteredJobs, viewMode]);
 
   useEffect(() => {
     if (selectedJobId) {
@@ -93,44 +139,8 @@ export default function ExplorePage() {
     );
   }
 
-  const countries = ['All', ...Array.from(new Set(locations.map(loc => {
-    if (loc.country === 'United States') return 'USA';
-    if (loc.country === 'United Kingdom') return 'UK';
-    return loc.country;
-  })))];
-
-  const filteredJobs = jobs.filter(job => {
-    const matchesSearch = job.title.toLowerCase().includes(searchQuery.toLowerCase()) ||
-                         job.company.toLowerCase().includes(searchQuery.toLowerCase());
-    const matchesLocation = job.location.toLowerCase().includes(locationQuery.toLowerCase());
-    const matchesRemote = remoteOnly ? job.is_remote : true;
-    
-    // Country logic
-    let matchesCountry = activeCountry === 'All';
-    if (!matchesCountry) {
-      if (activeCountry === 'India') matchesCountry = job.location.includes('India') || job.location.includes('IN');
-      else if (activeCountry === 'USA') matchesCountry = job.location.includes('USA') || job.location.includes('US') || job.location.includes('United States');
-      else if (activeCountry === 'UK') matchesCountry = job.location.includes('UK') || job.location.includes('GB') || job.location.includes('United Kingdom');
-      else matchesCountry = job.location.includes(activeCountry);
-    }
-    
-    return matchesSearch && matchesLocation && matchesRemote && matchesCountry;
-  });
-
   const totalPages = Math.ceil(filteredJobs.length / jobsPerPage);
   const currentJobs = filteredJobs.slice((currentPage - 1) * jobsPerPage, currentPage * jobsPerPage);
-
-  const handleMapJobClick = (jobId: string) => {
-    const jobIndex = filteredJobs.findIndex(j => j.id === jobId);
-    if (jobIndex !== -1) {
-      const page = Math.floor(jobIndex / jobsPerPage) + 1;
-      setCurrentPage(page);
-    }
-    setSelectedJobId(jobId);
-    if (viewMode === 'map') {
-      setViewMode('split');
-    }
-  };
 
   const getTimeLeft = (expiry: string | null | undefined) => {
     if (!expiry) return null;
@@ -230,27 +240,62 @@ export default function ExplorePage() {
           
           {/* Search Area */}
           <div className="p-4 border-b border-[#222] bg-[#0a0a0a]">
-            <div className="bg-[#161616] border border-[#222] rounded-2xl w-full shadow-inner flex flex-col overflow-hidden focus-within:border-[#3b82f6]/50 transition-all">
-              <div className="flex items-center px-3 py-2.5">
-                <Search size={16} className="text-[#555] shrink-0 ml-1" />
-                <input 
-                  type="text" 
-                  placeholder="Job title, keywords, or company"
-                  className="bg-transparent border-none outline-none ring-0 focus:ring-0 text-sm text-white placeholder-[#555] w-full ml-3"
-                  value={searchQuery}
-                  onChange={(e) => setSearchQuery(e.target.value)}
-                />
+            <div className="flex items-stretch gap-3 h-[100px]">
+              <div className="bg-[#161616] border border-[#222] rounded-2xl flex-1 shadow-inner flex flex-col overflow-hidden focus-within:border-[#3b82f6]/50 transition-all">
+                <div className="flex-1 flex items-center px-3">
+                  <Search size={16} className="text-[#555] shrink-0 ml-1" />
+                  <input 
+                    type="text" 
+                    placeholder="Job title, keywords, or company"
+                    className="bg-transparent border-none outline-none ring-0 focus:ring-0 text-xs text-white placeholder-[#555] flex-1 ml-3"
+                    value={searchQuery}
+                    onChange={(e) => setSearchQuery(e.target.value)}
+                  />
+                </div>
+                <div className="w-full h-px bg-[#222]" />
+                <div className="flex-1 flex items-center px-3">
+                  <MapIcon size={16} className="text-[#555] shrink-0 ml-1" />
+                  <input 
+                    type="text" 
+                    placeholder="City, state, zip code, or remote"
+                    className="bg-transparent border-none outline-none ring-0 focus:ring-0 text-xs text-white placeholder-[#555] w-full ml-3"
+                    value={locationQuery}
+                    onChange={(e) => setLocationQuery(e.target.value)}
+                  />
+                </div>
               </div>
-              <div className="w-full h-px bg-[#222]" />
-              <div className="flex items-center px-3 py-2.5">
-                <MapIcon size={16} className="text-[#555] shrink-0 ml-1" />
-                <input 
-                  type="text" 
-                  placeholder="City, state, zip code, or remote"
-                  className="bg-transparent border-none outline-none ring-0 focus:ring-0 text-sm text-white placeholder-[#555] w-full ml-3"
-                  value={locationQuery}
-                  onChange={(e) => setLocationQuery(e.target.value)}
-                />
+
+              {/* Quick Roles Vertical Scrollable List - Fixed 100px height */}
+              <div className="w-[130px] flex flex-col border border-[#222] rounded-2xl bg-[#080808] overflow-hidden">
+                {/* <div className="px-2 py-1.5 border-b border-[#222] bg-[#111]">
+                  <span className="text-[8px] font-black uppercase tracking-[0.2em] text-[#555]">Quick Roles</span>
+                </div> */}
+                <div className="flex-1 overflow-y-auto no-scrollbar p-1 space-y-0.5 bg-black/40">
+                  <button
+                    onClick={() => setSearchQuery('')}
+                    className={`w-full text-left px-2 py-1 rounded-lg text-[9px] font-bold transition-all border ${
+                      searchQuery === '' 
+                        ? 'bg-blue-500/10 text-blue-400 border-blue-500/30' 
+                        : 'bg-transparent text-[#555] border-transparent hover:bg-[#111] hover:text-[#888]'
+                    }`}
+                  >
+                    All Roles
+                  </button>
+                  {jobRoles.map((role) => (
+                    <button
+                      key={role}
+                      onClick={() => setSearchQuery(role)}
+                      className={`w-full text-left px-2 py-1 rounded-lg text-[9px] font-bold transition-all border truncate ${
+                        searchQuery === role 
+                          ? 'bg-blue-500/10 text-blue-400 border-blue-500/30' 
+                          : 'bg-transparent text-[#555] border-transparent hover:bg-[#111] hover:text-[#888]'
+                      }`}
+                      title={role}
+                    >
+                      {role}
+                    </button>
+                  ))}
+                </div>
               </div>
             </div>
           </div>

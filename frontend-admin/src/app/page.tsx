@@ -42,6 +42,7 @@ interface ScrapeSession {
   jobs_found: number;
   current_location: string | null;
   error_message: string | null;
+  stop_requested: boolean;
 }
 
 interface ScrapeLog {
@@ -55,18 +56,20 @@ interface ScrapeLog {
 interface Stats {
   total_jobs: number;
   total_locations: number;
-  last_scrape_session: ScrapeSession | null;
+  last_scrape_session: (ScrapeSession & { search_term: string; results_limit: number }) | null;
   jobs_by_site: { site: string; count: number }[];
 }
 
 export default function AdminDashboard() {
   const [locations, setLocations] = useState<Location[]>([]);
   const [stats, setStats] = useState<Stats | null>(null);
+  const [jobRoles, setJobRoles] = useState<string[]>([]);
   const [loading, setLoading] = useState(true);
   const [triggering, setTriggering] = useState(false);
   const [searchTerm, setSearchTerm] = useState('');
   const [selectedCountry, setSelectedCountry] = useState('All');
   const [isLogsModalOpen, setIsLogsModalOpen] = useState(false);
+  const [isSettingsModalOpen, setIsSettingsModalOpen] = useState(false);
   const router = useRouter();
 
   const fetchData = async () => {
@@ -101,6 +104,15 @@ export default function AdminDashboard() {
       const statsData = await statsRes.json();
       setLocations(locData);
       setStats(statsData);
+
+      // Fetch roles only once
+      if (jobRoles.length === 0) {
+        const rolesRes = await fetch(`${API_BASE}/roles/`);
+        if (rolesRes.ok) {
+          const rolesData = await rolesRes.json();
+          setJobRoles(rolesData);
+        }
+      }
     } catch (error) {
       console.error("Failed to fetch data:", error);
     } finally {
@@ -126,15 +138,30 @@ export default function AdminDashboard() {
     router.push('/login');
   };
 
-  const triggerScrape = async () => {
+  const triggerScrape = async (term: string, limit: number) => {
     const token = localStorage.getItem('admin_token');
     setTriggering(true);
     try {
-      await fetch(`${API_BASE}/trigger-scrape/`, { 
+      const res = await fetch(`${API_BASE}/trigger-scrape/`, { 
         method: 'POST',
-        headers: { 'Authorization': `Token ${token}` }
+        headers: { 
+          'Authorization': `Token ${token}`,
+          'Content-Type': 'application/json'
+        },
+        body: JSON.stringify({
+          search_term: term,
+          results_wanted: limit
+        })
       });
-      alert("Scraping started in background!");
+      
+      if (!res.ok) {
+        const errorData = await res.json();
+        alert(errorData.status || "Failed to trigger scrape");
+        return;
+      }
+
+      alert(`Scraping for "${term}" started in background!`);
+      setIsSettingsModalOpen(false);
       fetchData();
     } catch (error) {
       alert("Failed to trigger scrape");
@@ -284,7 +311,7 @@ export default function AdminDashboard() {
             ) : (
 
               <button
-                onClick={triggerScrape}
+                onClick={() => setIsSettingsModalOpen(true)}
                 disabled={triggering}
                 className="cursor-pointer bg-blue-600 hover:bg-blue-500 disabled:opacity-50 disabled:cursor-not-allowed text-white px-6 py-3 rounded-xl font-semibold flex items-center gap-2 transition-all shadow-lg shadow-blue-500/20"
               >
@@ -446,6 +473,14 @@ export default function AdminDashboard() {
 
       <AnimatePresence>
         {isLogsModalOpen && <LogsModal onClose={() => setIsLogsModalOpen(false)} />}
+        {isSettingsModalOpen && (
+          <ScrapeSettingsModal 
+            onClose={() => setIsSettingsModalOpen(false)} 
+            onStart={triggerScrape}
+            loading={triggering}
+            jobRoles={jobRoles}
+          />
+        )}
       </AnimatePresence>
     </div>
   );
@@ -524,7 +559,7 @@ function LogsModal({ onClose }: { onClose: () => void }) {
             <Terminal size={20} className="text-blue-500" />
             Live Scraper Logs
           </h2>
-          <button onClick={onClose} className="p-2 hover:bg-[#333] rounded-lg transition-colors text-[#888] hover:text-white">
+          <button onClick={onClose} className="cursor-pointer p-2 hover:bg-[#333] rounded-lg transition-colors text-[#888] hover:text-white">
             <X size={20} />
           </button>
         </div>
@@ -557,6 +592,126 @@ function LogsModal({ onClose }: { onClose: () => void }) {
             })
           )}
           <div ref={logsEndRef} />
+        </div>
+      </motion.div>
+    </motion.div>
+  );
+}
+
+function ScrapeSettingsModal({ onClose, onStart, loading, jobRoles }: { onClose: () => void, onStart: (term: string, limit: number) => void, loading: boolean, jobRoles: string[] }) {
+  const [term, setTerm] = useState(jobRoles[0] || '');
+  const [limit, setLimit] = useState(5);
+  const [customTerm, setCustomTerm] = useState('');
+  const [isCustom, setIsCustom] = useState(false);
+
+  useEffect(() => {
+    if (!term && jobRoles.length > 0) {
+      setTerm(jobRoles[0]);
+    }
+  }, [jobRoles]);
+
+  return (
+    <motion.div 
+      initial={{ opacity: 0 }}
+      animate={{ opacity: 1 }}
+      exit={{ opacity: 0 }}
+      className="fixed inset-0 bg-black/80 backdrop-blur-sm z-50 flex items-center justify-center p-4"
+      onClick={onClose}
+    >
+      <motion.div 
+        initial={{ scale: 0.95, opacity: 0 }}
+        animate={{ scale: 1, opacity: 1 }}
+        exit={{ scale: 0.95, opacity: 0 }}
+        onClick={(e) => e.stopPropagation()}
+        className="bg-[#111] border border-[#333] rounded-3xl w-full max-w-md shadow-2xl overflow-hidden"
+      >
+        <div className="p-6 border-b border-[#333] bg-[#1a1a1a]">
+          <h2 className="text-xl font-bold flex items-center gap-2">
+            <Play size={20} className="text-blue-500" />
+            Scrape Configuration
+          </h2>
+          <p className="text-sm text-[#555] mt-1">Configure parameters for the global scraping session.</p>
+        </div>
+        
+        <div className="p-6 space-y-6">
+          <div>
+            <label className="text-xs font-bold uppercase tracking-wider text-[#555] mb-2 block">Job Role / Search Term</label>
+            <div className="space-y-3">
+              {!isCustom ? (
+                <select 
+                  value={term} 
+                  onChange={(e) => {
+                    if (e.target.value === 'CUSTOM') {
+                      setIsCustom(true);
+                    } else {
+                      setTerm(e.target.value);
+                    }
+                  }}
+                  className="w-full bg-[#0a0a0a] border border-[#222] rounded-xl px-4 py-3 text-white focus:border-blue-500 outline-none cursor-pointer"
+                >
+                  {jobRoles.map(role => (
+                    <option key={role} value={role}>{role}</option>
+                  ))}
+                  <option value="CUSTOM">+ Other Role...</option>
+                </select>
+              ) : (
+                <div className="flex gap-2">
+                  <input 
+                    autoFocus
+                    type="text" 
+                    placeholder="Enter job role..."
+                    value={customTerm}
+                    onChange={(e) => setCustomTerm(e.target.value)}
+                    className="flex-1 bg-[#0a0a0a] border border-[#222] rounded-xl px-4 py-3 text-white focus:border-blue-500 outline-none"
+                  />
+                  <button 
+                    onClick={() => setIsCustom(false)}
+                    className="px-3 bg-[#222] rounded-xl hover:bg-[#333]"
+                  >
+                    <X size={18} />
+                  </button>
+                </div>
+              )}
+            </div>
+          </div>
+
+          <div>
+            <label className="text-xs font-bold uppercase tracking-wider text-[#555] mb-2 block">Results Wanted per Site</label>
+            <div className="grid grid-cols-2 gap-4">
+              {[5, 10].map(val => (
+                <button
+                  key={val}
+                  onClick={() => setLimit(val)}
+                  className={`
+                    py-3 rounded-xl border font-bold transition-all
+                    ${limit === val ? 'bg-blue-600 border-blue-500 text-white' : 'bg-[#161616] border-[#222] text-[#555] hover:border-[#333]'}
+                  `}
+                >
+                  {val} Results
+                </button>
+              ))}
+            </div>
+            <p className="text-[10px] text-[#444] mt-2 italic text-center">
+              Higher limits increase scraping time and risk of rate limits.
+            </p>
+          </div>
+        </div>
+
+        <div className="p-6 bg-[#1a1a1a] border-t border-[#333] flex gap-3">
+          <button 
+            onClick={onClose}
+            className="flex-1 py-3 rounded-xl bg-[#222] hover:bg-[#2a2a2a] font-bold transition-all cursor-pointer"
+          >
+            Cancel
+          </button>
+          <button 
+            disabled={loading || (isCustom && !customTerm)}
+            onClick={() => onStart(isCustom ? customTerm : term, limit)}
+            className="flex-1 py-3 rounded-xl bg-blue-600 hover:bg-blue-500 disabled:opacity-50 font-bold transition-all flex items-center justify-center gap-2 cursor-pointer"
+          >
+            {loading ? <Loader2 size={18} className="animate-spin" /> : <Play size={18} />}
+            Start Scrape
+          </button>
         </div>
       </motion.div>
     </motion.div>

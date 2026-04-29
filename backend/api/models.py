@@ -62,6 +62,8 @@ class ScrapeSession(models.Model):
     status = models.CharField(max_length=50, default='running')
     jobs_found = models.IntegerField(default=0)
     current_location = models.CharField(max_length=255, null=True, blank=True)
+    search_term = models.CharField(max_length=255, default='frontend developer')
+    results_limit = models.IntegerField(default=5)
     stop_requested = models.BooleanField(default=False)
     error_message = models.TextField(null=True, blank=True)
 

@@ -4,7 +4,7 @@ from rest_framework.authtoken.views import obtain_auth_token
 from .views import (
     LocationViewSet, JobViewSet, StatsView, TriggerScrapeView, 
     StopScrapeView, ForceResetView, LogsView, SignupView, UserView, RecentJobsView,
-    CheckExistenceView, SubscriptionView, AdminLoginView, AdminUserViewSet
+    CheckExistenceView, SubscriptionView, AdminLoginView, AdminUserViewSet, RolesView
 )
 
 router = DefaultRouter()
@@ -25,6 +25,7 @@ urlpatterns = [
     path('', include(router.urls)),
     path('stats/', StatsView.as_view(), name='stats'),
     path('recent-jobs/', RecentJobsView.as_view(), name='recent-jobs'),
+    path('roles/', RolesView.as_view(), name='roles'),
     
     # Subscription Logic
     path('subscribe/', SubscriptionView.as_view(), name='subscribe'),

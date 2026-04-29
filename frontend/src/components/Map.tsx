@@ -47,6 +47,10 @@ const Map = ({ jobs, selectedJobId, onJobClick }: MapProps) => {
     }
   }, [selectedJobId, jobs]);
 
+  useEffect(() => {
+    setNearbyJobs([]);
+  }, [jobs]);
+
   const findNearestStartup = () => {
     if (!navigator.geolocation) return;
     
