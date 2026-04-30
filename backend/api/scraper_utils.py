@@ -1,6 +1,9 @@
 import pandas as pd
 from jobspy import scrape_jobs
 from .models import Location, Job, ScrapeSession, ScrapeLog
+import os
+import json
+from django.conf import settings
 
 def log_to_db(session, message, level='info'):
     print(f"[{level.upper()}] {message}")
@@ -8,6 +11,40 @@ def log_to_db(session, message, level='info'):
         ScrapeLog.objects.create(session=session, message=message, level=level)
     except Exception as e:
         print(f"Failed to log to DB: {e}")
+        
+def sync_locations_from_json(session=None):
+    path = os.path.join(settings.BASE_DIR, 'places.json')
+    if not os.path.exists(path):
+        if session: log_to_db(session, f"Places JSON not found at {path}", "error")
+        return
+    
+    try:
+        with open(path, 'r', encoding='utf-8') as f:
+            data = json.load(f)
+        
+        created_count = 0
+        for country_data in data:
+            country = country_data.get('country')
+            code = country_data.get('code')
+            for place_data in country_data.get('places', []):
+                state = place_data.get('state')
+                for city in place_data.get('cities', []):
+                    _, created = Location.objects.get_or_create(
+                        country=country,
+                        country_code=code,
+                        state=state,
+                        city=city
+                    )
+                    if created:
+                        created_count += 1
+        
+        if created_count > 0:
+            if session: log_to_db(session, f"Synced {created_count} new locations from places.json", "success")
+        else:
+            if session: log_to_db(session, "All locations from places.json are already in DB", "info")
+            
+    except Exception as e:
+        if session: log_to_db(session, f"Error syncing locations: {e}", "error")
         
 from django.utils import timezone
 from datetime import timedelta
@@ -83,6 +120,10 @@ def run_background_scraping(search_term="frontend developer", results_wanted=5):
         jobs_deleted=deleted_count
     )
     log_to_db(session, f"Global scrape session initialized for '{search_term}' (limit: {results_wanted}). Cleaned up {deleted_count} old jobs.", "success")
+    
+    # Sync locations from JSON to DB
+    sync_locations_from_json(session)
+    
     total_found = 0
     
     try:
