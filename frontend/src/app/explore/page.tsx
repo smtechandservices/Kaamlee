@@ -234,27 +234,27 @@ export default function ExplorePage() {
   return (
     <main className="h-screen flex flex-col bg-[#0a0a0a] overflow-hidden relative">
       {/* Header - Always visible for navigation/logout */}
-      <header className="h-16 border-b border-[#222] px-6 flex items-center justify-between glass z-20 shrink-0">
-        <div className="flex items-center gap-4 flex-1">
-          <Link href="/" className="group flex items-center gap-2 text-[#555] hover:text-white transition-colors mr-2">
+      <header className="h-16 border-b border-[#222] px-4 sm:px-6 flex items-center justify-between glass z-20 shrink-0">
+        <div className="flex items-center gap-3 sm:gap-4 flex-1 overflow-hidden">
+          <Link href="/" className="group flex items-center gap-1.5 sm:gap-2 text-[#555] hover:text-white transition-colors mr-1 sm:mr-2 shrink-0">
             <ArrowLeft size={16} className="group-hover:-translate-x-1 transition-transform" />
             <span className="text-[10px] font-bold uppercase tracking-[0.2em] hidden sm:inline">Back</span>
           </Link>
-          <div className="w-px h-4 bg-[#222] mr-2" />
-          <h1 className="text-xl font-black tracking-tighter text-white mr-4 cursor-default">KAAMLEE</h1>
+          <div className="w-px h-4 bg-[#222] mr-1 sm:mr-2 shrink-0" />
+          <h1 className="hidden sm:inline text-lg sm:text-xl font-black tracking-tighter text-white mr-2 sm:mr-4 cursor-default truncate">KAAMLEE</h1>
         </div>
 
         <div className="flex items-center gap-2">
-          {/* Subscription Status */}
+          {/* Subscription Status - Hidden on small mobile */}
           {user?.is_subscribed && (
-            <div className="hidden lg:flex items-center gap-3 px-3 py-1.5 border border-[#222] rounded-full mr-2">
-              <span className="text-[14px] font-bold text-blue-400 leading-none">{timeLeft || ''}</span>
+            <div className="flex items-center gap-2 sm:gap-3 px-2 sm:px-3 py-1.5 border border-[#222] rounded-full mr-1 sm:mr-2">
+              <span className="text-[12px] sm:text-[14px] font-bold text-blue-400 leading-none">{timeLeft || ''}</span>
               {daysLeft <= 20 && (
                 <>
                   <div className="w-px h-6 bg-blue-500/10" />
                   <button 
                     onClick={() => setIsPricingModalOpen(true)}
-                    className="cursor-pointer text-[10px] font-black text-white bg-blue-600 hover:bg-blue-700 px-3 py-1.5 rounded-full transition-all uppercase tracking-wider shadow-lg shadow-blue-600/20"
+                    className="cursor-pointer text-[8px] sm:text-[10px] font-black text-white bg-blue-600 hover:bg-blue-700 px-2 sm:px-3 py-1 sm:py-1.5 rounded-full transition-all uppercase tracking-wider shadow-lg shadow-blue-600/20"
                   >
                     Renew
                   </button>
@@ -263,28 +263,38 @@ export default function ExplorePage() {
             </div>
           )}
 
-          <div className="flex items-center gap-2 bg-[#161616] rounded-full p-1 border border-[#222]">
+          {/* View Toggles - Always visible */}
+          <div className="flex items-center gap-1 sm:gap-2 bg-[#161616] rounded-full p-1 border border-[#222]">
             <button 
               onClick={() => setViewMode('split')}
-              className={`cursor-pointer p-1.5 rounded-full transition-all ${viewMode === 'split' ? 'bg-[#3b82f6] text-white' : 'text-[#555] hover:text-[#888]'}`}
+              className={`cursor-pointer p-1 sm:p-1.5 rounded-full transition-all hidden md:block ${viewMode === 'split' ? 'bg-[#3b82f6] text-white' : 'text-[#555] hover:text-[#888]'}`}
+              title="Split View"
+            >
+              <List size={14} />
+            </button>
+            <button 
+              onClick={() => setViewMode('list')}
+              className={`cursor-pointer p-1 sm:p-1.5 rounded-full transition-all md:hidden ${viewMode === 'list' ? 'bg-[#3b82f6] text-white' : 'text-[#555] hover:text-[#888]'}`}
+              title="List View"
             >
               <List size={14} />
             </button>
             <button 
               onClick={() => setViewMode('map')}
-              className={`cursor-pointer p-1.5 rounded-full transition-all ${viewMode === 'map' ? 'bg-[#3b82f6] text-white' : 'text-[#555] hover:text-[#888]'}`}
+              className={`cursor-pointer p-1 sm:p-1.5 rounded-full transition-all ${viewMode === 'map' ? 'bg-[#3b82f6] text-white' : 'text-[#555] hover:text-[#888]'}`}
+              title="Map View"
             >
               <MapIcon size={14} />
             </button>
           </div>
-          <div className="w-px h-6 bg-[#222] mx-2" />
+          <div className="w-px h-6 bg-[#222] mx-1 sm:mx-2" />
 
           <button 
             onClick={logout}
             className="cursor-pointer flex items-center gap-2 text-[#888] hover:text-white transition-colors text-sm font-medium group"
           >
             <LogOut size={18} className="group-hover:translate-x-0.5 transition-transform" />
-            <span className="hidden sm:inline">Logout</span>
+            <span className="hidden lg:inline">Logout</span>
           </button>
         </div>
       </header>
@@ -295,41 +305,38 @@ export default function ExplorePage() {
         <aside className={`${viewMode === 'map' ? 'hidden' : 'flex'} w-full md:w-[450px] flex-col border-r border-[#222] bg-[#0a0a0a] z-10 shrink-0`}>
           
           {/* Search Area */}
-          <div className="p-4 border-b border-[#222] bg-[#0a0a0a]">
-            <div className="flex items-stretch gap-3 h-[100px]">
+          <div className="p-3 sm:p-4 border-b border-[#222] bg-[#0a0a0a]">
+            <div className="flex flex-col sm:flex-row items-stretch gap-3">
               <div className="bg-[#161616] border border-[#222] rounded-2xl flex-1 shadow-inner flex flex-col overflow-hidden focus-within:border-[#3b82f6]/50 transition-all">
-                <div className="flex-1 flex items-center px-3">
-                  <Search size={16} className="text-[#555] shrink-0 ml-1" />
+                <div className="h-10 sm:h-12 flex items-center px-3">
+                  <Search className="text-[#555] shrink-0 ml-1 w-3.5 h-3.5 sm:w-4 sm:h-4" />
                   <input 
                     type="text" 
                     placeholder="Job title, keywords, or company"
-                    className="bg-transparent border-none outline-none ring-0 focus:ring-0 text-xs text-white placeholder-[#555] flex-1 ml-3"
+                    className="bg-transparent border-none outline-none ring-0 focus:ring-0 text-[10px] sm:text-xs text-white placeholder-[#555] flex-1 ml-2 sm:ml-3"
                     value={searchQuery}
                     onChange={(e) => setSearchQuery(e.target.value)}
                   />
                 </div>
                 <div className="w-full h-px bg-[#222]" />
-                <div className="flex-1 flex items-center px-3">
-                  <MapIcon size={16} className="text-[#555] shrink-0 ml-1" />
+                <div className="h-10 sm:h-12 flex items-center px-3">
+                  <MapIcon className="text-[#555] shrink-0 ml-1 w-3.5 h-3.5 sm:w-4 sm:h-4" />
                   <input 
                     type="text" 
                     placeholder="City, state, zip code, or remote"
-                    className="bg-transparent border-none outline-none ring-0 focus:ring-0 text-xs text-white placeholder-[#555] w-full ml-3"
+                    className="bg-transparent border-none outline-none ring-0 focus:ring-0 text-[10px] sm:text-xs text-white placeholder-[#555] w-full ml-2 sm:ml-3"
                     value={locationQuery}
                     onChange={(e) => setLocationQuery(e.target.value)}
                   />
                 </div>
               </div>
 
-              {/* Quick Roles Vertical Scrollable List - Fixed 100px height */}
-              <div className="w-[130px] flex flex-col border border-[#222] rounded-2xl bg-[#080808] overflow-hidden">
-                {/* <div className="px-2 py-1.5 border-b border-[#222] bg-[#111]">
-                  <span className="text-[8px] font-black uppercase tracking-[0.2em] text-[#555]">Quick Roles</span>
-                </div> */}
-                <div className="flex-1 overflow-y-auto no-scrollbar p-1 space-y-0.5 bg-black/40">
+              {/* Quick Roles Vertical Scrollable List - Fixed height */}
+              <div className="h-10 sm:h-[100px] w-full sm:w-[130px] flex flex-row sm:flex-col border border-[#222] rounded-2xl bg-[#080808] overflow-hidden">
+                <div className="flex-1 flex flex-row sm:flex-col overflow-x-auto sm:overflow-y-auto no-scrollbar p-1 gap-1 sm:space-y-0.5 bg-black/40">
                   <button
                     onClick={() => setSearchQuery('')}
-                    className={`w-full text-left px-2 py-1 rounded-lg text-[9px] font-bold transition-all border ${
+                    className={`shrink-0 sm:w-full text-left px-2 py-1 rounded-lg text-[8px] sm:text-[9px] font-bold transition-all border ${
                       searchQuery === '' 
                         ? 'bg-blue-500/10 text-blue-400 border-blue-500/30' 
                         : 'bg-transparent text-[#555] border-transparent hover:bg-[#111] hover:text-[#888]'
@@ -341,7 +348,7 @@ export default function ExplorePage() {
                     <button
                       key={role}
                       onClick={() => setSearchQuery(role)}
-                      className={`w-full text-left px-2 py-1 rounded-lg text-[9px] font-bold transition-all border truncate ${
+                      className={`shrink-0 sm:w-full text-left px-2 py-1 rounded-lg text-[8px] sm:text-[9px] font-bold transition-all border truncate ${
                         searchQuery === role 
                           ? 'bg-blue-500/10 text-blue-400 border-blue-500/30' 
                           : 'bg-transparent text-[#555] border-transparent hover:bg-[#111] hover:text-[#888]'
@@ -357,13 +364,13 @@ export default function ExplorePage() {
           </div>
 
           {/* Category Filters */}
-          <div className="px-4 py-3 border-b border-[#222] bg-[#0a0a0a] flex items-center justify-between gap-3">
+          <div className="px-3 sm:px-4 py-2 sm:py-3 border-b border-[#222] bg-[#0a0a0a] flex items-center justify-between gap-2 sm:gap-3">
             <div className="flex items-center gap-2 overflow-x-auto no-scrollbar flex-1">
               {countries.map((country) => (
                 <button
                   key={country}
                   onClick={() => setActiveCountry(country)}
-                  className={`cursor-pointer px-4 py-1.5 rounded-lg text-[11px] font-bold transition-all duration-300 border whitespace-nowrap ${
+                  className={`cursor-pointer px-3 sm:px-4 py-1 sm:py-1.5 rounded-lg text-[10px] sm:text-[11px] font-bold transition-all duration-300 border whitespace-nowrap ${
                     activeCountry === country 
                       ? 'bg-white text-black border-white' 
                       : 'bg-[#161616] text-[#888] border-[#222] hover:border-[#333] hover:text-white'
@@ -378,26 +385,26 @@ export default function ExplorePage() {
             
             <button
               onClick={() => setRemoteOnly(!remoteOnly)}
-              className={`cursor-pointer px-4 py-1.5 rounded-lg text-[11px] font-bold flex items-center gap-2 transition-all duration-300 border whitespace-nowrap shrink-0 ${
+              className={`cursor-pointer px-3 sm:px-4 py-1 sm:py-1.5 rounded-lg text-[10px] sm:text-[11px] font-bold flex items-center gap-1.5 sm:gap-2 transition-all duration-300 border whitespace-nowrap shrink-0 ${
                 remoteOnly 
                   ? 'bg-[#3b82f6] text-white border-[#3b82f6]' 
                   : 'bg-[#161616] text-[#888] border-[#222] hover:border-[#333] hover:text-white'
               }`}
             >
-              <Monitor size={12} />
+              <Monitor className="w-2.5 h-2.5 sm:w-3 sm:h-3" />
               Remote
             </button>
 
             <button
               onClick={() => setBookmarkedOnly(!bookmarkedOnly)}
-              className={`cursor-pointer px-4 py-1.5 rounded-lg text-[11px] font-bold flex items-center gap-2 transition-all duration-300 border whitespace-nowrap shrink-0 ${
+              className={`cursor-pointer px-3 sm:px-4 py-1 sm:py-1.5 rounded-lg text-[10px] sm:text-[11px] font-bold flex items-center gap-1.5 sm:gap-2 transition-all duration-300 border whitespace-nowrap shrink-0 ${
                 bookmarkedOnly 
                   ? 'bg-blue-600 text-white border-blue-600' 
                   : 'bg-[#161616] text-[#888] border-[#222] hover:border-[#333] hover:text-white'
               }`}
             >
-              <Bookmark size={12} fill={bookmarkedOnly ? "currentColor" : "none"} />
-              Bookmarks
+              <Bookmark className="w-2.5 h-2.5 sm:w-3 sm:h-3" fill={bookmarkedOnly ? "currentColor" : "none"} />
+              <span className="hidden sm:inline">Bookmarks</span>
             </button>
           </div>
           

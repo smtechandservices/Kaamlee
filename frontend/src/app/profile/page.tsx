@@ -89,7 +89,7 @@ export default function ProfilePage() {
       {/* Background decoration */}
       <div className="absolute top-0 left-1/2 -translate-x-1/2 w-[800px] h-[500px] bg-blue-500/5 blur-[120px] rounded-full pointer-events-none" />
 
-      <div className="max-w-2xl mx-auto z-10 relative pt-12">
+      <div className="max-w-2xl mx-auto z-10 relative pt-8 sm:pt-12">
         <button 
           onClick={(e) => {
             e.preventDefault();
@@ -99,13 +99,13 @@ export default function ProfilePage() {
               router.push('/explore');
             }
           }}
-          className="cursor-pointer inline-flex items-center gap-2 text-[#888] hover:text-white transition-colors mb-4 group"
+          className="cursor-pointer inline-flex items-center gap-2 text-[#888] hover:text-white transition-colors mb-4 group text-sm"
         >
-          <ArrowLeft size={18} className="group-hover:-translate-x-1 transition-transform" />
+          <ArrowLeft className="w-4 h-4 sm:w-[18px] sm:h-[18px]" />
           Back to Explore
         </button>
 
-        <div className="bg-[#111] border border-[#222] rounded-[32px] p-8 md:p-10 shadow-2xl">
+        <div className="bg-[#111] border border-[#222] rounded-[24px] sm:rounded-[32px] p-6 sm:p-8 md:p-10 shadow-2xl">
           <form onSubmit={handleSubmit} className="space-y-8">
             {error && (
               <div className="bg-red-500/10 border border-red-500/20 text-red-400 text-sm py-4 px-5 rounded-2xl">
@@ -124,68 +124,68 @@ export default function ProfilePage() {
               </motion.div>
             )}
 
-            <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
-              <div className="space-y-3">
-                <label className="text-xs font-bold text-[#555] uppercase tracking-widest ml-1">First Name</label>
+            <div className="grid grid-cols-1 sm:grid-cols-2 gap-5 sm:gap-6">
+              <div className="space-y-2 sm:space-y-3">
+                <label className="text-[10px] sm:text-xs font-bold text-[#555] uppercase tracking-widest ml-1">First Name</label>
                 <div className="relative">
-                  <User size={18} className="absolute left-4 top-1/2 -translate-y-1/2 text-[#444]" />
+                  <User className="absolute left-4 top-1/2 -translate-y-1/2 text-[#444] w-4 h-4 sm:w-[18px] sm:h-[18px]" />
                   <input 
                     type="text"
                     required
                     value={firstName}
                     onChange={(e) => setFirstName(e.target.value)}
-                    className="w-full bg-[#0a0a0a] border border-[#222] rounded-2xl pl-12 pr-4 py-4 text-sm focus:border-blue-500/50 outline-none transition-all"
+                    className="w-full bg-[#0a0a0a] border border-[#222] rounded-xl sm:rounded-2xl pl-11 sm:pl-12 pr-4 py-3.5 sm:py-4 text-xs sm:text-sm focus:border-blue-500/50 outline-none transition-all"
                   />
                 </div>
               </div>
-              <div className="space-y-3">
-                <label className="text-xs font-bold text-[#555] uppercase tracking-widest ml-1">Last Name</label>
+              <div className="space-y-2 sm:space-y-3">
+                <label className="text-[10px] sm:text-xs font-bold text-[#555] uppercase tracking-widest ml-1">Last Name</label>
                 <div className="relative">
-                  <User size={18} className="absolute left-4 top-1/2 -translate-y-1/2 text-[#444]" />
+                  <User className="absolute left-4 top-1/2 -translate-y-1/2 text-[#444] w-4 h-4 sm:w-[18px] sm:h-[18px]" />
                   <input 
                     type="text"
                     required
                     value={lastName}
                     onChange={(e) => setLastName(e.target.value)}
-                    className="w-full bg-[#0a0a0a] border border-[#222] rounded-2xl pl-12 pr-4 py-4 text-sm focus:border-blue-500/50 outline-none transition-all"
+                    className="w-full bg-[#0a0a0a] border border-[#222] rounded-xl sm:rounded-2xl pl-11 sm:pl-12 pr-4 py-3.5 sm:py-4 text-xs sm:text-sm focus:border-blue-500/50 outline-none transition-all"
                   />
                 </div>
               </div>
             </div>
 
-            <div className="space-y-3">
-              <label className="text-xs font-bold text-[#555] uppercase tracking-widest ml-1">Phone Number</label>
+            <div className="space-y-2 sm:space-y-3">
+              <label className="text-[10px] sm:text-xs font-bold text-[#555] uppercase tracking-widest ml-1">Phone Number</label>
               <div className="relative">
-                <Phone size={18} className="absolute left-4 top-1/2 -translate-y-1/2 text-[#444]" />
+                <Phone className="absolute left-4 top-1/2 -translate-y-1/2 text-[#444] w-4 h-4 sm:w-[18px] sm:h-[18px]" />
                 <input 
                   type="tel"
                   value={phone}
                   onChange={(e) => setPhone(e.target.value)}
-                  className="w-full bg-[#0a0a0a] border border-[#222] rounded-2xl pl-12 pr-4 py-4 text-sm focus:border-blue-500/50 outline-none transition-all"
+                  className="w-full bg-[#0a0a0a] border border-[#222] rounded-xl sm:rounded-2xl pl-11 sm:pl-12 pr-4 py-3.5 sm:py-4 text-xs sm:text-sm focus:border-blue-500/50 outline-none transition-all"
                 />
               </div>
             </div>
 
-            <div className="space-y-3">
-              <label className="text-xs font-bold text-[#555] uppercase tracking-widest ml-1">LinkedIn URL</label>
+            <div className="space-y-2 sm:space-y-3">
+              <label className="text-[10px] sm:text-xs font-bold text-[#555] uppercase tracking-widest ml-1">LinkedIn URL</label>
               <div className="relative">
-                <LinkIcon size={18} className="absolute left-4 top-1/2 -translate-y-1/2 text-[#444]" />
+                <LinkIcon className="absolute left-4 top-1/2 -translate-y-1/2 text-[#444] w-4 h-4 sm:w-[18px] sm:h-[18px]" />
                 <input 
                   type="url"
                   value={linkedinUrl}
                   onChange={(e) => setLinkedinUrl(e.target.value)}
-                  className="w-full bg-[#0a0a0a] border border-[#222] rounded-2xl pl-12 pr-4 py-4 text-sm focus:border-blue-500/50 outline-none transition-all"
+                  className="w-full bg-[#0a0a0a] border border-[#222] rounded-xl sm:rounded-2xl pl-11 sm:pl-12 pr-4 py-3.5 sm:py-4 text-xs sm:text-sm focus:border-blue-500/50 outline-none transition-all"
                 />
               </div>
             </div>
 
-            <div className="space-y-3">
-              <label className="text-xs font-bold text-[#555] uppercase tracking-widest ml-1">Resume (PDF Recommended)</label>
+            <div className="space-y-2 sm:space-y-3">
+              <label className="text-[10px] sm:text-xs font-bold text-[#555] uppercase tracking-widest ml-1">Resume (PDF Recommended)</label>
               <div className="relative">
                 {!user?.resume && !resume ? (
-                  <div className="w-full bg-[#0a0a0a] border border-[#222] border-dashed rounded-2xl p-6 flex flex-col items-center justify-center gap-3 hover:border-blue-500/50 transition-all cursor-pointer relative">
+                  <div className="w-full bg-[#0a0a0a] border border-[#222] border-dashed rounded-xl sm:rounded-2xl p-6 sm:p-8 flex flex-col items-center justify-center gap-3 hover:border-blue-500/50 transition-all cursor-pointer relative text-center">
                     <Briefcase size={24} className="text-[#444]" />
-                    <span className="text-xs font-medium text-[#888]">Click to upload or drag & drop</span>
+                    <span className="text-[10px] sm:text-xs font-medium text-[#888]">Click to upload or drag & drop</span>
                     <input 
                       type="file"
                       accept=".pdf,.doc,.docx"
@@ -194,17 +194,17 @@ export default function ProfilePage() {
                     />
                   </div>
                 ) : (
-                  <div className="w-full bg-[#161616] border border-[#222] rounded-2xl p-4 flex items-center justify-between gap-4">
-                    <div className="flex items-center gap-3 overflow-hidden">
-                      <div className="w-10 h-10 rounded-xl bg-blue-500/10 flex items-center justify-center shrink-0">
-                        <Briefcase size={20} className="text-blue-500" />
+                  <div className="w-full bg-[#161616] border border-[#222] rounded-xl sm:rounded-2xl p-3 sm:p-4 flex items-center justify-between gap-3 sm:gap-4">
+                    <div className="flex items-center gap-2 sm:gap-3 overflow-hidden">
+                      <div className="w-9 h-9 sm:w-10 sm:h-10 rounded-lg sm:rounded-xl bg-blue-500/10 flex items-center justify-center shrink-0">
+                        <Briefcase className="text-blue-500 w-4 h-4 sm:w-5 sm:h-5" />
                       </div>
                       <div className="overflow-hidden">
-                        <p className="text-xs font-bold text-white truncate">
+                        <p className="text-[10px] sm:text-xs font-bold text-white truncate">
                           {resume ? resume.name : (user?.resume ? 'Resume uploaded' : '')}
                         </p>
                         {user?.resume_text && (
-                          <p className="text-[10px] text-green-500/60 font-medium">AI Matching Active</p>
+                          <p className="text-[9px] sm:text-[10px] text-green-500/60 font-medium">AI Matching Active</p>
                         )}
                       </div>
                     </div>
@@ -239,29 +239,29 @@ export default function ProfilePage() {
                           }
                         }
                       }}
-                      className="cursor-pointer p-2 hover:bg-red-500/10 rounded-xl transition-colors group"
+                      className="cursor-pointer p-1.5 sm:p-2 hover:bg-red-500/10 rounded-lg sm:rounded-xl transition-colors group"
                       title="Remove Resume"
                     >
-                      <X size={18} className="text-[#444] group-hover:text-red-500" />
+                      <X className="text-[#444] group-hover:text-red-500 w-4 h-4 sm:w-[18px] sm:h-[18px]" />
                     </button>
                   </div>
                 )}
                 
                 {resume && (
-                  <p className="text-[10px] text-blue-500/60 mt-2 ml-1 italic">
+                  <p className="text-[9px] sm:text-[10px] text-blue-500/60 mt-1 sm:mt-2 ml-1 italic">
                     Click "Save Changes" to upload the new resume.
                   </p>
                 )}
               </div>
             </div>
 
-            <div className="pt-4">
+            <div className="pt-2 sm:pt-4">
               <button 
                 type="submit"
                 disabled={isSubmitting}
-                className="cursor-pointer w-full bg-white text-black font-bold py-4 rounded-2xl hover:bg-[#ededed] active:scale-[0.98] transition-all flex items-center justify-center gap-2 disabled:opacity-50"
+                className="cursor-pointer w-full bg-white text-black font-black uppercase tracking-widest py-3.5 sm:py-4 rounded-xl sm:rounded-2xl hover:bg-[#ededed] active:scale-[0.98] transition-all flex items-center justify-center gap-2 disabled:opacity-50 text-xs sm:text-sm"
               >
-                {isSubmitting ? <Loader2 size={20} className="animate-spin" /> : <Save size={20} />}
+                {isSubmitting ? <Loader2 className="animate-spin w-4 h-4 sm:w-5 sm:h-5" /> : <Save className="w-4 h-4 sm:w-5 sm:h-5" />}
                 Save Changes
               </button>
             </div>

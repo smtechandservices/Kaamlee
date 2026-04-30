@@ -97,9 +97,9 @@ export const JobCard = ({ job, isSelected, onClick, onToggleBookmark }: JobCardP
           </div>
         </div>
       )}
-      <div className="flex gap-4 items-start">
+      <div className="flex gap-3 sm:gap-4 items-start">
         <div className="flex flex-col items-center shrink-0 gap-2">
-          <div className="w-12 h-12 rounded-lg bg-white flex items-center justify-center border border-[#333] overflow-hidden group-hover:border-[#3b82f6] transition-colors">
+          <div className="w-10 h-10 sm:w-12 sm:h-12 rounded-lg bg-white flex items-center justify-center border border-[#333] overflow-hidden group-hover:border-[#3b82f6] transition-colors">
             {job.company_logo ? (
               <img
                 src={job.company_logo}
@@ -107,11 +107,11 @@ export const JobCard = ({ job, isSelected, onClick, onToggleBookmark }: JobCardP
                 className="w-full h-full object-contain"
                 onError={(e) => {
                   (e.target as HTMLImageElement).style.display = 'none';
-                  (e.target as HTMLImageElement).parentElement!.innerHTML = `<span class="text-xl font-bold text-[#333]">${getInitial(companyName)}</span>`;
+                  (e.target as HTMLImageElement).parentElement!.innerHTML = `<span class="text-lg sm:text-xl font-bold text-[#333]">${getInitial(companyName)}</span>`;
                 }}
               />
             ) : (
-              <span className="text-xl font-bold text-[#333]">
+              <span className="text-lg sm:text-xl font-bold text-[#333]">
                 {getInitial(companyName)}
               </span>
             )}
@@ -120,25 +120,24 @@ export const JobCard = ({ job, isSelected, onClick, onToggleBookmark }: JobCardP
           {/* Bookmark Toggle below logo */}
           <button
             onClick={onToggleBookmark}
-            className={`w-full flex justify-center cursor-pointer p-2 rounded-lg border transition-all ${job.is_bookmarked
+            className={`w-full flex justify-center cursor-pointer p-1.5 sm:p-2 rounded-lg border transition-all ${job.is_bookmarked
                 ? 'bg-blue-500/10 border-blue-500/30 text-blue-500'
                 : 'bg-transparent border-[#222] text-[#444] hover:border-[#333] hover:text-[#666]'
               }`}
             title={job.is_bookmarked ? "Unbookmark" : "Bookmark"}
           >
-            <Bookmark size={18} fill={job.is_bookmarked ? "currentColor" : "none"} />
+            <Bookmark size={16} fill={job.is_bookmarked ? "currentColor" : "none"} />
           </button>
 
           <button
             onClick={handleCopyLink}
-            className={`w-full flex justify-center cursor-pointer p-2 rounded-lg border transition-all${
+            className={`w-full flex justify-center cursor-pointer p-1.5 sm:p-2 rounded-lg border transition-all ${
               copied 
                 ? 'bg-green-500/10 border-green-500/30 text-green-400' 
                 : 'bg-[#161616] border-[#222] text-[#555] hover:text-white hover:border-[#333]'
             }`}
           >
             {copied ? <Check size={12} /> : <Copy size={12} />}
-            {/* {copied ? 'Copied' : 'Copy Link'} */}
           </button>
         </div>
 

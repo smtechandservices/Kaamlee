@@ -135,9 +135,10 @@ export default function SignupPage() {
       {/* Background decoration */}
       <div className="absolute top-0 left-1/2 -translate-x-1/2 w-[800px] h-[500px] bg-blue-500/5 blur-[120px] rounded-full pointer-events-none" />
       
-      <Link href="/" className="absolute top-8 left-8 text-[#888] hover:text-white transition-colors flex items-center gap-2 text-sm font-medium">
-        <ArrowLeft size={16} />
-        Back to Home
+      <Link href="/" className="absolute top-6 left-6 sm:top-8 sm:left-8 text-[#888] hover:text-white transition-colors flex items-center gap-2 text-xs sm:text-sm font-medium z-20">
+        <ArrowLeft className="w-3.5 h-3.5 sm:w-4 sm:h-4" />
+        <span className="hidden sm:inline">Back to Home</span>
+        <span className="sm:hidden">Back</span>
       </Link>
 
       <motion.div 
@@ -145,13 +146,13 @@ export default function SignupPage() {
         animate={{ opacity: 1, y: 0 }}
         className="w-full max-w-md z-10"
       >
-        <div className="text-center mb-10">
-          <h1 className="text-4xl font-black font-heading tracking-tight mb-2">Create an account</h1>
-          <p className="text-[#a1a1a1]">Join Kaamlee in 3 simple steps</p>
+        <div className="hidden md:block text-center my-6">
+          <h1 className="text-3xl sm:text-4xl font-black font-heading tracking-tight mb-2">Create an account</h1>
+          <p className="text-sm sm:text-base text-[#a1a1a1]">Join Kaamlee in 3 simple steps</p>
         </div>
 
         {/* Step Progress */}
-        <div className="flex items-center justify-between mb-8 px-4">
+        <div className="flex items-center justify-between my-4 px-4">
           {steps.map((s, i) => (
             <React.Fragment key={s.id}>
               <div className="flex flex-col items-center gap-2">
@@ -160,7 +161,7 @@ export default function SignupPage() {
                 }`}>
                   {step > s.id ? <CheckCircle2 size={20} /> : s.id}
                 </div>
-                <span className={`text-[10px] uppercase tracking-wider font-bold ${step >= s.id ? 'text-white' : 'text-[#444]'}`}>{s.title}</span>
+                <span className={`text-center text-[10px] uppercase tracking-wider font-bold ${step >= s.id ? 'text-white' : 'text-[#444]'}`}>{s.title}</span>
               </div>
               {i < steps.length - 1 && (
                 <div className="flex-1 h-[2px] bg-[#222] mx-2 -mt-6 relative overflow-hidden">
@@ -175,7 +176,7 @@ export default function SignupPage() {
           ))}
         </div>
 
-        <div className="bg-[#111] border border-[#222] rounded-3xl p-8 shadow-2xl relative overflow-hidden">
+        <div className="bg-[#111] border border-[#222] rounded-[24px] sm:rounded-3xl p-6 sm:p-8 shadow-2xl relative overflow-hidden">
           {/* Animated Background Pulse */}
           <div className="absolute -top-24 -right-24 w-48 h-48 bg-blue-600/5 blur-3xl rounded-full animate-pulse" />
           
@@ -200,9 +201,9 @@ export default function SignupPage() {
 
               {step === 1 && (
                 <div className="space-y-5">
-                  <div className="grid grid-cols-2 gap-4">
+                  <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
                     <div className="space-y-2">
-                      <label className="text-sm font-bold text-[#a1a1a1] uppercase ml-1">First Name</label>
+                      <label className="text-xs sm:text-sm font-bold text-[#a1a1a1] uppercase ml-1">First Name</label>
                       <input 
                         type="text"
                         required
@@ -213,7 +214,7 @@ export default function SignupPage() {
                       />
                     </div>
                     <div className="space-y-2">
-                      <label className="text-sm font-bold text-[#a1a1a1] uppercase ml-1">Last Name</label>
+                      <label className="text-xs sm:text-sm font-bold text-[#a1a1a1] uppercase ml-1">Last Name</label>
                       <input 
                         type="text"
                         required

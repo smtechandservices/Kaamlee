@@ -82,10 +82,10 @@ export default function PricingModal({ isOpen, onClose, showCloseButton = true }
             initial={{ opacity: 0, scale: 0.9, y: 20 }}
             animate={{ opacity: 1, scale: 1, y: 0 }}
             exit={{ opacity: 0, scale: 0.9, y: 20 }}
-            className="relative w-full max-w-[600px] border border-blue-500/20 bg-[#050505] rounded-sm p-12 md:p-16 overflow-hidden shadow-[0_0_100px_-12px_rgba(59,130,246,0.2)]"
+            className="relative w-full max-w-[600px] border border-blue-500/20 bg-[#050505] rounded-sm p-8 sm:p-12 md:p-16 overflow-hidden shadow-[0_0_100px_-12px_rgba(59,130,246,0.2)]"
           >
             {/* Top Right Actions */}
-            <div className="absolute top-8 right-8 z-50 flex items-center gap-6">
+            <div className="absolute top-6 right-6 sm:top-8 sm:right-8 z-50 flex items-center gap-4 sm:gap-6">
               {!showCloseButton && (
                 <Link 
                   href="/"
@@ -101,7 +101,7 @@ export default function PricingModal({ isOpen, onClose, showCloseButton = true }
                   onClick={onClose}
                   className="cursor-pointer text-[#444] hover:text-white transition-colors"
                 >
-                  <RotateCcw className="rotate-45" size={20} />
+                  <RotateCcw className="rotate-45 w-4.5 h-4.5 sm:w-5 sm:h-5" />
                 </button>
               )}
             </div>
@@ -117,22 +117,22 @@ export default function PricingModal({ isOpen, onClose, showCloseButton = true }
                     initial={{ opacity: 0, y: 10 }}
                     animate={{ opacity: 1, y: 0 }}
                     exit={{ opacity: 0, y: -10 }}
-                    className="flex flex-col items-center"
+                    className="flex flex-col items-center w-full"
                   >
-                    <h2 className="text-4xl md:text-5xl font-black tracking-tighter mb-8 leading-[1.1]">
+                    <h2 className="text-3xl sm:text-4xl md:text-5xl font-black tracking-tighter mb-6 sm:mb-8 leading-[1.1]">
                       One Price.<br />
                       One Portal.<br />
                       <span className="text-serif font-normal italic lowercase text-blue-500">unlimited</span> Jobs.
                     </h2>
 
-                    <div className="flex items-baseline gap-3 mb-8">
-                      <span className="text-2xl font-mono text-blue-500/50">$</span>
-                      <span className="text-8xl font-black tracking-tighter text-white">2.99</span>
-                      <span className="font-mono text-lg text-[#444] uppercase tracking-widest">/ mo</span>
+                    <div className="flex items-baseline gap-2 sm:gap-3 mb-6 sm:mb-8">
+                      <span className="text-xl sm:text-2xl font-mono text-blue-500/50">$</span>
+                      <span className="text-6xl sm:text-7xl md:text-8xl font-black tracking-tighter text-white">2.99</span>
+                      <span className="font-mono text-base sm:text-lg text-[#444] uppercase tracking-widest">/ mo</span>
                     </div>
 
-                    <p className="text-sm text-[#888] leading-relaxed max-w-xl mb-10">
-                      Stop overthinking it. <br /> Get every role, and every map filter for the price of a coffee. <br /> <span className="text-white font-bold italic">We just do jobs.</span>
+                    <p className="text-xs sm:text-sm text-[#888] leading-relaxed max-w-xl mb-8 sm:mb-10">
+                      Stop overthinking it. <br className="hidden sm:block" /> Get every role, and every map filter for the price of a coffee. <br /> <span className="text-white font-bold italic">We just do jobs.</span>
                     </p>
 
                     <div className="relative group/btn w-full">
@@ -140,7 +140,7 @@ export default function PricingModal({ isOpen, onClose, showCloseButton = true }
                       <button
                         onClick={handleInitialize}
                         disabled={isProcessing}
-                        className="relative w-full flex items-center justify-center gap-4 bg-white text-black px-8 py-4 rounded-sm font-black uppercase tracking-[0.3em] text-sm hover:bg-[#ededed] transition-all overflow-hidden disabled:opacity-50 cursor-pointer"
+                        className="relative w-full flex items-center justify-center gap-3 sm:gap-4 bg-white text-black px-6 sm:px-8 py-3.5 sm:py-4 rounded-sm font-black uppercase tracking-[0.2em] sm:tracking-[0.3em] text-xs sm:text-sm hover:bg-[#ededed] transition-all overflow-hidden disabled:opacity-50 cursor-pointer"
                       >
                         {isProcessing ? (
                           <div className="w-5 h-5 border-2 border-black border-t-transparent rounded-full animate-spin" />
@@ -153,8 +153,8 @@ export default function PricingModal({ isOpen, onClose, showCloseButton = true }
                       </button>
                     </div>
 
-                    <div className="mt-10 pt-10 border-t border-white/5 w-full flex justify-center">
-                      <div className="font-mono text-[#333] text-[14px] uppercase tracking-widest text-center">
+                    <div className="mt-8 sm:mt-10 pt-8 sm:pt-10 border-t border-white/5 w-full flex justify-center">
+                      <div className="font-mono text-[#333] text-[10px] sm:text-[14px] uppercase tracking-widest text-center">
                         Secure Checkout · Stripe Encryption
                       </div>
                     </div>
