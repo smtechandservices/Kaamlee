@@ -169,6 +169,10 @@ class JobSerializer(serializers.ModelSerializer):
             
         return calculate_match(resume_text, obj.title, obj.description)
 
+class RecentJobSerializer(JobSerializer):
+    class Meta(JobSerializer.Meta):
+        fields = [f.name for f in Job._meta.fields if f.name != 'company'] + ['match_score', 'is_bookmarked']
+
 class ScrapeSessionSerializer(serializers.ModelSerializer):
     class Meta:
         model = ScrapeSession

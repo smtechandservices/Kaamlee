@@ -4,7 +4,10 @@ from rest_framework.authtoken.views import ObtainAuthToken
 from rest_framework.response import Response
 from rest_framework.authtoken.models import Token
 from .models import Location, Job, ScrapeSession, ScrapeLog, Bookmark
-from .serializers import LocationSerializer, JobSerializer, ScrapeSessionSerializer, ScrapeLogSerializer, UserSerializer, RegisterSerializer
+from .serializers import (
+    LocationSerializer, JobSerializer, ScrapeSessionSerializer, 
+    ScrapeLogSerializer, UserSerializer, RegisterSerializer, RecentJobSerializer
+)
 from django.db.models import Count, Exists, OuterRef
 from django.contrib.auth.models import User
 
@@ -151,7 +154,7 @@ class LogsView(views.APIView):
 
 class RecentJobsView(generics.ListAPIView):
     queryset = Job.objects.order_by('-date_posted')[:10]
-    serializer_class = JobSerializer
+    serializer_class = RecentJobSerializer
     permission_classes = [permissions.AllowAny]
 
 class CheckExistenceView(views.APIView):

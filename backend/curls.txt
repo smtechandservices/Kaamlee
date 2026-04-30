@@ -1,0 +1,63 @@
+# Kaamlee API Curl Commands
+
+# ==========================================
+# AUTHENTICATION
+# ==========================================
+
+# Login (Obtain Token)
+curl -X POST http://localhost:8000/api/login/ \
+     -H "Content-Type: application/json" \
+     -d '{"username": "your_username", "password": "your_password"}'
+
+# Signup
+curl -X POST http://localhost:8000/api/signup/ \
+     -H "Content-Type: application/json" \
+     -d '{"username": "new_user", "password": "new_password", "email": "user@example.com", "first_name": "John", "last_name": "Doe"}'
+
+# Get Authenticated User Details
+curl -X GET http://localhost:8000/api/user/ \
+     -H "Authorization: Token YOUR_TOKEN_HERE"
+
+# Get All Jobs
+curl -X GET http://localhost:8000/api/jobs/ \
+     -H "Authorization: Token YOUR_TOKEN_HERE"
+
+# ==========================================
+# PUBLIC DATA (No Token Required)
+# ==========================================
+
+# Get Recent Jobs
+curl -X GET http://localhost:8000/api/recent-jobs/
+
+# Get Stats
+curl -X GET http://localhost:8000/api/stats/
+
+# Get Roles
+curl -X GET http://localhost:8000/api/roles/
+
+# ==========================================
+# ADMIN & SYSTEM (Requires Admin Token)
+# ==========================================
+
+# Admin Login
+curl -X POST http://localhost:8000/api/admin-login/ \
+     -H "Content-Type: application/json" \
+     -d '{"username": "admin", "password": "admin_password"}'
+
+# Trigger Scrape
+curl -X POST http://localhost:8000/api/trigger-scrape/ \
+     -H "Authorization: Token YOUR_ADMIN_TOKEN_HERE" \
+     -H "Content-Type: application/json" \
+     -d '{"search_term": "Software Engineer", "results_wanted": 5}'
+
+# Stop Scrape
+curl -X POST http://localhost:8000/api/stop-scrape/ \
+     -H "Authorization: Token YOUR_ADMIN_TOKEN_HERE"
+
+# Force Reset
+curl -X POST http://localhost:8000/api/force-reset/ \
+     -H "Authorization: Token YOUR_ADMIN_TOKEN_HERE"
+
+# Get Logs
+curl -X GET http://localhost:8000/api/logs/ \
+     -H "Authorization: Token YOUR_ADMIN_TOKEN_HERE"

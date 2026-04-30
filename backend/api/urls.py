@@ -24,8 +24,8 @@ urlpatterns = [
     # Public Data & Exploration
     path('', include(router.urls)),
     path('stats/', StatsView.as_view(), name='stats'),
-    path('recent-jobs/', RecentJobsView.as_view(), name='recent-jobs'),
     path('roles/', RolesView.as_view(), name='roles'),
+    path('recent-jobs/', RecentJobsView.as_view(), name='recent-jobs'),
     
     # Subscription Logic
     path('subscribe/', SubscriptionView.as_view(), name='subscribe'),
@@ -33,9 +33,9 @@ urlpatterns = [
     # ==========================================
     # ADMIN ENDPOINTS (Scraper & System Management)
     # ==========================================
+    path('logs/', LogsView.as_view(), name='logs'),
     path('admin-login/', AdminLoginView.as_view(), name='admin-login'),
     path('trigger-scrape/', TriggerScrapeView.as_view(), name='trigger-scrape'),
     path('stop-scrape/', StopScrapeView.as_view(), name='stop-scrape'),
     path('force-reset/', ForceResetView.as_view(), name='force-reset'),
-    path('logs/', LogsView.as_view(), name='logs'),
 ]
