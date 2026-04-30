@@ -127,7 +127,7 @@ export default function PricingModal({ isOpen, onClose, showCloseButton = true }
 
                     <div className="flex items-baseline gap-3 mb-8">
                       <span className="text-2xl font-mono text-blue-500/50">$</span>
-                      <span className="text-8xl font-black tracking-tighter text-white">4.99</span>
+                      <span className="text-8xl font-black tracking-tighter text-white">2.99</span>
                       <span className="font-mono text-lg text-[#444] uppercase tracking-widest">/ mo</span>
                     </div>
 

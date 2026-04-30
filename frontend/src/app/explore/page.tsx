@@ -2,6 +2,7 @@
 
 import React, { useState, useEffect } from 'react';
 import { Search, Map as MapIcon, List, Filter, SlidersHorizontal, ChevronDown, Monitor, ArrowLeft, LogOut, User as UserIcon, Bookmark } from 'lucide-react';
+import { motion, AnimatePresence, Variants } from 'framer-motion';
 import { JobCard } from '@/components/JobCard';
 import Map from '@/components/Map';
 import Link from 'next/link';
@@ -201,6 +202,35 @@ export default function ExplorePage() {
     }
   };
 
+  const containerVariants: Variants = {
+    hidden: { opacity: 0 },
+    visible: {
+      opacity: 1,
+      transition: {
+        staggerChildren: 0.05,
+        delayChildren: 0.1
+      }
+    }
+  };
+
+  const itemVariants: Variants = {
+    hidden: { 
+      y: 20, 
+      opacity: 0,
+      scale: 0.98
+    },
+    visible: {
+      y: 0,
+      opacity: 1,
+      scale: 1,
+      transition: {
+        type: "spring",
+        stiffness: 260,
+        damping: 20
+      }
+    }
+  };
+
   return (
     <main className="h-screen flex flex-col bg-[#0a0a0a] overflow-hidden relative">
       {/* Header - Always visible for navigation/logout */}
@@ -371,51 +401,64 @@ export default function ExplorePage() {
             </button>
           </div>
           
-          <div className="flex-1 overflow-y-auto p-4 space-y-4 custom-scrollbar">
-            {currentJobs.map(job => (
-              <div key={job.id} id={`job-card-${job.id}`}>
-                <JobCard 
-                  job={job} 
-                  isSelected={selectedJobId === job.id}
-                  onClick={() => setSelectedJobId(job.id)}
-                  onToggleBookmark={(e) => handleToggleBookmark(e, job.id)}
-                />
-              </div>
-            ))}
-            
-            {totalPages > 1 && (
-              <div className="flex items-center justify-between pt-6 pb-2 px-2 border-t border-[#222]/50 mt-4">
-                <button 
-                  onClick={() => {
-                    setCurrentPage(p => Math.max(1, p - 1));
-                    document.querySelector('.flex-1.overflow-y-auto')?.scrollTo(0, 0);
-                  }}
-                  disabled={currentPage === 1}
-                  className="cursor-pointer px-4 py-2 rounded-xl text-xs font-semibold bg-[#161616] text-[#888] border border-[#222] hover:text-white hover:border-[#333] hover:bg-[#1a1a1a] disabled:opacity-50 disabled:cursor-not-allowed transition-all shadow-sm"
+          <AnimatePresence mode="wait">
+            <motion.div 
+              key={`${currentPage}-${searchQuery}-${locationQuery}-${activeCountry}-${remoteOnly}-${bookmarkedOnly}`}
+              variants={containerVariants}
+              initial="hidden"
+              animate="visible"
+              className="flex-1 overflow-y-auto p-4 space-y-4 custom-scrollbar"
+            >
+              {currentJobs.map(job => (
+                <motion.div 
+                  key={job.id} 
+                  variants={itemVariants}
+                  id={`job-card-${job.id}`}
+                  className="w-full"
                 >
-                  Previous
-                </button>
-                <div className="flex flex-col items-center">
-                  <span className="text-xs text-white font-bold">
-                    Page {currentPage} of {totalPages}
-                  </span>
-                  <span className="text-[10px] text-[#555] font-medium mt-0.5">
-                    {filteredJobs.length} total jobs
-                  </span>
+                  <JobCard 
+                    job={job} 
+                    isSelected={selectedJobId === job.id}
+                    onClick={() => setSelectedJobId(job.id)}
+                    onToggleBookmark={(e) => handleToggleBookmark(e, job.id)}
+                  />
+                </motion.div>
+              ))}
+              
+              {totalPages > 1 && (
+                <div className="flex items-center justify-between pt-6 pb-2 px-2 border-t border-[#222]/50 mt-4">
+                  <button 
+                    onClick={() => {
+                      setCurrentPage(p => Math.max(1, p - 1));
+                      document.querySelector('.flex-1.overflow-y-auto')?.scrollTo(0, 0);
+                    }}
+                    disabled={currentPage === 1}
+                    className="cursor-pointer px-4 py-2 rounded-xl text-xs font-semibold bg-[#161616] text-[#888] border border-[#222] hover:text-white hover:border-[#333] hover:bg-[#1a1a1a] disabled:opacity-50 disabled:cursor-not-allowed transition-all shadow-sm"
+                  >
+                    Previous
+                  </button>
+                  <div className="flex flex-col items-center">
+                    <span className="text-xs text-white font-bold">
+                      Page {currentPage} of {totalPages}
+                    </span>
+                    <span className="text-[10px] text-[#555] font-medium mt-0.5">
+                      {filteredJobs.length} total jobs
+                    </span>
+                  </div>
+                  <button 
+                    onClick={() => {
+                      setCurrentPage(p => Math.min(totalPages, p + 1));
+                      document.querySelector('.flex-1.overflow-y-auto')?.scrollTo(0, 0);
+                    }}
+                    disabled={currentPage === totalPages}
+                    className="cursor-pointer px-4 py-2 rounded-xl text-xs font-semibold bg-[#161616] text-[#888] border border-[#222] hover:text-white hover:border-[#333] hover:bg-[#1a1a1a] disabled:opacity-50 disabled:cursor-not-allowed transition-all shadow-sm"
+                  >
+                    Next
+                  </button>
                 </div>
-                <button 
-                  onClick={() => {
-                    setCurrentPage(p => Math.min(totalPages, p + 1));
-                    document.querySelector('.flex-1.overflow-y-auto')?.scrollTo(0, 0);
-                  }}
-                  disabled={currentPage === totalPages}
-                  className="cursor-pointer px-4 py-2 rounded-xl text-xs font-semibold bg-[#161616] text-[#888] border border-[#222] hover:text-white hover:border-[#333] hover:bg-[#1a1a1a] disabled:opacity-50 disabled:cursor-not-allowed transition-all shadow-sm"
-                >
-                  Next
-                </button>
-              </div>
-            )}
-          </div>
+              )}
+            </motion.div>
+          </AnimatePresence>
         </aside>
 
         {/* Map Area */}

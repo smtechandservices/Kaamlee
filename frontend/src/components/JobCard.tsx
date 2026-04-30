@@ -1,7 +1,7 @@
 'use client';
 
 import React from 'react';
-import { MapPin, Briefcase, ExternalLink, Clock, Bookmark } from 'lucide-react';
+import { MapPin, Briefcase, ExternalLink, Clock, Bookmark, Copy, Check } from 'lucide-react';
 
 interface JobCardProps {
   job: {
@@ -15,6 +15,7 @@ interface JobCardProps {
     site: string;
     company_logo?: string;
     date_posted?: string | null;
+    created_at?: string;
     match_score?: number;
     is_bookmarked?: boolean;
     id: string;
@@ -25,15 +26,34 @@ interface JobCardProps {
 }
 
 export const JobCard = ({ job, isSelected, onClick, onToggleBookmark }: JobCardProps) => {
+  const [copied, setCopied] = React.useState(false);
   const companyName = job.company || 'Confidential';
   const getInitial = (name: string) => name ? name.charAt(0).toUpperCase() : '?';
 
+  const formatDate = (dateStr: string | null | undefined) => {
+    if (!dateStr) return '';
+    const date = new Date(dateStr);
+    if (isNaN(date.getTime())) return dateStr;
+    const day = String(date.getDate()).padStart(2, '0');
+    const month = String(date.getMonth() + 1).padStart(2, '0');
+    const year = date.getFullYear();
+    return `${day}/${month}/${year}`;
+  };
+
+  const handleCopyLink = (e: React.MouseEvent) => {
+    e.stopPropagation();
+    navigator.clipboard.writeText(job.job_url);
+    setCopied(true);
+    setTimeout(() => {
+      setCopied(false);
+    }, 2000);
+  };
+
   return (
-    <div 
+    <div
       onClick={onClick}
-      className={`cursor-default job-card p-4 rounded-xl border border-[#222] bg-[#111] hover:border-[#3b82f6] group transition-all relative overflow-hidden ${
-        isSelected ? 'border-[#3b82f6] bg-[#161616]' : ''
-      }`}
+      className={`cursor-default job-card p-4 rounded-xl border border-[#222] bg-[#111] hover:border-[#3b82f6] group transition-all relative overflow-hidden ${isSelected ? 'border-[#3b82f6] bg-[#161616]' : ''
+        }`}
     >
       {/* AI Match Circular Indicator */}
       {job.match_score !== undefined && job.match_score > 0 && (
@@ -59,11 +79,10 @@ export const JobCard = ({ job, isSelected, onClick, onToggleBookmark }: JobCardP
                 strokeDasharray={2 * Math.PI * 11}
                 strokeDashoffset={2 * Math.PI * 11 * (1 - job.match_score / 100)}
                 strokeLinecap="round"
-                className={`transition-all duration-1000 ease-out ${
-                  job.match_score > 70 ? 'text-green-500' : 
-                  job.match_score > 40 ? 'text-blue-500' : 
-                  'text-orange-500'
-                }`}
+                className={`transition-all duration-1000 ease-out ${job.match_score > 70 ? 'text-green-500' :
+                    job.match_score > 40 ? 'text-blue-500' :
+                      'text-orange-500'
+                  }`}
               />
             </svg>
             <div className="absolute inset-0 flex items-center justify-center opacity-0 group-hover/match:opacity-100 transition-all duration-300 bg-[#111]/80 backdrop-blur-sm rounded-full">
@@ -79,12 +98,12 @@ export const JobCard = ({ job, isSelected, onClick, onToggleBookmark }: JobCardP
         </div>
       )}
       <div className="flex gap-4 items-start">
-        <div className="flex flex-col items-center shrink-0">
+        <div className="flex flex-col items-center shrink-0 gap-2">
           <div className="w-12 h-12 rounded-lg bg-white flex items-center justify-center border border-[#333] overflow-hidden group-hover:border-[#3b82f6] transition-colors">
             {job.company_logo ? (
-              <img 
-                src={job.company_logo} 
-                alt={companyName} 
+              <img
+                src={job.company_logo}
+                alt={companyName}
                 className="w-full h-full object-contain"
                 onError={(e) => {
                   (e.target as HTMLImageElement).style.display = 'none';
@@ -97,30 +116,41 @@ export const JobCard = ({ job, isSelected, onClick, onToggleBookmark }: JobCardP
               </span>
             )}
           </div>
-          
+
           {/* Bookmark Toggle below logo */}
-          <button 
+          <button
             onClick={onToggleBookmark}
-            className={`w-full flex justify-center cursor-pointer mt-2 p-2 rounded-lg border transition-all ${
-              job.is_bookmarked 
-                ? 'bg-blue-500/10 border-blue-500/30 text-blue-500' 
+            className={`w-full flex justify-center cursor-pointer p-2 rounded-lg border transition-all ${job.is_bookmarked
+                ? 'bg-blue-500/10 border-blue-500/30 text-blue-500'
                 : 'bg-transparent border-[#222] text-[#444] hover:border-[#333] hover:text-[#666]'
-            }`}
+              }`}
             title={job.is_bookmarked ? "Unbookmark" : "Bookmark"}
           >
             <Bookmark size={18} fill={job.is_bookmarked ? "currentColor" : "none"} />
           </button>
+
+          <button
+            onClick={handleCopyLink}
+            className={`w-full flex justify-center cursor-pointer p-2 rounded-lg border transition-all${
+              copied 
+                ? 'bg-green-500/10 border-green-500/30 text-green-400' 
+                : 'bg-[#161616] border-[#222] text-[#555] hover:text-white hover:border-[#333]'
+            }`}
+          >
+            {copied ? <Check size={12} /> : <Copy size={12} />}
+            {/* {copied ? 'Copied' : 'Copy Link'} */}
+          </button>
         </div>
-        
+
         <div className="flex-1 min-w-0">
-          <h3 className="font-semibold text-white group-hover:text-[#3b82f6] transition-colors truncate">
+          <h3 className="max-w-[85%] font-semibold text-white group-hover:text-[#3b82f6] transition-colors truncate">
             {job.title}
           </h3>
-          
+
           <div className="flex items-center gap-3 mb-3 mt-1">
-            <p className="text-sm text-[#888] truncate">{companyName}</p>
+            <p className="max-w-[90%] text-sm text-[#888] truncate">{companyName}</p>
           </div>
-          
+
           <div className="flex flex-wrap gap-2 mb-3">
             <div className="flex items-center gap-1 text-[11px] text-[#666] bg-[#1a1a1a] px-2 py-1 rounded-full border border-[#222]">
               <MapPin size={12} />
@@ -162,9 +192,9 @@ export const JobCard = ({ job, isSelected, onClick, onToggleBookmark }: JobCardP
               Apply on {job.site}
             </a>
             
-            {job.date_posted && (
+            {(job.date_posted || job.created_at) && (
               <span className="text-[10px] text-[#555] ml-auto">
-                {job.date_posted}
+                {formatDate(job.date_posted || job.created_at)}
               </span>
             )}
           </div>

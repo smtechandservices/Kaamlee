@@ -501,7 +501,7 @@ export default function LandingPage() {
               },
               {
                 q: "How does the 'All-Access' pass work?",
-                a: "One flat fee of $4.99/mo. No tiers, no 'pro' features locked behind higher paywalls. You get the map and the jobs."
+                a: "One flat fee of $2.99/mo. No tiers, no 'pro' features locked behind higher paywalls. You get the map and the jobs."
               },
               {
                 q: "Can I cancel my subscription easily?",
