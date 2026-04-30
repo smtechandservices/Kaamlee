@@ -31,7 +31,10 @@ export default function PricingModal({ isOpen, onClose, showCloseButton = true }
   }, [isOpen]);
 
   const handleInitialize = async () => {
-    if (!token) return;
+    if (!token) {
+      router.push('/login');
+      return;
+    }
     
     setIsProcessing(true);
     try {
@@ -51,18 +54,20 @@ export default function PricingModal({ isOpen, onClose, showCloseButton = true }
         setTimeout(() => {
           if (window.location.pathname === '/explore') {
             onClose?.();
-            // We'll reset success state after the modal is fully closed/unmounted
           } else {
             router.push('/explore');
           }
         }, 2000);
       } else {
         setIsProcessing(false);
-        console.error('Failed to renew subscription');
+        const errorData = await response.json().catch(() => ({}));
+        console.error('Failed to renew subscription:', errorData);
+        alert(errorData.error || 'Failed to initialize access. Please try again.');
       }
     } catch (error) {
       console.error('Subscription error:', error);
       setIsProcessing(false);
+      alert('A network error occurred. Please check your connection and try again.');
     }
   };
 
@@ -146,7 +151,7 @@ export default function PricingModal({ isOpen, onClose, showCloseButton = true }
                           <div className="w-5 h-5 border-2 border-black border-t-transparent rounded-full animate-spin" />
                         ) : (
                           <>
-                            <span>{user?.is_subscribed ? 'Renew Plan' : 'Initialize Access'}</span>
+                            <span>{!user ? 'Log in to Subscribe' : (user?.is_subscribed ? 'Renew Plan' : 'Initialize Access')}</span>
                             <ArrowRight size={18} className="group-hover/btn:translate-x-1 transition-transform" />
                           </>
                         )}

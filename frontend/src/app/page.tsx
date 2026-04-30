@@ -49,7 +49,7 @@ function FAQItem({ faq, index, isOpen, onToggle }: { faq: { q: string, a: string
 }
 
 export default function LandingPage() {
-  const { user, logout } = useAuth();
+  const { user, logout, isLoading } = useAuth();
   const router = useRouter();
   const [recentJobs, setRecentJobs] = useState<any[]>([]);
   const [stats, setStats] = useState<any>(null);
@@ -59,6 +59,7 @@ export default function LandingPage() {
 
   const handleExploreClick = (e: React.MouseEvent) => {
     e.preventDefault();
+    if (isLoading) return;
     if (!user) {
       router.push('/login');
     } else if (!user.is_subscribed) {
