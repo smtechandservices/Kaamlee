@@ -1,4 +1,4 @@
-# Kaamlee API Curl Commands
+# Kaamlee API Curl Commands & Sample Responses
 
 # ==========================================
 # AUTHENTICATION
@@ -8,32 +8,98 @@
 curl -X POST http://localhost:8000/api/login/ \
      -H "Content-Type: application/json" \
      -d '{"username": "your_username", "password": "your_password"}'
+# Response: {"token": "9944b09199c62bcf9418ad846dd0e4bbdfc6ee4b"}
 
 # Signup
 curl -X POST http://localhost:8000/api/signup/ \
      -H "Content-Type: application/json" \
      -d '{"username": "new_user", "password": "new_password", "email": "user@example.com", "first_name": "John", "last_name": "Doe"}'
+# Response: {"username": "new_user", "email": "user@example.com", "first_name": "John", "last_name": "Doe"}
 
 # Get Authenticated User Details
 curl -X GET http://localhost:8000/api/user/ \
      -H "Authorization: Token YOUR_TOKEN_HERE"
+# Response: {
+#   "id": 5,
+#   "username": "mayank",
+#   "email": "mayank@example.com",
+#   "first_name": "Mayank",
+#   "last_name": "Sharma",
+#   "is_subscribed": true,
+#   "subscription_expires_at": "2026-05-30T10:00:00Z"
+# }
+
+# ==========================================
+# PAYMENTS & SUBSCRIPTIONS
+# ==========================================
+
+# Create Razorpay Order (₹249)
+curl -X POST http://localhost:8000/payments/create-order/ \
+     -H "Authorization: Token YOUR_TOKEN_HERE" \
+     -H "Content-Type: application/json"
+# Response: {
+#   "order_id": "order_OAO7R2lY7y7R1e",
+#   "amount": 24900,
+#   "currency": "INR",
+#   "key": "rzp_test_SjoDTNegahkzWG"
+# }
+
+# Verify Razorpay Payment
+curl -X POST http://localhost:8000/payments/verify-payment/ \
+     -H "Authorization: Token YOUR_TOKEN_HERE" \
+     -H "Content-Type: application/json" \
+     -d '{
+          "razorpay_order_id": "order_OAO7R2lY7y7R1e",
+          "razorpay_payment_id": "pay_OAO7X8lY8y8R2f",
+          "razorpay_signature": "59f8..."
+         }'
+# Response: {"status": "success", "message": "Payment verified and subscription activated"}
+
+# Get My Transactions
+curl -X GET http://localhost:8000/payments/transactions/ \
+     -H "Authorization: Token YOUR_TOKEN_HERE"
+# Response: [
+#   {
+#     "id": 12,
+#     "razorpay_order_id": "order_OAO7R2lY7y7R1e",
+#     "razorpay_payment_id": "pay_OAO7X8lY8y8R2f",
+#     "amount": 24900,
+#     "status": "success",
+#     "created_at": "2026-05-01T15:30:00Z"
+#   }
+# ]
+
+# Manual Status Check (Fail-safe for pending payments)
+curl -X POST http://localhost:8000/payments/check-status/ \
+     -H "Authorization: Token YOUR_TOKEN_HERE" \
+     -H "Content-Type: application/json" \
+     -d '{"razorpay_order_id": "order_OAO7R2lY7y7R1e"}'
+# Response: {"status": "success", "message": "Payment verified via Razorpay API"}
+
+# Get User Transactions (Admin Only)
+curl -X GET http://localhost:8000/payments/transactions/?user_id=1 \
+     -H "Authorization: Token YOUR_ADMIN_TOKEN_HERE"
+
+# ==========================================
+# CORE API
+# ==========================================
 
 # Get All Jobs
 curl -X GET http://localhost:8000/api/jobs/ \
      -H "Authorization: Token YOUR_TOKEN_HERE"
+# Response: {"count": 1250, "next": "...", "results": [{"id": 1, "title": "Developer", ...}]}
 
-# ==========================================
-# PUBLIC DATA (No Token Required)
-# ==========================================
-
-# Get Recent Jobs
+# Get Recent Jobs (Public)
 curl -X GET http://localhost:8000/api/recent-jobs/
+# Response: [{"id": 101, "title": "Frontend Lead", "company_name": "Tech Corp", ...}]
 
-# Get Stats
+# Get Stats (Public)
 curl -X GET http://localhost:8000/api/stats/
+# Response: {"total_jobs": 5420, "total_locations": 42, "active_sessions": 2}
 
-# Get Roles
+# Get Roles (Public)
 curl -X GET http://localhost:8000/api/roles/
+# Response: ["Engineering", "Product", "Design", "Marketing"]
 
 # ==========================================
 # ADMIN & SYSTEM (Requires Admin Token)
@@ -43,21 +109,26 @@ curl -X GET http://localhost:8000/api/roles/
 curl -X POST http://localhost:8000/api/admin-login/ \
      -H "Content-Type: application/json" \
      -d '{"username": "admin", "password": "admin_password"}'
+# Response: {"token": "admin_token_xxx"}
 
 # Trigger Scrape
 curl -X POST http://localhost:8000/api/trigger-scrape/ \
      -H "Authorization: Token YOUR_ADMIN_TOKEN_HERE" \
      -H "Content-Type: application/json" \
      -d '{"search_term": "Software Engineer", "results_wanted": 5}'
+# Response: {"status": "Scrape triggered"}
 
 # Stop Scrape
 curl -X POST http://localhost:8000/api/stop-scrape/ \
      -H "Authorization: Token YOUR_ADMIN_TOKEN_HERE"
+# Response: {"status": "Scrape stopped"}
 
 # Force Reset
 curl -X POST http://localhost:8000/api/force-reset/ \
      -H "Authorization: Token YOUR_ADMIN_TOKEN_HERE"
+# Response: {"status": "System reset initiated"}
 
 # Get Logs
 curl -X GET http://localhost:8000/api/logs/ \
      -H "Authorization: Token YOUR_ADMIN_TOKEN_HERE"
+# Response: [{"id": 1, "action": "scrape_start", "timestamp": "..."}]

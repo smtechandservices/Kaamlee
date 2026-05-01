@@ -3,7 +3,7 @@
 import React, { useEffect, useState } from 'react';
 import Link from 'next/link';
 import { motion, AnimatePresence } from 'framer-motion';
-import { ArrowRight, Search, Zap, Globe, Shield, LogOut, Briefcase, MapPin, Building2, Plus, Minus, RotateCcw, X, ExternalLink } from 'lucide-react';
+import { ArrowRight, Search, Zap, Globe, Shield, LogOut, Briefcase, MapPin, Building2, Plus, Minus, RotateCcw, X, ExternalLink, CreditCard } from 'lucide-react';
 import { useAuth } from '@/context/AuthContext';
 import { useRouter } from 'next/navigation';
 import MapComponent from '@/components/Map';
@@ -72,12 +72,25 @@ export default function LandingPage() {
   useEffect(() => {
     fetch(`${process.env.NEXT_PUBLIC_API_URL}/api/recent-jobs/`)
       .then(res => res.json())
-      .then(data => setRecentJobs(data))
+      .then(data => {
+        if (Array.isArray(data)) {
+          setRecentJobs(data);
+        } else {
+          console.error("Expected array for recent jobs, got:", data);
+          setRecentJobs([]);
+        }
+      })
       .catch(err => console.error("Error fetching recent jobs:", err));
 
     fetch(`${process.env.NEXT_PUBLIC_API_URL}/api/stats/`)
       .then(res => res.json())
-      .then(data => setStats(data))
+      .then(data => {
+        if (data && !data.error && !data.detail) {
+          setStats(data);
+        } else {
+          console.error("Invalid stats data:", data);
+        }
+      })
       .catch(err => console.error("Error fetching stats:", err));
   }, []);
 
@@ -159,7 +172,7 @@ export default function LandingPage() {
             <div className="inline-flex items-center gap-2 sm:gap-3 bg-[#111] border border-[#222] px-3 sm:px-4 py-1 sm:py-1.5 rounded-full mb-6 sm:mb-10">
               <span className="w-1.5 h-1.5 sm:w-2 sm:h-2 rounded-full bg-blue-500 animate-pulse" />
               <span className="text-[10px] sm:text-md font-black tracking-widest uppercase text-[#888]">
-                <span className='text-sm sm:text-lg text-white'>{stats?.jobs_last_3_days.toLocaleString() || '420'}</span> NEW ROLES IN LAST 72H
+                <span className='text-sm sm:text-lg text-white'>{stats?.jobs_last_3_days?.toLocaleString() || '420'}</span> NEW ROLES IN LAST 72H
               </span>
             </div>
 
@@ -272,7 +285,7 @@ export default function LandingPage() {
         <section className="px-6 md:px-8 py-12 sm:py-16 border-y border-white/40 bg-black/20 backdrop-blur-sm relative overflow-hidden">
           <div className="mx-auto grid grid-cols-2 md:grid-cols-4 gap-8 sm:gap-12">
             {[
-              { label: "LIVE_LISTINGS", value: stats?.total_jobs.toLocaleString() || "420" },
+              { label: "LIVE_LISTINGS", value: stats?.total_jobs?.toLocaleString() || "420" },
               { label: "COMPANIES", value: "1000 +" },
               { label: "SOURCES", value: "12 boards" },
               { label: "UPTIME", value: "98.99%" }
@@ -306,7 +319,7 @@ export default function LandingPage() {
               }}
             >
               {/* Double the array for seamless looping */}
-              {[...recentJobs.slice(0, 10), ...recentJobs.slice(0, 10)].map((job, i) => (
+              {(Array.isArray(recentJobs) ? [...recentJobs.slice(0, 10), ...recentJobs.slice(0, 10)] : []).map((job, i) => (
                 <div key={i} className="flex-shrink-0 w-[280px] sm:w-[350px] group p-6 sm:p-8 border border-white/5 bg-[#080808] hover:border-blue-500/30 hover:bg-[#0a0a0a] transition-all relative overflow-hidden">
                   <div className="flex items-center justify-between mb-4">
                     <h4 className="text-xl font-bold tracking-tight text-white mb-4 line-clamp-1 truncate">{job.title}</h4>
@@ -504,7 +517,7 @@ export default function LandingPage() {
               },
               {
                 q: "How does the 'All-Access' pass work?",
-                a: "One flat fee of $2.99/mo. No tiers, no 'pro' features locked behind higher paywalls. You get the map and the jobs."
+                a: "One flat fee of INR 249/mo. No tiers, no 'pro' features locked. Payments are securely powered by Razorpay and handled by Commhawk."
               },
               {
                 q: "Can I cancel my subscription easily?",
@@ -541,7 +554,7 @@ export default function LandingPage() {
               <div className="text-lg font-bold tracking-[0.3em] uppercase">KAAMLEE</div>
               <p className="text-[#444] text-[10px] font-mono tracking-widest uppercase">
                 © 2026 KAAMLEE <br />
-                DESIGNED FOR THE AMBITIOUS
+                PAYMENTS BY RAZORPAY · HANDLED BY COMMHAWK
               </p>
             </div>
 

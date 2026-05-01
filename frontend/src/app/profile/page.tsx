@@ -3,7 +3,7 @@
 import React, { useState, useEffect } from 'react';
 import { useRouter } from 'next/navigation';
 import { motion } from 'framer-motion';
-import { ArrowLeft, User, Phone, Link as LinkIcon, Loader2, Save, CheckCircle2, Briefcase, X } from 'lucide-react';
+import { ArrowLeft, User, Phone, Link as LinkIcon, Loader2, Save, CheckCircle2, Briefcase, X, Receipt } from 'lucide-react';
 import { useAuth } from '@/context/AuthContext';
 import Link from 'next/link';
 
@@ -264,6 +264,14 @@ export default function ProfilePage() {
                 {isSubmitting ? <Loader2 className="animate-spin w-4 h-4 sm:w-5 sm:h-5" /> : <Save className="w-4 h-4 sm:w-5 sm:h-5" />}
                 Save Changes
               </button>
+
+              <Link 
+                href="/transactions"
+                className="cursor-pointer w-full mt-4 flex items-center justify-center gap-2 py-3 sm:py-4 text-[#555] hover:text-[#888] transition-colors text-[10px] sm:text-xs font-black uppercase tracking-[0.2em]"
+              >
+                <Receipt className="w-4 h-4" />
+                View Billing History
+              </Link>
             </div>
           </form>
         </div>

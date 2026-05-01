@@ -31,7 +31,7 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
   const router = useRouter();
 
   useEffect(() => {
-    const savedToken = localStorage.getItem('kaamlee_token');
+    const savedToken = sessionStorage.getItem('kaamlee_token');
     if (savedToken) {
       setToken(savedToken);
       fetchUser(savedToken);
@@ -62,14 +62,14 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
   };
 
   const login = (newToken: string) => {
-    localStorage.setItem('kaamlee_token', newToken);
+    sessionStorage.setItem('kaamlee_token', newToken);
     setToken(newToken);
     fetchUser(newToken);
     router.push('/explore');
   };
 
   const logout = () => {
-    localStorage.removeItem('kaamlee_token');
+    sessionStorage.removeItem('kaamlee_token');
     setToken(null);
     setUser(null);
     router.push('/');

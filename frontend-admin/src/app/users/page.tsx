@@ -18,7 +18,10 @@ import {
   ExternalLink,
   CheckCircle2,
   XCircle,
-  ArrowRight
+  ArrowRight,
+  CreditCard,
+  Clock,
+  RotateCcw
 } from 'lucide-react';
 import Link from 'next/link';
 import { useRouter } from 'next/navigation';
@@ -39,11 +42,23 @@ interface UserProfile {
   is_staff: boolean;
 }
 
+interface Transaction {
+  id: number;
+  razorpay_order_id: string;
+  razorpay_payment_id: string | null;
+  amount: number;
+  status: string;
+  created_at: string;
+}
+
 export default function UserManagement() {
   const [users, setUsers] = useState<UserProfile[]>([]);
   const [loading, setLoading] = useState(true);
   const [searchTerm, setSearchTerm] = useState('');
   const [editingUser, setEditingUser] = useState<UserProfile | null>(null);
+  const [viewingTransactions, setViewingTransactions] = useState<UserProfile | null>(null);
+  const [userTransactions, setUserTransactions] = useState<Transaction[]>([]);
+  const [txLoading, setTxLoading] = useState(false);
   const router = useRouter();
 
   const fetchUsers = async () => {
@@ -128,6 +143,24 @@ export default function UserManagement() {
       }
     } catch (error) {
       alert("Failed to update user");
+    }
+  };
+
+  const fetchUserTransactions = async (userId: number) => {
+    const token = localStorage.getItem('admin_token');
+    setTxLoading(true);
+    try {
+      const res = await fetch(`${process.env.NEXT_PUBLIC_API_URL}/payments/transactions/?user_id=${userId}`, {
+        headers: { 'Authorization': `Token ${token}` }
+      });
+      if (res.ok) {
+        const data = await res.json();
+        setUserTransactions(data);
+      }
+    } catch (error) {
+      console.error("Failed to fetch tx:", error);
+    } finally {
+      setTxLoading(false);
     }
   };
 
@@ -264,9 +297,20 @@ export default function UserManagement() {
                               >
                                 {user.is_subscribed ? 'Revoke' : 'Grant Access'}
                               </button>
+                               <button 
+                                onClick={() => {
+                                  setViewingTransactions(user);
+                                  fetchUserTransactions(user.id);
+                                }}
+                                className="cursor-pointer p-2 rounded-lg bg-[#222] hover:bg-[#333] transition-colors text-[#888] hover:text-white"
+                                title="View Transactions"
+                              >
+                                <CreditCard size={18} />
+                              </button>
                               <button 
                                 onClick={() => setEditingUser(user)}
                                 className="cursor-pointer p-2 rounded-lg bg-[#222] hover:bg-[#333] transition-colors text-[#888] hover:text-white"
+                                title="Edit User"
                               >
                                 <MoreHorizontal size={18} />
                               </button>
@@ -295,6 +339,19 @@ export default function UserManagement() {
             user={editingUser} 
             onClose={() => setEditingUser(null)} 
             onSave={handleUpdateUser} 
+          />
+        )}
+
+        {viewingTransactions && (
+          <TransactionsModal 
+            user={viewingTransactions} 
+            transactions={userTransactions} 
+            loading={txLoading} 
+            onClose={() => {
+              setViewingTransactions(null);
+              setUserTransactions([]);
+            }} 
+            onRefresh={() => fetchUserTransactions(viewingTransactions.id)}
           />
         )}
       </AnimatePresence>
@@ -415,6 +472,122 @@ function EditUserModal({ user, onClose, onSave }: { user: UserProfile, onClose: 
             className="cursor-pointer bg-white text-black hover:bg-gray-200 px-8 py-3 rounded-xl font-bold transition-all shadow-lg shadow-blue-600/20"
           >
             Save Changes
+          </button>
+        </div>
+      </motion.div>
+    </div>
+  );
+}
+
+
+function TransactionsModal({ user, transactions, loading, onClose, onRefresh }: { user: UserProfile, transactions: Transaction[], loading: boolean, onClose: () => void, onRefresh: () => void }) {
+  const [checkingStatus, setCheckingStatus] = useState<string | null>(null);
+
+  const handleCheckStatus = async (orderId: string) => {
+    const token = localStorage.getItem('admin_token');
+    setCheckingStatus(orderId);
+    try {
+      const res = await fetch(`${process.env.NEXT_PUBLIC_API_URL}/payments/check-status/`, {
+        method: 'POST',
+        headers: {
+          'Authorization': `Token ${token}`,
+          'Content-Type': 'application/json'
+        },
+        body: JSON.stringify({ razorpay_order_id: orderId })
+      });
+      const data = await res.json();
+      if (res.ok && data.status === 'success') {
+        onRefresh();
+      } else {
+        alert(data.message || "Payment still pending or not found on Razorpay.");
+      }
+    } catch (error) {
+      console.error("Error checking status:", error);
+    } finally {
+      setCheckingStatus(null);
+    }
+  };
+
+  return (
+    <div className="fixed inset-0 bg-black/80 backdrop-blur-sm z-50 flex items-center justify-center p-4">
+      <motion.div 
+        initial={{ opacity: 0, scale: 0.95 }}
+        animate={{ opacity: 1, scale: 1 }}
+        exit={{ opacity: 0, scale: 0.95 }}
+        className="bg-[#111] border border-[#222] rounded-3xl w-full lg:max-w-2xl overflow-hidden shadow-2xl flex flex-col max-h-[80vh]"
+      >
+        <div className="p-8 border-b border-[#222] flex items-center justify-between shrink-0">
+          <div>
+            <h2 className="text-2xl font-bold">Billing History</h2>
+            <p className="text-sm text-[#555]">Transactions for @{user.username}</p>
+          </div>
+          <button onClick={onClose} className="cursor-pointer p-2 hover:bg-[#222] rounded-xl text-[#555] hover:text-white transition-colors">
+            <XCircle size={24} />
+          </button>
+        </div>
+
+        <div className="p-8 overflow-y-auto flex-1">
+          {loading ? (
+            <div className="flex flex-col items-center justify-center py-12">
+              <Loader2 className="w-8 h-8 text-blue-500 animate-spin mb-4" />
+              <p className="text-[#555] text-xs font-bold uppercase tracking-widest">Retrieving logs</p>
+            </div>
+          ) : transactions.length === 0 ? (
+            <div className="text-center py-12">
+              <CreditCard className="w-12 h-12 text-[#222] mx-auto mb-4" />
+              <p className="text-[#555] font-medium">No transactions found for this user.</p>
+            </div>
+          ) : (
+            <div className="space-y-3">
+              {transactions.map((tx) => (
+                <div key={tx.id} className="bg-black/40 border border-[#222] rounded-2xl p-5 flex items-center justify-between gap-4">
+                  <div className="flex items-center gap-4">
+                    <div className={`w-10 h-10 rounded-xl flex items-center justify-center ${
+                      tx.status === 'success' ? 'bg-green-500/10 text-green-500' : 
+                      tx.status === 'failed' ? 'bg-red-500/10 text-red-500' : 'bg-blue-500/10 text-blue-500'
+                    }`}>
+                      {tx.status === 'success' ? <CheckCircle2 size={18} /> : 
+                       tx.status === 'failed' ? <XCircle size={18} /> : <Clock size={18} />}
+                    </div>
+                    <div>
+                      <div className="font-bold">₹{tx.amount / 100}</div>
+                      <div className="text-[10px] text-[#555] uppercase tracking-wider font-mono">
+                        {new Date(tx.created_at).toLocaleString()}
+                      </div>
+                    </div>
+                  </div>
+                  <div className="text-right">
+                    <div className="text-[10px] font-black uppercase tracking-widest text-[#333]">Order ID</div>
+                    <div className="flex items-center gap-2 justify-end">
+                      {tx.status === 'pending' && (
+                        <button 
+                          onClick={() => handleCheckStatus(tx.razorpay_order_id)}
+                          disabled={checkingStatus === tx.razorpay_order_id}
+                          className="cursor-pointer p-1 rounded-lg bg-blue-500/10 text-blue-500 hover:bg-blue-500/20 transition-all"
+                          title="Refresh Status"
+                        >
+                          <RotateCcw size={10} className={`${checkingStatus === tx.razorpay_order_id ? 'animate-spin' : ''}`} />
+                        </button>
+                      )}
+                      <div className="text-[10px] font-mono text-[#666]">{tx.razorpay_order_id}</div>
+                    </div>
+                    <div className={`text-[10px] font-black uppercase mt-1 ${
+                      tx.status === 'success' ? 'text-green-500/50' : 
+                      tx.status === 'failed' ? 'text-red-500/50' : 'text-blue-500/50'
+                    }`}>{tx.status}</div>
+                  </div>
+                </div>
+              ))}
+            </div>
+          )}
+        </div>
+
+        <div className="p-8 bg-[#161616]/50 border-t border-[#222] flex items-center justify-end shrink-0">
+          <button 
+            onClick={onClose}
+            className="cursor-pointer bg-[#222] text-white hover:bg-[#333] px-8 py-3 rounded-xl font-bold transition-all"
+          >
+            Close
           </button>
         </div>
       </motion.div>

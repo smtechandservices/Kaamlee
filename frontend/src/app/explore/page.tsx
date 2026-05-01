@@ -1,7 +1,7 @@
 'use client';
 
 import React, { useState, useEffect } from 'react';
-import { Search, Map as MapIcon, List, Filter, SlidersHorizontal, ChevronDown, Monitor, ArrowLeft, LogOut, User as UserIcon, Bookmark } from 'lucide-react';
+import { Search, Map as MapIcon, List, Filter, SlidersHorizontal, ChevronDown, Monitor, ArrowLeft, LogOut, User as UserIcon, Bookmark, CreditCard } from 'lucide-react';
 import { motion, AnimatePresence, Variants } from 'framer-motion';
 import { JobCard } from '@/components/JobCard';
 import Map from '@/components/Map';
@@ -150,30 +150,7 @@ export default function ExplorePage() {
   const totalPages = Math.ceil(filteredJobs.length / jobsPerPage);
   const currentJobs = filteredJobs.slice((currentPage - 1) * jobsPerPage, currentPage * jobsPerPage);
 
-  const getTimeLeft = (expiry: string | null | undefined) => {
-    if (!expiry) return null;
-    const now = new Date();
-    const expiryDate = new Date(expiry);
-    const diff = expiryDate.getTime() - now.getTime();
-    if (diff <= 0) return 'Expired';
-    
-    const days = Math.floor(diff / (1000 * 60 * 60 * 24));
-    if (days > 0) return `${days}d left`;
-    
-    const hours = Math.floor(diff / (1000 * 60 * 60));
-    return `${hours}h left`;
-  };
-
-  const getDaysLeft = (expiry: string | null | undefined) => {
-    if (!expiry) return 0;
-    const now = new Date();
-    const expiryDate = new Date(expiry);
-    const diff = expiryDate.getTime() - now.getTime();
-    return Math.floor(diff / (1000 * 60 * 60 * 24));
-  };
-
-  const timeLeft = getTimeLeft(user?.subscription_expires_at);
-  const daysLeft = getDaysLeft(user?.subscription_expires_at);
+  
   
   const handleToggleBookmark = async (e: React.MouseEvent, jobId: string) => {
     e.stopPropagation();
@@ -246,23 +223,18 @@ export default function ExplorePage() {
 
         <div className="flex items-center gap-2">
           {/* Subscription Status - Hidden on small mobile */}
+
           {user?.is_subscribed && (
-            <div className="flex items-center gap-2 sm:gap-3 px-2 sm:px-3 py-1.5 border border-[#222] rounded-full mr-1 sm:mr-2">
-              <span className="text-[12px] sm:text-[14px] font-bold text-blue-400 leading-none">{timeLeft || ''}</span>
-              {daysLeft <= 20 && (
-                <>
-                  <div className="w-px h-6 bg-blue-500/10" />
-                  <button 
-                    onClick={() => setIsPricingModalOpen(true)}
-                    className="cursor-pointer text-[8px] sm:text-[10px] font-black text-white bg-blue-600 hover:bg-blue-700 px-2 sm:px-3 py-1 sm:py-1.5 rounded-full transition-all uppercase tracking-wider shadow-lg shadow-blue-600/20"
-                  >
-                    Renew
-                  </button>
-                </>
-              )}
-            </div>
+            <Link 
+              href="/transactions"
+              className="flex items-center gap-2 text-[#888] hover:text-white transition-colors group mr-2"
+              title="Billing History"
+            >
+                <CreditCard size={20} />
+            </Link>
           )}
 
+          <div className="w-px h-6 bg-[#222] mx-1 sm:mx-2" />
           {/* View Toggles - Always visible */}
           <div className="flex items-center gap-1 sm:gap-2 bg-[#161616] rounded-full p-1 border border-[#222]">
             <button 
@@ -287,6 +259,7 @@ export default function ExplorePage() {
               <MapIcon size={14} />
             </button>
           </div>
+
           <div className="w-px h-6 bg-[#222] mx-1 sm:mx-2" />
 
           <button 
