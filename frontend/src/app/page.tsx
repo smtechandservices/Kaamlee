@@ -163,20 +163,14 @@ export default function LandingPage() {
             animate={{ opacity: 1, x: 0 }}
             transition={{ duration: 0.8 }}
           >
-            <div className="flex items-center gap-4 mb-6 sm:mb-8">
-              <span className="font-mono text-[10px] sm:text-xs text-blue-500 font-bold">01</span>
-              <div className="h-px w-12 sm:w-20 bg-blue-500" />
-              <span className="font-mono text-[10px] sm:text-xs text-blue-500 tracking-widest uppercase">// THE_PITCH.MD</span>
-            </div>
-
             <div className="inline-flex items-center gap-2 sm:gap-3 bg-[#111] border border-[#222] px-3 sm:px-4 py-1 sm:py-1.5 rounded-full mb-6 sm:mb-10">
               <span className="w-1.5 h-1.5 sm:w-2 sm:h-2 rounded-full bg-blue-500 animate-pulse" />
               <span className="text-[10px] sm:text-md font-black tracking-widest uppercase text-[#888]">
-                <span className='text-sm sm:text-lg text-white'>{stats?.jobs_last_3_days?.toLocaleString() || '420'}</span> NEW ROLES IN LAST 72H
+                <span className='text-sm sm:text-lg text-white'>{stats?.total_jobs?.toLocaleString()?.toLocaleString() || '420'} </span> NEW ROLES IN LAST 72H
               </span>
             </div>
 
-            <h1 className="text-4xl sm:text-6xl md:text-7xl font-black tracking-tight leading-[1.1] mb-6 sm:mb-10">
+            <h1 className="text-5xl sm:text-6xl md:text-7xl font-black tracking-tight leading-[1.1] mb-6 sm:mb-10">
               Job Applying.<br />
               is a <span className="text-serif font-normal italic">job.</span>
             </h1>
@@ -447,7 +441,6 @@ export default function LandingPage() {
         <section className="px-6 md:px-8 py-20 border-t border-white/40 mx-auto">
           <div className="flex items-center justify-between flex-wrap mb-16 gap-2">
             <div className="flex items-center gap-4">
-              <span className="font-mono text-xs text-blue-500 font-bold">02</span>
               <div className="h-px w-12 bg-blue-500" />
               <span className="font-mono text-xs text-blue-500 tracking-widest uppercase text-nowrap">// HOW_IT_WORKS.TS</span>
             </div>
@@ -504,7 +497,6 @@ export default function LandingPage() {
         {/* Section 04: FAQ */}
         <section id="faq" className="px-6 sm:px-8 mx-auto mb-24">
           <div className="flex items-center gap-4 mb-12">
-            <span className="font-mono text-[10px] sm:text-xs text-blue-500 font-bold">03</span>
             <div className="h-px w-12 sm:w-20 bg-blue-500" />
             <span className="font-mono text-[10px] sm:text-xs text-blue-500 tracking-widest uppercase">// FAQ.MD</span>
           </div>
