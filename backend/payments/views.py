@@ -9,13 +9,16 @@ from .models import Transaction
 from .serializers import TransactionSerializer
 from django.contrib.auth.models import User
 from django.conf import settings
+from api.models import Profile
+from django.db.models import Sum
+from .constants import SUBSCRIPTION_PRICE_PAISE, SUBSCRIPTION_PRICE_INR
 
 class CreateOrderView(views.APIView):
     permission_classes = [permissions.IsAuthenticated]
 
     def post(self, request):
         # amount = request.data.get('amount') # in paise
-        amount = 24900 # Production price: 249 INR (24900 paise)
+        amount = SUBSCRIPTION_PRICE_PAISE # Production price: 249 INR (24900 paise)
 
         key_id = getattr(settings, 'RAZORPAY_KEY_ID', None)
         key_secret = getattr(settings, 'RAZORPAY_KEY_SECRET', None)
@@ -180,3 +183,30 @@ class CheckPaymentStatusView(views.APIView):
                 })
         except Exception as e:
             return Response({"error": str(e)}, status=500)
+
+class AdminRevenueStatsView(views.APIView):
+    permission_classes = [permissions.IsAdminUser]
+
+    def get(self, request):
+        now = timezone.now()
+        start_of_month = now.replace(day=1, hour=0, minute=0, second=0, microsecond=0)
+        
+        # 1. Revenue (converting paise to INR)
+        total_revenue = Transaction.objects.filter(status='success').aggregate(Sum('amount'))['amount__sum'] or 0
+        monthly_revenue = Transaction.objects.filter(status='success', created_at__gte=start_of_month).aggregate(Sum('amount'))['amount__sum'] or 0
+        
+        # 2. Subscribed Users
+        active_subscriptions = Profile.objects.filter(is_subscribed=True, subscription_expires_at__gt=now).count()
+        total_users = Profile.objects.count()
+        
+        # 3. Recent Transactions (Returning all to allow filtering)
+        recent_transactions = Transaction.objects.all().order_by('-created_at')[:100]
+        serializer = TransactionSerializer(recent_transactions, many=True)
+        
+        return Response({
+            'total_revenue': total_revenue / 100,
+            'monthly_revenue': monthly_revenue / 100,
+            'active_subscriptions': active_subscriptions,
+            'total_users': total_users,
+            'recent_transactions': serializer.data
+        })

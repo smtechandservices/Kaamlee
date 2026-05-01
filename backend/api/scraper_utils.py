@@ -108,7 +108,7 @@ def run_background_scraping(search_term="frontend developer", results_wanted=5):
     if log_count > 100:
         # Get the ID of the 100th log (latest)
         try:
-            last_keep_log = ScrapeLog.objects.order_by('-timestamp')[999]
+            last_keep_log = ScrapeLog.objects.order_by('-timestamp')[100]
             ScrapeLog.objects.filter(timestamp__lt=last_keep_log.timestamp).delete()
         except IndexError:
             pass
@@ -141,11 +141,12 @@ def run_background_scraping(search_term="frontend developer", results_wanted=5):
 
 
         for loc in locations:
-            # Check if stop was requested
+            # Check if stop was requested or session was force-stopped
             session.refresh_from_db()
-            if session.stop_requested:
-                log_to_db(session, f"Stop signal detected for Session {session.id}. Terminating...", "warning")
-                session.status = 'stopped'
+            if session.stop_requested or session.status != 'running':
+                log_to_db(session, f"Stop signal or status change detected for Session {session.id}. Terminating...", "warning")
+                if session.status == 'running':
+                    session.status = 'stopped'
                 session.current_location = None
                 session.end_time = timezone.now()
                 session.save()
@@ -170,8 +171,8 @@ def run_background_scraping(search_term="frontend developer", results_wanted=5):
                 for site in sites:
                     # Check stop before each site
                     session.refresh_from_db()
-                    if session.stop_requested:
-                        raise InterruptedError("Stop requested")
+                    if session.stop_requested or session.status != 'running':
+                        raise InterruptedError("Stop requested or status changed")
                         
                     log_to_db(session, f"Searching {site} for {loc.city}...")
                     try:
@@ -184,8 +185,8 @@ def run_background_scraping(search_term="frontend developer", results_wanted=5):
                             for _, row in jobs_df.iterrows():
                                 # Check stop frequently inside processing
                                 session.refresh_from_db()
-                                if session.stop_requested:
-                                    raise InterruptedError("Stop requested")
+                                if session.stop_requested or session.status != 'running':
+                                    raise InterruptedError("Stop requested or status changed")
 
 
                                 logo = enrich_logo(row)

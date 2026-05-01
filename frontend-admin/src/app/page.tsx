@@ -17,7 +17,8 @@ import {
   AlertTriangle,
   LogOut,
   Users,
-  ChevronDown
+  ChevronDown,
+  CreditCard
 } from 'lucide-react';
 import { useRouter } from 'next/navigation';
 import Link from 'next/link';
@@ -276,6 +277,14 @@ export default function AdminDashboard() {
               <RefreshCcw size={20} className={loading ? 'animate-spin' : ''} />
             </button>
             <Link
+              href="/revenue"
+              className="cursor-pointer p-3 rounded-xl bg-[#111] border border-[#222] hover:bg-[#161616] transition-all text-[#888] hover:text-white flex items-center gap-2 px-4"
+              title="Financial Oversight"
+            >
+              <CreditCard size={20} />
+              <span className="text-sm font-bold">Finance</span>
+            </Link>
+            <Link
               href="/users"
               className="cursor-pointer p-3 rounded-xl bg-[#111] border border-[#222] hover:bg-[#161616] transition-all text-[#888] hover:text-white flex items-center gap-2 px-4"
               title="User Management"
@@ -517,9 +526,13 @@ function LogsModal({ onClose, stats }: { onClose: () => void, stats: Stats | nul
         });
         if (res.ok) {
           const data = await res.json();
-          setLogs(data.logs);
-          if (data.session) {
-            setCurrentSession(data.session);
+          if (Array.isArray(data)) {
+            setLogs(data);
+          } else if (data && typeof data === 'object' && Array.isArray(data.logs)) {
+            setLogs(data.logs);
+            if (data.session) {
+              setCurrentSession(data.session);
+            }
           }
         }
       } catch (error) {
@@ -590,7 +603,7 @@ function LogsModal({ onClose, stats }: { onClose: () => void, stats: Stats | nul
           onScroll={handleScroll}
           className="flex-1 overflow-y-auto p-4 space-y-2 font-mono text-sm bg-black custom-scrollbar"
         >
-          {logs.length === 0 ? (
+          {(!logs || logs.length === 0) ? (
             <div className="text-center text-[#555] py-10 flex flex-col items-center justify-center h-full">
               <Loader2 className="w-8 h-8 animate-spin mb-4 opacity-50" />
               Waiting for logs...

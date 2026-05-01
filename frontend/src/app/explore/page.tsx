@@ -12,7 +12,8 @@ import PricingModal from '@/components/PricingModal';
 
 
 export default function ExplorePage() {
-  const { user, token, logout, isLoading } = useAuth();
+  const { user, token, logout, isLoading, refreshUser } = useAuth();
+
   const router = useRouter();
   const [isPricingModalOpen, setIsPricingModalOpen] = useState(false);
   const [jobs, setJobs] = useState<any[]>([]);
@@ -55,9 +56,14 @@ export default function ExplorePage() {
         if (!jobsRes.ok || !locsRes.ok) {
            if (jobsRes.status === 401 || locsRes.status === 401) {
              logout();
+           } else if (jobsRes.status === 403 || locsRes.status === 403) {
+             // Backend says not subscribed, sync local state
+             refreshUser?.();
+             setIsPricingModalOpen(true);
            }
            return;
         }
+
         
         const jobsData = await jobsRes.json();
         const locsData = await locsRes.json();

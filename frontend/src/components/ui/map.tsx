@@ -227,6 +227,17 @@ const Map = forwardRef<MapRef, MapProps>(function Map(
       style: initialStyle,
       renderWorldCopies: false,
       attributionControl: false,
+      transformRequest: (url, resourceType) => {
+        if (resourceType === "Glyphs") {
+          // The Carto font server is often unreliable or blocked by CORS.
+          // Redirecting to a stable, single-font source to ensure labels render without errors.
+          const range = url.split("/").pop();
+          return {
+            url: `https://cdn.jsdelivr.net/gh/openmaptiles/fonts@gh-pages/Open%20Sans%20Regular/${range}`
+          };
+        }
+        return { url };
+      },
       ...props,
       ...viewport,
     });
@@ -586,7 +597,7 @@ function MarkerPopup({
 
   useEffect(() => {
     if (!map || !marker || !marker.getElement()) return;
-    
+
     // Ensure marker is actually on the map before trying to toggle its popup
     const isMarkerOnMap = !!(marker as any)._map;
     if (!isMarkerOnMap) return;
@@ -811,7 +822,7 @@ function MapControls({
 }: MapControlsProps) {
   const { map } = useMap();
   const [waitingForLocation, setWaitingForLocation] = useState(false);
-  const [userLocation, setUserLocation] = useState<{longitude: number, latitude: number} | null>(null);
+  const [userLocation, setUserLocation] = useState<{ longitude: number, latitude: number } | null>(null);
 
   const handleZoomIn = useCallback(() => {
     map?.zoomTo(map.getZoom() + 1, { duration: 300 });
@@ -1302,11 +1313,11 @@ function mergeArcPaint(
       baseValue === undefined
         ? hoverValue
         : [
-            "case",
-            ["boolean", ["feature-state", "hover"], false],
-            hoverValue,
-            baseValue,
-          ];
+          "case",
+          ["boolean", ["feature-state", "hover"], false],
+          hoverValue,
+          baseValue,
+        ];
   }
   return merged as MapArcLinePaint;
 }
@@ -1505,8 +1516,8 @@ function MapArc<T extends MapArcDatum = MapArcDatum>({
       featureId == null
         ? undefined
         : latestRef.current.data.find(
-            (arc) => String(arc.id) === String(featureId),
-          );
+          (arc) => String(arc.id) === String(featureId),
+        );
 
     const handleMouseMove = (e: MapLibreGL.MapLayerMouseEvent) => {
       const featureId = e.features?.[0]?.id as string | number | undefined;

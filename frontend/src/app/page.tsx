@@ -6,9 +6,9 @@ import { motion, AnimatePresence } from 'framer-motion';
 import { ArrowRight, Search, Zap, Globe, Shield, LogOut, Briefcase, MapPin, Building2, Plus, Minus, RotateCcw, X, ExternalLink, CreditCard } from 'lucide-react';
 import { useAuth } from '@/context/AuthContext';
 import { useRouter } from 'next/navigation';
-import MapComponent from '@/components/Map';
 import { Map as Mapcn, MapMarker, MarkerContent } from "@/components/ui/map";
 import PricingModal from '@/components/PricingModal';
+import { PRICING } from '@/lib/constants';
 
 function FAQItem({ faq, index, isOpen, onToggle }: { faq: { q: string, a: string }, index: number, isOpen: boolean, onToggle: () => void }) {
   return (
@@ -517,7 +517,7 @@ export default function LandingPage() {
               },
               {
                 q: "How does the 'All-Access' pass work?",
-                a: "One flat fee of INR 249/mo. No tiers, no 'pro' features locked. Payments are securely powered by Razorpay and handled by Commhawk."
+                a: `One flat fee of ${PRICING.currency} ${PRICING.amount_inr}/${PRICING.interval}. No tiers, no 'pro' features locked. Payments are securely powered by Razorpay and handled by Commhawk.`
               },
               {
                 q: "Can I cancel my subscription easily?",

@@ -176,7 +176,7 @@ export default function UserManagement() {
         {/* Header */}
         <header className="flex items-center justify-between mb-12">
           <div className="flex items-center gap-6">
-            <Link href="/" className="p-3 rounded-2xl bg-[#111] border border-[#222] hover:bg-[#161616] transition-all text-[#888] hover:text-white">
+            <Link href="/" className="p-3 rounded-2xl bg-[#111] border border-[#222] hover:bg-[#161616] transition-all text-[#888] hover:text-white" title="Go to Dashboard">
               <ArrowLeft size={20} />
             </Link>
             <div>

@@ -6,6 +6,7 @@ import { ArrowRight, RotateCcw, ArrowLeft, CheckCircle2, XCircle } from 'lucide-
 import Link from 'next/link';
 import { useAuth } from '@/context/AuthContext';
 import { useRouter } from 'next/navigation';
+import { PRICING } from '@/lib/constants';
 
 interface PricingModalProps {
   isOpen: boolean;
@@ -53,7 +54,7 @@ export default function PricingModal({ isOpen, onClose, showCloseButton = true }
           'Authorization': `Token ${token}`,
           'Content-Type': 'application/json'
         },
-        body: JSON.stringify({ amount: 24900 })
+        body: JSON.stringify({ amount: PRICING.amount_paise })
       });
       
       if (!response.ok) {
@@ -230,7 +231,7 @@ export default function PricingModal({ isOpen, onClose, showCloseButton = true }
                       <div className='flex flex-col md:flex-row gap-4 justify-between items-start'>
                         <div className="flex flex-col gap-1">
                           <span className="text-[#444] text-[10px] font-mono uppercase tracking-widest">Amount</span>
-                          <span className="text-2xl font-bold">₹249</span>
+                          <span className="text-2xl font-bold">{PRICING.label}</span>
                         </div>
                         
                         <div className="flex flex-col gap-1">
@@ -295,9 +296,9 @@ export default function PricingModal({ isOpen, onClose, showCloseButton = true }
                     </h2>
 
                     <div className="flex items-baseline gap-2 sm:gap-3 mb-6 sm:mb-8">
-                      <span className="text-xl sm:text-2xl font-mono text-blue-500/50">₹</span>
-                      <span className="text-6xl sm:text-7xl md:text-8xl font-black tracking-tighter text-white">249</span>
-                      <span className="font-mono text-base sm:text-lg text-[#444] uppercase tracking-widest">/ mo</span>
+                      <span className="text-xl sm:text-2xl font-mono text-blue-500/50">{PRICING.currency === 'INR' ? '₹' : PRICING.currency}</span>
+                      <span className="text-6xl sm:text-7xl md:text-8xl font-black tracking-tighter text-white">{PRICING.amount_inr}</span>
+                      <span className="font-mono text-base sm:text-lg text-[#444] uppercase tracking-widest">/ {PRICING.interval}</span>
                     </div>
 
                     <p className="text-xs sm:text-sm text-[#888] leading-relaxed max-w-xl mb-8 sm:mb-10">
@@ -324,7 +325,7 @@ export default function PricingModal({ isOpen, onClose, showCloseButton = true }
 
                     <div className="mt-8 sm:mt-10 pt-8 sm:pt-10 border-t border-white/5 w-full flex justify-center">
                       <div className="font-mono text-[#333] text-[10px] sm:text-[14px] uppercase tracking-widest text-center">
-                        Payments powered by Razorpay · Handled by Commhawk
+                        Powered by Razorpay · Handled by Commhawk
                       </div>
                     </div>
                   </motion.div>
