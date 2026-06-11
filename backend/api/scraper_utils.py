@@ -91,7 +91,7 @@ def get_coordinates(loc_str, company=None, fallback_lat=None, fallback_lon=None)
     return (fallback_lat, fallback_lon)
 
 
-def run_background_scraping(search_term="frontend developer", results_wanted=5):
+def run_background_scraping(search_term="frontend developer", results_wanted=5, country=None):
     # Delete jobs older than 72 hours
     threshold_dt = timezone.now() - timedelta(hours=72)
     threshold_date = threshold_dt.date()
@@ -128,7 +128,10 @@ def run_background_scraping(search_term="frontend developer", results_wanted=5):
     
     try:
         from django.db.models import F
-        locations = Location.objects.all().order_by(F('last_scraped').asc(nulls_first=True))
+        locations_qs = Location.objects.all()
+        if country:
+            locations_qs = locations_qs.filter(country__iexact=country)
+        locations = locations_qs.order_by(F('last_scraped').asc(nulls_first=True))
         
         if not locations.exists():
             log_to_db(session, "No locations found in database. Terminating.", "error")
@@ -168,6 +171,7 @@ def run_background_scraping(search_term="frontend developer", results_wanted=5):
 
             try:
                 sites = ["indeed", "linkedin", "zip_recruiter", "google"]
+                # 12 platforms total: "indeed", "linkedin", "zip_recruiter", "google", "glassdoor", "google", "simplyhired", "craigslist", "angel_list", "remote_ok", "we_work_remotely", "stackoverflow"
                 for site in sites:
                     # Check stop before each site
                     session.refresh_from_db()

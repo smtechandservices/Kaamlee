@@ -141,22 +141,25 @@ export default function AdminDashboard() {
     router.push('/login');
   };
 
-  const triggerScrape = async (term: string, limit: number) => {
+  const triggerScrape = async (term: string, limit: number, country: string | null) => {
     const token = localStorage.getItem('admin_token');
     setTriggering(true);
     try {
-      const res = await fetch(`${API_BASE}/trigger-scrape/`, { 
+      const body: Record<string, unknown> = {
+        search_term: term,
+        results_wanted: limit,
+      };
+      if (country !== null) body.country = country;
+
+      const res = await fetch(`${API_BASE}/trigger-scrape/`, {
         method: 'POST',
-        headers: { 
+        headers: {
           'Authorization': `Token ${token}`,
           'Content-Type': 'application/json'
         },
-        body: JSON.stringify({
-          search_term: term,
-          results_wanted: limit
-        })
+        body: JSON.stringify(body)
       });
-      
+
       if (!res.ok) {
         const errorData = await res.json();
         alert(errorData.status || "Failed to trigger scrape");
@@ -212,7 +215,8 @@ export default function AdminDashboard() {
     const normalizedCountry = loc.country === 'United States' ? 'USA' : (loc.country === 'United Kingdom' ? 'UK' : loc.country);
 
     const matchesSearch = loc.city.toLowerCase().includes(searchTerm.toLowerCase()) ||
-      loc.country.toLowerCase().includes(searchTerm.toLowerCase());
+      loc.country.toLowerCase().includes(searchTerm.toLowerCase()) ||
+      (loc.state && loc.state.toLowerCase().includes(searchTerm.toLowerCase()));
     const matchesCountry = selectedCountry === 'All' || normalizedCountry === selectedCountry;
     return matchesSearch && matchesCountry;
   });
@@ -395,7 +399,7 @@ export default function AdminDashboard() {
             <Search className="absolute left-3 top-1/2 -translate-y-1/2 text-[#555]" size={18} />
             <input
               type="text"
-              placeholder="Search city..."
+              placeholder="Search city or state..."
               value={searchTerm}
               onChange={(e) => setSearchTerm(e.target.value)}
               className="w-full bg-[#111] border border-[#222] rounded-xl py-2 pl-10 pr-4 text-sm focus:outline-none focus:border-blue-500 transition-all"
@@ -485,11 +489,12 @@ export default function AdminDashboard() {
       <AnimatePresence>
         {isLogsModalOpen && <LogsModal onClose={() => setIsLogsModalOpen(false)} stats={stats} />}
         {isSettingsModalOpen && (
-          <ScrapeSettingsModal 
-            onClose={() => setIsSettingsModalOpen(false)} 
+          <ScrapeSettingsModal
+            onClose={() => setIsSettingsModalOpen(false)}
             onStart={triggerScrape}
             loading={triggering}
             jobRoles={jobRoles}
+            locations={locations}
           />
         )}
       </AnimatePresence>
@@ -632,12 +637,15 @@ function LogsModal({ onClose, stats }: { onClose: () => void, stats: Stats | nul
   );
 }
 
-function ScrapeSettingsModal({ onClose, onStart, loading, jobRoles }: { onClose: () => void, onStart: (term: string, limit: number) => void, loading: boolean, jobRoles: string[] }) {
+function ScrapeSettingsModal({ onClose, onStart, loading, jobRoles, locations }: { onClose: () => void, onStart: (term: string, limit: number, country: string | null) => void, loading: boolean, jobRoles: string[], locations: Location[] }) {
   const [term, setTerm] = useState(jobRoles[0] || '');
   const [limit, setLimit] = useState(5);
   const [customTerm, setCustomTerm] = useState('');
   const [isCustom, setIsCustom] = useState(false);
   const [isDropdownOpen, setIsDropdownOpen] = useState(false);
+  const [isLocationDropdownOpen, setIsLocationDropdownOpen] = useState(false);
+  const [selectedCountry, setSelectedCountry] = useState<string | null>(null);
+  const countries = Array.from(new Set(locations.map(l => l.country))).sort();
 
   useEffect(() => {
     if (!term && jobRoles.length > 0) {
@@ -761,18 +769,66 @@ function ScrapeSettingsModal({ onClose, onStart, loading, jobRoles }: { onClose:
               Higher limits increase scraping time and risk of rate limits.
             </p>
           </div>
+
+          <div>
+            <label className="text-xs font-bold uppercase tracking-wider text-[#555] mb-2 block">Location</label>
+            <div className="relative">
+              <button
+                onClick={() => setIsLocationDropdownOpen(!isLocationDropdownOpen)}
+                className="w-full bg-[#0a0a0a] border border-[#222] rounded-xl px-4 py-2.5 text-white flex items-center justify-between hover:border-blue-500 transition-all text-sm font-medium"
+              >
+                <span className="flex items-center gap-2">
+                  <MapPin size={14} className="text-[#555]" />
+                  {selectedCountry ?? 'All Countries'}
+                </span>
+                <ChevronDown size={16} className={`text-[#444] transition-transform ${isLocationDropdownOpen ? 'rotate-180' : ''}`} />
+              </button>
+
+              <AnimatePresence>
+                {isLocationDropdownOpen && (
+                  <>
+                    <div className="fixed inset-0 z-10" onClick={() => setIsLocationDropdownOpen(false)} />
+                    <motion.div
+                      initial={{ opacity: 0, y: 10 }}
+                      animate={{ opacity: 1, y: 0 }}
+                      exit={{ opacity: 0, y: 10 }}
+                      className="absolute z-20 w-full bottom-full mb-2 bg-[#1a1a1a] border border-[#333] rounded-xl shadow-2xl overflow-hidden"
+                    >
+                      <div className="max-h-48 overflow-y-auto custom-scrollbar">
+                        <button
+                          onClick={() => { setSelectedCountry(null); setIsLocationDropdownOpen(false); }}
+                          className={`w-full text-left px-4 py-2 text-xs hover:bg-blue-600/10 hover:text-blue-400 transition-colors ${selectedCountry === null ? 'bg-blue-600/5 text-blue-500' : 'text-[#888]'}`}
+                        >
+                          All Countries
+                        </button>
+                        {countries.map(c => (
+                          <button
+                            key={c}
+                            onClick={() => { setSelectedCountry(c); setIsLocationDropdownOpen(false); }}
+                            className={`w-full text-left px-4 py-2 text-xs hover:bg-blue-600/10 hover:text-blue-400 transition-colors ${selectedCountry === c ? 'bg-blue-600/5 text-blue-500' : 'text-[#888]'}`}
+                          >
+                            {c}
+                          </button>
+                        ))}
+                      </div>
+                    </motion.div>
+                  </>
+                )}
+              </AnimatePresence>
+            </div>
+          </div>
         </div>
 
         <div className="p-6 bg-[#1a1a1a] border-t border-[#333] flex gap-3">
-          <button 
+          <button
             onClick={onClose}
             className="flex-1 py-3 rounded-xl bg-[#222] hover:bg-[#2a2a2a] font-bold transition-all cursor-pointer"
           >
             Cancel
           </button>
-          <button 
+          <button
             disabled={loading || (isCustom && !customTerm)}
-            onClick={() => onStart(isCustom ? customTerm : term, limit)}
+            onClick={() => onStart(isCustom ? customTerm : term, limit, selectedCountry)}
             className="flex-1 py-3 rounded-xl bg-blue-600 hover:bg-blue-500 disabled:opacity-50 font-bold transition-all flex items-center justify-center gap-2 cursor-pointer"
           >
             {loading ? <Loader2 size={18} className="animate-spin" /> : <Play size={18} />}

@@ -36,6 +36,10 @@
         "cities": ["Lucknow", "Kanpur", "Noida", "Ghaziabad", "Agra", "Varanasi"]
       },
       {
+        "state": "Bihar",
+        "cities": ["Patna", "Gaya", "Muzaffarpur", "Bhagalpur", "Darbhanga", "Purnia", "Arrah", "Begusarai", "Katihar", "Munger"]
+      },
+      {
         "state": "Rajasthan",
         "cities": ["Jaipur", "Jodhpur", "Udaipur", "Kota", "Ajmer"]
       },

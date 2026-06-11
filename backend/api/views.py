@@ -125,6 +125,7 @@ class TriggerScrapeView(views.APIView):
     def post(self, request):
         search_term = request.data.get('search_term', 'frontend developer')
         results_wanted = request.data.get('results_wanted', 5)
+        country = request.data.get('country', None)
 
         # Check if already running
         if ScrapeSession.objects.filter(status='running').exists():
@@ -132,10 +133,10 @@ class TriggerScrapeView(views.APIView):
 
         import threading
         from .scraper_utils import run_background_scraping
-        
+
         thread = threading.Thread(
-            target=run_background_scraping, 
-            args=(search_term, results_wanted)
+            target=run_background_scraping,
+            args=(search_term, results_wanted, country)
         )
         thread.daemon = True
         thread.start()
