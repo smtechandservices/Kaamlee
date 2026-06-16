@@ -51,7 +51,21 @@ function FAQItem({ faq, index, isOpen, onToggle }: { faq: { q: string, a: string
 export default function LandingPage() {
   const { user, logout, isLoading } = useAuth();
   const router = useRouter();
-  const [recentJobs, setRecentJobs] = useState<any[]>([]);
+
+  const DUMMY_JOBS = [
+    { title: "Senior Frontend Engineer", company: "Stripe", location_name: "San Francisco, US", site: "linkedin", is_remote: false, date_posted: null, created_at: null },
+    { title: "Backend Engineer (Go)", company: "Zepto", location_name: "Bangalore, India", site: "indeed", is_remote: false, date_posted: null, created_at: null },
+    { title: "Full Stack Developer", company: "Razorpay", location_name: "Mumbai, India", site: "wellfound", is_remote: false, date_posted: null, created_at: null },
+    { title: "ML Engineer", company: "Anthropic", location_name: "Remote", site: "linkedin", is_remote: true, date_posted: null, created_at: null },
+    { title: "DevOps Engineer", company: "Cloudflare", location_name: "Austin, US", site: "indeed", is_remote: true, date_posted: null, created_at: null },
+    { title: "iOS Engineer", company: "Swiggy", location_name: "Hyderabad, India", site: "linkedin", is_remote: false, date_posted: null, created_at: null },
+    { title: "Data Engineer", company: "Meesho", location_name: "Bangalore, India", site: "google", is_remote: false, date_posted: null, created_at: null },
+    { title: "Security Engineer", company: "Notion", location_name: "Remote", site: "wellfound", is_remote: true, date_posted: null, created_at: null },
+    { title: "Android Engineer", company: "CRED", location_name: "Bangalore, India", site: "linkedin", is_remote: false, date_posted: null, created_at: null },
+    { title: "Platform Engineer", company: "Vercel", location_name: "Remote", site: "indeed", is_remote: true, date_posted: null, created_at: null },
+  ];
+
+  const [recentJobs, setRecentJobs] = useState<any[]>(DUMMY_JOBS);
   const [stats, setStats] = useState<any>(null);
   const [openFaqIndex, setOpenFaqIndex] = useState<number | null>(null);
   const [isPricingOpen, setIsPricingOpen] = useState(false);
@@ -60,38 +74,27 @@ export default function LandingPage() {
   const handleExploreClick = (e: React.MouseEvent) => {
     e.preventDefault();
     if (isLoading) return;
-    if (!user) {
-      router.push('/login');
-    } else if (!user.is_subscribed) {
-      setIsPricingOpen(true);
-    } else {
-      router.push('/explore');
-    }
+    router.push('/coming-soon');
   };
 
   useEffect(() => {
     fetch(`${process.env.NEXT_PUBLIC_API_URL}/api/recent-jobs/`)
       .then(res => res.json())
       .then(data => {
-        if (Array.isArray(data)) {
+        if (Array.isArray(data) && data.length > 0) {
           setRecentJobs(data);
-        } else {
-          console.error("Expected array for recent jobs, got:", data);
-          setRecentJobs([]);
         }
       })
-      .catch(err => console.error("Error fetching recent jobs:", err));
+      .catch(() => {});
 
     fetch(`${process.env.NEXT_PUBLIC_API_URL}/api/stats/`)
       .then(res => res.json())
       .then(data => {
         if (data && !data.error && !data.detail) {
           setStats(data);
-        } else {
-          console.error("Invalid stats data:", data);
         }
       })
-      .catch(err => console.error("Error fetching stats:", err));
+      .catch(() => {});
   }, []);
 
   const timeAgo = (dateString: string | null, createdString: string | null = null) => {
@@ -120,8 +123,9 @@ export default function LandingPage() {
 
       {/* Navbar */}
       <nav className="fixed top-0 left-0 w-full h-20 px-4 sm:px-8 flex items-center justify-between z-50 border-b border-white/40 bg-black/50 backdrop-blur-xl">
-        <div className="cursor-default text-lg sm:text-xl font-bold tracking-[0.2em] sm:tracking-[0.3em] uppercase">
-          KAAMLEE
+        <div className="flex items-center gap-3 cursor-default">
+          <span className="text-lg sm:text-xl font-bold tracking-[0.2em] sm:tracking-[0.3em] uppercase">KAAMLEE</span>
+          <span className="text-[8px] font-black uppercase tracking-widest px-1.5 py-0.5 rounded border border-blue-500/40 text-blue-400 bg-blue-500/10">Beta</span>
         </div>
 
         <div className="flex items-center gap-2 sm:gap-4">
@@ -133,7 +137,7 @@ export default function LandingPage() {
             <ArrowRight className="w-3 h-3 sm:w-3.5 sm:h-3.5" />
           </button>
           {!user ? (
-            <Link href="/login" className="cursor-pointer text-xs sm:text-sm font-medium text-[#888] hover:text-white transition-colors">
+            <Link href="/coming-soon" className="cursor-pointer text-xs sm:text-sm font-medium text-[#888] hover:text-white transition-colors">
               Log in
             </Link>
           ) : (
@@ -166,7 +170,7 @@ export default function LandingPage() {
             <div className="inline-flex items-center gap-2 sm:gap-3 bg-[#111] border border-[#222] px-3 sm:px-4 py-1 sm:py-1.5 rounded-full mb-6 sm:mb-10">
               <span className="w-1.5 h-1.5 sm:w-2 sm:h-2 rounded-full bg-blue-500 animate-pulse" />
               <span className="text-[10px] sm:text-md font-black tracking-widest uppercase text-[#888]">
-                <span className='text-sm sm:text-lg text-white'>{stats?.total_jobs?.toLocaleString()?.toLocaleString() || '420'} </span> NEW ROLES IN LAST 72H
+                <span className='text-sm sm:text-lg text-white'>{stats?.total_jobs?.toLocaleString()?.toLocaleString() || '10K+'} </span> NEW ROLES IN LAST 72H
               </span>
             </div>
 
@@ -186,12 +190,12 @@ export default function LandingPage() {
               >
                 Open the map <ArrowRight size={18} className="group-hover:translate-x-1 transition-transform" />
               </button>
-              <button
+              {/* <button
                 onClick={() => setIsPricingOpen(true)}
                 className="cursor-pointer border border-[#222] text-white px-8 sm:px-10 py-4 sm:py-5 rounded-sm font-black uppercase tracking-widest text-xs sm:text-sm flex items-center justify-center hover:border-white transition-all"
               >
                 See Pricing
-              </button>
+              </button> */}
             </div>
           </motion.div>
 
@@ -279,8 +283,8 @@ export default function LandingPage() {
         <section className="px-6 md:px-8 py-12 sm:py-16 border-y border-white/40 bg-black/20 backdrop-blur-sm relative overflow-hidden">
           <div className="mx-auto grid grid-cols-2 md:grid-cols-4 gap-8 sm:gap-12">
             {[
-              { label: "LIVE_LISTINGS", value: stats?.total_jobs?.toLocaleString() || "420" },
-              { label: "COMPANIES", value: "1000 +" },
+              { label: "LIVE_LISTINGS", value: stats?.total_jobs?.toLocaleString() || "10,000 +" },
+              { label: "COMPANIES", value: "5,000 +" },
               { label: "SOURCES", value: "12 boards" },
               { label: "UPTIME", value: "98.99%" }
             ].map((stat, i) => (
@@ -508,12 +512,8 @@ export default function LandingPage() {
                 a: "We crawl twelve major job boards (LinkedIn, Indeed, ZipRecruiter, etc.) and direct company career pages every fifteen minutes. If it's live on the internet, it's on the map."
               },
               {
-                q: "How does the 'All-Access' pass work?",
-                a: `One flat fee of ${PRICING.currency} ${PRICING.amount_inr}/${PRICING.interval}. No tiers, no 'pro' features locked. Payments are securely powered by Razorpay and handled by Commhawk.`
-              },
-              {
-                q: "Can I cancel my subscription easily?",
-                a: "Yes. One click in your dashboard. No 'call us to cancel' loops. No hidden retention tricks. We're here to help you get a job, not hold you hostage."
+                q: "Is Kaamlee free right now?",
+                a: "Yes — Kaamlee is currently in beta and completely free to use. All features are open while we're in this phase. In the future, advanced premium features will be priced, but the core experience will always remain accessible."
               },
               {
                 q: "How does the AI Resume Matching work?",
@@ -543,7 +543,10 @@ export default function LandingPage() {
         <footer className="p-8 border-t border-white/40 bg-black relative">
           <div className="mx-auto flex flex-col md:flex-row justify-between items-start md:items-end gap-16">
             <div className="flex flex-col gap-6">
-              <div className="text-lg font-bold tracking-[0.3em] uppercase">KAAMLEE</div>
+              <div className="flex items-center gap-3">
+                <span className="text-lg font-bold tracking-[0.3em] uppercase">KAAMLEE</span>
+                <span className="text-[8px] font-black uppercase tracking-widest px-1.5 py-0.5 rounded border border-blue-500/40 text-blue-400 bg-blue-500/10">Beta</span>
+              </div>
               <p className="text-[#444] text-[10px] font-mono tracking-widest uppercase">
                 © 2026 KAAMLEE <br />
                 PAYMENTS BY RAZORPAY · HANDLED BY COMMHAWK
@@ -559,12 +562,12 @@ export default function LandingPage() {
               >
                 with love <span className="text-white underline underline-offset-4">commhawk</span>
               </a>
-              <button
+              {/* <button
                 onClick={() => setIsTeamModalOpen(true)}
                 className="text-[10px] font-mono tracking-[0.2em] uppercase text-[#444] hover:text-blue-500 transition-colors cursor-pointer group text-right"
               >
                 developed by <span className="text-blue-500 font-bold tracking-tighter group-hover:underline underline-offset-4">smtech</span>
-              </button>
+              </button> */}
             </div>
           </div>
         </footer>
