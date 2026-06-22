@@ -1,7 +1,24 @@
 'use client';
 
 import React from 'react';
-import { MapPin, Briefcase, ExternalLink, Clock, Bookmark, Copy, Check } from 'lucide-react';
+import { MapPin, Briefcase, ExternalLink, Clock, Bookmark, Copy, Check, Bot } from 'lucide-react';
+
+// Sends a message to the Kaamlee extension content script via window.postMessage
+const triggerAIApply = (job: { job_url: string; title: string; company: string | null; id: string }) => {
+  window.postMessage(
+    {
+      source: 'kaamlee-frontend',
+      action: 'KAAMLEE_AI_APPLY',
+      payload: {
+        jobId: job.id,
+        jobUrl: job.job_url,
+        title: job.title,
+        company: job.company,
+      },
+    },
+    '*'
+  );
+};
 
 interface JobCardProps {
   job: {
@@ -180,22 +197,39 @@ export const JobCard = ({ job, isSelected, onClick, onToggleBookmark }: JobCardP
             {job.description || 'No description provided...'}
           </p>
 
-          <div className="flex justify-between items-center">
-            <a 
-              href={job.job_url} 
-              target="_blank" 
-              rel="noopener noreferrer"
-              className="text-xs text-[#3b82f6] hover:underline"
-              onClick={(e) => e.stopPropagation()}
+          <div className="flex flex-col gap-2">
+            <div className="flex justify-between items-center">
+              <a
+                href={job.job_url}
+                target="_blank"
+                rel="noopener noreferrer"
+                className="text-xs text-[#3b82f6] hover:underline"
+                onClick={(e) => e.stopPropagation()}
+              >
+                Apply on {job.site}
+              </a>
+              {(job.date_posted || job.created_at) && (
+                <span className="text-[10px] text-[#555] ml-auto">
+                  {formatDate(job.date_posted || job.created_at)}
+                </span>
+              )}
+            </div>
+
+            {/* AI Apply Button — triggers the Kaamlee extension */}
+            <button
+              onClick={(e) => {
+                e.stopPropagation();
+                triggerAIApply(job);
+              }}
+              className="w-full flex items-center justify-center gap-1.5 py-1.5 px-3 rounded-lg text-xs font-semibold
+                bg-gradient-to-r from-[#ff6b6b] to-[#ff8e53] text-white
+                hover:opacity-90 active:scale-95 transition-all duration-150
+                border border-[#ff6b6b]/30 shadow-sm"
+              title="Opens job in your browser and fills the form automatically with Kaamlee AI"
             >
-              Apply on {job.site}
-            </a>
-            
-            {(job.date_posted || job.created_at) && (
-              <span className="text-[10px] text-[#555] ml-auto">
-                {formatDate(job.date_posted || job.created_at)}
-              </span>
-            )}
+              <Bot size={13} />
+              Apply with Kaamlee AI
+            </button>
           </div>
         </div>
       </div>

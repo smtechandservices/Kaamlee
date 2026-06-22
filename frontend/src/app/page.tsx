@@ -9,6 +9,7 @@ import { useRouter } from 'next/navigation';
 import { Map as Mapcn, MapMarker, MarkerContent } from "@/components/ui/map";
 import PricingModal from '@/components/PricingModal';
 import { PRICING } from '@/lib/constants';
+import AutoApplySection from '@/components/AutoApplySection';
 
 function FAQItem({ faq, index, isOpen, onToggle }: { faq: { q: string, a: string }, index: number, isOpen: boolean, onToggle: () => void }) {
   return (
@@ -49,7 +50,7 @@ function FAQItem({ faq, index, isOpen, onToggle }: { faq: { q: string, a: string
 }
 
 export default function LandingPage() {
-  const { user, logout, isLoading } = useAuth();
+  const { user, logout, isLoading, token } = useAuth();
   const router = useRouter();
   const [recentJobs, setRecentJobs] = useState<any[]>([]);
   const [stats, setStats] = useState<any>(null);
@@ -493,6 +494,9 @@ export default function LandingPage() {
           </div>
         </section>
 
+
+        {/* Section: Auto Apply */}
+        {user && <AutoApplySection token={token} />}
 
         {/* Section 04: FAQ */}
         <section id="faq" className="px-6 sm:px-8 mx-auto mb-24">

@@ -48,6 +48,10 @@ INSTALLED_APPS = [
     'django_apscheduler',
     'api',
     'payments',
+    'applications',
+    'ai_apply',
+    'automation',
+    'playwright_workers',
 ]
 
 REST_FRAMEWORK = {
@@ -146,6 +150,12 @@ DEFAULT_AUTO_FIELD = 'django.db.models.BigAutoField'
 
 
 CORS_ALLOW_ALL_ORIGINS = True
+
+CSRF_TRUSTED_ORIGINS = [
+    'http://localhost:3000',
+    'http://127.0.0.1:3000',
+    'chrome-extension://bkakpaaelpkclebiecfnfichfbikggfg',
+]
 
 APSCHEDULER_DATETIME_FORMAT = "N j, Y, f:s a"
 APSCHEDULER_RUN_NOW_TIMEOUT = 25  # Seconds

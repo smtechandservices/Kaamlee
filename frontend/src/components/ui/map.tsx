@@ -222,25 +222,29 @@ const Map = forwardRef<MapRef, MapProps>(function Map(
       resolvedTheme === "dark" ? mapStyles.dark : mapStyles.light;
     currentStyleRef.current = initialStyle;
 
-    const map = new MapLibreGL.Map({
-      container: containerRef.current,
-      style: initialStyle,
-      renderWorldCopies: false,
-      attributionControl: false,
-      transformRequest: (url, resourceType) => {
-        if (resourceType === "Glyphs") {
-          // The Carto font server is often unreliable or blocked by CORS.
-          // Redirecting to a stable, single-font source to ensure labels render without errors.
-          const range = url.split("/").pop();
-          return {
-            url: `https://cdn.jsdelivr.net/gh/openmaptiles/fonts@gh-pages/Open%20Sans%20Regular/${range}`
-          };
-        }
-        return { url };
-      },
-      ...props,
-      ...viewport,
-    });
+    let map: MapLibreGL.Map;
+    try {
+      map = new MapLibreGL.Map({
+        container: containerRef.current,
+        style: initialStyle,
+        renderWorldCopies: false,
+        attributionControl: false,
+        transformRequest: (url, resourceType) => {
+          if (resourceType === "Glyphs") {
+            const range = url.split("/").pop();
+            return {
+              url: `https://cdn.jsdelivr.net/gh/openmaptiles/fonts@gh-pages/Open%20Sans%20Regular/${range}`
+            };
+          }
+          return { url };
+        },
+        ...props,
+        ...viewport,
+      });
+    } catch (e) {
+      console.warn("Failed to initialize MapLibreGL. WebGL context might be lost (expected during dev hot reloads).", e);
+      return;
+    }
 
     const styleDataHandler = () => {
       clearStyleTimeout();
