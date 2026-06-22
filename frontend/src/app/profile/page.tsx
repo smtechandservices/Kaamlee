@@ -3,7 +3,8 @@
 import React, { useState, useEffect } from 'react';
 import { useRouter } from 'next/navigation';
 import { motion } from 'framer-motion';
-import { ArrowLeft, User, Phone, Link as LinkIcon, Loader2, Save, CheckCircle2, Briefcase, X, Receipt } from 'lucide-react';
+import { ArrowLeft, User, Phone, Link as LinkIcon, Loader2, Save, CheckCircle2, Briefcase, X, Receipt, MessageSquare } from 'lucide-react';
+import FeedbackModal from '@/components/FeedbackModal';
 import { useAuth } from '@/context/AuthContext';
 import Link from 'next/link';
 
@@ -20,6 +21,7 @@ export default function ProfilePage() {
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [error, setError] = useState('');
   const [success, setSuccess] = useState(false);
+  const [isFeedbackModalOpen, setIsFeedbackModalOpen] = useState(false);
 
   useEffect(() => {
     if (!isAuthLoading && !token) {
@@ -265,17 +267,28 @@ export default function ProfilePage() {
                 Save Changes
               </button>
 
-              <Link 
+              <Link
                 href="/transactions"
                 className="cursor-pointer w-full mt-4 flex items-center justify-center gap-2 py-3 sm:py-4 text-[#555] hover:text-[#888] transition-colors text-[10px] sm:text-xs font-black uppercase tracking-[0.2em]"
               >
                 <Receipt className="w-4 h-4" />
                 View Billing History
               </Link>
+
+              <button
+                type="button"
+                onClick={() => setIsFeedbackModalOpen(true)}
+                className="cursor-pointer w-full mt-2 flex items-center justify-center gap-2 py-3 sm:py-4 text-[#444] hover:text-green-500 transition-colors text-[10px] sm:text-xs font-black uppercase tracking-[0.2em]"
+              >
+                <MessageSquare className="w-4 h-4" />
+                Give Feedback
+              </button>
             </div>
           </form>
         </div>
       </div>
+
+      <FeedbackModal isOpen={isFeedbackModalOpen} onClose={() => setIsFeedbackModalOpen(false)} />
     </main>
   );
 }

@@ -1,7 +1,7 @@
 import io
 import PyPDF2
 from rest_framework import serializers
-from .models import Location, Job, ScrapeSession, ScrapeLog, Bookmark
+from .models import Location, Job, ScrapeSession, ScrapeLog, Bookmark, Feedback
 from django.contrib.auth.models import User
 
 def extract_text_from_pdf(pdf_file):
@@ -172,6 +172,22 @@ class JobSerializer(serializers.ModelSerializer):
 class RecentJobSerializer(JobSerializer):
     class Meta(JobSerializer.Meta):
         fields = [f.name for f in Job._meta.fields if f.name != 'company'] + ['match_score', 'is_bookmarked']
+
+class FeedbackSerializer(serializers.ModelSerializer):
+    username = serializers.CharField(source='user.username', read_only=True)
+    email = serializers.CharField(source='user.email', read_only=True)
+    first_name = serializers.CharField(source='user.first_name', read_only=True)
+    last_name = serializers.CharField(source='user.last_name', read_only=True)
+
+    class Meta:
+        model = Feedback
+        fields = ['id', 'username', 'email', 'first_name', 'last_name', 'rating', 'message', 'created_at', 'updated_at']
+        read_only_fields = ['id', 'username', 'email', 'first_name', 'last_name', 'created_at', 'updated_at']
+
+    def validate_rating(self, value):
+        if not (1 <= value <= 5):
+            raise serializers.ValidationError("Rating must be between 1 and 5.")
+        return value
 
 class ScrapeSessionSerializer(serializers.ModelSerializer):
     class Meta:

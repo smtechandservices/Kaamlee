@@ -2,9 +2,10 @@ from django.urls import path, include
 from rest_framework.routers import DefaultRouter
 from rest_framework.authtoken.views import obtain_auth_token
 from .views import (
-    LocationViewSet, JobViewSet, StatsView, TriggerScrapeView, 
+    LocationViewSet, JobViewSet, StatsView, TriggerScrapeView,
     StopScrapeView, ForceResetView, LogsView, SignupView, UserView, RecentJobsView,
-    CheckExistenceView, AdminLoginView, AdminUserViewSet, RolesView
+    CheckExistenceView, AdminLoginView, AdminUserViewSet, RolesView,
+    FeedbackView, AdminFeedbackView
 )
 
 router = DefaultRouter()
@@ -29,6 +30,12 @@ urlpatterns = [
     path('check-existence/', CheckExistenceView.as_view(), name='check-existence'),
     path('roles/', RolesView.as_view(), name='roles'),
     
+    # ==========================================
+    # FEEDBACK
+    # ==========================================
+    path('feedback/', FeedbackView.as_view(), name='feedback'),
+    path('admin/feedback/', AdminFeedbackView.as_view(), name='admin-feedback'),
+
     # ==========================================
     # SCRAPER & ADMIN
     # ==========================================

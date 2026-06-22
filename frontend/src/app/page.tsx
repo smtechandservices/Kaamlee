@@ -282,7 +282,7 @@ export default function LandingPage() {
               { label: "LIVE_LISTINGS", value: stats?.total_jobs?.toLocaleString() || "420" },
               { label: "COMPANIES", value: "1000 +" },
               { label: "SOURCES", value: "12 boards" },
-              { label: "UPTIME", value: "98.99%" }
+              { label: "ACCURACY", value: "92.99%" }
             ].map((stat, i) => (
               <div key={i} className="flex flex-col gap-1 sm:gap-2">
                 <div className="font-mono text-[8px] sm:text-[10px] font-bold text-[#444] tracking-widest uppercase">

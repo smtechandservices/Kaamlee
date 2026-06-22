@@ -5,10 +5,11 @@ from rest_framework.decorators import action
 from rest_framework.authtoken.views import ObtainAuthToken
 from rest_framework.response import Response
 from rest_framework.authtoken.models import Token
-from .models import Location, Job, ScrapeSession, ScrapeLog, Bookmark
+from .models import Location, Job, ScrapeSession, ScrapeLog, Bookmark, Feedback
 from .serializers import (
-    LocationSerializer, JobSerializer, ScrapeSessionSerializer, 
-    ScrapeLogSerializer, UserSerializer, RegisterSerializer, RecentJobSerializer
+    LocationSerializer, JobSerializer, ScrapeSessionSerializer,
+    ScrapeLogSerializer, UserSerializer, RegisterSerializer, RecentJobSerializer,
+    FeedbackSerializer
 )
 from django.db.models import Count, Exists, OuterRef
 from django.contrib.auth.models import User
@@ -208,3 +209,49 @@ class RolesView(views.APIView):
             return Response(roles)
         except Exception as e:
             return Response({"error": str(e)}, status=500)
+
+class FeedbackView(views.APIView):
+    permission_classes = [permissions.IsAuthenticated]
+
+    def get(self, request):
+        try:
+            feedback = Feedback.objects.get(user=request.user)
+            return Response(FeedbackSerializer(feedback).data)
+        except Feedback.DoesNotExist:
+            return Response(None)
+
+    def post(self, request):
+        rating = request.data.get('rating')
+        message = request.data.get('message', '')
+        if rating is None:
+            return Response({'error': 'Rating is required.'}, status=400)
+        try:
+            rating = int(rating)
+        except (ValueError, TypeError):
+            return Response({'error': 'Rating must be a number.'}, status=400)
+        if not (1 <= rating <= 5):
+            return Response({'error': 'Rating must be between 1 and 5.'}, status=400)
+
+        feedback, created = Feedback.objects.update_or_create(
+            user=request.user,
+            defaults={'rating': rating, 'message': message}
+        )
+        return Response(FeedbackSerializer(feedback).data, status=201 if created else 200)
+
+    def delete(self, request):
+        try:
+            Feedback.objects.get(user=request.user).delete()
+            return Response({'status': 'deleted'})
+        except Feedback.DoesNotExist:
+            return Response({'error': 'No feedback found.'}, status=404)
+
+class AdminFeedbackView(generics.ListAPIView):
+    serializer_class = FeedbackSerializer
+    permission_classes = [permissions.IsAdminUser]
+
+    def get_queryset(self):
+        queryset = Feedback.objects.all().select_related('user').order_by('-created_at')
+        user_id = self.request.query_params.get('user_id')
+        if user_id:
+            queryset = queryset.filter(user_id=user_id)
+        return queryset

@@ -95,3 +95,13 @@ class Bookmark(models.Model):
 
     def __str__(self):
         return f"{self.user.username} bookmarked {self.job.title}"
+
+class Feedback(models.Model):
+    user = models.OneToOneField(User, on_delete=models.CASCADE, related_name='feedback')
+    rating = models.IntegerField(default=5)  # 1-5 stars
+    message = models.TextField()
+    created_at = models.DateTimeField(auto_now_add=True)
+    updated_at = models.DateTimeField(auto_now=True)
+
+    def __str__(self):
+        return f"Feedback by {self.user.username} - {self.rating}/5"

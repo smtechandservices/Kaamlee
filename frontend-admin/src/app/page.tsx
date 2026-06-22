@@ -18,7 +18,8 @@ import {
   LogOut,
   Users,
   ChevronDown,
-  CreditCard
+  CreditCard,
+  MessageSquare
 } from 'lucide-react';
 import { useRouter } from 'next/navigation';
 import Link from 'next/link';
@@ -295,6 +296,14 @@ export default function AdminDashboard() {
             >
               <Users size={20} />
               <span className="text-sm font-bold">Users</span>
+            </Link>
+            <Link
+              href="/feedback"
+              className="cursor-pointer p-3 rounded-xl bg-[#111] border border-[#222] hover:bg-[#161616] transition-all text-[#888] hover:text-white flex items-center gap-2 px-4"
+              title="User Feedback"
+            >
+              <MessageSquare size={20} />
+              <span className="text-sm font-bold">Feedback</span>
             </Link>
             <button
               onClick={() => setIsLogsModalOpen(true)}
