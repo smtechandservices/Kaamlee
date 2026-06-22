@@ -133,7 +133,7 @@ export default function SignupPage() {
   return (
     <main className="min-h-screen bg-[#0a0a0a] text-white flex flex-col items-center justify-center p-6 relative overflow-hidden">
       {/* Background decoration */}
-      <div className="absolute top-0 left-1/2 -translate-x-1/2 w-[800px] h-[500px] bg-blue-500/5 blur-[120px] rounded-full pointer-events-none" />
+      <div className="absolute top-0 left-1/2 -translate-x-1/2 w-[800px] h-[500px] bg-green-500/5 blur-[120px] rounded-full pointer-events-none" />
       
       <Link href="/" className="absolute top-6 left-6 sm:top-8 sm:left-8 text-[#888] hover:text-white transition-colors flex items-center gap-2 text-xs sm:text-sm font-medium z-20">
         <ArrowLeft className="w-3.5 h-3.5 sm:w-4 sm:h-4" />
@@ -157,7 +157,7 @@ export default function SignupPage() {
             <React.Fragment key={s.id}>
               <div className="flex flex-col items-center gap-2">
                 <div className={`w-10 h-10 rounded-full flex items-center justify-center text-sm font-bold border-2 transition-all duration-500 ${
-                  step >= s.id ? 'bg-blue-600 border-blue-600 text-white shadow-[0_0_15px_rgba(37,99,235,0.4)]' : 'bg-transparent border-[#222] text-[#444]'
+                  step >= s.id ? 'bg-green-600 border-green-600 text-white shadow-[0_0_15px_rgba(34,197,94,0.4)]' : 'bg-transparent border-[#222] text-[#444]'
                 }`}>
                   {step > s.id ? <CheckCircle2 size={20} /> : s.id}
                 </div>
@@ -168,7 +168,7 @@ export default function SignupPage() {
                   <motion.div 
                     initial={{ width: '0%' }}
                     animate={{ width: step > s.id ? '100%' : '0%' }}
-                    className="absolute top-0 left-0 h-full bg-blue-600 shadow-[0_0_10px_rgba(37,99,235,0.4)]"
+                    className="absolute top-0 left-0 h-full bg-green-600 shadow-[0_0_10px_rgba(34,197,94,0.4)]"
                   />
                 </div>
               )}
@@ -178,7 +178,7 @@ export default function SignupPage() {
 
         <div className="bg-[#111] border border-[#222] rounded-[24px] sm:rounded-3xl p-6 sm:p-8 shadow-2xl relative overflow-hidden">
           {/* Animated Background Pulse */}
-          <div className="absolute -top-24 -right-24 w-48 h-48 bg-blue-600/5 blur-3xl rounded-full animate-pulse" />
+          <div className="absolute -top-24 -right-24 w-48 h-48 bg-green-600/5 blur-3xl rounded-full animate-pulse" />
           
           <AnimatePresence mode="wait">
             <motion.div
@@ -210,7 +210,7 @@ export default function SignupPage() {
                         value={firstName}
                         onChange={(e) => setFirstName(e.target.value)}
                         placeholder="John"
-                        className="w-full bg-[#0a0a0a] border border-[#222] rounded-xl px-4 py-3 text-sm focus:border-blue-500/50 outline-none transition-all placeholder-[#333]"
+                        className="w-full bg-[#0a0a0a] border border-[#222] rounded-xl px-4 py-3 text-sm focus:border-green-500/50 outline-none transition-all placeholder-[#333]"
                       />
                     </div>
                     <div className="space-y-2">
@@ -221,7 +221,7 @@ export default function SignupPage() {
                         value={lastName}
                         onChange={(e) => setLastName(e.target.value)}
                         placeholder="Doe"
-                        className="w-full bg-[#0a0a0a] border border-[#222] rounded-xl px-4 py-3 text-sm focus:border-blue-500/50 outline-none transition-all placeholder-[#333]"
+                        className="w-full bg-[#0a0a0a] border border-[#222] rounded-xl px-4 py-3 text-sm focus:border-green-500/50 outline-none transition-all placeholder-[#333]"
                       />
                     </div>
                   </div>
@@ -236,7 +236,7 @@ export default function SignupPage() {
                         value={username}
                         onChange={(e) => setUsername(e.target.value)}
                         placeholder="johndoe"
-                        className="w-full bg-[#0a0a0a] border border-[#222] rounded-xl pl-12 pr-4 py-3 text-sm focus:border-blue-500/50 outline-none transition-all placeholder-[#333]"
+                        className="w-full bg-[#0a0a0a] border border-[#222] rounded-xl pl-12 pr-4 py-3 text-sm focus:border-green-500/50 outline-none transition-all placeholder-[#333]"
                       />
                     </div>
                   </div>
@@ -250,7 +250,7 @@ export default function SignupPage() {
                         value={linkedinUrl}
                         onChange={(e) => setLinkedinUrl(e.target.value)}
                         placeholder="https://linkedin.com/in/..."
-                        className="w-full bg-[#0a0a0a] border border-[#222] rounded-xl pl-12 pr-4 py-3 text-sm focus:border-blue-500/50 outline-none transition-all placeholder-[#333]"
+                        className="w-full bg-[#0a0a0a] border border-[#222] rounded-xl pl-12 pr-4 py-3 text-sm focus:border-green-500/50 outline-none transition-all placeholder-[#333]"
                       />
                     </div>
                   </div>
@@ -269,7 +269,7 @@ export default function SignupPage() {
                         value={email}
                         onChange={(e) => setEmail(e.target.value)}
                         placeholder="name@example.com"
-                        className="w-full bg-[#0a0a0a] border border-[#222] rounded-xl pl-12 pr-4 py-3 text-sm focus:border-blue-500/50 outline-none transition-all placeholder-[#333]"
+                        className="w-full bg-[#0a0a0a] border border-[#222] rounded-xl pl-12 pr-4 py-3 text-sm focus:border-green-500/50 outline-none transition-all placeholder-[#333]"
                       />
                     </div>
                   </div>
@@ -284,7 +284,7 @@ export default function SignupPage() {
                         value={phone}
                         onChange={(e) => setPhone(e.target.value)}
                         placeholder="987..."
-                        className="w-full bg-[#0a0a0a] border border-[#222] rounded-xl pl-12 pr-4 py-3 text-sm focus:border-blue-500/50 outline-none transition-all placeholder-[#333]"
+                        className="w-full bg-[#0a0a0a] border border-[#222] rounded-xl pl-12 pr-4 py-3 text-sm focus:border-green-500/50 outline-none transition-all placeholder-[#333]"
                       />
                     </div>
                   </div>
@@ -303,7 +303,7 @@ export default function SignupPage() {
                         value={password}
                         onChange={(e) => setPassword(e.target.value)}
                         placeholder="••••••••"
-                        className="w-full bg-[#0a0a0a] border border-[#222] rounded-xl pl-12 pr-12 py-3 text-sm focus:border-blue-500/50 outline-none transition-all placeholder-[#333]"
+                        className="w-full bg-[#0a0a0a] border border-[#222] rounded-xl pl-12 pr-12 py-3 text-sm focus:border-green-500/50 outline-none transition-all placeholder-[#333]"
                       />
                       <button
                         type="button"
@@ -325,7 +325,7 @@ export default function SignupPage() {
                         value={confirmPassword}
                         onChange={(e) => setConfirmPassword(e.target.value)}
                         placeholder="••••••••"
-                        className="w-full bg-[#0a0a0a] border border-[#222] rounded-xl pl-12 pr-12 py-3 text-sm focus:border-blue-500/50 outline-none transition-all placeholder-[#333]"
+                        className="w-full bg-[#0a0a0a] border border-[#222] rounded-xl pl-12 pr-12 py-3 text-sm focus:border-green-500/50 outline-none transition-all placeholder-[#333]"
                       />
                       <button
                         type="button"
@@ -369,7 +369,7 @@ export default function SignupPage() {
                     type="button"
                     onClick={handleSubmit}
                     disabled={isSubmitting}
-                    className="cursor-pointer flex-[2] bg-blue-600 text-white font-bold py-3.5 rounded-xl hover:bg-blue-700 transition-all flex items-center justify-center gap-2 disabled:opacity-50 shadow-[0_0_20px_rgba(37,99,235,0.3)]"
+                    className="cursor-pointer flex-[2] bg-green-600 text-white font-bold py-3.5 rounded-xl hover:bg-green-700 transition-all flex items-center justify-center gap-2 disabled:opacity-50 shadow-[0_0_20px_rgba(34,197,94,0.3)]"
                   >
                     {isSubmitting ? <Loader2 size={18} className="animate-spin" /> : 'Create Account'}
                   </button>

@@ -46,6 +46,34 @@
       {
         "state": "Kerala",
         "cities": ["Kochi", "Thiruvananthapuram", "Kozhikode", "Malappuram"]
+      },
+      {
+        "state": "Madhya Pradesh",
+        "cities": ["Bhopal", "Indore", "Jabalpur", "Gwalior", "Ujjain", "Rewa"]
+      },
+      {
+        "state": "Andhra Pradesh",
+        "cities": ["Visakhapatnam", "Vijayawada", "Guntur", "Tirupati", "Nellore", "Kurnool"]
+      },
+      {
+        "state": "Chhattisgarh",
+        "cities": ["Raipur", "Bhilai", "Bilaspur", "Durg", "Korba"]
+      },
+      {
+        "state": "Punjab",
+        "cities": ["Ludhiana", "Amritsar", "Jalandhar", "Patiala", "Mohali"]
+      },
+      {
+        "state": "Himachal Pradesh",
+        "cities": ["Shimla", "Manali", "Dharamshala", "Solan", "Mandi"]
+      },
+      {
+        "state": "Uttarakhand",
+        "cities": ["Dehradun", "Haridwar", "Roorkee", "Haldwani", "Rishikesh"]
+      },
+      {
+        "state": "Odisha",
+        "cities": ["Bhubaneswar", "Cuttack", "Rourkela", "Berhampur", "Sambalpur", "Puri"]
       }
     ]
   },

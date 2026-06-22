@@ -19,13 +19,13 @@ function FAQItem({ faq, index, isOpen, onToggle }: { faq: { q: string, a: string
       >
         <div className="flex items-center gap-12">
           <span className="font-mono text-[10px] text-[#444] tracking-widest uppercase">Q.0{index + 1}</span>
-          <h4 className={`text-2xl font-bold tracking-tight transition-colors ${isOpen ? 'text-blue-500' : 'group-hover:text-blue-500'}`}>{faq.q}</h4>
+          <h4 className={`text-2xl font-bold tracking-tight transition-colors ${isOpen ? 'text-green-500' : 'group-hover:text-green-500'}`}>{faq.q}</h4>
         </div>
         <motion.div
           animate={{ rotate: isOpen ? 45 : 0 }}
           transition={{ duration: 0.3, ease: "easeInOut" }}
         >
-          <Plus className={`${isOpen ? 'text-blue-500' : 'text-[#333] group-hover:text-blue-500'} transition-colors`} size={24} />
+          <Plus className={`${isOpen ? 'text-green-500' : 'text-[#333] group-hover:text-green-500'} transition-colors`} size={24} />
         </motion.div>
       </div>
 
@@ -111,12 +111,12 @@ export default function LandingPage() {
   };
 
   return (
-    <main className="min-h-screen bg-black text-white selection:bg-blue-500 selection:text-white font-sans overflow-x-hidden">
+    <main className="min-h-screen bg-black text-white selection:bg-green-500 selection:text-white font-sans overflow-x-hidden">
       {/* Grid Background Layer */}
       <div className="fixed inset-0 bg-grid opacity-20 pointer-events-none z-0" />
 
       {/* Top Border Gradient */}
-      <div className="fixed top-0 left-0 w-full h-[2px] bg-gradient-to-r from-transparent via-blue-500/50 to-transparent z-50" />
+      <div className="fixed top-0 left-0 w-full h-[2px] bg-gradient-to-r from-transparent via-green-500/50 to-transparent z-50" />
 
       {/* Navbar */}
       <nav className="fixed top-0 left-0 w-full h-20 px-4 sm:px-8 flex items-center justify-between z-50 border-b border-white/40 bg-black/50 backdrop-blur-xl">
@@ -142,7 +142,7 @@ export default function LandingPage() {
                 href="/profile"
                 className="flex items-center gap-2 sm:gap-3 px-1.5 sm:px-2 py-1.5 sm:py-2 bg-white/5 border border-white/10 rounded-full hover:border-white/20 transition-all group"
               >
-                <div className="w-5 h-5 sm:w-6 sm:h-6 rounded-full bg-gradient-to-br from-blue-500 to-indigo-600 flex items-center justify-center text-[8px] sm:text-[10px] font-bold shadow-lg shadow-blue-500/10 group-hover:scale-110 transition-transform">
+                <div className="w-5 h-5 sm:w-6 sm:h-6 rounded-full bg-gradient-to-br from-green-500 to-green-700 flex items-center justify-center text-[8px] sm:text-[10px] font-bold shadow-lg shadow-green-500/10 group-hover:scale-110 transition-transform">
                   {user?.first_name?.[0]}{user?.last_name?.[0]}
                 </div>
                 <span className="hidden sm:inline text-xs font-medium text-[#888] group-hover:text-white transition-colors">{user?.first_name}</span>
@@ -164,7 +164,7 @@ export default function LandingPage() {
             transition={{ duration: 0.8 }}
           >
             <div className="inline-flex items-center gap-2 sm:gap-3 bg-[#111] border border-[#222] px-3 sm:px-4 py-1 sm:py-1.5 rounded-full mb-6 sm:mb-10">
-              <span className="w-1.5 h-1.5 sm:w-2 sm:h-2 rounded-full bg-blue-500 animate-pulse" />
+              <span className="w-1.5 h-1.5 sm:w-2 sm:h-2 rounded-full bg-green-500 animate-pulse" />
               <span className="text-[10px] sm:text-md font-black tracking-widest uppercase text-[#888]">
                 <span className='text-sm sm:text-lg text-white'>{stats?.total_jobs?.toLocaleString()?.toLocaleString() || '420'} </span> NEW ROLES IN LAST 72H
               </span>
@@ -234,7 +234,7 @@ export default function LandingPage() {
                     <MarkerContent>
                       <div className="relative group/marker">
                         <motion.div
-                          className={`w-1.5 h-1.5 rounded-full ${i % 3 === 0 ? 'bg-white shadow-[0_0_8px_white]' : 'bg-blue-500 shadow-[0_0_8px_#3b82f6]'}`}
+                          className={`w-1.5 h-1.5 rounded-full ${i % 3 === 0 ? 'bg-white shadow-[0_0_8px_white]' : 'bg-green-500 shadow-[0_0_8px_#22c55e]'}`}
                           animate={{
                             opacity: [0.4, 1, 0.4],
                             scale: [1, 1.3, 1]
@@ -297,8 +297,8 @@ export default function LandingPage() {
         {/* Job Cards Marquee/Grid */}
         <section className="py-18 px-6 md:px-8 mx-auto overflow-hidden">
           <div className="flex items-center gap-4 mb-8">
-            <div className="h-px w-20 bg-blue-500" />
-            <span className="font-mono text-xs text-blue-500 tracking-widest uppercase">// RECENTS.JSON</span>
+            <div className="h-px w-20 bg-green-500" />
+            <span className="font-mono text-xs text-green-500 tracking-widest uppercase">// RECENTS.JSON</span>
           </div>
 
           {/* Horizontal Marquee */}
@@ -314,7 +314,7 @@ export default function LandingPage() {
             >
               {/* Double the array for seamless looping */}
               {(Array.isArray(recentJobs) ? [...recentJobs.slice(0, 10), ...recentJobs.slice(0, 10)] : []).map((job, i) => (
-                <div key={i} className="flex-shrink-0 w-[280px] sm:w-[350px] group p-6 sm:p-8 border border-white/5 bg-[#080808] hover:border-blue-500/30 hover:bg-[#0a0a0a] transition-all relative overflow-hidden">
+                <div key={i} className="flex-shrink-0 w-[280px] sm:w-[350px] group p-6 sm:p-8 border border-white/5 bg-[#080808] hover:border-green-500/30 hover:bg-[#0a0a0a] transition-all relative overflow-hidden">
                   <div className="flex items-center justify-between mb-4">
                     <h4 className="text-xl font-bold tracking-tight text-white mb-4 line-clamp-1 truncate">{job.title}</h4>
                   </div>
@@ -341,8 +341,8 @@ export default function LandingPage() {
           <div className="grid grid-cols-1 lg:grid-cols-3 gap-12 lg:gap-16">
             <div className="lg:col-span-1">
               <div className="flex items-center gap-4 mb-6 sm:mb-8">
-                <div className="h-px w-12 sm:w-20 bg-blue-500" />
-                <span className="font-mono text-[10px] sm:text-xs text-blue-500 tracking-widest uppercase">// SOURCES.PY</span>
+                <div className="h-px w-12 sm:w-20 bg-green-500" />
+                <span className="font-mono text-[10px] sm:text-xs text-green-500 tracking-widest uppercase">// SOURCES.PY</span>
               </div>
               <h2 className="text-xl sm:text-2xl font-black tracking-tight leading-tight uppercase max-w-xs">
                 We pull from twelve job boards. These are the busy ones.
@@ -359,7 +359,7 @@ export default function LandingPage() {
                 { name: "YC", count: "3,201 live" }
               ].map((source, i) => (
                 <div key={i} className="flex flex-col gap-1 sm:gap-2 group cursor-default">
-                  <div className="text-xl sm:text-2xl font-bold tracking-tight text-white group-hover:text-blue-500 transition-colors">{source.name}</div>
+                  <div className="text-xl sm:text-2xl font-bold tracking-tight text-white group-hover:text-green-500 transition-colors">{source.name}</div>
                   <div className="font-mono text-[8px] sm:text-[10px] text-[#444] tracking-widest uppercase">{source.count}</div>
                 </div>
               ))}
@@ -369,7 +369,7 @@ export default function LandingPage() {
 
         {/* New Feature Spotlight: AI Match */}
         <section className="px-6 py-16 sm:py-20 border-t border-white/40 bg-[#050505] relative overflow-hidden">
-          <div className="absolute top-1/2 left-1/2 -translate-x-1/2 -translate-y-1/2 w-[300px] sm:w-[600px] h-[300px] sm:h-[600px] bg-blue-500/5 blur-[120px] rounded-full pointer-events-none" />
+          <div className="absolute top-1/2 left-1/2 -translate-x-1/2 -translate-y-1/2 w-[300px] sm:w-[600px] h-[300px] sm:h-[600px] bg-green-500/5 blur-[120px] rounded-full pointer-events-none" />
 
           <div className="grid grid-cols-1 lg:grid-cols-2 gap-16 lg:gap-24 items-center">
             <motion.div
@@ -384,14 +384,14 @@ export default function LandingPage() {
                 <div className="w-1.5 sm:w-2 h-1.5 sm:h-2 rounded-full bg-green-500/20" />
               </div>
 
-              <div className="flex items-center gap-3 sm:gap-4 p-3 sm:p-4 rounded-xl bg-white/5 border border-white/10 group-hover:border-blue-500/30 transition-all">
-                <div className="w-10 sm:w-12 h-10 sm:h-12 rounded-lg bg-blue-500/10 flex items-center justify-center shrink-0">
-                  <Briefcase className="text-blue-500 w-5 h-5 sm:w-6 sm:h-6" />
+              <div className="flex items-center gap-3 sm:gap-4 p-3 sm:p-4 rounded-xl bg-white/5 border border-white/10 group-hover:border-green-500/30 transition-all">
+                <div className="w-10 sm:w-12 h-10 sm:h-12 rounded-lg bg-green-500/10 flex items-center justify-center shrink-0">
+                  <Briefcase className="text-green-500 w-5 h-5 sm:w-6 sm:h-6" />
                 </div>
                 <div className="flex-1 min-w-0">
                   <div className="flex items-center justify-between mb-1">
                     <div className="h-3 sm:h-4 w-20 sm:w-32 bg-white/10 rounded animate-pulse" />
-                    <div className="px-1.5 sm:px-2 py-0.5 rounded bg-blue-500/20 border border-blue-500/30 text-[8px] sm:text-[10px] font-black text-blue-500 uppercase tracking-widest whitespace-nowrap">89.4% Match</div>
+                    <div className="px-1.5 sm:px-2 py-0.5 rounded bg-green-500/20 border border-green-500/30 text-[8px] sm:text-[10px] font-black text-green-500 uppercase tracking-widest whitespace-nowrap">89.4% Match</div>
                   </div>
                   <div className="h-2 sm:h-3 w-32 sm:w-48 bg-white/5 rounded animate-pulse" />
                 </div>
@@ -402,7 +402,7 @@ export default function LandingPage() {
                 <div className="h-1.5 sm:h-2 w-3/4 bg-white/5 rounded" />
               </div>
 
-              <div className="absolute -bottom-4 -right-4 sm:-bottom-6 sm:-right-6 p-4 sm:p-6 rounded-2xl bg-blue-600 shadow-2xl shadow-blue-600/20 max-w-[150px] sm:max-w-[200px]">
+              <div className="absolute -bottom-4 -right-4 sm:-bottom-6 sm:-right-6 p-4 sm:p-6 rounded-2xl bg-green-600 shadow-2xl shadow-green-600/20 max-w-[150px] sm:max-w-[200px]">
                 <p className="text-[8px] sm:text-[10px] font-black uppercase tracking-widest text-white/60 mb-1 sm:mb-2">AI Engine Active</p>
                 <p className="text-[10px] sm:text-xs font-bold leading-relaxed text-white">Your resume was analyzed. We found 12 roles that match your DNA perfectly.</p>
               </div>
@@ -410,12 +410,12 @@ export default function LandingPage() {
 
             <div>
               <div className="flex items-center gap-4 mb-4">
-                <div className="h-px w-12 sm:w-20 bg-blue-500" />
-                <span className="font-mono text-[10px] sm:text-xs text-blue-500 tracking-widest uppercase">// RESUME_AI.MOD</span>
+                <div className="h-px w-12 sm:w-20 bg-green-500" />
+                <span className="font-mono text-[10px] sm:text-xs text-green-500 tracking-widest uppercase">// RESUME_AI.MOD</span>
               </div>
               <h2 className="text-3xl sm:text-5xl font-black tracking-tight mb-6 sm:mb-8 leading-[1.1]">
                 Stop guessing.<br />
-                Start <span className="text-serif font-normal italic lowercase text-blue-500">matching.</span>
+                Start <span className="text-serif font-normal italic lowercase text-green-500">matching.</span>
               </h2>
               <p className="text-lg sm:text-xl text-[#888] leading-relaxed mb-8 sm:mb-10">
                 Upload your resume once. Our AI parses your experience and calculates a <span className="text-white font-bold">real time match percentage</span> for every single listing on the map.
@@ -428,7 +428,7 @@ export default function LandingPage() {
                   "Zero configuration setup"
                 ].map((feature, i) => (
                   <li key={i} className="flex items-center gap-3 text-xs sm:text-sm font-mono text-[#555] uppercase tracking-widest">
-                    <Zap className="text-blue-500 w-3 h-3 sm:w-3.5 sm:h-3.5" />
+                    <Zap className="text-green-500 w-3 h-3 sm:w-3.5 sm:h-3.5" />
                     {feature}
                   </li>
                 ))}
@@ -441,11 +441,11 @@ export default function LandingPage() {
         <section className="px-6 md:px-8 py-20 border-t border-white/40 mx-auto">
           <div className="flex items-center justify-between flex-wrap mb-16 gap-2">
             <div className="flex items-center gap-4">
-              <div className="h-px w-12 bg-blue-500" />
-              <span className="font-mono text-xs text-blue-500 tracking-widest uppercase text-nowrap">// HOW_IT_WORKS.TS</span>
+              <div className="h-px w-12 bg-green-500" />
+              <span className="font-mono text-xs text-green-500 tracking-widest uppercase text-nowrap">// HOW_IT_WORKS.TS</span>
             </div>
             <div className="flex items-center gap-4">
-              <div className="w-2 h-2 rounded-full bg-blue-500 animate-pulse" />
+              <div className="w-2 h-2 rounded-full bg-green-500 animate-pulse" />
               <span className="font-mono text-[10px] text-[#444] tracking-widest uppercase">THREE STEPS · ABOUT NINETY SECONDS</span>
             </div>
           </div>
@@ -456,7 +456,7 @@ export default function LandingPage() {
                 step: "01",
                 title: "We crawl, <span class='text-serif font-normal italic lowercase'>so you sleep.</span>",
                 desc: "Twelve job boards, polled every fifteen minutes. Listings are de-duped by hash, fingerprinted by company, and stamped the moment they go live.",
-                code: `<span class="text-white/40">$</span> kaamlee crawl --all\n<span class="text-green-500">↳</span> linkedin <span class="text-green-500">[✓]</span> 184,392\n<span class="text-green-500">↳</span> indeed <span class="text-green-500">[✓]</span> 92,118\n<span class="text-green-500">↳</span> google <span class="text-green-500">[✓]</span> 61,540\n<span class="text-blue-500">↳</span> wellfound <span class="text-blue-500 animate-pulse">[·]</span> crawling...`
+                code: `<span class="text-white/40">$</span> kaamlee crawl --all\n<span class="text-green-500">↳</span> linkedin <span class="text-green-500">[✓]</span> 184,392\n<span class="text-green-500">↳</span> indeed <span class="text-green-500">[✓]</span> 92,118\n<span class="text-green-500">↳</span> google <span class="text-green-500">[✓]</span> 61,540\n<span class="text-green-500">↳</span> wellfound <span class="text-green-500 animate-pulse">[·]</span> crawling...`
               },
               {
                 step: "02",
@@ -468,12 +468,12 @@ export default function LandingPage() {
                 step: "03",
                 title: "Apply <span class='text-serif font-normal italic lowercase'>before noon.</span>",
                 desc: "One click takes you to the source posting. We don't middleman the application — we just made the haystack smaller.",
-                code: `APPLY <span class="text-white/40">→</span> STRIPE.COM <span class="text-green-500">200 OK</span>\n<span class="text-white/10">--------------------------------------</span>\n<span class="text-green-500">↳</span> resume.pdf          <span class="text-green-500">↳</span> cover_letter.md\n\n<span class="text-blue-500 font-bold">Confirmation in inbox.</span> Time elapsed: 11s`
+                code: `APPLY <span class="text-white/40">→</span> STRIPE.COM <span class="text-green-500">200 OK</span>\n<span class="text-white/10">--------------------------------------</span>\n<span class="text-green-500">↳</span> resume.pdf          <span class="text-green-500">↳</span> cover_letter.md\n\n<span class="text-green-500 font-bold">Confirmation in inbox.</span> Time elapsed: 11s`
               }
             ].map((item, i) => (
               <div key={i} className="flex flex-col gap-8">
                 <div>
-                  <div className="font-mono text-[10px] text-blue-500 font-bold uppercase tracking-widest mb-4">Step {item.step}</div>
+                  <div className="font-mono text-[10px] text-green-500 font-bold uppercase tracking-widest mb-4">Step {item.step}</div>
                   <h3 className="text-4xl font-black tracking-tight leading-[1.1] mb-6" dangerouslySetInnerHTML={{ __html: item.title }} />
                   <p className="text-[#888] leading-relaxed text-sm mb-8">
                     {item.desc}
@@ -497,8 +497,8 @@ export default function LandingPage() {
         {/* Section 04: FAQ */}
         <section id="faq" className="px-6 sm:px-8 mx-auto mb-24">
           <div className="flex items-center gap-4 mb-12">
-            <div className="h-px w-12 sm:w-20 bg-blue-500" />
-            <span className="font-mono text-[10px] sm:text-xs text-blue-500 tracking-widest uppercase">// FAQ.MD</span>
+            <div className="h-px w-12 sm:w-20 bg-green-500" />
+            <span className="font-mono text-[10px] sm:text-xs text-green-500 tracking-widest uppercase">// FAQ.MD</span>
           </div>
 
           <div className="border-t border-white/10">
@@ -559,12 +559,12 @@ export default function LandingPage() {
               >
                 with love <span className="text-white underline underline-offset-4">commhawk</span>
               </a>
-              <button
+              {/* <button
                 onClick={() => setIsTeamModalOpen(true)}
-                className="text-[10px] font-mono tracking-[0.2em] uppercase text-[#444] hover:text-blue-500 transition-colors cursor-pointer group text-right"
+                className="text-[10px] font-mono tracking-[0.2em] uppercase text-[#444] hover:text-green-500 transition-colors cursor-pointer group text-right"
               >
-                developed by <span className="text-blue-500 font-bold tracking-tighter group-hover:underline underline-offset-4">smtech</span>
-              </button>
+                developed by <span className="text-green-500 font-bold tracking-tighter group-hover:underline underline-offset-4">smtech</span>
+              </button> */}
             </div>
           </div>
         </footer>
@@ -600,8 +600,8 @@ export default function LandingPage() {
 
               <div className="p-8 sm:p-12">
                 <div className="my-8 text-center">
-                  <div className="font-mono text-[10px] text-blue-500 tracking-[0.3em] uppercase mb-3">// THE_ENGINEERS</div>
-                  <div className="h-px w-20 bg-blue-500 mx-auto mt-4" />
+                  <div className="font-mono text-[10px] text-green-500 tracking-[0.3em] uppercase mb-3">// THE_ENGINEERS</div>
+                  <div className="h-px w-20 bg-green-500 mx-auto mt-4" />
                 </div>
 
                 <div className="grid grid-cols-1 md:grid-cols-3 gap-2">
@@ -618,7 +618,7 @@ export default function LandingPage() {
                       className="group p-6 text-center"
                     >
                       <div className="text-lg font-bold text-white mb-1">{member.name}</div>
-                      <a href={member.linkedin} target="_blank" rel="noopener noreferrer" className="text-[10px] font-mono uppercase tracking-widest text-[#444] cursor-pointer hover:text-blue-500 hover:underline transition-all">linkedin</a>
+                      <a href={member.linkedin} target="_blank" rel="noopener noreferrer" className="text-[10px] font-mono uppercase tracking-widest text-[#444] cursor-pointer hover:text-green-500 hover:underline transition-all">linkedin</a>
                     </motion.div>
                   ))}
                 </div>

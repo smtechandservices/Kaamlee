@@ -512,7 +512,7 @@ function MapMarker({
 }
 
 type MarkerContentProps = {
-  /** Custom marker content. Defaults to a blue dot if not provided */
+  /** Custom marker content. Defaults to a green dot if not provided */
   children?: ReactNode;
   /** Additional CSS classes for the marker container */
   className?: string;
@@ -531,7 +531,7 @@ function MarkerContent({ children, className }: MarkerContentProps) {
 
 function DefaultMarkerIcon() {
   return (
-    <div className="relative h-4 w-4 rounded-full border-2 border-white bg-blue-500 shadow-lg" />
+    <div className="relative h-4 w-4 rounded-full border-2 border-white bg-green-500 shadow-lg" />
   );
 }
 
@@ -921,8 +921,8 @@ function MapControls({
         <MapMarker longitude={userLocation.longitude} latitude={userLocation.latitude}>
           <MarkerContent>
             <div className="relative flex h-4 w-4 items-center justify-center">
-              <span className="absolute inline-flex h-full w-full animate-ping rounded-full bg-[#3b82f6] opacity-75"></span>
-              <span className="relative inline-flex h-3 w-3 rounded-full border-2 border-white bg-[#3b82f6] shadow-sm"></span>
+              <span className="absolute inline-flex h-full w-full animate-ping rounded-full bg-[#22c55e] opacity-75"></span>
+              <span className="relative inline-flex h-3 w-3 rounded-full border-2 border-white bg-[#22c55e] shadow-sm"></span>
             </div>
           </MarkerContent>
         </MapMarker>
@@ -1583,7 +1583,7 @@ type MapClusterLayerProps<
   clusterColors?: [string, string, string];
   /** Point count thresholds for color/size steps: [medium, large] (default: [100, 750]) */
   clusterThresholds?: [number, number];
-  /** Color for unclustered individual points (default: "#3b82f6") */
+  /** Color for unclustered individual points (default: "#22c55e") */
   pointColor?: string;
   /** Callback when an unclustered point is clicked */
   onPointClick?: (
@@ -1606,7 +1606,7 @@ function MapClusterLayer<
   clusterRadius = 50,
   clusterColors = ["#22c55e", "#eab308", "#ef4444"],
   clusterThresholds = [100, 750],
-  pointColor = "#3b82f6",
+  pointColor = "#22c55e",
   onPointClick,
   onClusterClick,
 }: MapClusterLayerProps<P>) {

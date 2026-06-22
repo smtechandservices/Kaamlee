@@ -48,7 +48,7 @@ export default function LoginPage() {
   return (
     <main className="min-h-screen bg-[#0a0a0a] text-white flex flex-col items-center justify-center p-6 relative overflow-hidden">
       {/* Background decoration */}
-      <div className="absolute top-0 left-1/2 -translate-x-1/2 w-[800px] h-[500px] bg-blue-500/5 blur-[120px] rounded-full pointer-events-none" />
+      <div className="absolute top-0 left-1/2 -translate-x-1/2 w-[800px] h-[500px] bg-green-500/5 blur-[120px] rounded-full pointer-events-none" />
       
       <Link href="/" className="absolute top-6 left-6 sm:top-8 sm:left-8 text-[#888] hover:text-white transition-colors flex items-center gap-2 text-xs sm:text-sm font-medium z-20">
         <ArrowLeft className="w-3.5 h-3.5 sm:w-4 sm:h-4" />
@@ -84,7 +84,7 @@ export default function LoginPage() {
                   value={username}
                   onChange={(e) => setUsername(e.target.value)}
                   placeholder="johndoe"
-                  className="w-full bg-[#0a0a0a] border border-[#222] rounded-xl pl-12 pr-4 py-3 text-md focus:border-blue-500/50 outline-none transition-all placeholder-[#333]"
+                  className="w-full bg-[#0a0a0a] border border-[#222] rounded-xl pl-12 pr-4 py-3 text-md focus:border-green-500/50 outline-none transition-all placeholder-[#333]"
                 />
               </div>
             </div>
@@ -101,7 +101,7 @@ export default function LoginPage() {
                   value={password}
                   onChange={(e) => setPassword(e.target.value)}
                   placeholder="••••••••"
-                  className="w-full bg-[#0a0a0a] border border-[#222] rounded-xl pl-12 pr-12 py-3 text-md focus:border-blue-500/50 outline-none transition-all placeholder-[#333]"
+                  className="w-full bg-[#0a0a0a] border border-[#222] rounded-xl pl-12 pr-12 py-3 text-md focus:border-green-500/50 outline-none transition-all placeholder-[#333]"
                 />
                 <button
                   type="button"

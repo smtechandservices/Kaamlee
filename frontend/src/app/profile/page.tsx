@@ -79,7 +79,7 @@ export default function ProfilePage() {
   if (isAuthLoading || !token) {
     return (
       <div className="h-screen bg-[#0a0a0a] flex items-center justify-center">
-        <Loader2 className="w-8 h-8 text-blue-500 animate-spin" />
+        <Loader2 className="w-8 h-8 text-green-500 animate-spin" />
       </div>
     );
   }
@@ -87,7 +87,7 @@ export default function ProfilePage() {
   return (
     <main className="min-h-screen bg-[#0a0a0a] text-white p-6 relative overflow-hidden">
       {/* Background decoration */}
-      <div className="absolute top-0 left-1/2 -translate-x-1/2 w-[800px] h-[500px] bg-blue-500/5 blur-[120px] rounded-full pointer-events-none" />
+      <div className="absolute top-0 left-1/2 -translate-x-1/2 w-[800px] h-[500px] bg-green-500/5 blur-[120px] rounded-full pointer-events-none" />
 
       <div className="max-w-2xl mx-auto z-10 relative pt-8 sm:pt-12">
         <button 
@@ -134,7 +134,7 @@ export default function ProfilePage() {
                     required
                     value={firstName}
                     onChange={(e) => setFirstName(e.target.value)}
-                    className="w-full bg-[#0a0a0a] border border-[#222] rounded-xl sm:rounded-2xl pl-11 sm:pl-12 pr-4 py-3.5 sm:py-4 text-xs sm:text-sm focus:border-blue-500/50 outline-none transition-all"
+                    className="w-full bg-[#0a0a0a] border border-[#222] rounded-xl sm:rounded-2xl pl-11 sm:pl-12 pr-4 py-3.5 sm:py-4 text-xs sm:text-sm focus:border-green-500/50 outline-none transition-all"
                   />
                 </div>
               </div>
@@ -147,7 +147,7 @@ export default function ProfilePage() {
                     required
                     value={lastName}
                     onChange={(e) => setLastName(e.target.value)}
-                    className="w-full bg-[#0a0a0a] border border-[#222] rounded-xl sm:rounded-2xl pl-11 sm:pl-12 pr-4 py-3.5 sm:py-4 text-xs sm:text-sm focus:border-blue-500/50 outline-none transition-all"
+                    className="w-full bg-[#0a0a0a] border border-[#222] rounded-xl sm:rounded-2xl pl-11 sm:pl-12 pr-4 py-3.5 sm:py-4 text-xs sm:text-sm focus:border-green-500/50 outline-none transition-all"
                   />
                 </div>
               </div>
@@ -161,7 +161,7 @@ export default function ProfilePage() {
                   type="tel"
                   value={phone}
                   onChange={(e) => setPhone(e.target.value)}
-                  className="w-full bg-[#0a0a0a] border border-[#222] rounded-xl sm:rounded-2xl pl-11 sm:pl-12 pr-4 py-3.5 sm:py-4 text-xs sm:text-sm focus:border-blue-500/50 outline-none transition-all"
+                  className="w-full bg-[#0a0a0a] border border-[#222] rounded-xl sm:rounded-2xl pl-11 sm:pl-12 pr-4 py-3.5 sm:py-4 text-xs sm:text-sm focus:border-green-500/50 outline-none transition-all"
                 />
               </div>
             </div>
@@ -174,7 +174,7 @@ export default function ProfilePage() {
                   type="url"
                   value={linkedinUrl}
                   onChange={(e) => setLinkedinUrl(e.target.value)}
-                  className="w-full bg-[#0a0a0a] border border-[#222] rounded-xl sm:rounded-2xl pl-11 sm:pl-12 pr-4 py-3.5 sm:py-4 text-xs sm:text-sm focus:border-blue-500/50 outline-none transition-all"
+                  className="w-full bg-[#0a0a0a] border border-[#222] rounded-xl sm:rounded-2xl pl-11 sm:pl-12 pr-4 py-3.5 sm:py-4 text-xs sm:text-sm focus:border-green-500/50 outline-none transition-all"
                 />
               </div>
             </div>
@@ -183,7 +183,7 @@ export default function ProfilePage() {
               <label className="text-[10px] sm:text-xs font-bold text-[#555] uppercase tracking-widest ml-1">Resume (PDF Recommended)</label>
               <div className="relative">
                 {!user?.resume && !resume ? (
-                  <div className="w-full bg-[#0a0a0a] border border-[#222] border-dashed rounded-xl sm:rounded-2xl p-6 sm:p-8 flex flex-col items-center justify-center gap-3 hover:border-blue-500/50 transition-all cursor-pointer relative text-center">
+                  <div className="w-full bg-[#0a0a0a] border border-[#222] border-dashed rounded-xl sm:rounded-2xl p-6 sm:p-8 flex flex-col items-center justify-center gap-3 hover:border-green-500/50 transition-all cursor-pointer relative text-center">
                     <Briefcase size={24} className="text-[#444]" />
                     <span className="text-[10px] sm:text-xs font-medium text-[#888]">Click to upload or drag & drop</span>
                     <input 
@@ -196,8 +196,8 @@ export default function ProfilePage() {
                 ) : (
                   <div className="w-full bg-[#161616] border border-[#222] rounded-xl sm:rounded-2xl p-3 sm:p-4 flex items-center justify-between gap-3 sm:gap-4">
                     <div className="flex items-center gap-2 sm:gap-3 overflow-hidden">
-                      <div className="w-9 h-9 sm:w-10 sm:h-10 rounded-lg sm:rounded-xl bg-blue-500/10 flex items-center justify-center shrink-0">
-                        <Briefcase className="text-blue-500 w-4 h-4 sm:w-5 sm:h-5" />
+                      <div className="w-9 h-9 sm:w-10 sm:h-10 rounded-lg sm:rounded-xl bg-green-500/10 flex items-center justify-center shrink-0">
+                        <Briefcase className="text-green-500 w-4 h-4 sm:w-5 sm:h-5" />
                       </div>
                       <div className="overflow-hidden">
                         <p className="text-[10px] sm:text-xs font-bold text-white truncate">
@@ -248,7 +248,7 @@ export default function ProfilePage() {
                 )}
                 
                 {resume && (
-                  <p className="text-[9px] sm:text-[10px] text-blue-500/60 mt-1 sm:mt-2 ml-1 italic">
+                  <p className="text-[9px] sm:text-[10px] text-green-500/60 mt-1 sm:mt-2 ml-1 italic">
                     Click "Save Changes" to upload the new resume.
                   </p>
                 )}

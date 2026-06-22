@@ -192,45 +192,35 @@ def run_background_scraping(search_term="frontend developer", results_wanted=5, 
                                 if session.stop_requested or session.status != 'running':
                                     raise InterruptedError("Stop requested or status changed")
 
-
                                 logo = enrich_logo(row)
                                 lat = row.get('latitude')
                                 lon = row.get('longitude')
-                                
-                                if lat is None or lon is None:
-                                    # Use city coordinates as fallback
-                                    lat, lon = get_coordinates(
-                                        row.get('location'), 
-                                        row.get('company'),
-                                        fallback_lat=loc.latitude,
-                                        fallback_lon=loc.longitude
-                                    )
-                                    # Add jitter if we use any coordinates to avoid overlap
-                                    if lat is not None and lon is not None:
-                                        lat += random.uniform(-0.015, 0.015)
-                                        lon += random.uniform(-0.015, 0.015)
 
-                                if lat is not None and lon is not None:
-                                    Job.objects.update_or_create(
-                                        id_from_site=row.get('id'),
-                                        defaults={
-                                            'title': row.get('title'),
-                                            'company': row.get('company'),
-                                            'location_name': row.get('location'),
-                                            'location': loc,
-                                            'is_remote': row.get('is_remote', False),
-                                            'job_type': row.get('job_type'),
-                                            'job_url': row.get('job_url'),
-                                            'description': row.get('description'),
-                                            'site': row.get('site'),
-                                            'company_logo': logo,
-                                            'date_posted': row.get('date_posted'),
-                                            'latitude': lat,
-                                            'longitude': lon,
-                                        }
-                                    )
-                                    site_found += 1
-                                    total_found += 1
+                                # Fall back to the location's city coordinates with jitter
+                                if (lat is None or lon is None) and loc.latitude is not None and loc.longitude is not None:
+                                    lat = loc.latitude + random.uniform(-0.015, 0.015)
+                                    lon = loc.longitude + random.uniform(-0.015, 0.015)
+
+                                Job.objects.update_or_create(
+                                    id_from_site=row.get('id'),
+                                    defaults={
+                                        'title': row.get('title'),
+                                        'company': row.get('company'),
+                                        'location_name': row.get('location'),
+                                        'location': loc,
+                                        'is_remote': row.get('is_remote', False),
+                                        'job_type': row.get('job_type'),
+                                        'job_url': row.get('job_url'),
+                                        'description': row.get('description'),
+                                        'site': row.get('site'),
+                                        'company_logo': logo,
+                                        'date_posted': row.get('date_posted'),
+                                        'latitude': lat,
+                                        'longitude': lon,
+                                    }
+                                )
+                                site_found += 1
+                                total_found += 1
                                     
                             session.jobs_found = total_found
                             session.save()

@@ -52,7 +52,7 @@ export const JobCard = ({ job, isSelected, onClick, onToggleBookmark }: JobCardP
   return (
     <div
       onClick={onClick}
-      className={`cursor-default job-card p-4 rounded-xl border border-[#222] bg-[#111] hover:border-[#3b82f6] group transition-all relative overflow-hidden ${isSelected ? 'border-[#3b82f6] bg-[#161616]' : ''
+      className={`cursor-default job-card p-4 rounded-xl border border-[#222] bg-[#111] hover:border-[#22c55e] group transition-all relative overflow-hidden ${isSelected ? 'border-[#22c55e] bg-[#161616]' : ''
         }`}
     >
       {/* AI Match Circular Indicator */}
@@ -80,7 +80,7 @@ export const JobCard = ({ job, isSelected, onClick, onToggleBookmark }: JobCardP
                 strokeDashoffset={2 * Math.PI * 11 * (1 - job.match_score / 100)}
                 strokeLinecap="round"
                 className={`transition-all duration-1000 ease-out ${job.match_score > 70 ? 'text-green-500' :
-                    job.match_score > 40 ? 'text-blue-500' :
+                    job.match_score > 40 ? 'text-green-500' :
                       'text-orange-500'
                   }`}
               />
@@ -99,7 +99,7 @@ export const JobCard = ({ job, isSelected, onClick, onToggleBookmark }: JobCardP
       )}
       <div className="flex gap-3 sm:gap-4 items-start">
         <div className="flex flex-col items-center shrink-0 gap-2">
-          <div className="w-10 h-10 sm:w-12 sm:h-12 rounded-lg bg-white flex items-center justify-center border border-[#333] overflow-hidden group-hover:border-[#3b82f6] transition-colors">
+          <div className="w-10 h-10 sm:w-12 sm:h-12 rounded-lg bg-white flex items-center justify-center border border-[#333] overflow-hidden group-hover:border-[#22c55e] transition-colors">
             {job.company_logo ? (
               <img
                 src={job.company_logo}
@@ -121,7 +121,7 @@ export const JobCard = ({ job, isSelected, onClick, onToggleBookmark }: JobCardP
           <button
             onClick={onToggleBookmark}
             className={`w-full flex justify-center cursor-pointer p-1.5 sm:p-2 rounded-lg border transition-all ${job.is_bookmarked
-                ? 'bg-blue-500/10 border-blue-500/30 text-blue-500'
+                ? 'bg-green-500/10 border-green-500/30 text-green-500'
                 : 'bg-transparent border-[#222] text-[#444] hover:border-[#333] hover:text-[#666]'
               }`}
             title={job.is_bookmarked ? "Unbookmark" : "Bookmark"}
@@ -142,7 +142,7 @@ export const JobCard = ({ job, isSelected, onClick, onToggleBookmark }: JobCardP
         </div>
 
         <div className="flex-1 min-w-0">
-          <h3 className="max-w-[85%] font-semibold text-white group-hover:text-[#3b82f6] transition-colors truncate">
+          <h3 className="max-w-[85%] font-semibold text-white group-hover:text-[#22c55e] transition-colors truncate">
             {job.title}
           </h3>
 
@@ -161,7 +161,7 @@ export const JobCard = ({ job, isSelected, onClick, onToggleBookmark }: JobCardP
               </div>
             )}
             {job.is_bookmarked && (
-              <div className="flex items-center gap-1 text-[11px] text-blue-500/80 bg-blue-500/5 px-2 py-1 rounded-full border border-blue-500/10">
+              <div className="flex items-center gap-1 text-[11px] text-green-500/80 bg-green-500/5 px-2 py-1 rounded-full border border-green-500/10">
                 <Bookmark size={10} fill="currentColor" />
                 Bookmarked
               </div>
@@ -185,7 +185,7 @@ export const JobCard = ({ job, isSelected, onClick, onToggleBookmark }: JobCardP
               href={job.job_url} 
               target="_blank" 
               rel="noopener noreferrer"
-              className="text-xs text-[#3b82f6] hover:underline"
+              className="text-xs text-[#22c55e] hover:underline"
               onClick={(e) => e.stopPropagation()}
             >
               Apply on {job.site}

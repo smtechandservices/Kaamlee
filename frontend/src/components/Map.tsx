@@ -192,7 +192,7 @@ const Map = ({ jobs, selectedJobId, onJobClick }: MapProps) => {
             data={geojson} 
             clusterMaxZoom={10}
             clusterRadius={50}
-            clusterColors={["#3b82f6", "#2563eb", "#1d4ed8"]}
+            clusterColors={["#22c55e", "#16a34a", "#15803d"]}
             onPointClick={(feature) => {
                const jobId = feature.properties?.id;
                if (jobId) onJobClick?.(jobId);
@@ -219,8 +219,8 @@ const Map = ({ jobs, selectedJobId, onJobClick }: MapProps) => {
               <MarkerContent className="group">
                 <div className={`w-8 h-8 rounded-full flex items-center justify-center text-sm font-black border-2 transition-all duration-300 overflow-hidden ${
                   job.id === selectedJobId 
-                    ? 'bg-[#3b82f6] border-white text-white scale-125 shadow-[0_0_15px_rgba(59,130,246,0.6)]' 
-                    : 'bg-white border-[#333] text-[#333] shadow-md group-hover:border-[#3b82f6] group-hover:scale-110'
+                    ? 'bg-[#22c55e] border-white text-white scale-125 shadow-[0_0_15px_rgba(34,197,94,0.6)]' 
+                    : 'bg-white border-[#333] text-[#333] shadow-md group-hover:border-[#22c55e] group-hover:scale-110'
                 }`}>
                   {job.company_logo ? (
                     <img 
@@ -254,7 +254,7 @@ const Map = ({ jobs, selectedJobId, onJobClick }: MapProps) => {
                       href={job.job_url} 
                       target="_blank" 
                       rel="noopener noreferrer"
-                      className="shrink-0 text-[10px] bg-[#3b82f6] text-white px-3 py-1.5 rounded-full font-bold flex items-center gap-1 hover:bg-blue-600 transition-colors"
+                      className="shrink-0 text-[10px] bg-[#22c55e] text-white px-3 py-1.5 rounded-full font-bold flex items-center gap-1 hover:bg-green-600 transition-colors"
                     >
                       Apply Now
                       <ExternalLink size={10} />
@@ -270,7 +270,7 @@ const Map = ({ jobs, selectedJobId, onJobClick }: MapProps) => {
 
       <div className="absolute top-4 left-4 z-10 flex flex-col gap-2">
         <div className="glass px-3 py-1.5 rounded-full text-[11px] font-medium text-white/80 w-30 flex items-center gap-2 bg-[#111]/80 backdrop-blur-md border border-[#333] pointer-events-none">
-          <div className="w-2 h-2 rounded-full bg-blue-500 animate-pulse" />
+          <div className="w-2 h-2 rounded-full bg-green-500 animate-pulse" />
           {jobs.length} {jobs.length === 1 ? 'Job' : 'Jobs'} Found
         </div>
         
@@ -282,10 +282,10 @@ const Map = ({ jobs, selectedJobId, onJobClick }: MapProps) => {
               animate={{ opacity: 1, x: 0, y: 0 }}
               exit={{ opacity: 0, x: 20, y: 0 }}
               transition={{ type: "spring", stiffness: 300, damping: 30 }}
-              className="glass px-4 py-3 rounded-2xl bg-blue-600/20 backdrop-blur-xl border border-blue-500/30 w-64 shadow-2xl shadow-blue-500/10"
+              className="glass px-4 py-3 rounded-2xl bg-green-600/20 backdrop-blur-xl border border-green-500/30 w-64 shadow-2xl shadow-green-500/10"
             >
               <div className="flex items-center justify-between mb-4">
-                <div className="text-[9px] font-black uppercase tracking-widest text-blue-400">Discovery {currentIndex + 1}/{nearbyJobs.length}</div>
+                <div className="text-[9px] font-black uppercase tracking-widest text-green-400">Discovery {currentIndex + 1}/{nearbyJobs.length}</div>
                 <div className="flex items-center gap-1">
                     <button 
                      onClick={() => setNearbyJobs([])}
@@ -314,7 +314,7 @@ const Map = ({ jobs, selectedJobId, onJobClick }: MapProps) => {
               </div>
               <div className="flex items-center justify-between text-[10px] font-bold">
                  <span className="text-white/60">{currentNearby.distance.toFixed(1)} km away</span>
-                 <span className="text-blue-400">{Math.round(currentNearby.distance * 1.5)} min</span>
+                 <span className="text-green-400">{Math.round(currentNearby.distance * 1.5)} min</span>
               </div>
             </motion.div>
           )}
@@ -329,7 +329,7 @@ const Map = ({ jobs, selectedJobId, onJobClick }: MapProps) => {
         >
           {isSearching ? (
             <>
-              <Loader2 size={14} className="animate-spin text-blue-600" />
+              <Loader2 size={14} className="animate-spin text-green-600" />
               Searching...
             </>
           ) : (

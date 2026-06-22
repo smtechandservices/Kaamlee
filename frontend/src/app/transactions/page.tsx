@@ -90,7 +90,7 @@ export default function TransactionsPage() {
   if (isLoading || loading) {
     return (
       <div className="h-screen bg-[#0a0a0a] flex items-center justify-center">
-        <Loader2 className="w-8 h-8 text-blue-500 animate-spin" />
+        <Loader2 className="w-8 h-8 text-green-500 animate-spin" />
       </div>
     );
   }
@@ -99,7 +99,7 @@ export default function TransactionsPage() {
 
   return (
     <main className="min-h-screen bg-[#0a0a0a] text-white p-6 relative overflow-hidden font-sans">
-      <div className="absolute top-0 left-1/2 -translate-x-1/2 w-[800px] h-[500px] bg-blue-500/5 blur-[120px] rounded-full pointer-events-none" />
+      <div className="absolute top-0 left-1/2 -translate-x-1/2 w-[800px] h-[500px] bg-green-500/5 blur-[120px] rounded-full pointer-events-none" />
 
       <div className="max-w-7xl mx-auto z-10 relative pt-8 sm:pt-12">
         <Link 
@@ -154,7 +154,7 @@ export default function TransactionsPage() {
                       <Clock size={16} />
                       <span className="text-sm">Time Remaining</span>
                     </div>
-                    <span className="text-xs font-bold text-blue-500">
+                    <span className="text-xs font-bold text-green-500">
                       {daysLeft} Days
                     </span>
                   </div>
@@ -163,7 +163,7 @@ export default function TransactionsPage() {
                 {user?.is_subscribed ? (
                   <button 
                     onClick={() => setIsPricingModalOpen(true)}
-                    className="mt-8 cursor-pointer w-full bg-blue-600 text-white py-4 rounded-2xl font-black uppercase tracking-widest text-xs flex items-center justify-center hover:bg-blue-700 transition-all shadow-lg shadow-blue-600/20"
+                    className="mt-8 cursor-pointer w-full bg-green-600 text-white py-4 rounded-2xl font-black uppercase tracking-widest text-xs flex items-center justify-center hover:bg-green-700 transition-all shadow-lg shadow-green-600/20"
                   >
                     Renew Plan
                   </button>
@@ -178,12 +178,12 @@ export default function TransactionsPage() {
               </div>
             </motion.div>
 
-            <div className="bg-blue-500/5 border border-blue-500/10 rounded-3xl p-6 space-y-4">
+            <div className="bg-green-500/5 border border-green-500/10 rounded-3xl p-6 space-y-4">
               <p className="text-[14px] leading-relaxed font-medium">
                 Payments are powered by Razorpay and handled by Commhawk.
               </p>
-              <div className="pt-4 border-t border-blue-500/10">
-                <p className="text-[10px] font-mono uppercase tracking-[0.2em] text-blue-500/60 italic">
+              <div className="pt-4 border-t border-green-500/10">
+                <p className="text-[10px] font-mono uppercase tracking-[0.2em] text-green-500/60 italic">
                   Note : Official payment receipts are sent directly to your registered email address.
                 </p>
               </div>
@@ -213,7 +213,7 @@ export default function TransactionsPage() {
                   <div className="flex items-center gap-4">
                     <div className={`w-12 h-12 rounded-xl flex items-center justify-center ${
                       tx.status === 'success' ? 'bg-green-500/10 text-green-500' : 
-                      tx.status === 'failed' ? 'bg-red-500/10 text-red-500' : 'bg-blue-500/10 text-blue-500'
+                      tx.status === 'failed' ? 'bg-red-500/10 text-red-500' : 'bg-green-500/10 text-green-500'
                     }`}>
                       {tx.status === 'success' ? <CheckCircle2 size={20} /> : 
                        tx.status === 'failed' ? <XCircle size={20} /> : <Clock size={20} />}
@@ -234,7 +234,7 @@ export default function TransactionsPage() {
                         <button 
                           onClick={() => checkStatus(tx.razorpay_order_id)}
                           disabled={checkingStatus === tx.razorpay_order_id}
-                          className="cursor-pointer p-1.5 rounded-lg bg-blue-500/10 text-blue-500 hover:bg-blue-500/20 transition-all group/btn"
+                          className="cursor-pointer p-1.5 rounded-lg bg-green-500/10 text-green-500 hover:bg-green-500/20 transition-all group/btn"
                           title="Refresh Status"
                         >
                           <RotateCcw size={12} className={`${checkingStatus === tx.razorpay_order_id ? 'animate-spin' : 'group-hover/btn:rotate-180 transition-transform duration-500'}`} />
@@ -276,7 +276,7 @@ export default function TransactionsPage() {
               initial={{ opacity: 0, scale: 0.9, y: 20 }}
               animate={{ opacity: 1, scale: 1, y: 0 }}
               exit={{ opacity: 0, scale: 0.9, y: 20 }}
-              className="relative bg-[#111] border border-[#222] p-8 rounded-3xl max-w-sm w-full text-center shadow-2xl shadow-blue-500/10"
+              className="relative bg-[#111] border border-[#222] p-8 rounded-3xl max-w-sm w-full text-center shadow-2xl shadow-green-500/10"
             >
               <div className={`w-16 h-16 rounded-2xl mx-auto mb-6 flex items-center justify-center ${statusMessage.type === 'error' ? 'bg-red-500/10 text-red-500' : 'bg-green-500/10 text-green-500'}`}>
                 {statusMessage.type === 'error' ? <XCircle size={32} /> : <CheckCircle2 size={32} />}

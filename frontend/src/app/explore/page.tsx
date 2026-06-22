@@ -148,7 +148,7 @@ export default function ExplorePage() {
   if (isLoading || !token) {
     return (
       <div className="h-screen bg-[#0a0a0a] flex items-center justify-center">
-        <div className="w-8 h-8 border-2 border-blue-500 border-t-transparent rounded-full animate-spin" />
+        <div className="w-8 h-8 border-2 border-green-500 border-t-transparent rounded-full animate-spin" />
       </div>
     );
   }
@@ -245,21 +245,21 @@ export default function ExplorePage() {
           <div className="flex items-center gap-1 sm:gap-2 bg-[#161616] rounded-full p-1 border border-[#222]">
             <button 
               onClick={() => setViewMode('split')}
-              className={`cursor-pointer p-1 sm:p-1.5 rounded-full transition-all hidden md:block ${viewMode === 'split' ? 'bg-[#3b82f6] text-white' : 'text-[#555] hover:text-[#888]'}`}
+              className={`cursor-pointer p-1 sm:p-1.5 rounded-full transition-all hidden md:block ${viewMode === 'split' ? 'bg-[#22c55e] text-white' : 'text-[#555] hover:text-[#888]'}`}
               title="Split View"
             >
               <List size={14} />
             </button>
             <button 
               onClick={() => setViewMode('list')}
-              className={`cursor-pointer p-1 sm:p-1.5 rounded-full transition-all md:hidden ${viewMode === 'list' ? 'bg-[#3b82f6] text-white' : 'text-[#555] hover:text-[#888]'}`}
+              className={`cursor-pointer p-1 sm:p-1.5 rounded-full transition-all md:hidden ${viewMode === 'list' ? 'bg-[#22c55e] text-white' : 'text-[#555] hover:text-[#888]'}`}
               title="List View"
             >
               <List size={14} />
             </button>
             <button 
               onClick={() => setViewMode('map')}
-              className={`cursor-pointer p-1 sm:p-1.5 rounded-full transition-all ${viewMode === 'map' ? 'bg-[#3b82f6] text-white' : 'text-[#555] hover:text-[#888]'}`}
+              className={`cursor-pointer p-1 sm:p-1.5 rounded-full transition-all ${viewMode === 'map' ? 'bg-[#22c55e] text-white' : 'text-[#555] hover:text-[#888]'}`}
               title="Map View"
             >
               <MapIcon size={14} />
@@ -286,7 +286,7 @@ export default function ExplorePage() {
           {/* Search Area */}
           <div className="p-3 sm:p-4 border-b border-[#222] bg-[#0a0a0a]">
             <div className="flex flex-col sm:flex-row items-stretch gap-3">
-              <div className="bg-[#161616] border border-[#222] rounded-2xl flex-1 shadow-inner flex flex-col overflow-hidden focus-within:border-[#3b82f6]/50 transition-all">
+              <div className="bg-[#161616] border border-[#222] rounded-2xl flex-1 shadow-inner flex flex-col overflow-hidden focus-within:border-[#22c55e]/50 transition-all">
                 <div className="h-10 sm:h-12 flex items-center px-3">
                   <Search className="text-[#555] shrink-0 ml-1 w-3.5 h-3.5 sm:w-4 sm:h-4" />
                   <input 
@@ -317,7 +317,7 @@ export default function ExplorePage() {
                     onClick={() => setSearchQuery('')}
                     className={`shrink-0 sm:w-full text-left px-2 py-1 rounded-lg text-[8px] sm:text-[9px] font-bold transition-all border ${
                       searchQuery === '' 
-                        ? 'bg-blue-500/10 text-blue-400 border-blue-500/30' 
+                        ? 'bg-green-500/10 text-green-400 border-green-500/30' 
                         : 'bg-transparent text-[#555] border-transparent hover:bg-[#111] hover:text-[#888]'
                     }`}
                   >
@@ -329,7 +329,7 @@ export default function ExplorePage() {
                       onClick={() => setSearchQuery(role)}
                       className={`shrink-0 sm:w-full text-left px-2 py-1 rounded-lg text-[8px] sm:text-[9px] font-bold transition-all border truncate ${
                         searchQuery === role 
-                          ? 'bg-blue-500/10 text-blue-400 border-blue-500/30' 
+                          ? 'bg-green-500/10 text-green-400 border-green-500/30' 
                           : 'bg-transparent text-[#555] border-transparent hover:bg-[#111] hover:text-[#888]'
                       }`}
                       title={role}
@@ -366,7 +366,7 @@ export default function ExplorePage() {
               onClick={() => setRemoteOnly(!remoteOnly)}
               className={`cursor-pointer px-3 sm:px-4 py-1 sm:py-1.5 rounded-lg text-[10px] sm:text-[11px] font-bold flex items-center gap-1.5 sm:gap-2 transition-all duration-300 border whitespace-nowrap shrink-0 ${
                 remoteOnly 
-                  ? 'bg-[#3b82f6] text-white border-[#3b82f6]' 
+                  ? 'bg-[#22c55e] text-white border-[#22c55e]' 
                   : 'bg-[#161616] text-[#888] border-[#222] hover:border-[#333] hover:text-white'
               }`}
             >
@@ -378,7 +378,7 @@ export default function ExplorePage() {
               onClick={() => setBookmarkedOnly(!bookmarkedOnly)}
               className={`cursor-pointer px-3 sm:px-4 py-1 sm:py-1.5 rounded-lg text-[10px] sm:text-[11px] font-bold flex items-center gap-1.5 sm:gap-2 transition-all duration-300 border whitespace-nowrap shrink-0 ${
                 bookmarkedOnly 
-                  ? 'bg-blue-600 text-white border-blue-600' 
+                  ? 'bg-green-600 text-white border-green-600' 
                   : 'bg-[#161616] text-[#888] border-[#222] hover:border-[#333] hover:text-white'
               }`}
             >

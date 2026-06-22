@@ -14,7 +14,7 @@
   --card-bg: #111111;
   --card-border: #222222;
   --accent: oklch(0.97 0 0);
-  --accent-hover: #2563eb;
+  --accent-hover: #16a34a;
   --muted: oklch(0.97 0 0);
   --input-bg: #1a1a1a;
   --input-border: #333333;
@@ -233,7 +233,7 @@
 }
 
 ::-webkit-scrollbar-thumb:hover {
-  background-color: #3b82f6; /* Blue accent on hover */
+  background-color: #22c55e; /* Blue accent on hover */
   box-shadow: 0 0 10px rgba(59, 130, 246, 0.5);
 }
 

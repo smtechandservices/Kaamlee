@@ -156,7 +156,7 @@ export default function PricingModal({ isOpen, onClose, showCloseButton = true }
             initial={{ opacity: 0, scale: 0.9, y: 20 }}
             animate={{ opacity: 1, scale: 1, y: 0 }}
             exit={{ opacity: 0, scale: 0.9, y: 20 }}
-            className="relative w-full max-w-[600px] border border-blue-500/20 bg-[#050505] rounded-sm p-8 sm:p-12 md:p-16 overflow-hidden shadow-[0_0_100px_-12px_rgba(59,130,246,0.2)]"
+            className="relative w-full max-w-[600px] border border-green-500/20 bg-[#050505] rounded-sm p-8 sm:p-12 md:p-16 overflow-hidden shadow-[0_0_100px_-12px_rgba(34,197,94,0.2)]"
           >
             {/* Top Right Actions */}
             <div className="absolute top-6 right-6 sm:top-8 sm:right-8 z-50 flex items-center gap-4 sm:gap-6">
@@ -181,7 +181,7 @@ export default function PricingModal({ isOpen, onClose, showCloseButton = true }
             </div>
 
             {/* Static Glows */}
-            <div className="absolute -top-24 -left-24 w-48 h-48 bg-blue-600/10 rounded-full blur-[60px]" />
+            <div className="absolute -top-24 -left-24 w-48 h-48 bg-green-600/10 rounded-full blur-[60px]" />
             
             <div className="text-white relative z-10 flex flex-col items-center text-center">
               <AnimatePresence mode="wait">
@@ -192,13 +192,13 @@ export default function PricingModal({ isOpen, onClose, showCloseButton = true }
                     animate={{ opacity: 1, scale: 1 }}
                     className="flex flex-col items-center py-8"
                   >
-                    <div className="w-20 h-20 bg-blue-600/20 rounded-full flex items-center justify-center mb-8 border border-blue-500/50">
+                    <div className="w-20 h-20 bg-green-600/20 rounded-full flex items-center justify-center mb-8 border border-green-500/50">
                       <motion.div
                         initial={{ scale: 0 }}
                         animate={{ scale: 1 }}
                         transition={{ type: 'spring', damping: 12 }}
                       >
-                        <ArrowRight size={32} className="text-blue-500 -rotate-45" />
+                        <ArrowRight size={32} className="text-green-500 -rotate-45" />
                       </motion.div>
                     </div>
                     <h2 className="text-4xl font-black tracking-tighter mb-4 uppercase">Access Granted</h2>
@@ -209,7 +209,7 @@ export default function PricingModal({ isOpen, onClose, showCloseButton = true }
                         initial={{ width: 0 }}
                         animate={{ width: '100%' }}
                         transition={{ duration: 2 }}
-                        className="h-full bg-blue-600"
+                        className="h-full bg-green-600"
                       />
                     </div>
                   </motion.div>
@@ -221,7 +221,7 @@ export default function PricingModal({ isOpen, onClose, showCloseButton = true }
                     exit={{ opacity: 0, y: -10 }}
                     className="flex flex-col items-center w-full"
                   >
-                    <div className="mb-6 text-blue-500">
+                    <div className="mb-6 text-green-500">
                       <RotateCcw size={40} className="animate-pulse" />
                     </div>
 
@@ -255,7 +255,7 @@ export default function PricingModal({ isOpen, onClose, showCloseButton = true }
                           Payment Handled by Commhawk <br />
                           Powered by Razorpay
                         </p>
-                        <p className="text-[10px] text-blue-500/60 leading-relaxed uppercase tracking-widest text-center font-mono italic">
+                        <p className="text-[10px] text-green-500/60 leading-relaxed uppercase tracking-widest text-center font-mono italic">
                           A official receipt will be sent to your email
                         </p>
                       </div>
@@ -292,11 +292,11 @@ export default function PricingModal({ isOpen, onClose, showCloseButton = true }
                     <h2 className="text-3xl sm:text-4xl md:text-5xl font-black tracking-tighter mb-6 sm:mb-8 leading-[1.1]">
                       One Price.<br />
                       One Portal.<br />
-                      <span className="text-serif font-normal italic lowercase text-blue-500">unlimited</span> Jobs.
+                      <span className="text-serif font-normal italic lowercase text-green-500">unlimited</span> Jobs.
                     </h2>
 
                     <div className="flex items-baseline gap-2 sm:gap-3 mb-6 sm:mb-8">
-                      <span className="text-xl sm:text-2xl font-mono text-blue-500/50">{PRICING.currency === 'INR' ? '₹' : PRICING.currency}</span>
+                      <span className="text-xl sm:text-2xl font-mono text-green-500/50">{PRICING.currency === 'INR' ? '₹' : PRICING.currency}</span>
                       <span className="text-6xl sm:text-7xl md:text-8xl font-black tracking-tighter text-white">{PRICING.amount_inr}</span>
                       <span className="font-mono text-base sm:text-lg text-[#444] uppercase tracking-widest">/ {PRICING.interval}</span>
                     </div>
@@ -306,7 +306,7 @@ export default function PricingModal({ isOpen, onClose, showCloseButton = true }
                     </p>
 
                     <div className="relative group/btn w-full">
-                      <div className="absolute -inset-1 bg-gradient-to-r from-blue-600 to-blue-400 rounded-sm blur opacity-25 group-hover/btn:opacity-50 transition duration-1000 group-hover/btn:duration-200" />
+                      <div className="absolute -inset-1 bg-gradient-to-r from-green-600 to-green-400 rounded-sm blur opacity-25 group-hover/btn:opacity-50 transition duration-1000 group-hover/btn:duration-200" />
                       <button
                         onClick={handleInitialize}
                         disabled={isProcessing}
