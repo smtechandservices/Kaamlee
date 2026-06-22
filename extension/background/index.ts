@@ -1,81 +1,201 @@
 export {}
 
-import { getState, setState, resetSession } from "./session"
-import { api } from "../lib/api"
+import { getState, resetSession, setState } from "./session"
 
 let jobQueue: any[] = []
 let isQueueRunning = false
 
-const processQueue = async () => {
-function notifyJobStatus(jobId: string, status: string, message?: string) {
-  chrome.tabs.query({ url: ["http://localhost/*", "https://*.kaamlee.com/*"] }, (tabs) => {
+interface ApplyResult {
+  submitted: boolean
+  message?: string
+}
+
+function broadcastMessage(message: any) {
+  chrome.tabs.query({}, (tabs) => {
     for (const tab of tabs) {
       if (tab.id) {
-        chrome.tabs.sendMessage(tab.id, {
-          action: "UPDATE_JOB_STATUS",
-          payload: { jobId, status, message }
-        }).catch(() => {}) // Ignore errors if content script not ready
+        chrome.tabs.sendMessage(tab.id, message, () => {
+          void chrome.runtime.lastError
+        })
       }
     }
-  });
+  })
+}
+
+function notifyJobStatus(jobId: string, status: string, message?: string, shouldRemove?: boolean) {
+  try {
+    if (!chrome?.runtime?.id) return
+
+    chrome.tabs.query(
+      { url: ["http://localhost/*", "https://*.kaamlee.com/*"] },
+      (tabs) => {
+        for (const tab of tabs) {
+          if (!tab.id) continue
+
+          try {
+            chrome.tabs.sendMessage(
+              tab.id,
+              {
+                action: "UPDATE_JOB_STATUS",
+                payload: { jobId, status, message, shouldRemove }
+              },
+              () => {
+                // Ignore errors from orphaned tabs
+                void chrome.runtime.lastError
+              }
+            )
+          } catch (err) {
+            // Silently fail for individual tabs with invalidated contexts
+          }
+        }
+      }
+    )
+  } catch (err) {
+    console.error("Failed to notify job status:", err)
+  }
+}
+
+const sleep = (ms: number) => new Promise((resolve) => setTimeout(resolve, ms))
+
+async function waitForTabLoad(tabId?: number, timeoutMs = 45000) {
+  if (!tabId) throw new Error("Job tab could not be opened")
+
+  await new Promise((resolve, reject) => {
+    const timeout = setTimeout(() => {
+      chrome.tabs.onUpdated.removeListener(listener)
+      reject(new Error("LinkedIn tab did not finish loading"))
+    }, timeoutMs)
+
+    const listener = (updatedTabId: number, changeInfo: chrome.tabs.TabChangeInfo) => {
+      if (updatedTabId === tabId && changeInfo.status === "complete") {
+        clearTimeout(timeout)
+        chrome.tabs.onUpdated.removeListener(listener)
+        resolve(true)
+      }
+    }
+
+    chrome.tabs.onUpdated.addListener(listener)
+    chrome.tabs.get(tabId, (tab) => {
+      if (chrome.runtime.lastError) return
+      if (tab.status === "complete") {
+        clearTimeout(timeout)
+        chrome.tabs.onUpdated.removeListener(listener)
+        resolve(true)
+      }
+    })
+  })
+}
+
+async function startAutomation(tabId: number, platform: string): Promise<ApplyResult> {
+  const action = `START_${platform.toUpperCase()}_APPLY`
+  const startedAt = Date.now()
+  
+  while (Date.now() - startedAt < 60000) {
+    if (!getState().isRunning || getState().isPaused) {
+      return { submitted: false, message: "Automation stopped or paused" }
+    }
+
+    const result = await new Promise<ApplyResult | null>((resolve) => {
+      chrome.tabs.sendMessage(tabId, { action }, (response) => {
+        if (chrome.runtime.lastError) {
+          resolve(null)
+          return
+        }
+        resolve(response || null)
+      })
+    })
+
+    if (result) return result
+    await sleep(1000)
+  }
+
+  throw new Error(`${platform} content script did not respond`)
 }
 
 async function processQueue() {
   if (isQueueRunning || jobQueue.length === 0) return
   isQueueRunning = true
-  
-  while (jobQueue.length > 0 && !getState().isPaused) {
+
+  while (jobQueue.length > 0 && getState().isRunning && !getState().isPaused) {
     const job = jobQueue.shift()
     notifyJobStatus(job.id, "applying")
-    
-    setState({ 
-      isRunning: true, 
-      currentPlatform: job.platform || "unknown", 
-      lastActivity: `Applying to ${job.title} at ${job.company}...` 
+
+    setState({
+      isRunning: true,
+      currentPlatform: job.platform || job.site || "unknown",
+      lastActivity: `Applying to ${job.title} at ${job.company}...`
     })
 
+    let tabId: number | undefined
     try {
-      // 1. Create a new tab for the job
-      const tab = await chrome.tabs.create({ url: job.job_url, active: false })
+      const tab = await chrome.tabs.create({ url: job.job_url, active: true })
+      tabId = tab.id
+      await waitForTabLoad(tabId)
       
-      // 2. Wait for the content script to be ready and automation to complete
-      await new Promise((resolve, reject) => {
-        const listener = (message: any, sender: chrome.runtime.MessageSender) => {
-          if (sender.tab?.id === tab.id && message.action === "JOB_COMPLETED") {
-            chrome.runtime.onMessage.removeListener(listener)
-            resolve(true)
-          }
-        }
-        chrome.runtime.onMessage.addListener(listener)
-        
-        // Timeout after 60 seconds
-        setTimeout(() => {
-          chrome.runtime.onMessage.removeListener(listener)
-          reject(new Error("Job timed out"))
-        }, 60000)
-      })
+      const platform = job.platform || job.site || "linkedin"
+      const result = await startAutomation(tabId, platform)
 
-      // 3. Close the tab
-      if (tab.id) await chrome.tabs.remove(tab.id)
-      
+      if (!result.submitted) {
+        throw new Error(result.message || `${platform} application was not submitted`)
+      }
+
+      if (tabId) await chrome.tabs.remove(tabId)
+
       notifyJobStatus(job.id, "done")
-      setState({ 
+      setState({
         applicationsToday: (getState().applicationsToday || 0) + 1,
         lastActivity: `Successfully applied to ${job.title}`
       })
     } catch (error) {
-      console.error("Failed to apply to job:", error)
-      notifyJobStatus(job.id, "failed", error.message)
-      setState({ lastActivity: `Failed to apply to ${job.title}: ${error.message}` })
+      const message = error instanceof Error ? error.message : "Unknown error"
+      
+      if (message === "Automation stopped or paused") {
+        notifyJobStatus(job.id, "skipped", "Stopped by user", false)
+        return
+      }
+
+      // If the job is not apply-able (e.g. no button or script timeout), suggest removal from DB
+      const shouldRemove = 
+        message.includes("No LinkedIn Easy Apply button found") || 
+        message.includes("content script did not respond") ||
+        message.includes("button not found") ||
+        message.includes("External employer site")
+
+      if (!shouldRemove) {
+        console.error("Failed to apply to job:", error)
+      } else {
+        console.log(`Skipping and removing invalid job: ${job.title} (${message})`)
+      }
+
+      notifyJobStatus(job.id, shouldRemove ? "skipped" : "failed", message, shouldRemove)
+      setState({ lastActivity: shouldRemove ? `Skipped ${job.title}: ${message}` : `Failed to apply to ${job.title}: ${message}` })
+
+      if (tabId && chrome?.runtime?.id) {
+        if (shouldRemove) {
+          chrome.tabs.remove(tabId, () => void chrome.runtime.lastError)
+        } else {
+          chrome.tabs.get(tabId, (tab) => {
+            if (!chrome.runtime.lastError && tab) {
+              chrome.tabs.update(tabId, { active: true }, () => {
+                void chrome.runtime.lastError
+              })
+            }
+          })
+        }
+      }
     }
 
-    // Delay between jobs
-    await new Promise(r => setTimeout(r, 5000))
+    // Wait a bit before starting the next job to prevent rate limiting
+    await sleep(3000)
   }
-  
+
   isQueueRunning = false
   if (jobQueue.length === 0) {
-    setState({ isRunning: false, currentPlatform: null, lastActivity: "All jobs processed" })
+    setState({
+      isRunning: false,
+      currentPlatform: null,
+      lastActivity: "All jobs processed"
+    })
   }
 }
 
@@ -89,14 +209,31 @@ chrome.runtime.onMessage.addListener((request, _sender, sendResponse) => {
 
   if (action === "START_QUEUE") {
     jobQueue = request.jobs || []
-    setState({ isRunning: true, isPaused: false, lastActivity: `Queue started with ${jobQueue.length} jobs` })
-    processQueue()
+    setState({
+      isRunning: true,
+      isPaused: false,
+      lastActivity: `Queue started with ${jobQueue.length} jobs`
+    })
+    void processQueue()
     sendResponse(getState())
     return true
   }
 
   if (action === "START_AUTOMATION") {
-    setState({ isRunning: true, isPaused: false, currentPlatform: request.platform, lastActivity: `Started on ${request.platform}` })
+    setState({
+      isRunning: true,
+      isPaused: false,
+      currentPlatform: request.platform,
+      lastActivity: `Started on ${request.platform}`
+    })
+
+    if (request.data) {
+      // Ensure the job has an ID if it doesn't
+      const job = { ...request.data, id: request.data.id || `single-${Date.now()}` }
+      jobQueue = [job]
+      void processQueue()
+    }
+
     sendResponse(getState())
     return true
   }
@@ -109,14 +246,29 @@ chrome.runtime.onMessage.addListener((request, _sender, sendResponse) => {
 
   if (action === "RESUME_AUTOMATION") {
     setState({ isPaused: false, lastActivity: "Resumed by user" })
-    processQueue()
+    void processQueue()
     sendResponse(getState())
     return true
   }
 
   if (action === "STOP_AUTOMATION") {
     jobQueue = []
-    setState({ isRunning: false, isPaused: false, currentPlatform: null, lastActivity: "Stopped by user" })
+    setState({
+      isRunning: false,
+      isPaused: false,
+      currentPlatform: null,
+      lastActivity: "Stopped by user"
+    })
+    broadcastMessage({ action: "STOP_AUTOMATION" })
+    sendResponse(getState())
+    return true
+  }
+
+  if (action === "RESET_AUTOMATION") {
+    jobQueue = []
+    isQueueRunning = false
+    resetSession()
+    broadcastMessage({ action: "STOP_AUTOMATION" })
     sendResponse(getState())
     return true
   }
@@ -127,5 +279,6 @@ chrome.runtime.onMessage.addListener((request, _sender, sendResponse) => {
     return true
   }
 
+  sendResponse({ ok: false, error: "Unknown action" })
   return true
 })

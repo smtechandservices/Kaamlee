@@ -2,7 +2,7 @@
 
 import React, { useState, useEffect, useRef } from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
-import { Bot, Play, Square, Zap, ChevronRight, CheckCircle2, XCircle, Loader2, AlertTriangle } from 'lucide-react';
+import { Bot, Play, Square, Zap, ChevronRight, CheckCircle2, XCircle, Loader2, AlertTriangle, RotateCcw } from 'lucide-react';
 
 interface AutoApplyJob {
   id: string;
@@ -38,7 +38,7 @@ function StatusIcon({ status }: { status: ApplyLog['status'] }) {
   return <div className="w-3.5 h-3.5 rounded-full border border-white/20 shrink-0" />;
 }
 
-export default function AutoApplySection({ token }: { token?: string }) {
+export default function AutoApplySection({ token }: { token?: string | null }) {
   const [isRunning, setIsRunning] = useState(false);
   const [jobs, setJobs] = useState<AutoApplyJob[]>([]);
   const [logs, setLogs] = useState<ApplyLog[]>([]);
@@ -56,8 +56,12 @@ export default function AutoApplySection({ token }: { token?: string }) {
         if (e.data.action === 'PONG') {
           setExtensionDetected(true);
         } else if (e.data.action === 'UPDATE_JOB_STATUS') {
-          const { jobId, status, message } = e.data.payload;
+          const { jobId, status, message, shouldRemove } = e.data.payload;
           updateLog(jobId, { status, message });
+          
+          if (shouldRemove) {
+            deleteJob(jobId);
+          }
         }
       }
     };
@@ -112,6 +116,21 @@ export default function AutoApplySection({ token }: { token?: string }) {
     );
   };
 
+  const deleteJob = async (jobId: string) => {
+    try {
+      const headers: HeadersInit = token
+        ? { Authorization: `Token ${token}` }
+        : {};
+      await fetch(`${process.env.NEXT_PUBLIC_API_URL}/api/jobs/${jobId}/`, {
+        method: 'DELETE',
+        headers,
+      });
+      updateLog(jobId, { message: 'Job removed from DB' });
+    } catch (err) {
+      console.error('Failed to remove job from DB:', err);
+    }
+  };
+
   const runAutoApply = async (jobList: AutoApplyJob[]) => {
     // Filter supported jobs
     const supportedJobs = jobList.filter(j => isSupportedSite(j));
@@ -164,6 +183,21 @@ export default function AutoApplySection({ token }: { token?: string }) {
     );
     setLogs((prev) =>
       prev.map((l) => (l.status === 'applying' || l.status === 'queued' ? { ...l, status: 'skipped', message: 'Stopped by user' } : l))
+    );
+  };
+
+  const handleReset = () => {
+    stopRef.current = false;
+    setIsRunning(false);
+    setCurrentIndex(0);
+    setJobs([]);
+    setLogs([]);
+    window.postMessage(
+      {
+        source: 'kaamlee-frontend',
+        action: 'RESET_AUTOMATION',
+      },
+      '*'
     );
   };
 
@@ -236,7 +270,7 @@ export default function AutoApplySection({ token }: { token?: string }) {
             </div>
 
             {/* Action buttons */}
-            <div className="flex gap-3">
+            <div className="flex flex-wrap gap-3">
               {!isRunning ? (
                 <button
                   onClick={handleStart}
@@ -258,6 +292,20 @@ export default function AutoApplySection({ token }: { token?: string }) {
                 >
                   <Square size={14} />
                   Stop
+                </button>
+              )}
+              {logs.length > 0 && (
+                <button
+                  onClick={handleReset}
+                  disabled={isRunning}
+                  className="flex items-center gap-2 px-5 py-3 rounded-sm font-black uppercase tracking-widest text-xs
+                    bg-[#101010] border border-white/10 text-[#888]
+                    hover:text-white hover:border-white/25 active:scale-95 transition-all
+                    disabled:opacity-30 disabled:cursor-not-allowed"
+                  title="Clear this auto-apply run"
+                >
+                  <RotateCcw size={14} />
+                  Reset
                 </button>
               )}
             </div>

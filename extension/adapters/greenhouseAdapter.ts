@@ -1,4 +1,4 @@
-import { BaseAdapter } from "./baseAdapter"
+import { BaseAdapter, type SubmitResult } from "./baseAdapter"
 
 export class GreenhouseAdapter extends BaseAdapter {
   platformName = "Greenhouse"
@@ -31,14 +31,31 @@ export class GreenhouseAdapter extends BaseAdapter {
       btn.style.width = "100%"
       btn.onclick = (e) => {
         e.preventDefault()
-        chrome.runtime.sendMessage({ action: "START_AUTOMATION", platform: "greenhouse" })
+        if (chrome?.runtime?.id) {
+          chrome.runtime.sendMessage({ 
+            action: "START_AUTOMATION", 
+            platform: "greenhouse",
+            data: {
+              id: `greenhouse-${Date.now()}`,
+              title: this.extractJobDetails().title,
+              company: this.extractJobDetails().company,
+              job_url: window.location.href,
+              platform: "greenhouse"
+            }
+          })
+        } else {
+          alert("Extension updated. Please reload the page to continue.")
+        }
       }
       container.prepend(btn)
     }
   }
 
-  async submitForm(): Promise<void> {
+  async submitForm(): Promise<SubmitResult> {
     const submitBtn = document.querySelector("#submit_app") as HTMLButtonElement
-    if (submitBtn) submitBtn.click()
+    if (!submitBtn) return { submitted: false, message: "Submit button not found" }
+
+    submitBtn.click()
+    return { submitted: false, message: "Greenhouse confirmation detection is not implemented" }
   }
 }

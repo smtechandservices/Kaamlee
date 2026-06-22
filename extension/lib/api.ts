@@ -1,17 +1,22 @@
 const BASE_URL = process.env.PLASMO_PUBLIC_API_URL || "http://localhost:8000"
 
-const getHeaders = (): HeadersInit => {
-  const token = chrome.storage.local.get("kaamlee_token")
+const getHeaders = async (): Promise<HeadersInit> => {
+  const token = await new Promise<string | null>((resolve) => {
+    chrome.storage.local.get(["kaamlee_token"], (result) => {
+      resolve(result.kaamlee_token ?? null)
+    })
+  })
+
   return {
     "Content-Type": "application/json",
-    Authorization: `Token ${token}`,
+    ...(token ? { Authorization: `Token ${token}` } : {}),
   }
 }
 
 export const api = {
   async get<T>(path: string): Promise<T> {
     const res = await fetch(`${BASE_URL}${path}`, { 
-      headers: getHeaders(),
+      headers: await getHeaders(),
       credentials: "omit"
     })
     if (!res.ok) throw new Error(`GET ${path} failed: ${res.status}`)
@@ -21,7 +26,7 @@ export const api = {
   async post<T>(path: string, body: object): Promise<T> {
     const res = await fetch(`${BASE_URL}${path}`, {
       method: "POST",
-      headers: getHeaders(),
+      headers: await getHeaders(),
       body: JSON.stringify(body),
       credentials: "omit"
     })

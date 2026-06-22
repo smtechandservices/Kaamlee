@@ -1,4 +1,4 @@
-import { BaseAdapter } from "./baseAdapter"
+import { BaseAdapter, type SubmitResult } from "./baseAdapter"
 
 export class LeverAdapter extends BaseAdapter {
   platformName = "Lever"
@@ -34,14 +34,31 @@ export class LeverAdapter extends BaseAdapter {
       btn.style.fontWeight = "600"
       btn.onclick = (e) => {
         e.preventDefault()
-        chrome.runtime.sendMessage({ action: "START_AUTOMATION", platform: "lever" })
+        if (chrome?.runtime?.id) {
+          chrome.runtime.sendMessage({ 
+            action: "START_AUTOMATION", 
+            platform: "lever",
+            data: {
+              id: `lever-${Date.now()}`,
+              title: this.extractJobDetails().title,
+              company: this.extractJobDetails().company,
+              job_url: window.location.href,
+              platform: "lever"
+            }
+          })
+        } else {
+          alert("Extension updated. Please reload the page to continue.")
+        }
       }
       container.prepend(btn)
     }
   }
 
-  async submitForm(): Promise<void> {
+  async submitForm(): Promise<SubmitResult> {
     const submitBtn = document.querySelector("#application-button") as HTMLButtonElement
-    if (submitBtn) submitBtn.click()
+    if (!submitBtn) return { submitted: false, message: "Submit button not found" }
+
+    submitBtn.click()
+    return { submitted: false, message: "Lever confirmation detection is not implemented" }
   }
 }

@@ -7,6 +7,13 @@ export const config: PlasmoCSConfig = {
 
 const adapter = new LinkedInAdapter()
 
+// Global error handler to swallow "Extension context invalidated" errors
+window.addEventListener('error', (e) => {
+  if (e.message?.includes('Extension context invalidated')) {
+    e.stopImmediatePropagation();
+  }
+}, true);
+
 const sendToBackground = <T = unknown,>(
   message: Record<string, unknown>,
   callback?: (response: T | undefined) => void
@@ -39,26 +46,51 @@ const postToPage = (action: string) => {
   window.postMessage({ source: "kaamlee-extension", action }, "*")
 }
 
+let automationInFlight = false
+
+const runLinkedInApply = async () => {
+  if (automationInFlight) {
+    return {
+      submitted: false,
+      message: "LinkedIn automation is already running on this tab"
+    }
+  }
+
+  automationInFlight = true
+  try {
+    console.log("Kaamlee: starting LinkedIn apply flow")
+    return await adapter.submitForm()
+  } finally {
+    automationInFlight = false
+  }
+}
+
 const initialize = async () => {
   if (adapter.detectJobPage()) {
     adapter.injectApplyButton()
-
-    // Check if a queue is currently running
-    const status = await new Promise<any>(resolve => {
-      sendToBackground({ action: "GET_STATUS" }, resolve)
-    })
-
-    if (status && status.isRunning) {
-      console.log("Kaamlee Queue is running. Auto-applying to job...")
-      
-      // Perform the actual application process
-      await adapter.submitForm()
-      
-      console.log("Auto-apply complete. Sending JOB_COMPLETED.")
-      sendToBackground({ action: "JOB_COMPLETED" })
-    }
   }
 }
+
+chrome.runtime.onMessage.addListener((message, _sender, sendResponse) => {
+  if (message.action === "STOP_AUTOMATION") {
+    adapter.abort()
+    automationInFlight = false
+    return false
+  }
+
+  if (message.action !== "START_LINKEDIN_APPLY") return false
+
+  runLinkedInApply()
+    .then((result) => sendResponse(result))
+    .catch((error) => {
+      sendResponse({
+        submitted: false,
+        message: error instanceof Error ? error.message : "LinkedIn automation failed"
+      })
+    })
+
+  return true
+})
 
 // Listen for messages from the Kaamlee frontend (window.postMessage)
 window.addEventListener("message", (event) => {
@@ -90,6 +122,10 @@ window.addEventListener("message", (event) => {
     } else if (event.data.action === "STOP_AUTOMATION") {
       sendToBackground({
         action: "STOP_AUTOMATION",
+      })
+    } else if (event.data.action === "RESET_AUTOMATION") {
+      sendToBackground({
+        action: "RESET_AUTOMATION",
       })
     }
   }

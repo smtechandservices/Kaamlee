@@ -61,19 +61,40 @@ window.addEventListener("message", (event) => {
       sendToBackground({
         action: "STOP_AUTOMATION",
       })
+    } else if (event.data.action === "RESET_AUTOMATION") {
+      sendToBackground({
+        action: "RESET_AUTOMATION",
+      })
     }
   }
 })
 
-// Forward status updates from the background queue back to the frontend
-try {
-  if (chrome?.runtime?.id) {
-    chrome.runtime.onMessage.addListener((message) => {
-      if (message.action === "UPDATE_JOB_STATUS") {
-        postToPage("UPDATE_JOB_STATUS", message.payload)
-      }
-    })
+// Global error handler to swallow "Extension context invalidated" errors
+// which are common during development reloads.
+window.addEventListener('error', (e) => {
+  if (e.message?.includes('Extension context invalidated')) {
+    e.stopImmediatePropagation();
   }
-} catch (error) {
-  console.debug("Kaamlee extension listener could not be attached:", error)
+}, true);
+
+// Forward status updates from the background queue back to the frontend
+const attachStatusListener = () => {
+  try {
+    if (typeof chrome !== 'undefined' && chrome.runtime?.id) {
+      chrome.runtime.onMessage.addListener((message) => {
+        // If context is invalidated, this might still fire once
+        if (typeof chrome === 'undefined' || !chrome.runtime?.id) return;
+        
+        if (message.action === "UPDATE_JOB_STATUS") {
+          postToPage("UPDATE_JOB_STATUS", message.payload)
+        } else if (message.action === "STOP_AUTOMATION") {
+          postToPage("STOP_AUTOMATION")
+        }
+      })
+    }
+  } catch (error) {
+    // Silently ignore context errors
+  }
 }
+
+attachStatusListener();
