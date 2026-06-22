@@ -9,11 +9,11 @@ def start():
     scheduler = BackgroundScheduler()
     scheduler.add_jobstore(DjangoJobStore(), "default")
 
-    # Run scraping every 3 hours
+    # Run scraping every 1 hour
     scheduler.add_job(
         run_background_scraping,
         trigger="interval",
-        hours=3,
+        hours=1,
         id="run_background_scraping_job",
         max_instances=1,
         replace_existing=True,

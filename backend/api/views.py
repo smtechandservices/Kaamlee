@@ -69,6 +69,10 @@ class JobViewSet(viewsets.ModelViewSet):
         location_id = self.request.query_params.get('location_id')
         if location_id:
             queryset = queryset.filter(location_id=location_id)
+
+        state = self.request.query_params.get('state')
+        if state:
+            queryset = queryset.filter(location__state__iexact=state)
             
         search = self.request.query_params.get('search')
         if search:
@@ -121,9 +125,22 @@ class StatsView(views.APIView):
         })
 
 class TriggerScrapeView(views.APIView):
-    permission_classes = [permissions.IsAdminUser]
+    permission_classes = [permissions.AllowAny]
 
     def post(self, request):
+        # Allow if authenticated as admin OR if a secret key matches
+        cron_secret = os.environ.get('CRON_SECRET', 'fallback_cron_secret')
+        auth_header = request.headers.get('Authorization', '')
+        
+        is_cron_authorized = False
+        if cron_secret and auth_header == f"Bearer {cron_secret}":
+            is_cron_authorized = True
+            
+        # Check standard admin token if not cron authorized
+        if not is_cron_authorized:
+            if not (request.user and request.user.is_authenticated and request.user.is_superuser):
+                return Response({'error': 'Authentication credentials were not provided or invalid.'}, status=401)
+
         search_term = request.data.get('search_term', 'frontend developer')
         results_wanted = request.data.get('results_wanted', 5)
         country = request.data.get('country', None)
