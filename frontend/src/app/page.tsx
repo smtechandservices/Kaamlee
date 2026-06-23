@@ -62,8 +62,6 @@ export default function LandingPage() {
     if (isLoading) return;
     if (!user) {
       router.push('/login');
-    } else if (!user.is_subscribed) {
-      setIsPricingOpen(true);
     } else {
       router.push('/explore');
     }

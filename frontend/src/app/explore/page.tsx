@@ -50,6 +50,12 @@ export default function ExplorePage() {
   }, [token, isLoading, router]);
 
   useEffect(() => {
+    if (!isLoading && user && !user.is_subscribed) {
+      setIsPricingModalOpen(true);
+    }
+  }, [isLoading, user?.is_subscribed]);
+
+  useEffect(() => {
     setCurrentPage(1);
   }, [debouncedSearch, locationQuery, activeCountry, activeState, remoteOnly, bookmarkedOnly]);
 
@@ -81,26 +87,37 @@ export default function ExplorePage() {
   // Re-fetch jobs whenever active country changes — backend filters at DB level
   useEffect(() => {
     const fetchJobs = async () => {
-      if (!token || !user?.is_subscribed) return;
+      if (!token) return;
       setIsFetchingJobs(true);
       setJobs([]);
       try {
-        const params = new URLSearchParams();
-        if (activeCountry !== 'All') params.set('country', activeCountry);
-        const jobsRes = await fetch(
-          `${process.env.NEXT_PUBLIC_API_URL}/api/jobs/?${params}`,
-          { headers: { 'Authorization': `Token ${token}` } }
-        );
-        if (jobsRes.status === 401) { logout(); return; }
-        if (jobsRes.status === 403) { refreshUser?.(); setIsPricingModalOpen(true); return; }
-        if (!jobsRes.ok) return;
-        const jobsData = await jobsRes.json();
-        const jobsList = Array.isArray(jobsData) ? jobsData : (jobsData.results || []);
-        setJobs(jobsList.map((job: any) => ({
-          ...job,
-          location: job.location_name,
-          locationId: job.location,
-        })));
+        if (user?.is_subscribed) {
+          const params = new URLSearchParams();
+          if (activeCountry !== 'All') params.set('country', activeCountry);
+          const jobsRes = await fetch(
+            `${process.env.NEXT_PUBLIC_API_URL}/api/jobs/?${params}`,
+            { headers: { 'Authorization': `Token ${token}` } }
+          );
+          if (jobsRes.status === 401) { logout(); return; }
+          if (jobsRes.status === 403) { refreshUser?.(); setIsPricingModalOpen(true); return; }
+          if (!jobsRes.ok) return;
+          const jobsData = await jobsRes.json();
+          const jobsList = Array.isArray(jobsData) ? jobsData : (jobsData.results || []);
+          setJobs(jobsList.map((job: any) => ({
+            ...job,
+            location: job.location_name,
+            locationId: job.location,
+          })));
+        } else {
+          const jobsRes = await fetch(`${process.env.NEXT_PUBLIC_API_URL}/api/recent-jobs/`);
+          if (!jobsRes.ok) return;
+          const jobsList = await jobsRes.json();
+          setJobs((Array.isArray(jobsList) ? jobsList : []).map((job: any) => ({
+            ...job,
+            location: job.location_name,
+            locationId: job.location,
+          })));
+        }
       } catch (error) {
         console.error('Failed to fetch jobs:', error);
       } finally {
@@ -311,8 +328,8 @@ export default function ExplorePage() {
         </div>
       </header>
 
-      {/* Main Content Area - Blurred if not subscribed */}
-      <div className={`flex-1 flex overflow-hidden transition-all duration-700 ${!user?.is_subscribed ? 'blur-3xl grayscale pointer-events-none select-none' : ''}`}>
+      {/* Main Content Area */}
+      <div className="flex-1 flex overflow-hidden">
         {/* Sidebar */}
         <aside className={`${viewMode === 'map' ? 'hidden' : 'flex'} w-full md:w-[450px] flex-col border-r border-[#222] bg-[#0a0a0a] z-10 shrink-0`}>
           
@@ -518,11 +535,26 @@ export default function ExplorePage() {
         </section>
       </div>
 
-      {/* Gating / Renewal Modal */}
-      <PricingModal 
-        isOpen={!user?.is_subscribed || isPricingModalOpen} 
+      {/* Floating freemium banner */}
+      {!user?.is_subscribed && (
+        <div className="absolute bottom-6 left-1/2 -translate-x-1/2 z-30 flex items-center gap-3 px-4 py-3 bg-[#0f0f0f] border border-[#333] rounded-full shadow-2xl shadow-black/60 backdrop-blur-md whitespace-nowrap">
+          <span className="w-1.5 h-1.5 rounded-full bg-green-500 animate-pulse shrink-0" />
+          <span className="text-[11px] text-[#888] font-medium">Showing 10 recent jobs.</span>
+          <span className="text-[11px] text-[#555]">Subscribe for full access.</span>
+          <button
+            onClick={() => setIsPricingModalOpen(true)}
+            className="cursor-pointer ml-1 px-3 py-1 rounded-full bg-green-500 text-black text-[10px] font-black uppercase tracking-widest hover:bg-green-400 transition-colors"
+          >
+            Go Premium
+          </button>
+        </div>
+      )}
+
+      {/* Upsell / Renewal Modal */}
+      <PricingModal
+        isOpen={isPricingModalOpen}
         onClose={() => setIsPricingModalOpen(false)}
-        showCloseButton={user?.is_subscribed} 
+        showCloseButton={true}
       />
 
       <style jsx global>{`
