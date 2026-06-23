@@ -70,6 +70,16 @@ export default function TermsPage() {
               <li>Verify every employer or candidate.</li>
             </ul>
           </section>
+
+          <section>
+            <h2 className="text-xl font-bold text-white mb-4">6. Location Accuracy Disclaimer</h2>
+            <p>
+              Job locations displayed on Kaamlee, including map pins and city/region labels, are <span className="text-white font-medium">approximate and may not be fully accurate</span>. Location data is sourced directly from information provided by the hiring company and supplemented by geolocation services. We achieve approximately <span className="text-green-400 font-semibold">~92.99% location accuracy</span> based on the available data; however, we cannot guarantee precision in all cases.
+            </p>
+            <p className="mt-3">
+              We make our best effort to provide the most accurate location information possible. Users are advised to verify the exact job location directly with the employer before making any decisions based on location data shown on this Platform.
+            </p>
+          </section>
         </div>
       </motion.div>
     </main>

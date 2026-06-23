@@ -49,13 +49,6 @@ interface ScrapeSession {
   stop_requested: boolean;
 }
 
-interface ScrapeLog {
-  id: number;
-  session: number;
-  message: string;
-  level: string;
-  timestamp: string;
-}
 
 interface Stats {
   total_jobs: number;
@@ -75,7 +68,8 @@ export default function AdminDashboard() {
   const [isLogsModalOpen, setIsLogsModalOpen] = useState(false);
   const [isSettingsModalOpen, setIsSettingsModalOpen] = useState(false);
   const router = useRouter();
-  const prevScrapeStatusRef = React.useRef<string | null>(null);
+  // Tracks whether a scrape is active — interval only hits backend when true
+  const isScrapingRef = React.useRef(false);
 
   const fetchData = async () => {
     const token = localStorage.getItem('admin_token');
@@ -109,6 +103,7 @@ export default function AdminDashboard() {
       const statsData = await statsRes.json();
       setLocations(locData);
       setStats(statsData);
+      isScrapingRef.current = statsData.last_scrape_session?.status === 'running';
 
       // Fetch roles only once
       if (jobRoles.length === 0) {
@@ -134,8 +129,9 @@ export default function AdminDashboard() {
 
     fetchData();
 
-    // Poll only stats (377B) every 10s instead of locations (33KB)
+    // Only hits the backend while a scrape is actively running
     const pollStats = async () => {
+      if (!isScrapingRef.current) return;
       const t = localStorage.getItem('admin_token');
       if (!t) return;
       try {
@@ -144,13 +140,13 @@ export default function AdminDashboard() {
         });
         if (!res.ok) return;
         const statsData: Stats = await res.json();
-        const newStatus = statsData.last_scrape_session?.status ?? null;
+        const stillRunning = statsData.last_scrape_session?.status === 'running';
         setStats(statsData);
-        // Re-fetch locations once when a running scrape just finished
-        if (prevScrapeStatusRef.current === 'running' && newStatus !== 'running') {
+        if (!stillRunning) {
+          // Scrape just finished — refresh locations once then go quiet
+          isScrapingRef.current = false;
           fetchData();
         }
-        prevScrapeStatusRef.current = newStatus;
       } catch {
         // silently ignore poll errors
       }
@@ -549,122 +545,125 @@ function StatCard({ icon, label, value }: { icon: React.ReactNode, label: string
 }
 
 function LogsModal({ onClose, stats }: { onClose: () => void, stats: Stats | null }) {
-  const [logs, setLogs] = useState<ScrapeLog[]>([]);
-  const [currentSession, setCurrentSession] = useState<ScrapeSession | null>(stats?.last_scrape_session || null);
-  const logsEndRef = React.useRef<HTMLDivElement>(null);
-  const containerRef = React.useRef<HTMLDivElement>(null);
-  const [autoScroll, setAutoScroll] = useState(true);
+  const session = stats?.last_scrape_session ?? null;
 
-  useEffect(() => {
-    const fetchLogs = async () => {
-      const token = localStorage.getItem('admin_token');
-      try {
-        const res = await fetch(`${API_BASE}/logs/`, {
-          headers: { 'Authorization': `Token ${token}` }
-        });
-        if (res.ok) {
-          const data = await res.json();
-          if (Array.isArray(data)) {
-            setLogs(data);
-          } else if (data && typeof data === 'object' && Array.isArray(data.logs)) {
-            setLogs(data.logs);
-            if (data.session) {
-              setCurrentSession(data.session);
-            }
-          }
-        }
-      } catch (error) {
-        console.error("Failed to fetch logs:", error);
-      }
-    };
+  const isRunning = session?.status === 'running';
 
-    fetchLogs();
-    const interval = setInterval(fetchLogs, 3000);
-    return () => clearInterval(interval);
-  }, []);
+  const duration = React.useMemo(() => {
+    if (!session?.start_time) return null;
+    const start = new Date(session.start_time).getTime();
+    const end = session.end_time ? new Date(session.end_time).getTime() : Date.now();
+    const secs = Math.floor((end - start) / 1000);
+    if (secs < 60) return `${secs}s`;
+    const mins = Math.floor(secs / 60);
+    const rem = secs % 60;
+    return rem > 0 ? `${mins}m ${rem}s` : `${mins}m`;
+  }, [session?.start_time, session?.end_time]);
 
-  useEffect(() => {
-    if (autoScroll) {
-      logsEndRef.current?.scrollIntoView({ behavior: 'smooth' });
-    }
-  }, [logs, autoScroll]);
-
-  const handleScroll = () => {
-    if (!containerRef.current) return;
-    const { scrollTop, scrollHeight, clientHeight } = containerRef.current;
-    const isAtBottom = scrollHeight - scrollTop - clientHeight < 50;
-    setAutoScroll(isAtBottom);
+  const statusColor: Record<string, string> = {
+    running: 'text-blue-400',
+    completed: 'text-green-400',
+    failed: 'text-red-400',
+    stopped: 'text-orange-400',
   };
 
   return (
-    <motion.div 
+    <motion.div
       initial={{ opacity: 0 }}
       animate={{ opacity: 1 }}
       exit={{ opacity: 0 }}
       className="fixed inset-0 bg-black/80 backdrop-blur-sm z-50 flex items-center justify-center p-4"
       onClick={onClose}
     >
-      <motion.div 
+      <motion.div
         initial={{ scale: 0.95, opacity: 0 }}
         animate={{ scale: 1, opacity: 1 }}
         exit={{ scale: 0.95, opacity: 0 }}
         onClick={(e) => e.stopPropagation()}
-        className="bg-[#111] border border-[#333] rounded-2xl w-full max-w-4xl h-[80vh] flex flex-col shadow-2xl overflow-hidden"
+        className="bg-[#111] border border-[#333] rounded-2xl w-full max-w-lg shadow-2xl overflow-hidden"
       >
+        {/* Header */}
         <div className="flex items-center justify-between p-4 border-b border-[#333] bg-[#1a1a1a]">
           <h2 className="text-xl font-bold flex items-center gap-2">
             <Terminal size={20} className="text-blue-500" />
-            Live Scraper Logs
+            Last Scrape Session
           </h2>
-          <div className="flex items-center gap-8">
-            {currentSession && (
-              <div className="hidden md:flex items-center gap-3">
-                <div className="flex items-center gap-1.5">
-                  <span className="text-md font-bold text-[#555] uppercase tracking-widest">Found</span>
-                  <span className="text-md font-black text-green-500">{currentSession.jobs_found}</span>
+          <button onClick={onClose} className="cursor-pointer p-2 hover:bg-[#333] rounded-lg transition-colors text-[#888] hover:text-white">
+            <X size={20} />
+          </button>
+        </div>
+
+        {!session ? (
+          <div className="p-12 text-center text-[#555] font-mono text-sm">
+            No scrape sessions yet.
+          </div>
+        ) : (
+          <div className="p-6 flex flex-col gap-6">
+            {/* Input */}
+            <div>
+              <p className="text-[10px] font-mono tracking-[0.2em] uppercase text-[#555] mb-3">Input</p>
+              <div className="bg-black border border-[#222] rounded-xl p-4 flex flex-col gap-2 font-mono text-sm">
+                <div className="flex justify-between">
+                  <span className="text-[#555]">Search term</span>
+                  <span className="text-white font-semibold">{session.search_term ?? '—'}</span>
                 </div>
-                <div className="w-px h-3 bg-white/10" />
-                <div className="flex items-center gap-1.5">
-                  <span className="text-md font-bold text-[#555] uppercase tracking-widest">Deleted</span>
-                  <span className="text-md font-black text-red-400">{currentSession.jobs_deleted}</span>
+                <div className="flex justify-between">
+                  <span className="text-[#555]">Results limit</span>
+                  <span className="text-white">{session.results_limit ?? '—'}</span>
+                </div>
+                <div className="flex justify-between">
+                  <span className="text-[#555]">Started</span>
+                  <span className="text-[#aaa]">{new Date(session.start_time).toLocaleString()}</span>
                 </div>
               </div>
-            )}
-            <button onClick={onClose} className="cursor-pointer p-2 hover:bg-[#333] rounded-lg transition-colors text-[#888] hover:text-white">
-              <X size={20} />
-            </button>
-          </div>
-        </div>
-        
-        <div 
-          ref={containerRef}
-          onScroll={handleScroll}
-          className="flex-1 overflow-y-auto p-4 space-y-2 font-mono text-sm bg-black custom-scrollbar"
-        >
-          {(!logs || logs.length === 0) ? (
-            <div className="text-center text-[#555] py-10 flex flex-col items-center justify-center h-full">
-              <Loader2 className="w-8 h-8 animate-spin mb-4 opacity-50" />
-              Waiting for logs...
             </div>
-          ) : (
-            logs.map(log => {
-              let color = "text-[#aaa]";
-              if (log.level === 'error') color = "text-red-400";
-              else if (log.level === 'success') color = "text-green-400";
-              else if (log.level === 'warning') color = "text-orange-400";
-              
-              return (
-                <div key={log.id} className={`flex gap-3 py-1 border-b border-[#222]/50 hover:bg-[#111] ${color}`}>
-                  <span className="text-[#555] shrink-0">
-                    [{new Date(log.timestamp).toLocaleTimeString()}]
+
+            {/* Output */}
+            <div>
+              <p className="text-[10px] font-mono tracking-[0.2em] uppercase text-[#555] mb-3">Output</p>
+              <div className="bg-black border border-[#222] rounded-xl p-4 flex flex-col gap-2 font-mono text-sm">
+                <div className="flex justify-between items-center">
+                  <span className="text-[#555]">Status</span>
+                  <span className={`font-bold uppercase tracking-widest flex items-center gap-2 ${statusColor[session.status] ?? 'text-[#aaa]'}`}>
+                    {isRunning && <Loader2 size={12} className="animate-spin" />}
+                    {session.status}
                   </span>
-                  <span className="break-words w-full">{log.message}</span>
                 </div>
-              );
-            })
-          )}
-          <div ref={logsEndRef} />
-        </div>
+                {isRunning && session.current_location && (
+                  <div className="flex justify-between">
+                    <span className="text-[#555]">Current location</span>
+                    <span className="text-blue-300">{session.current_location}</span>
+                  </div>
+                )}
+                <div className="flex justify-between">
+                  <span className="text-[#555]">Jobs found</span>
+                  <span className="text-green-400 font-bold">{session.jobs_found}</span>
+                </div>
+                <div className="flex justify-between">
+                  <span className="text-[#555]">Jobs deleted</span>
+                  <span className="text-red-400 font-bold">{session.jobs_deleted}</span>
+                </div>
+                {duration && (
+                  <div className="flex justify-between">
+                    <span className="text-[#555]">Duration</span>
+                    <span className="text-[#aaa]">{duration}{isRunning ? ' (running)' : ''}</span>
+                  </div>
+                )}
+                {session.end_time && (
+                  <div className="flex justify-between">
+                    <span className="text-[#555]">Finished</span>
+                    <span className="text-[#aaa]">{new Date(session.end_time).toLocaleString()}</span>
+                  </div>
+                )}
+                {session.error_message && (
+                  <div className="mt-2 p-3 bg-red-950/30 border border-red-900/40 rounded-lg text-red-400 text-xs break-words">
+                    {session.error_message}
+                  </div>
+                )}
+              </div>
+            </div>
+          </div>
+        )}
       </motion.div>
     </motion.div>
   );

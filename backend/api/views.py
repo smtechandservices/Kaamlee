@@ -11,7 +11,8 @@ from .serializers import (
     ScrapeLogSerializer, UserSerializer, RegisterSerializer, RecentJobSerializer,
     FeedbackSerializer
 )
-from django.db.models import Count, Exists, OuterRef
+from django.db.models import Count, Exists, OuterRef, Prefetch
+from django.core.cache import cache
 from django.contrib.auth.models import User
 from django.utils import timezone
 from datetime import timedelta
@@ -47,25 +48,31 @@ class RecentJobsView(generics.ListAPIView):
     serializer_class = RecentJobSerializer
     permission_classes = [permissions.AllowAny]
     def get_queryset(self):
-        return Job.objects.all().order_by('-created_at')[:10]
+        return Job.objects.select_related('location').order_by('-created_at')[:10]
 
 class JobViewSet(viewsets.ModelViewSet):
     serializer_class = JobSerializer
     permission_classes = [permissions.IsAuthenticated, IsSubscribed]
 
 
+    _COUNTRY_MAP = {
+        'USA': 'United States',
+        'UK': 'United Kingdom',
+    }
+
     def get_queryset(self):
-        queryset = Job.objects.all().order_by('-created_at')
-        
-        # Annotate with bookmark status for current user
         user = self.request.user
-        queryset = queryset.annotate(
+        queryset = Job.objects.select_related('location').annotate(
             is_bookmarked=Exists(
                 Bookmark.objects.filter(user=user, job_id=OuterRef('pk'))
             )
-        )
+        ).order_by('-created_at')
 
-        # Filters
+        country = self.request.query_params.get('country')
+        if country and country != 'All':
+            country_name = self._COUNTRY_MAP.get(country, country)
+            queryset = queryset.filter(location__country__iexact=country_name)
+
         location_id = self.request.query_params.get('location_id')
         if location_id:
             queryset = queryset.filter(location_id=location_id)
@@ -73,7 +80,7 @@ class JobViewSet(viewsets.ModelViewSet):
         state = self.request.query_params.get('state')
         if state:
             queryset = queryset.filter(location__state__iexact=state)
-            
+
         search = self.request.query_params.get('search')
         if search:
             queryset = queryset.filter(title__icontains=search) | queryset.filter(company__icontains=search)
@@ -102,27 +109,50 @@ class CheckExistenceView(views.APIView):
         existing_urls = Job.objects.filter(job_url__in=job_urls).values_list('job_url', flat=True)
         return Response({'existing_urls': list(existing_urls)})
 
+_LOCATIONS_CACHE_KEY = 'api_locations'
+_LOCATIONS_CACHE_TTL = 300  # 5 minutes
+
 class LocationViewSet(viewsets.ModelViewSet):
     serializer_class = LocationSerializer
     permission_classes = [permissions.IsAuthenticated, IsSubscribed]
 
-
     def get_queryset(self):
-        return Location.objects.annotate(job_count=Count('jobs'))
+        # Prefetch only location_name to avoid N+1 in accuracy_percentage calculation
+        lean_jobs = Job.objects.only('location_name', 'location_id')
+        return Location.objects.annotate(job_count=Count('jobs')).prefetch_related(
+            Prefetch('jobs', queryset=lean_jobs)
+        )
+
+    def list(self, request, *args, **kwargs):
+        data = cache.get(_LOCATIONS_CACHE_KEY)
+        if data is None:
+            queryset = self.get_queryset()
+            serializer = self.get_serializer(queryset, many=True)
+            data = serializer.data
+            cache.set(_LOCATIONS_CACHE_KEY, data, _LOCATIONS_CACHE_TTL)
+        return Response(data)
+
+_STATS_CACHE_KEY = 'api_stats'
+_STATS_CACHE_TTL = 30  # seconds
 
 class StatsView(views.APIView):
     permission_classes = [permissions.AllowAny]
+
     def get(self, request):
-        total_jobs = Job.objects.count()
-        total_locations = Location.objects.count()
-        active_sessions = ScrapeSession.objects.filter(status='running').count()
-        last_session = ScrapeSession.objects.all().order_by('-start_time').first()
-        return Response({
-            'total_jobs': total_jobs,
-            'total_locations': total_locations,
-            'active_sessions': active_sessions,
-            'last_scrape_session': ScrapeSessionSerializer(last_session).data if last_session else None
-        })
+        data = cache.get(_STATS_CACHE_KEY)
+        if data is None:
+            total_jobs = Job.objects.count()
+            total_locations = Location.objects.count()
+            active_sessions = ScrapeSession.objects.filter(status='running').count()
+            last_session = ScrapeSession.objects.order_by('-start_time').first()
+            data = {
+                'total_jobs': total_jobs,
+                'total_locations': total_locations,
+                'active_sessions': active_sessions,
+                'last_scrape_session': ScrapeSessionSerializer(last_session).data if last_session else None,
+            }
+            cache.set(_STATS_CACHE_KEY, data, _STATS_CACHE_TTL)
+        return Response(data)
 
 class TriggerScrapeView(views.APIView):
     permission_classes = [permissions.AllowAny]
@@ -158,7 +188,7 @@ class TriggerScrapeView(views.APIView):
         )
         thread.daemon = True
         thread.start()
-        
+        cache.delete(_STATS_CACHE_KEY)
         return Response({'status': 'Scrape triggered'})
 
 class StopScrapeView(views.APIView):
@@ -169,6 +199,8 @@ class StopScrapeView(views.APIView):
         if session:
             session.stop_requested = True
             session.save()
+            cache.delete(_STATS_CACHE_KEY)
+            cache.delete(_LOCATIONS_CACHE_KEY)
             return Response({'status': 'Stop request sent'})
         return Response({'status': 'No active session found'}, status=404)
 
@@ -181,6 +213,8 @@ class ForceResetView(views.APIView):
             end_time=timezone.now(),
             error_message='Force reset by admin'
         )
+        cache.delete(_STATS_CACHE_KEY)
+        cache.delete(_LOCATIONS_CACHE_KEY)
         return Response({'status': 'All sessions reset'})
 
 class LogsView(generics.ListAPIView):
@@ -218,14 +252,18 @@ class AdminUserViewSet(viewsets.ModelViewSet):
 
 class RolesView(views.APIView):
     permission_classes = [permissions.AllowAny]
+
     def get(self, request):
-        path = os.path.join(settings.BASE_DIR, 'api', 'roles.json')
-        try:
-            with open(path, 'r') as f:
-                roles = json.load(f)
-            return Response(roles)
-        except Exception as e:
-            return Response({"error": str(e)}, status=500)
+        roles = cache.get('api_roles')
+        if roles is None:
+            path = os.path.join(settings.BASE_DIR, 'api', 'roles.json')
+            try:
+                with open(path, 'r') as f:
+                    roles = json.load(f)
+                cache.set('api_roles', roles, 3600)  # 1 hour — static file
+            except Exception as e:
+                return Response({"error": str(e)}, status=500)
+        return Response(roles)
 
 class FeedbackView(views.APIView):
     permission_classes = [permissions.IsAuthenticated]

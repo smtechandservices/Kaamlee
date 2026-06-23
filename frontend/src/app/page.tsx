@@ -556,6 +556,21 @@ export default function LandingPage() {
             </div>
 
             <div className="flex flex-col items-end gap-2 text-right self-end sm:self-auto">
+              <div className="flex items-center gap-4 mb-2">
+                <Link
+                  href="/terms"
+                  className="text-[10px] font-mono tracking-[0.2em] uppercase text-[#444] hover:text-white transition-colors"
+                >
+                  Terms
+                </Link>
+                <span className="text-[#333]">·</span>
+                <Link
+                  href="/privacy"
+                  className="text-[10px] font-mono tracking-[0.2em] uppercase text-[#444] hover:text-white transition-colors"
+                >
+                  Privacy
+                </Link>
+              </div>
               <a
                 href="https://commhawk.in/"
                 target="_blank"

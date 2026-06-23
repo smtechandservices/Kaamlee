@@ -11,6 +11,15 @@ import { useRouter } from 'next/navigation';
 import PricingModal from '@/components/PricingModal';
 
 
+function useDebounce<T>(value: T, delay: number): T {
+  const [debounced, setDebounced] = useState<T>(value);
+  useEffect(() => {
+    const timer = setTimeout(() => setDebounced(value), delay);
+    return () => clearTimeout(timer);
+  }, [value, delay]);
+  return debounced;
+}
+
 export default function ExplorePage() {
   const { user, token, logout, isLoading, refreshUser } = useAuth();
 
@@ -28,7 +37,11 @@ export default function ExplorePage() {
   const [remoteOnly, setRemoteOnly] = useState(false);
   const [bookmarkedOnly, setBookmarkedOnly] = useState(false);
   const [currentPage, setCurrentPage] = useState(1);
+  const [isFetchingJobs, setIsFetchingJobs] = useState(false);
   const jobsPerPage = 20;
+
+  const debouncedSearch = useDebounce(searchQuery, 300);
+  const debouncedLocation = useDebounce(locationQuery, 300);
 
   useEffect(() => {
     if (!isLoading && !token) {
@@ -38,62 +51,64 @@ export default function ExplorePage() {
 
   useEffect(() => {
     setCurrentPage(1);
-  }, [searchQuery, locationQuery, activeCountry, activeState, remoteOnly, bookmarkedOnly]);
+  }, [debouncedSearch, locationQuery, activeCountry, activeState, remoteOnly, bookmarkedOnly]);
 
   useEffect(() => {
     setActiveState('All');
   }, [activeCountry]);
 
+  // Fetch locations + roles once on mount
   useEffect(() => {
-    const fetchData = async () => {
+    const fetchMeta = async () => {
       if (!token || !user?.is_subscribed) return;
-      
       try {
-        const [jobsRes, locsRes] = await Promise.all([
-          fetch(`${process.env.NEXT_PUBLIC_API_URL}/api/jobs/`, {
-            headers: { 'Authorization': `Token ${token}` }
-          }),
-          fetch(`${process.env.NEXT_PUBLIC_API_URL}/api/locations/`, {
-            headers: { 'Authorization': `Token ${token}` }
-          })
-        ]);
-        
-        if (!jobsRes.ok || !locsRes.ok) {
-           if (jobsRes.status === 401 || locsRes.status === 401) {
-             logout();
-           } else if (jobsRes.status === 403 || locsRes.status === 403) {
-             // Backend says not subscribed, sync local state
-             refreshUser?.();
-             setIsPricingModalOpen(true);
-           }
-           return;
-        }
+        const locsRes = await fetch(`${process.env.NEXT_PUBLIC_API_URL}/api/locations/`, {
+          headers: { 'Authorization': `Token ${token}` }
+        });
+        if (locsRes.status === 401) { logout(); return; }
+        if (locsRes.status === 403) { refreshUser?.(); setIsPricingModalOpen(true); return; }
+        if (locsRes.ok) setLocations(await locsRes.json());
 
-        
-        const jobsData = await jobsRes.json();
-        const locsData = await locsRes.json();
-        
-        const processedJobs = jobsData.map((job: any) => ({
-          ...job,
-          location: job.location_name,
-          locationId: job.location
-        }));
-        
-        setJobs(processedJobs);
-        setLocations(locsData);
-
-        // Fetch roles
         const rolesRes = await fetch(`${process.env.NEXT_PUBLIC_API_URL}/api/roles/`);
-        if (rolesRes.ok) {
-          const rolesData = await rolesRes.json();
-          setJobRoles(rolesData);
-        }
+        if (rolesRes.ok) setJobRoles(await rolesRes.json());
       } catch (error) {
-        console.error("Failed to fetch data:", error);
+        console.error('Failed to fetch meta:', error);
       }
     };
-    fetchData();
-  }, [token, user?.is_subscribed, logout]);
+    fetchMeta();
+  }, [token, user?.is_subscribed]);
+
+  // Re-fetch jobs whenever active country changes — backend filters at DB level
+  useEffect(() => {
+    const fetchJobs = async () => {
+      if (!token || !user?.is_subscribed) return;
+      setIsFetchingJobs(true);
+      setJobs([]);
+      try {
+        const params = new URLSearchParams();
+        if (activeCountry !== 'All') params.set('country', activeCountry);
+        const jobsRes = await fetch(
+          `${process.env.NEXT_PUBLIC_API_URL}/api/jobs/?${params}`,
+          { headers: { 'Authorization': `Token ${token}` } }
+        );
+        if (jobsRes.status === 401) { logout(); return; }
+        if (jobsRes.status === 403) { refreshUser?.(); setIsPricingModalOpen(true); return; }
+        if (!jobsRes.ok) return;
+        const jobsData = await jobsRes.json();
+        const jobsList = Array.isArray(jobsData) ? jobsData : (jobsData.results || []);
+        setJobs(jobsList.map((job: any) => ({
+          ...job,
+          location: job.location_name,
+          locationId: job.location,
+        })));
+      } catch (error) {
+        console.error('Failed to fetch jobs:', error);
+      } finally {
+        setIsFetchingJobs(false);
+      }
+    };
+    fetchJobs();
+  }, [token, user?.is_subscribed, activeCountry]);
 
   const countries = React.useMemo(() => ['All', ...Array.from(new Set(locations.map(loc => {
     if (loc.country === 'United States') return 'USA';
@@ -115,32 +130,23 @@ export default function ExplorePage() {
 
   const filteredJobs = React.useMemo(() => {
     return jobs.filter(job => {
-      const matchesSearch = job.title.toLowerCase().includes(searchQuery.toLowerCase()) ||
-                           job.company.toLowerCase().includes(searchQuery.toLowerCase());
-      const matchesLocation = job.location.toLowerCase().includes(locationQuery.toLowerCase());
+      const matchesSearch = job.title.toLowerCase().includes(debouncedSearch.toLowerCase()) ||
+                           job.company.toLowerCase().includes(debouncedSearch.toLowerCase());
+      const matchesLocation = job.location.toLowerCase().includes(debouncedLocation.toLowerCase());
       const matchesRemote = remoteOnly ? job.is_remote : true;
-      
-      // Country logic
-      let matchesCountry = activeCountry === 'All';
-      if (!matchesCountry) {
-        if (activeCountry === 'India') matchesCountry = job.location.includes('India') || job.location.includes('IN');
-        else if (activeCountry === 'USA') matchesCountry = job.location.includes('USA') || job.location.includes('US') || job.location.includes('United States');
-        else if (activeCountry === 'UK') matchesCountry = job.location.includes('UK') || job.location.includes('GB') || job.location.includes('United Kingdom');
-        else matchesCountry = job.location.includes(activeCountry);
-      }
 
-      // State logic
+      // Country filtering is handled by the backend — jobs array only contains the selected country
       let matchesState = activeState === 'All';
       if (!matchesState) {
         const jobLoc = locations.find(l => l.id === job.locationId);
         matchesState = jobLoc?.state === activeState;
       }
-      
+
       const matchesBookmarked = bookmarkedOnly ? job.is_bookmarked : true;
-      
-      return matchesSearch && matchesLocation && matchesRemote && matchesCountry && matchesState && matchesBookmarked;
+
+      return matchesSearch && matchesLocation && matchesRemote && matchesState && matchesBookmarked;
     });
-  }, [jobs, locations, searchQuery, locationQuery, activeCountry, activeState, remoteOnly, bookmarkedOnly]);
+  }, [jobs, locations, debouncedSearch, debouncedLocation, activeState, remoteOnly, bookmarkedOnly]);
 
   const handleMapJobClick = React.useCallback((jobId: string | null) => {
     if (jobId) {
@@ -170,20 +176,11 @@ export default function ExplorePage() {
     }
   }, [selectedJobId, currentPage, viewMode]);
 
-  if (isLoading || !token) {
-    return (
-      <div className="h-screen bg-[#0a0a0a] flex items-center justify-center">
-        <div className="w-8 h-8 border-2 border-green-500 border-t-transparent rounded-full animate-spin" />
-      </div>
-    );
-  }
+  const handleJobClick = React.useCallback((jobId: string) => {
+    setSelectedJobId(jobId);
+  }, []);
 
-  const totalPages = Math.ceil(filteredJobs.length / jobsPerPage);
-  const currentJobs = filteredJobs.slice((currentPage - 1) * jobsPerPage, currentPage * jobsPerPage);
-
-  
-  
-  const handleToggleBookmark = async (e: React.MouseEvent, jobId: string) => {
+  const handleToggleBookmark = React.useCallback(async (e: React.MouseEvent, jobId: string) => {
     e.stopPropagation();
     if (!token) return;
     
@@ -208,7 +205,18 @@ export default function ExplorePage() {
     } catch (error) {
       console.error("Failed to toggle bookmark:", error);
     }
-  };
+  }, [token]);
+
+  if (isLoading || !token) {
+    return (
+      <div className="h-screen bg-[#0a0a0a] flex items-center justify-center">
+        <div className="w-8 h-8 border-2 border-green-500 border-t-transparent rounded-full animate-spin" />
+      </div>
+    );
+  }
+
+  const totalPages = Math.ceil(filteredJobs.length / jobsPerPage);
+  const currentJobs = filteredJobs.slice((currentPage - 1) * jobsPerPage, currentPage * jobsPerPage);
 
   const containerVariants: Variants = {
     hidden: { opacity: 0 },
@@ -436,12 +444,17 @@ export default function ExplorePage() {
           </div>
           
           <AnimatePresence mode="wait">
-            <motion.div 
-              key={`${currentPage}-${searchQuery}-${locationQuery}-${activeCountry}-${activeState}-${remoteOnly}-${bookmarkedOnly}`}
+            {isFetchingJobs ? (
+              <div className="flex-1 flex items-center justify-center">
+                <div className="w-6 h-6 border-2 border-green-500 border-t-transparent rounded-full animate-spin" />
+              </div>
+            ) : null}
+            <motion.div
+              key={`${currentPage}-${debouncedSearch}-${debouncedLocation}-${activeCountry}-${activeState}-${remoteOnly}-${bookmarkedOnly}`}
               variants={containerVariants}
               initial="hidden"
               animate="visible"
-              className="flex-1 overflow-y-auto p-4 space-y-4 custom-scrollbar"
+              className={`flex-1 overflow-y-auto p-4 space-y-4 custom-scrollbar ${isFetchingJobs ? 'hidden' : ''}`}
             >
               {currentJobs.map(job => (
                 <motion.div 
@@ -453,8 +466,8 @@ export default function ExplorePage() {
                   <JobCard 
                     job={job} 
                     isSelected={selectedJobId === job.id}
-                    onClick={() => setSelectedJobId(job.id)}
-                    onToggleBookmark={(e) => handleToggleBookmark(e, job.id)}
+                    onClick={handleJobClick}
+                    onToggleBookmark={handleToggleBookmark}
                   />
                 </motion.div>
               ))}

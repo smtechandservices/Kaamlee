@@ -21,11 +21,11 @@ interface JobCardProps {
     id: string;
   };
   isSelected?: boolean;
-  onClick?: () => void;
-  onToggleBookmark?: (e: React.MouseEvent) => void;
+  onClick?: (jobId: string) => void;
+  onToggleBookmark?: (e: React.MouseEvent, jobId: string) => void;
 }
 
-export const JobCard = ({ job, isSelected, onClick, onToggleBookmark }: JobCardProps) => {
+export const JobCard = React.memo(function JobCard({ job, isSelected, onClick, onToggleBookmark }: JobCardProps) {
   const [copied, setCopied] = React.useState(false);
   const companyName = job.company || 'Confidential';
   const getInitial = (name: string) => name ? name.charAt(0).toUpperCase() : '?';
@@ -51,7 +51,7 @@ export const JobCard = ({ job, isSelected, onClick, onToggleBookmark }: JobCardP
 
   return (
     <div
-      onClick={onClick}
+      onClick={() => onClick?.(job.id)}
       className={`cursor-default job-card p-4 rounded-xl border border-[#222] bg-[#111] hover:border-[#22c55e] group transition-all relative overflow-hidden ${isSelected ? 'border-[#22c55e] bg-[#161616]' : ''
         }`}
     >
@@ -119,7 +119,7 @@ export const JobCard = ({ job, isSelected, onClick, onToggleBookmark }: JobCardP
 
           {/* Bookmark Toggle below logo */}
           <button
-            onClick={onToggleBookmark}
+            onClick={(e) => onToggleBookmark?.(e, job.id)}
             className={`w-full flex justify-center cursor-pointer p-1.5 sm:p-2 rounded-lg border transition-all ${job.is_bookmarked
                 ? 'bg-green-500/10 border-green-500/30 text-green-500'
                 : 'bg-transparent border-[#222] text-[#444] hover:border-[#333] hover:text-[#666]'
@@ -201,4 +201,4 @@ export const JobCard = ({ job, isSelected, onClick, onToggleBookmark }: JobCardP
       </div>
     </div>
   );
-};
+});
