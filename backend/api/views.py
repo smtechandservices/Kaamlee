@@ -1,4 +1,5 @@
 from rest_framework import viewsets, views, generics, permissions
+from rest_framework.pagination import LimitOffsetPagination
 from .permissions import IsSubscribed
 
 from rest_framework.decorators import action
@@ -49,10 +50,14 @@ class RecentJobsView(generics.ListAPIView):
     def get_queryset(self):
         return Job.objects.all().order_by('-created_at')[:10]
 
+class JobPagination(LimitOffsetPagination):
+    default_limit = 20
+    max_limit = 100
+
 class JobViewSet(viewsets.ModelViewSet):
     serializer_class = JobSerializer
     permission_classes = [permissions.IsAuthenticated, IsSubscribed]
-
+    pagination_class = JobPagination
 
     def get_queryset(self):
         queryset = Job.objects.all().order_by('-created_at')
@@ -81,6 +86,21 @@ class JobViewSet(viewsets.ModelViewSet):
         bookmarked_only = self.request.query_params.get('bookmarked_only')
         if bookmarked_only == 'true':
             queryset = queryset.filter(is_bookmarked=True)
+
+        is_remote = self.request.query_params.get('is_remote')
+        if is_remote == 'true':
+            queryset = queryset.filter(is_remote=True)
+            
+        country = self.request.query_params.get('country')
+        if country and country != 'All':
+            if country == 'USA':
+                queryset = queryset.filter(location__country__in=['United States', 'USA', 'US'])
+            elif country == 'UK':
+                queryset = queryset.filter(location__country__in=['United Kingdom', 'UK', 'GB'])
+            elif country == 'India':
+                queryset = queryset.filter(location__country__in=['India', 'IN'])
+            else:
+                queryset = queryset.filter(location__country__icontains=country)
 
         return queryset
 
