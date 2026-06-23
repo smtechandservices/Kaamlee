@@ -12,6 +12,7 @@ interface User {
   phone?: string;
   linkedin_url?: string;
   resume?: string;
+  resume_text?: string;
   is_subscribed: boolean;
   subscription_expires_at: string | null;
 }
