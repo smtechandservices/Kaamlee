@@ -69,12 +69,11 @@ export default function ExplorePage() {
            return;
         }
 
+        
         const jobsData = await jobsRes.json();
         const locsData = await locsRes.json();
         
-        const jobsList = Array.isArray(jobsData) ? jobsData : (jobsData.results || []);
-        
-        const processedJobs = jobsList.map((job: any) => ({
+        const processedJobs = jobsData.map((job: any) => ({
           ...job,
           location: job.location_name,
           locationId: job.location
