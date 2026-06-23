@@ -75,6 +75,7 @@ export default function AdminDashboard() {
   const [isLogsModalOpen, setIsLogsModalOpen] = useState(false);
   const [isSettingsModalOpen, setIsSettingsModalOpen] = useState(false);
   const router = useRouter();
+  const prevScrapeStatusRef = React.useRef<string | null>(null);
 
   const fetchData = async () => {
     const token = localStorage.getItem('admin_token');
@@ -130,9 +131,32 @@ export default function AdminDashboard() {
       router.push('/login');
       return;
     }
-    
+
     fetchData();
-    const interval = setInterval(fetchData, 10000); // Refresh every 10s
+
+    // Poll only stats (377B) every 10s instead of locations (33KB)
+    const pollStats = async () => {
+      const t = localStorage.getItem('admin_token');
+      if (!t) return;
+      try {
+        const res = await fetch(`${API_BASE}/stats/`, {
+          headers: { 'Authorization': `Token ${t}` }
+        });
+        if (!res.ok) return;
+        const statsData: Stats = await res.json();
+        const newStatus = statsData.last_scrape_session?.status ?? null;
+        setStats(statsData);
+        // Re-fetch locations once when a running scrape just finished
+        if (prevScrapeStatusRef.current === 'running' && newStatus !== 'running') {
+          fetchData();
+        }
+        prevScrapeStatusRef.current = newStatus;
+      } catch {
+        // silently ignore poll errors
+      }
+    };
+
+    const interval = setInterval(pollStats, 10000);
     return () => clearInterval(interval);
   }, []);
 
@@ -555,7 +579,7 @@ function LogsModal({ onClose, stats }: { onClose: () => void, stats: Stats | nul
     };
 
     fetchLogs();
-    const interval = setInterval(fetchLogs, 1000);
+    const interval = setInterval(fetchLogs, 3000);
     return () => clearInterval(interval);
   }, []);
 
