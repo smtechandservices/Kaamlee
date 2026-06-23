@@ -24,6 +24,7 @@ export default function ExplorePage() {
   const [locationQuery, setLocationQuery] = useState('');
   const [viewMode, setViewMode] = useState<'split' | 'map' | 'list'>('split');
   const [activeCountry, setActiveCountry] = useState<string>('All');
+  const [activeState, setActiveState] = useState<string>('All');
   const [remoteOnly, setRemoteOnly] = useState(false);
   const [bookmarkedOnly, setBookmarkedOnly] = useState(false);
   const [currentPage, setCurrentPage] = useState(1);
@@ -37,7 +38,11 @@ export default function ExplorePage() {
 
   useEffect(() => {
     setCurrentPage(1);
-  }, [searchQuery, locationQuery, activeCountry, remoteOnly, bookmarkedOnly]);
+  }, [searchQuery, locationQuery, activeCountry, activeState, remoteOnly, bookmarkedOnly]);
+
+  useEffect(() => {
+    setActiveState('All');
+  }, [activeCountry]);
 
   useEffect(() => {
     const fetchData = async () => {
@@ -70,7 +75,8 @@ export default function ExplorePage() {
         
         const processedJobs = jobsData.map((job: any) => ({
           ...job,
-          location: job.location_name
+          location: job.location_name,
+          locationId: job.location
         }));
         
         setJobs(processedJobs);
@@ -95,6 +101,18 @@ export default function ExplorePage() {
     return loc.country;
   })))], [locations]);
 
+  const states = React.useMemo(() => {
+    const filteredLocs = activeCountry === 'All' 
+      ? locations 
+      : locations.filter(loc => {
+          const c = loc.country;
+          const normalized = c === 'United States' ? 'USA' : (c === 'United Kingdom' ? 'UK' : c);
+          return normalized === activeCountry;
+        });
+    const uniqueStates = Array.from(new Set(filteredLocs.map(loc => loc.state).filter(Boolean))).sort();
+    return ['All', ...uniqueStates];
+  }, [locations, activeCountry]);
+
   const filteredJobs = React.useMemo(() => {
     return jobs.filter(job => {
       const matchesSearch = job.title.toLowerCase().includes(searchQuery.toLowerCase()) ||
@@ -110,12 +128,19 @@ export default function ExplorePage() {
         else if (activeCountry === 'UK') matchesCountry = job.location.includes('UK') || job.location.includes('GB') || job.location.includes('United Kingdom');
         else matchesCountry = job.location.includes(activeCountry);
       }
+
+      // State logic
+      let matchesState = activeState === 'All';
+      if (!matchesState) {
+        const jobLoc = locations.find(l => l.id === job.locationId);
+        matchesState = jobLoc?.state === activeState;
+      }
       
       const matchesBookmarked = bookmarkedOnly ? job.is_bookmarked : true;
       
-      return matchesSearch && matchesLocation && matchesRemote && matchesCountry && matchesBookmarked;
+      return matchesSearch && matchesLocation && matchesRemote && matchesCountry && matchesState && matchesBookmarked;
     });
-  }, [jobs, searchQuery, locationQuery, activeCountry, remoteOnly, bookmarkedOnly]);
+  }, [jobs, locations, searchQuery, locationQuery, activeCountry, activeState, remoteOnly, bookmarkedOnly]);
 
   const handleMapJobClick = React.useCallback((jobId: string | null) => {
     if (jobId) {
@@ -358,6 +383,29 @@ export default function ExplorePage() {
                   {country}
                 </button>
               ))}
+
+              {states.length > 1 && (
+                <div className="relative shrink-0 ml-1">
+                  <select
+                    value={activeState}
+                    onChange={(e) => setActiveState(e.target.value)}
+                    className="cursor-pointer bg-[#161616] text-[#888] border border-[#222] hover:border-[#333] hover:text-white px-3 sm:px-4 py-1.5 rounded-lg text-[10px] sm:text-[11px] font-bold outline-none appearance-none pr-8 relative transition-all"
+                    style={{
+                      backgroundImage: `url("data:image/svg+xml;charset=utf-8,%3Csvg xmlns='http://www.w3.org/2000/svg' fill='none' viewBox='0 0 20 20'%3E%3Cpath stroke='%23888' stroke-linecap='round' stroke-linejoin='round' stroke-width='1.5' d='m6 8 4 4 4-4'/%3E%3C/svg%3E")`,
+                      backgroundPosition: 'right 0.5rem center',
+                      backgroundSize: '1.25rem',
+                      backgroundRepeat: 'no-repeat'
+                    }}
+                  >
+                    <option value="All" className="bg-[#161616] text-[#888]">All States</option>
+                    {states.filter(s => s !== 'All').map((state) => (
+                      <option key={state} value={state} className="bg-[#161616] text-white">
+                        {state}
+                      </option>
+                    ))}
+                  </select>
+                </div>
+              )}
             </div>
             
             <div className="w-px h-4 bg-[#222] shrink-0" />
@@ -389,7 +437,7 @@ export default function ExplorePage() {
           
           <AnimatePresence mode="wait">
             <motion.div 
-              key={`${currentPage}-${searchQuery}-${locationQuery}-${activeCountry}-${remoteOnly}-${bookmarkedOnly}`}
+              key={`${currentPage}-${searchQuery}-${locationQuery}-${activeCountry}-${activeState}-${remoteOnly}-${bookmarkedOnly}`}
               variants={containerVariants}
               initial="hidden"
               animate="visible"
