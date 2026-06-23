@@ -289,20 +289,28 @@ export default function PricingModal({ isOpen, onClose, showCloseButton = true }
                     exit={{ opacity: 0, y: -10 }}
                     className="flex flex-col items-center w-full"
                   >
+                    <div className="flex items-center justify-center mb-5 sm:mb-6">
+                      <span className="text-[9px] font-mono text-green-500 bg-green-500/10 border border-green-500/30 px-3 py-1 tracking-[0.25em] uppercase">Early Access · Beta</span>
+                    </div>
+
                     <h2 className="text-3xl sm:text-4xl md:text-5xl font-black tracking-tighter mb-6 sm:mb-8 leading-[1.1]">
                       One Price.<br />
                       One Portal.<br />
                       <span className="text-serif font-normal italic lowercase text-green-500">unlimited</span> Jobs.
                     </h2>
 
-                    <div className="flex items-baseline gap-2 sm:gap-3 mb-6 sm:mb-8">
+                    <div className="flex items-baseline gap-2 sm:gap-3 mb-3 sm:mb-4">
                       <span className="text-xl sm:text-2xl font-mono text-green-500/50">{PRICING.currency === 'INR' ? '₹' : PRICING.currency}</span>
                       <span className="text-6xl sm:text-7xl md:text-8xl font-black tracking-tighter text-white">{PRICING.amount_inr}</span>
                       <span className="font-mono text-base sm:text-lg text-[#444] uppercase tracking-widest">/ {PRICING.interval}</span>
                     </div>
 
+                    <p className="text-[10px] sm:text-xs text-green-500/60 font-mono uppercase tracking-widest mb-6 sm:mb-8">
+                      Beta pricing · Will update as premium features launch
+                    </p>
+
                     <p className="text-xs sm:text-sm text-[#888] leading-relaxed max-w-xl mb-8 sm:mb-10">
-                      Stop overthinking it. <br className="hidden sm:block" /> Get every role, and every map filter for the price of a coffee. <br /> <span className="text-white font-bold italic">We just do jobs.</span>
+                      You&apos;re in early. Get every role and every map filter at our beta rate. <br className="hidden sm:block" /> Price will increase when premium features go live — <span className="text-white font-bold italic">early access users get in first.</span>
                     </p>
 
                     <div className="relative group/btn w-full">

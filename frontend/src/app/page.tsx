@@ -120,8 +120,9 @@ export default function LandingPage() {
 
       {/* Navbar */}
       <nav className="fixed top-0 left-0 w-full h-20 px-4 sm:px-8 flex items-center justify-between z-50 border-b border-white/40 bg-black/50 backdrop-blur-xl">
-        <div className="cursor-default text-lg sm:text-xl font-bold tracking-[0.2em] sm:tracking-[0.3em] uppercase">
-          KAAMLEE
+        <div className="cursor-default flex items-center gap-2 sm:gap-3">
+          <span className="text-lg sm:text-xl font-bold tracking-[0.2em] sm:tracking-[0.3em] uppercase">KAAMLEE</span>
+          <span className="text-[8px] font-mono text-green-500 bg-green-500/10 border border-green-500/30 px-1.5 py-0.5 tracking-widest uppercase">BETA</span>
         </div>
 
         <div className="flex items-center gap-2 sm:gap-4">
@@ -188,9 +189,9 @@ export default function LandingPage() {
               </button>
               <button
                 onClick={() => setIsPricingOpen(true)}
-                className="cursor-pointer border border-[#222] text-white px-8 sm:px-10 py-4 sm:py-5 rounded-sm font-black uppercase tracking-widest text-xs sm:text-sm flex items-center justify-center hover:border-white transition-all"
+                className="cursor-pointer border border-[#222] text-white px-8 sm:px-10 py-4 sm:py-5 rounded-sm font-black uppercase tracking-widest text-xs sm:text-sm flex items-center justify-center gap-2 hover:border-white transition-all"
               >
-                See Pricing
+                Beta — ₹9/mo
               </button>
             </div>
           </motion.div>
@@ -508,8 +509,12 @@ export default function LandingPage() {
                 a: "We crawl twelve major job boards (LinkedIn, Indeed, ZipRecruiter, etc.) and direct company career pages every fifteen minutes. If it's live on the internet, it's on the map."
               },
               {
+                q: "Is Kaamlee in beta? Will the price change later?",
+                a: "Yes — we're in early beta. Right now, early access is priced at ₹9/mo so you can get in and give us feedback while the product is still being shaped. As we roll out premium features (advanced filters, alerts, Auto apply, and more), the price will update to reflect them. Early access users who join now lock in the beta rate for their current billing cycle."
+              },
+              {
                 q: "How does the 'All-Access' pass work?",
-                a: `One flat fee of ${PRICING.currency} ${PRICING.amount_inr}/${PRICING.interval}. No tiers, no 'pro' features locked. Payments are securely powered by Razorpay and handled by Commhawk.`
+                a: `One flat beta fee of ${PRICING.currency} ${PRICING.amount_inr}/${PRICING.interval}. No tiers, no 'pro' features locked behind a paywall right now. This is early-access pricing — future plans will be priced higher as premium features launch. Payments are securely powered by Razorpay and handled by Commhawk.`
               },
               {
                 q: "Can I cancel my subscription easily?",
