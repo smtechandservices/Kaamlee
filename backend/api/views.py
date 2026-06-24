@@ -54,7 +54,7 @@ class RecentJobsView(generics.ListAPIView):
 
 class JobViewSet(viewsets.ModelViewSet):
     serializer_class = JobSerializer
-    permission_classes = [permissions.IsAuthenticated, IsSubscribed]
+    permission_classes = [permissions.IsAuthenticated]
 
 
     _COUNTRY_MAP = {
@@ -104,7 +104,7 @@ class JobViewSet(viewsets.ModelViewSet):
 
 
 class CheckExistenceView(views.APIView):
-    permission_classes = [permissions.IsAuthenticated, IsSubscribed]
+    permission_classes = [permissions.IsAuthenticated]
 
     def post(self, request):
         job_urls = request.data.get('urls', [])

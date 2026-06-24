@@ -8,7 +8,7 @@ import { useAuth } from '@/context/AuthContext';
 import { useRouter } from 'next/navigation';
 import { Map as Mapcn, MapMarker, MarkerContent } from "@/components/ui/map";
 import PricingModal from '@/components/PricingModal';
-import { PRICING } from '@/lib/constants';
+// import { PRICING } from '@/lib/constants';
 
 function FAQItem({ faq, index, isOpen, onToggle }: { faq: { q: string, a: string }, index: number, isOpen: boolean, onToggle: () => void }) {
   return (
@@ -189,7 +189,8 @@ export default function LandingPage() {
                 onClick={() => setIsPricingOpen(true)}
                 className="cursor-pointer border border-[#222] text-white px-8 sm:px-10 py-4 sm:py-5 rounded-sm font-black uppercase tracking-widest text-xs sm:text-sm flex items-center justify-center gap-2 hover:border-white transition-all"
               >
-                Beta — ₹9/mo
+                {/* Beta — ₹9/mo */}
+                Free · Beta
               </button>
             </div>
           </motion.div>
@@ -506,17 +507,16 @@ export default function LandingPage() {
                 q: "Where do these jobs actually come from?",
                 a: "We crawl twelve major job boards (LinkedIn, Indeed, ZipRecruiter, etc.) and direct company career pages every fifteen minutes. If it's live on the internet, it's on the map."
               },
+              // { q: "Is Kaamlee in beta? Will the price change later?", a: "Yes — we're in early beta. Right now, early access is priced at ₹9/mo so you can get in and give us feedback while the product is still being shaped. As we roll out premium features (advanced filters, alerts, Auto apply, and more), the price will update to reflect them. Early access users who join now lock in the beta rate for their current billing cycle." },
               {
-                q: "Is Kaamlee in beta? Will the price change later?",
-                a: "Yes — we're in early beta. Right now, early access is priced at ₹9/mo so you can get in and give us feedback while the product is still being shaped. As we roll out premium features (advanced filters, alerts, Auto apply, and more), the price will update to reflect them. Early access users who join now lock in the beta rate for their current billing cycle."
+                q: "Is Kaamlee in beta? Is it really free?",
+                a: "Yes — we're in early beta and everything is completely free right now. No payment, no subscription, no credit card required. Sign up and get full access to all job listings while we build and shape the product with your feedback."
               },
+              // { q: "How does the 'All-Access' pass work?", a: `One flat beta fee of PRICING.currency PRICING.amount_inr/PRICING.interval. No tiers, no 'pro' features locked behind a paywall right now. This is early-access pricing — future plans will be priced higher as premium features launch. Payments are securely powered by Razorpay and handled by Commhawk.` },
+              // { q: "Can I cancel my subscription easily?", a: "Yes. One click in your dashboard. No 'call us to cancel' loops. No hidden retention tricks. We're here to help you get a job, not hold you hostage." },
               {
-                q: "How does the 'All-Access' pass work?",
-                a: `One flat beta fee of ${PRICING.currency} ${PRICING.amount_inr}/${PRICING.interval}. No tiers, no 'pro' features locked behind a paywall right now. This is early-access pricing — future plans will be priced higher as premium features launch. Payments are securely powered by Razorpay and handled by Commhawk.`
-              },
-              {
-                q: "Can I cancel my subscription easily?",
-                a: "Yes. One click in your dashboard. No 'call us to cancel' loops. No hidden retention tricks. We're here to help you get a job, not hold you hostage."
+                q: "How does full access work during beta?",
+                a: "During the beta period, all features are unlocked for every user at no cost. As we roll out premium features (AI matching, Auto-apply, Resume builder, and more), we'll introduce plans — but we'll give you plenty of notice before anything changes."
               },
               {
                 q: "How does the AI Resume Matching work?",
@@ -548,8 +548,9 @@ export default function LandingPage() {
             <div className="flex flex-col gap-6">
               <div className="text-lg font-bold tracking-[0.3em] uppercase">KAAMLEE</div>
               <p className="text-[#444] text-[10px] font-mono tracking-widest uppercase">
-                © 2026 KAAMLEE <br />
-                PAYMENTS BY RAZORPAY · HANDLED BY COMMHAWK
+                © 2026 KAAMLEE
+                {/* <br />
+                PAYMENTS BY RAZORPAY · HANDLED BY COMMHAWK */}
               </p>
             </div>
 

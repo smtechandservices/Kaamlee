@@ -2,9 +2,9 @@
  * Subscription Pricing Constants
  */
 export const PRICING = {
-  amount_inr: 9,
-  amount_paise: 900, // amount_inr * 100
+  amount_inr: 0,
+  amount_paise: 0,
   currency: 'INR',
-  label: '₹ 9',
+  label: 'Free',
   interval: 'mo'
 };
