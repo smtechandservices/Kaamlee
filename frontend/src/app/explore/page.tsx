@@ -33,7 +33,7 @@ export default function ExplorePage() {
   const [locationQuery, setLocationQuery] = useState('');
   const [viewMode, setViewMode] = useState<'split' | 'map' | 'list'>('split');
   const [activeCountry, setActiveCountry] = useState<string>('All');
-  const [activeState, setActiveState] = useState<string>('All');
+
   const [remoteOnly, setRemoteOnly] = useState(false);
   const [bookmarkedOnly, setBookmarkedOnly] = useState(false);
   const [currentPage, setCurrentPage] = useState(1);
@@ -49,30 +49,20 @@ export default function ExplorePage() {
     }
   }, [token, isLoading, router]);
 
-  useEffect(() => {
-    if (!isLoading && user && !user.is_subscribed) {
-      setIsPricingModalOpen(true);
-    }
-  }, [isLoading, user?.is_subscribed]);
 
   useEffect(() => {
     setCurrentPage(1);
-  }, [debouncedSearch, locationQuery, activeCountry, activeState, remoteOnly, bookmarkedOnly]);
-
-  useEffect(() => {
-    setActiveState('All');
-  }, [activeCountry]);
+  }, [debouncedSearch, locationQuery, activeCountry, remoteOnly, bookmarkedOnly]);
 
   // Fetch locations + roles once on mount
   useEffect(() => {
     const fetchMeta = async () => {
-      if (!token || !user?.is_subscribed) return;
+      if (!token) return;
       try {
         const locsRes = await fetch(`${process.env.NEXT_PUBLIC_API_URL}/api/locations/`, {
           headers: { 'Authorization': `Token ${token}` }
         });
         if (locsRes.status === 401) { logout(); return; }
-        if (locsRes.status === 403) { refreshUser?.(); setIsPricingModalOpen(true); return; }
         if (locsRes.ok) setLocations(await locsRes.json());
 
         const rolesRes = await fetch(`${process.env.NEXT_PUBLIC_API_URL}/api/roles/`);
@@ -133,37 +123,17 @@ export default function ExplorePage() {
     return loc.country;
   })))], [locations]);
 
-  const states = React.useMemo(() => {
-    const filteredLocs = activeCountry === 'All' 
-      ? locations 
-      : locations.filter(loc => {
-          const c = loc.country;
-          const normalized = c === 'United States' ? 'USA' : (c === 'United Kingdom' ? 'UK' : c);
-          return normalized === activeCountry;
-        });
-    const uniqueStates = Array.from(new Set(filteredLocs.map(loc => loc.state).filter(Boolean))).sort();
-    return ['All', ...uniqueStates];
-  }, [locations, activeCountry]);
-
   const filteredJobs = React.useMemo(() => {
     return jobs.filter(job => {
       const matchesSearch = job.title.toLowerCase().includes(debouncedSearch.toLowerCase()) ||
                            job.company.toLowerCase().includes(debouncedSearch.toLowerCase());
       const matchesLocation = job.location.toLowerCase().includes(debouncedLocation.toLowerCase());
       const matchesRemote = remoteOnly ? job.is_remote : true;
-
-      // Country filtering is handled by the backend — jobs array only contains the selected country
-      let matchesState = activeState === 'All';
-      if (!matchesState) {
-        const jobLoc = locations.find(l => l.id === job.locationId);
-        matchesState = jobLoc?.state === activeState;
-      }
-
       const matchesBookmarked = bookmarkedOnly ? job.is_bookmarked : true;
 
-      return matchesSearch && matchesLocation && matchesRemote && matchesState && matchesBookmarked;
+      return matchesSearch && matchesLocation && matchesRemote && matchesBookmarked;
     });
-  }, [jobs, locations, debouncedSearch, debouncedLocation, activeState, remoteOnly, bookmarkedOnly]);
+  }, [jobs, debouncedSearch, debouncedLocation, remoteOnly, bookmarkedOnly]);
 
   const handleMapJobClick = React.useCallback((jobId: string | null) => {
     if (jobId) {
@@ -280,13 +250,20 @@ export default function ExplorePage() {
         <div className="flex items-center gap-2">
           {/* Subscription Status - Hidden on small mobile */}
 
-          {user?.is_subscribed && (
-            <Link 
+          {user?.is_subscribed ? (
+            <Link
               href="/transactions"
               className="flex items-center gap-2 text-[#888] hover:text-white transition-colors group mr-2"
               title="Billing History"
             >
                 <CreditCard size={20} />
+            </Link>
+          ) : (
+            <Link
+              href="/pricing"
+              className="flex items-center gap-2 px-3 py-1.5 rounded-full bg-green-500/10 border border-green-500/30 text-green-400 hover:bg-green-500/20 hover:text-green-300 transition-all text-[10px] font-black uppercase tracking-widest mr-2"
+            >
+              Go Premium
             </Link>
           )}
 
@@ -409,28 +386,6 @@ export default function ExplorePage() {
                 </button>
               ))}
 
-              {states.length > 1 && (
-                <div className="relative shrink-0 ml-1">
-                  <select
-                    value={activeState}
-                    onChange={(e) => setActiveState(e.target.value)}
-                    className="cursor-pointer bg-[#161616] text-[#888] border border-[#222] hover:border-[#333] hover:text-white px-3 sm:px-4 py-1.5 rounded-lg text-[10px] sm:text-[11px] font-bold outline-none appearance-none pr-8 relative transition-all"
-                    style={{
-                      backgroundImage: `url("data:image/svg+xml;charset=utf-8,%3Csvg xmlns='http://www.w3.org/2000/svg' fill='none' viewBox='0 0 20 20'%3E%3Cpath stroke='%23888' stroke-linecap='round' stroke-linejoin='round' stroke-width='1.5' d='m6 8 4 4 4-4'/%3E%3C/svg%3E")`,
-                      backgroundPosition: 'right 0.5rem center',
-                      backgroundSize: '1.25rem',
-                      backgroundRepeat: 'no-repeat'
-                    }}
-                  >
-                    <option value="All" className="bg-[#161616] text-[#888]">All States</option>
-                    {states.filter(s => s !== 'All').map((state) => (
-                      <option key={state} value={state} className="bg-[#161616] text-white">
-                        {state}
-                      </option>
-                    ))}
-                  </select>
-                </div>
-              )}
             </div>
             
             <div className="w-px h-4 bg-[#222] shrink-0" />
@@ -467,7 +422,7 @@ export default function ExplorePage() {
               </div>
             ) : null}
             <motion.div
-              key={`${currentPage}-${debouncedSearch}-${debouncedLocation}-${activeCountry}-${activeState}-${remoteOnly}-${bookmarkedOnly}`}
+              key={`${currentPage}-${debouncedSearch}-${debouncedLocation}-${activeCountry}-${remoteOnly}-${bookmarkedOnly}`}
               variants={containerVariants}
               initial="hidden"
               animate="visible"
@@ -541,12 +496,12 @@ export default function ExplorePage() {
           <span className="w-1.5 h-1.5 rounded-full bg-green-500 animate-pulse shrink-0" />
           <span className="text-[11px] text-[#888] font-medium">Showing 10 recent jobs.</span>
           <span className="text-[11px] text-[#555]">Subscribe for full access.</span>
-          <button
-            onClick={() => setIsPricingModalOpen(true)}
-            className="cursor-pointer ml-1 px-3 py-1 rounded-full bg-green-500 text-black text-[10px] font-black uppercase tracking-widest hover:bg-green-400 transition-colors"
+          <Link
+            href="/pricing"
+            className="ml-1 px-3 py-1 rounded-full bg-green-500 text-black text-[10px] font-black uppercase tracking-widest hover:bg-green-400 transition-colors"
           >
             Go Premium
-          </button>
+          </Link>
         </div>
       )}
 

@@ -114,7 +114,7 @@ _LOCATIONS_CACHE_TTL = 300  # 5 minutes
 
 class LocationViewSet(viewsets.ModelViewSet):
     serializer_class = LocationSerializer
-    permission_classes = [permissions.IsAuthenticated, IsSubscribed]
+    permission_classes = [permissions.IsAuthenticated]
 
     def get_queryset(self):
         # Prefetch only location_name to avoid N+1 in accuracy_percentage calculation
