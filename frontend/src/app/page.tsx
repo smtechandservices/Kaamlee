@@ -278,8 +278,8 @@ export default function LandingPage() {
         <section className="px-6 md:px-8 py-12 sm:py-16 border-y border-white/40 bg-black/20 backdrop-blur-sm relative overflow-hidden">
           <div className="mx-auto grid grid-cols-2 md:grid-cols-4 gap-8 sm:gap-12">
             {[
-              { label: "LIVE_LISTINGS", value: stats?.total_jobs?.toLocaleString() || "420" },
-              { label: "COMPANIES", value: "1000 +" },
+              { label: "LIVE_LISTINGS", value: stats?.total_jobs?.toLocaleString() || "40,000 +" },
+              { label: "COMPANIES", value: "50,000 +" },
               { label: "SOURCES", value: "12 boards" },
               { label: "ACCURACY", value: "92.99%" }
             ].map((stat, i) => (
@@ -313,7 +313,7 @@ export default function LandingPage() {
             >
               {/* Double the array for seamless looping */}
               {(Array.isArray(recentJobs) ? [...recentJobs.slice(0, 10), ...recentJobs.slice(0, 10)] : []).map((job, i) => (
-                <div key={i} className="flex-shrink-0 w-[280px] sm:w-[350px] group p-6 sm:p-8 border border-white/5 bg-[#080808] hover:border-green-500/30 hover:bg-[#0a0a0a] transition-all relative overflow-hidden">
+                <Link key={i} href="/explore" className="flex-shrink-0 w-[280px] sm:w-[350px] group p-6 sm:p-8 border border-white/5 bg-[#080808] hover:border-green-500/30 hover:bg-[#0a0a0a] transition-all relative overflow-hidden cursor-pointer block">
                   <div className="flex items-center justify-between mb-4">
                     <h4 className="text-xl font-bold tracking-tight text-white mb-4 line-clamp-1 truncate">{job.title}</h4>
                   </div>
@@ -329,7 +329,7 @@ export default function LandingPage() {
                   <div className="flex items-center justify-end border-t border-white/10 border-dashed pt-6 mt-6">
                     <div className="font-mono text-[10px] text-[#444] uppercase tracking-widest">{job.is_remote ? 'REMOTE' : 'ON-SITE'}</div>
                   </div>
-                </div>
+                </Link>
               ))}
             </motion.div>
           </div>

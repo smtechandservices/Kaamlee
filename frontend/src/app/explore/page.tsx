@@ -99,7 +99,7 @@ export default function ExplorePage() {
             locationId: job.location,
           })));
         } else {
-          const jobsRes = await fetch(`${process.env.NEXT_PUBLIC_API_URL}/api/recent-jobs/`);
+          const jobsRes = await fetch(`${process.env.NEXT_PUBLIC_API_URL}/api/recent-jobs/?limit=299`);
           if (!jobsRes.ok) return;
           const jobsList = await jobsRes.json();
           setJobs((Array.isArray(jobsList) ? jobsList : []).map((job: any) => ({
@@ -494,7 +494,7 @@ export default function ExplorePage() {
       {!user?.is_subscribed && (
         <div className="absolute bottom-6 left-1/2 -translate-x-1/2 z-30 flex items-center gap-3 px-4 py-3 bg-[#0f0f0f] border border-[#333] rounded-full shadow-2xl shadow-black/60 backdrop-blur-md whitespace-nowrap">
           <span className="w-1.5 h-1.5 rounded-full bg-green-500 animate-pulse shrink-0" />
-          <span className="text-[11px] text-[#888] font-medium">Showing 10 recent jobs.</span>
+          <span className="text-[11px] text-[#888] font-medium">Showing 299 recent jobs.</span>
           <span className="text-[11px] text-[#555]">Subscribe for full access.</span>
           <Link
             href="/pricing"

@@ -48,7 +48,9 @@ class RecentJobsView(generics.ListAPIView):
     serializer_class = RecentJobSerializer
     permission_classes = [permissions.AllowAny]
     def get_queryset(self):
-        return Job.objects.select_related('location').order_by('-created_at')[:10]
+        limit = int(self.request.query_params.get('limit', 10))
+        limit = min(limit, 299)
+        return Job.objects.select_related('location').order_by('-created_at')[:limit]
 
 class JobViewSet(viewsets.ModelViewSet):
     serializer_class = JobSerializer

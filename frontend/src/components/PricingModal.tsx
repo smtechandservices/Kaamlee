@@ -316,7 +316,7 @@ export default function PricingModal({ isOpen, onClose, showCloseButton = true }
                         <div className="text-[9px] font-mono uppercase tracking-[0.25em] text-[#444] mb-4">Free</div>
                         <div className="space-y-2.5">
                           {[
-                            '10 recent job listings',
+                            '299 recent job listings',
                             'Location & country filters',
                             'Job role filters',
                             'Map view',
@@ -347,7 +347,7 @@ export default function PricingModal({ isOpen, onClose, showCloseButton = true }
                         </div>
                         <div className="space-y-2.5">
                           {[
-                            '10 recent job listings',
+                            '299 recent job listings',
                             'Location & country filters',
                             'Job role filters',
                             'Map view',
