@@ -308,29 +308,29 @@ export default function ExplorePage() {
       {/* Main Content Area */}
       <div className="flex-1 flex overflow-hidden">
         {/* Sidebar */}
-        <aside className={`${viewMode === 'map' ? 'hidden' : 'flex'} w-full md:w-[450px] flex-col border-r border-[#222] bg-[#0a0a0a] z-10 shrink-0`}>
+        <aside className={`${viewMode === 'map' ? 'hidden' : 'flex'} w-full md:w-[500px] flex-col border-r border-[#222] bg-[#0a0a0a] z-10 shrink-0`}>
           
           {/* Search Area */}
-          <div className="p-3 sm:p-4 border-b border-[#222] bg-[#0a0a0a]">
+          <div className="p-4 sm:p-5 border-b border-[#222] bg-[#0a0a0a]">
             <div className="flex flex-col sm:flex-row items-stretch gap-3">
               <div className="bg-[#161616] border border-[#222] rounded-2xl flex-1 shadow-inner flex flex-col overflow-hidden focus-within:border-[#22c55e]/50 transition-all">
-                <div className="h-10 sm:h-12 flex items-center px-3">
-                  <Search className="text-[#555] shrink-0 ml-1 w-3.5 h-3.5 sm:w-4 sm:h-4" />
-                  <input 
-                    type="text" 
+                <div className="h-12 sm:h-14 flex items-center px-4">
+                  <Search className="text-[#555] shrink-0 w-4 h-4" />
+                  <input
+                    type="text"
                     placeholder="Job title, keywords, or company"
-                    className="bg-transparent border-none outline-none ring-0 focus:ring-0 text-[10px] sm:text-xs text-white placeholder-[#555] flex-1 ml-2 sm:ml-3"
+                    className="bg-transparent border-none outline-none ring-0 focus:ring-0 text-xs sm:text-sm text-white placeholder-[#555] flex-1 ml-3"
                     value={searchQuery}
                     onChange={(e) => setSearchQuery(e.target.value)}
                   />
                 </div>
                 <div className="w-full h-px bg-[#222]" />
-                <div className="h-10 sm:h-12 flex items-center px-3">
-                  <MapIcon className="text-[#555] shrink-0 ml-1 w-3.5 h-3.5 sm:w-4 sm:h-4" />
-                  <input 
-                    type="text" 
+                <div className="h-12 sm:h-14 flex items-center px-4">
+                  <MapIcon className="text-[#555] shrink-0 w-4 h-4" />
+                  <input
+                    type="text"
                     placeholder="City, state, zip code, or remote"
-                    className="bg-transparent border-none outline-none ring-0 focus:ring-0 text-[10px] sm:text-xs text-white placeholder-[#555] w-full ml-2 sm:ml-3"
+                    className="bg-transparent border-none outline-none ring-0 focus:ring-0 text-xs sm:text-sm text-white placeholder-[#555] w-full ml-3"
                     value={locationQuery}
                     onChange={(e) => setLocationQuery(e.target.value)}
                   />
@@ -338,13 +338,13 @@ export default function ExplorePage() {
               </div>
 
               {/* Quick Roles Vertical Scrollable List - Fixed height */}
-              <div className="h-10 sm:h-[100px] w-full sm:w-[130px] flex flex-row sm:flex-col border border-[#222] rounded-2xl bg-[#080808] overflow-hidden">
-                <div className="flex-1 flex flex-row sm:flex-col overflow-x-auto sm:overflow-y-auto no-scrollbar p-1 gap-1 sm:space-y-0.5 bg-black/40">
+              <div className="h-12 sm:h-[116px] w-full sm:w-[140px] flex flex-row sm:flex-col border border-[#222] rounded-2xl bg-[#080808] overflow-hidden">
+                <div className="flex-1 flex flex-row sm:flex-col overflow-x-auto sm:overflow-y-auto no-scrollbar p-1.5 gap-1 sm:space-y-0.5 bg-black/40">
                   <button
                     onClick={() => setSearchQuery('')}
-                    className={`shrink-0 sm:w-full text-left px-2 py-1 rounded-lg text-[8px] sm:text-[9px] font-bold transition-all border ${
-                      searchQuery === '' 
-                        ? 'bg-green-500/10 text-green-400 border-green-500/30' 
+                    className={`shrink-0 sm:w-full text-left px-2.5 py-1.5 rounded-lg text-[9px] sm:text-[10px] font-bold transition-all border ${
+                      searchQuery === ''
+                        ? 'bg-green-500/10 text-green-400 border-green-500/30'
                         : 'bg-transparent text-[#555] border-transparent hover:bg-[#111] hover:text-[#888]'
                     }`}
                   >
@@ -354,9 +354,9 @@ export default function ExplorePage() {
                     <button
                       key={role}
                       onClick={() => setSearchQuery(role)}
-                      className={`shrink-0 sm:w-full text-left px-2 py-1 rounded-lg text-[8px] sm:text-[9px] font-bold transition-all border truncate ${
-                        searchQuery === role 
-                          ? 'bg-green-500/10 text-green-400 border-green-500/30' 
+                      className={`shrink-0 sm:w-full text-left px-2.5 py-1.5 rounded-lg text-[9px] sm:text-[10px] font-bold transition-all border truncate ${
+                        searchQuery === role
+                          ? 'bg-green-500/10 text-green-400 border-green-500/30'
                           : 'bg-transparent text-[#555] border-transparent hover:bg-[#111] hover:text-[#888]'
                       }`}
                       title={role}
@@ -370,7 +370,7 @@ export default function ExplorePage() {
           </div>
 
           {/* Category Filters */}
-          <div className="px-3 sm:px-4 py-2 sm:py-3 border-b border-[#222] bg-[#0a0a0a] flex items-center justify-between gap-2 sm:gap-3">
+          <div className="px-4 sm:px-5 py-3 sm:py-4 border-b border-[#222] bg-[#0a0a0a] flex items-center justify-between gap-2 sm:gap-3">
             <div className="flex items-center gap-2 overflow-x-auto no-scrollbar flex-1">
               {countries.map((country) => (
                 <button
@@ -426,7 +426,7 @@ export default function ExplorePage() {
               variants={containerVariants}
               initial="hidden"
               animate="visible"
-              className={`flex-1 overflow-y-auto p-4 space-y-4 custom-scrollbar ${isFetchingJobs ? 'hidden' : ''}`}
+              className={`flex-1 overflow-y-auto p-4 sm:p-5 space-y-4 custom-scrollbar ${isFetchingJobs ? 'hidden' : ''}`}
             >
               {currentJobs.map(job => (
                 <motion.div 

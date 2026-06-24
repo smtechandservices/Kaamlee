@@ -1,7 +1,7 @@
 'use client';
 
 import { Map as Mapcn, MapControls, MapMarker, MarkerContent, MarkerPopup, MarkerLabel, MapClusterLayer, type MapViewport } from "@/components/ui/map";
-import { ChevronLeft, ChevronRight, ExternalLink, X, Loader2 } from 'lucide-react';
+import { ChevronLeft, ChevronRight, ExternalLink, X, Loader2, MapPin } from 'lucide-react';
 import { motion, AnimatePresence } from 'framer-motion';
 
 import { useRef, useEffect, useState, useMemo } from 'react';
@@ -44,7 +44,7 @@ const Map = ({ jobs, selectedJobId, onJobClick }: MapProps) => {
       if (selectedJob && selectedJob.latitude && selectedJob.longitude) {
         mapRef.current.flyTo({
           center: [selectedJob.longitude, selectedJob.latitude],
-          zoom: 14,
+          zoom: 12,
           duration: 1200
         });
       }
@@ -130,7 +130,7 @@ const Map = ({ jobs, selectedJobId, onJobClick }: MapProps) => {
         onJobClick?.(closestJob.id);
         mapRef.current.flyTo({
           center: [closestJob.longitude, closestJob.latitude],
-          zoom: 18,
+          zoom: 12,
           duration: 2000
         });
       }
@@ -150,7 +150,7 @@ const Map = ({ jobs, selectedJobId, onJobClick }: MapProps) => {
     onJobClick?.(job.id);
     mapRef.current.flyTo({
       center: [job.longitude, job.latitude],
-      zoom: 18,
+      zoom: 12,
       duration: 1500
     });
   };
@@ -159,10 +159,11 @@ const Map = ({ jobs, selectedJobId, onJobClick }: MapProps) => {
 
   return (
     <div className="w-full h-full relative overflow-hidden">
-      <Mapcn 
+      <Mapcn
         ref={mapRef}
-        center={center} 
+        center={center}
         zoom={zoom}
+        maxZoom={12}
         theme="dark"
         className="w-full h-full"
         onClick={(e) => {
@@ -217,26 +218,12 @@ const Map = ({ jobs, selectedJobId, onJobClick }: MapProps) => {
               }}
             >
               <MarkerContent className="group">
-                <div className={`w-8 h-8 rounded-full flex items-center justify-center text-sm font-black border-2 transition-all duration-300 overflow-hidden ${
-                  job.id === selectedJobId 
-                    ? 'bg-[#22c55e] border-white text-white scale-125 shadow-[0_0_15px_rgba(34,197,94,0.6)]' 
-                    : 'bg-white border-[#333] text-[#333] shadow-md group-hover:border-[#22c55e] group-hover:scale-110'
-                }`}>
-                  {job.company_logo ? (
-                    <img 
-                      src={job.company_logo} 
-                      alt="" 
-                      className="w-full h-full object-cover bg-white" 
-                      onError={(e) => {
-                        (e.target as HTMLImageElement).style.display = 'none';
-                        (e.target as HTMLImageElement).parentElement!.innerHTML = (job.company || job.title).charAt(0).toUpperCase();
-                      }}
-                    />
-                  ) : (
-                    (job.company || job.title).charAt(0).toUpperCase()
-                  )}
-                </div>
-                <MarkerLabel position="top" className="text-[9px] text-white opacity-0 group-hover:opacity-100 transition-opacity bg-black/80 px-1.5 py-0.5 rounded backdrop-blur-sm mb-1">
+                {job.id === selectedJobId ? (
+                  <MapPin size={20} className="text-[#22c55e] drop-shadow-[0_0_6px_rgba(34,197,94,0.7)] fill-[#22c55e]/20 transition-all duration-300" />
+                ) : (
+                  <MapPin size={14} className="text-white/70 fill-transparent group-hover:text-[#22c55e] group-hover:scale-125 transition-all duration-200" />
+                )}
+                <MarkerLabel position="top" className="text-[9px] text-white opacity-0 group-hover:opacity-100 transition-opacity bg-black/80 px-1.5 py-0.5 rounded backdrop-blur-sm mb-1 whitespace-nowrap">
                   {job.company || 'Confidential'}
                 </MarkerLabel>
               </MarkerContent>

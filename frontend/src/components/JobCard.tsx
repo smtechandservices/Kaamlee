@@ -52,7 +52,7 @@ export const JobCard = React.memo(function JobCard({ job, isSelected, onClick, o
   return (
     <div
       onClick={() => onClick?.(job.id)}
-      className={`cursor-default job-card p-4 rounded-xl border border-[#222] bg-[#111] hover:border-[#22c55e] group transition-all relative overflow-hidden ${isSelected ? 'border-[#22c55e] bg-[#161616]' : ''
+      className={`cursor-default job-card p-6 rounded-2xl border border-[#222] bg-[#111] hover:border-[#22c55e] group transition-all relative overflow-hidden ${isSelected ? 'border-[#22c55e] bg-[#161616]' : ''
         }`}
     >
       {/* AI Match Circular Indicator */}
@@ -97,9 +97,9 @@ export const JobCard = React.memo(function JobCard({ job, isSelected, onClick, o
           </div>
         </div>
       )}
-      <div className="flex gap-3 sm:gap-4 items-start">
-        <div className="flex flex-col items-center shrink-0 gap-2">
-          <div className="w-10 h-10 sm:w-12 sm:h-12 rounded-lg bg-white flex items-center justify-center border border-[#333] overflow-hidden group-hover:border-[#22c55e] transition-colors">
+      <div className="flex gap-5 items-start">
+        <div className="flex flex-col items-center shrink-0 gap-3">
+          <div className="w-13 h-13 sm:w-14 sm:h-14 rounded-xl bg-white flex items-center justify-center border border-[#333] overflow-hidden group-hover:border-[#22c55e] transition-colors">
             {job.company_logo ? (
               <img
                 src={job.company_logo}
@@ -107,11 +107,11 @@ export const JobCard = React.memo(function JobCard({ job, isSelected, onClick, o
                 className="w-full h-full object-contain"
                 onError={(e) => {
                   (e.target as HTMLImageElement).style.display = 'none';
-                  (e.target as HTMLImageElement).parentElement!.innerHTML = `<span class="text-lg sm:text-xl font-bold text-[#333]">${getInitial(companyName)}</span>`;
+                  (e.target as HTMLImageElement).parentElement!.innerHTML = `<span class="text-xl font-bold text-[#333]">${getInitial(companyName)}</span>`;
                 }}
               />
             ) : (
-              <span className="text-lg sm:text-xl font-bold text-[#333]">
+              <span className="text-xl font-bold text-[#333]">
                 {getInitial(companyName)}
               </span>
             )}
@@ -120,7 +120,7 @@ export const JobCard = React.memo(function JobCard({ job, isSelected, onClick, o
           {/* Bookmark Toggle below logo */}
           <button
             onClick={(e) => onToggleBookmark?.(e, job.id)}
-            className={`w-full flex justify-center cursor-pointer p-1.5 sm:p-2 rounded-lg border transition-all ${job.is_bookmarked
+            className={`w-full flex justify-center cursor-pointer p-2 rounded-xl border transition-all ${job.is_bookmarked
                 ? 'bg-green-500/10 border-green-500/30 text-green-500'
                 : 'bg-transparent border-[#222] text-[#444] hover:border-[#333] hover:text-[#666]'
               }`}
@@ -131,26 +131,26 @@ export const JobCard = React.memo(function JobCard({ job, isSelected, onClick, o
 
           <button
             onClick={handleCopyLink}
-            className={`w-full flex justify-center cursor-pointer p-1.5 sm:p-2 rounded-lg border transition-all ${
-              copied 
-                ? 'bg-green-500/10 border-green-500/30 text-green-400' 
+            className={`w-full flex justify-center cursor-pointer p-2 rounded-xl border transition-all ${
+              copied
+                ? 'bg-green-500/10 border-green-500/30 text-green-400'
                 : 'bg-[#161616] border-[#222] text-[#555] hover:text-white hover:border-[#333]'
             }`}
           >
-            {copied ? <Check size={12} /> : <Copy size={12} />}
+            {copied ? <Check size={13} /> : <Copy size={13} />}
           </button>
         </div>
 
         <div className="flex-1 min-w-0">
-          <h3 className="max-w-[85%] font-semibold text-white group-hover:text-[#22c55e] transition-colors truncate">
+          <h3 className="max-w-[85%] text-sm sm:text-base font-semibold text-white group-hover:text-[#22c55e] transition-colors truncate">
             {job.title}
           </h3>
 
-          <div className="flex items-center gap-3 mb-3 mt-1">
+          <div className="flex items-center gap-3 mb-3 mt-2">
             <p className="max-w-[90%] text-sm text-[#888] truncate">{companyName}</p>
           </div>
 
-          <div className="flex flex-wrap gap-2 mb-3">
+          <div className="flex flex-wrap gap-2 mb-4">
             <div className="flex items-center gap-1 text-[11px] text-[#666] bg-[#1a1a1a] px-2 py-1 rounded-full border border-[#222]">
               <MapPin size={12} />
               {job.location || 'Not specified'}
@@ -176,7 +176,7 @@ export const JobCard = React.memo(function JobCard({ job, isSelected, onClick, o
 
           </div>
 
-          <p className="text-xs text-[#555] line-clamp-2 leading-relaxed mb-4">
+          <p className="text-xs text-[#555] line-clamp-2 leading-relaxed mb-5">
             {job.description || 'No description provided...'}
           </p>
 
