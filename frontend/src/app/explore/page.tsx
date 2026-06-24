@@ -1,15 +1,13 @@
 'use client';
 
 import React, { useState, useEffect } from 'react';
-import { Search, Map as MapIcon, List, Filter, SlidersHorizontal, ChevronDown, Monitor, ArrowLeft, LogOut, User as UserIcon, Bookmark, CreditCard } from 'lucide-react';
+import { Search, Map as MapIcon, List, Monitor, ArrowLeft, LogOut, Bookmark } from 'lucide-react';
 import { motion, AnimatePresence, Variants } from 'framer-motion';
 import { JobCard } from '@/components/JobCard';
 import Map from '@/components/Map';
 import Link from 'next/link';
 import { useAuth } from '@/context/AuthContext';
 import { useRouter } from 'next/navigation';
-import PricingModal from '@/components/PricingModal';
-
 
 function useDebounce<T>(value: T, delay: number): T {
   const [debounced, setDebounced] = useState<T>(value);
@@ -21,10 +19,9 @@ function useDebounce<T>(value: T, delay: number): T {
 }
 
 export default function ExplorePage() {
-  const { user, token, logout, isLoading, refreshUser } = useAuth();
+  const { user, token, logout, isLoading } = useAuth();
 
   const router = useRouter();
-  const [isPricingModalOpen, setIsPricingModalOpen] = useState(false);
   const [jobs, setJobs] = useState<any[]>([]);
   const [locations, setLocations] = useState<any[]>([]);
   const [jobRoles, setJobRoles] = useState<string[]>([]);
@@ -72,7 +69,7 @@ export default function ExplorePage() {
       }
     };
     fetchMeta();
-  }, [token, user?.is_subscribed]);
+  }, [token]);
 
   // Re-fetch jobs whenever active country changes — backend filters at DB level
   useEffect(() => {
@@ -81,33 +78,21 @@ export default function ExplorePage() {
       setIsFetchingJobs(true);
       setJobs([]);
       try {
-        if (user?.is_subscribed) {
-          const params = new URLSearchParams();
-          if (activeCountry !== 'All') params.set('country', activeCountry);
-          const jobsRes = await fetch(
-            `${process.env.NEXT_PUBLIC_API_URL}/api/jobs/?${params}`,
-            { headers: { 'Authorization': `Token ${token}` } }
-          );
-          if (jobsRes.status === 401) { logout(); return; }
-          if (jobsRes.status === 403) { refreshUser?.(); setIsPricingModalOpen(true); return; }
-          if (!jobsRes.ok) return;
-          const jobsData = await jobsRes.json();
-          const jobsList = Array.isArray(jobsData) ? jobsData : (jobsData.results || []);
-          setJobs(jobsList.map((job: any) => ({
-            ...job,
-            location: job.location_name,
-            locationId: job.location,
-          })));
-        } else {
-          const jobsRes = await fetch(`${process.env.NEXT_PUBLIC_API_URL}/api/recent-jobs/?limit=299`);
-          if (!jobsRes.ok) return;
-          const jobsList = await jobsRes.json();
-          setJobs((Array.isArray(jobsList) ? jobsList : []).map((job: any) => ({
-            ...job,
-            location: job.location_name,
-            locationId: job.location,
-          })));
-        }
+        const params = new URLSearchParams();
+        if (activeCountry !== 'All') params.set('country', activeCountry);
+        const jobsRes = await fetch(
+          `${process.env.NEXT_PUBLIC_API_URL}/api/jobs/?${params}`,
+          { headers: { 'Authorization': `Token ${token}` } }
+        );
+        if (jobsRes.status === 401) { logout(); return; }
+        if (!jobsRes.ok) return;
+        const jobsData = await jobsRes.json();
+        const jobsList = Array.isArray(jobsData) ? jobsData : (jobsData.results || []);
+        setJobs(jobsList.map((job: any) => ({
+          ...job,
+          location: job.location_name,
+          locationId: job.location,
+        })));
       } catch (error) {
         console.error('Failed to fetch jobs:', error);
       } finally {
@@ -115,7 +100,7 @@ export default function ExplorePage() {
       }
     };
     fetchJobs();
-  }, [token, user?.is_subscribed, activeCountry]);
+  }, [token, activeCountry]);
 
   const countries = React.useMemo(() => ['All', ...Array.from(new Set(locations.map(loc => {
     if (loc.country === 'United States') return 'USA';
@@ -182,12 +167,9 @@ export default function ExplorePage() {
       
       if (response.ok) {
         const data = await response.json();
-        // Update local state
-        setJobs(prevJobs => prevJobs.map(j => 
+        setJobs(prevJobs => prevJobs.map(j =>
           j.id === jobId ? { ...j, is_bookmarked: data.is_bookmarked } : j
         ));
-      } else if (response.status === 403) {
-        alert("Only subscribed users can bookmark jobs.");
       }
     } catch (error) {
       console.error("Failed to toggle bookmark:", error);
@@ -248,24 +230,6 @@ export default function ExplorePage() {
         </div>
 
         <div className="flex items-center gap-2">
-          {/* Subscription Status - Hidden on small mobile */}
-
-          {user?.is_subscribed ? (
-            <Link
-              href="/transactions"
-              className="flex items-center gap-2 text-[#888] hover:text-white transition-colors group mr-2"
-              title="Billing History"
-            >
-                <CreditCard size={20} />
-            </Link>
-          ) : (
-            <Link
-              href="/pricing"
-              className="flex items-center gap-2 px-3 py-1.5 rounded-full bg-green-500/10 border border-green-500/30 text-green-400 hover:bg-green-500/20 hover:text-green-300 transition-all text-[10px] font-black uppercase tracking-widest mr-2"
-            >
-              Go Premium
-            </Link>
-          )}
 
           <div className="w-px h-6 bg-[#222] mx-1 sm:mx-2" />
           {/* View Toggles - Always visible */}
@@ -490,27 +454,6 @@ export default function ExplorePage() {
         </section>
       </div>
 
-      {/* Floating freemium banner */}
-      {!user?.is_subscribed && (
-        <div className="absolute bottom-6 left-1/2 -translate-x-1/2 z-30 flex items-center gap-3 px-4 py-3 bg-[#0f0f0f] border border-[#333] rounded-full shadow-2xl shadow-black/60 backdrop-blur-md whitespace-nowrap">
-          <span className="w-1.5 h-1.5 rounded-full bg-green-500 animate-pulse shrink-0" />
-          <span className="text-[11px] text-[#888] font-medium">Showing 299 recent jobs.</span>
-          <span className="text-[11px] text-[#555]">Subscribe for full access.</span>
-          <Link
-            href="/pricing"
-            className="ml-1 px-3 py-1 rounded-full bg-green-500 text-black text-[10px] font-black uppercase tracking-widest hover:bg-green-400 transition-colors"
-          >
-            Go Premium
-          </Link>
-        </div>
-      )}
-
-      {/* Upsell / Renewal Modal */}
-      <PricingModal
-        isOpen={isPricingModalOpen}
-        onClose={() => setIsPricingModalOpen(false)}
-        showCloseButton={true}
-      />
 
       <style jsx global>{`
         .custom-scrollbar::-webkit-scrollbar {
