@@ -285,7 +285,7 @@ export default function LandingPage() {
             ].map((stat, i) => (
               <div key={i} className="flex flex-col gap-1 sm:gap-2">
                 <div className="font-mono text-[8px] sm:text-[10px] font-bold text-[#444] tracking-widest uppercase">
-                   // {stat.label}
+                   {stat.label}
                 </div>
                 <div className="text-2xl sm:text-4xl font-black tracking-tight">{stat.value}</div>
               </div>
