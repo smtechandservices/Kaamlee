@@ -1,7 +1,8 @@
 'use client';
 
 import React, { useState, useEffect } from 'react';
-import { Search, Map as MapIcon, List, Monitor, ArrowLeft, LogOut, Bookmark } from 'lucide-react';
+import { Search, Map as MapIcon, List, Monitor, ArrowLeft, LogOut, Bookmark, MessageSquare } from 'lucide-react';
+import FeedbackModal from '@/components/FeedbackModal';
 import { motion, AnimatePresence, Variants } from 'framer-motion';
 import { JobCard } from '@/components/JobCard';
 import Map from '@/components/Map';
@@ -35,6 +36,7 @@ export default function ExplorePage() {
   const [bookmarkedOnly, setBookmarkedOnly] = useState(false);
   const [currentPage, setCurrentPage] = useState(1);
   const [isFetchingJobs, setIsFetchingJobs] = useState(false);
+  const [isFeedbackOpen, setIsFeedbackOpen] = useState(false);
   const jobsPerPage = 20;
 
   const debouncedSearch = useDebounce(searchQuery, 300);
@@ -259,7 +261,18 @@ export default function ExplorePage() {
 
           <div className="w-px h-6 bg-[#222] mx-1 sm:mx-2" />
 
-          <button 
+          <button
+            onClick={() => setIsFeedbackOpen(true)}
+            title="Send feedback"
+            className="cursor-pointer flex items-center gap-2 text-[#888] hover:text-green-500 transition-colors text-sm font-medium group"
+          >
+            <MessageSquare size={16} className="group-hover:scale-110 transition-transform" />
+            <span className="hidden lg:inline text-[10px] font-mono uppercase tracking-widest">Feedback</span>
+          </button>
+
+          <div className="w-px h-6 bg-[#222] mx-1 sm:mx-2" />
+
+          <button
             onClick={logout}
             className="cursor-pointer flex items-center gap-2 text-[#888] hover:text-white transition-colors text-sm font-medium group"
           >
@@ -470,6 +483,8 @@ export default function ExplorePage() {
           background: #333;
         }
       `}</style>
+
+      <FeedbackModal isOpen={isFeedbackOpen} onClose={() => setIsFeedbackOpen(false)} />
     </main>
   );
 }
