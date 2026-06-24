@@ -25,7 +25,7 @@ const outfit = Outfit({
 
 export const metadata: Metadata = {
   title: "Kaamlee",
-  description: "Job Applying is a Jpb. Visualize your future commute with our map based jobs.",
+  description: "Job Applying is a Job. Visualize your future commute with our map based jobs.",
   icons: {
     icon: "/logo.png",
     apple: "/logo.png",

@@ -153,25 +153,43 @@ class LocationSerializer(serializers.ModelSerializer):
 class JobSerializer(serializers.ModelSerializer):
     match_score = serializers.SerializerMethodField()
     is_bookmarked = serializers.BooleanField(read_only=True)
-    
+    location_name = serializers.SerializerMethodField()
+
     class Meta:
         model = Job
-        fields = '__all__'
+        # description and id_from_site excluded — description is a large TextField
+        # not needed for card/list/map views
+        fields = [
+            'id', 'title', 'company', 'location_name', 'location',
+            'is_remote', 'job_type', 'job_url', 'site', 'company_logo',
+            'date_posted', 'created_at', 'latitude', 'longitude',
+            'is_bookmarked', 'match_score',
+        ]
+
+    def get_location_name(self, obj):
+        name = obj.location_name
+        if name and str(name).strip().lower() not in ('', 'nan', 'none'):
+            return name.strip()
+        # Fall back to the FK location's city/country
+        if obj.location_id:
+            loc = obj.location
+            parts = [p for p in [loc.city, loc.state, loc.country] if p]
+            return ', '.join(parts)
+        return None
 
     def get_match_score(self, obj):
         request = self.context.get('request')
-        if not request or not request.user or not hasattr(request.user, 'profile'):
+        if not request or not request.user or not request.user.is_authenticated:
             return 0
-        
+        if not hasattr(request.user, 'profile'):
+            return 0
         resume_text = request.user.profile.resume_text
         if not resume_text:
             return 0
-            
-        return calculate_match(resume_text, obj.title, obj.description)
+        return calculate_match(resume_text, obj.title, getattr(obj, 'description', '') or '')
 
 class RecentJobSerializer(JobSerializer):
-    class Meta(JobSerializer.Meta):
-        fields = [f.name for f in Job._meta.fields if f.name != 'company'] + ['match_score', 'is_bookmarked']
+    pass
 
 class ScrapeSessionSerializer(serializers.ModelSerializer):
     class Meta:

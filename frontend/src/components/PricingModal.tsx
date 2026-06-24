@@ -2,7 +2,7 @@
 
 import React from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
-import { ArrowRight, RotateCcw, ArrowLeft, CheckCircle2, XCircle } from 'lucide-react';
+import { ArrowRight, RotateCcw, ArrowLeft, CheckCircle2, XCircle, Check, X, Clock } from 'lucide-react';
 import Link from 'next/link';
 import { useAuth } from '@/context/AuthContext';
 import { useRouter } from 'next/navigation';
@@ -156,7 +156,7 @@ export default function PricingModal({ isOpen, onClose, showCloseButton = true }
             initial={{ opacity: 0, scale: 0.9, y: 20 }}
             animate={{ opacity: 1, scale: 1, y: 0 }}
             exit={{ opacity: 0, scale: 0.9, y: 20 }}
-            className="relative w-full max-w-[600px] border border-blue-500/20 bg-[#050505] rounded-sm p-8 sm:p-12 md:p-16 overflow-hidden shadow-[0_0_100px_-12px_rgba(59,130,246,0.2)]"
+            className="relative w-full max-w-[600px] lg:max-w-4xl border border-green-500/20 bg-[#050505] rounded-sm p-8 sm:p-10 md:p-12 overflow-y-auto max-h-[90vh] shadow-[0_0_100px_-12px_rgba(34,197,94,0.2)]"
           >
             {/* Top Right Actions */}
             <div className="absolute top-6 right-6 sm:top-8 sm:right-8 z-50 flex items-center gap-4 sm:gap-6">
@@ -289,21 +289,94 @@ export default function PricingModal({ isOpen, onClose, showCloseButton = true }
                     exit={{ opacity: 0, y: -10 }}
                     className="flex flex-col items-center w-full"
                   >
+                    <div className="flex items-center justify-center mb-5 sm:mb-6">
+                      <span className="text-[9px] font-mono text-green-500 bg-green-500/10 border border-green-500/30 px-3 py-1 tracking-[0.25em] uppercase">Early Access · Beta</span>
+                    </div>
+
                     <h2 className="text-3xl sm:text-4xl md:text-5xl font-black tracking-tighter mb-6 sm:mb-8 leading-[1.1]">
                       One Price.<br />
                       One Portal.<br />
                       <span className="text-serif font-normal italic lowercase text-blue-500">unlimited</span> Jobs.
                     </h2>
 
-                    <div className="flex items-baseline gap-2 sm:gap-3 mb-6 sm:mb-8">
-                      <span className="text-xl sm:text-2xl font-mono text-blue-500/50">{PRICING.currency === 'INR' ? '₹' : PRICING.currency}</span>
+                    <div className="flex items-baseline gap-2 sm:gap-3 mb-3 sm:mb-4">
+                      <span className="text-xl sm:text-2xl font-mono text-green-500/50">{PRICING.currency === 'INR' ? '₹' : PRICING.currency}</span>
                       <span className="text-6xl sm:text-7xl md:text-8xl font-black tracking-tighter text-white">{PRICING.amount_inr}</span>
                       <span className="font-mono text-base sm:text-lg text-[#444] uppercase tracking-widest">/ {PRICING.interval}</span>
                     </div>
 
-                    <p className="text-xs sm:text-sm text-[#888] leading-relaxed max-w-xl mb-8 sm:mb-10">
-                      Stop overthinking it. <br className="hidden sm:block" /> Get every role, and every map filter for the price of a coffee. <br /> <span className="text-white font-bold italic">We just do jobs.</span>
+                    <p className="text-[10px] sm:text-xs text-green-500/60 font-mono uppercase tracking-widest mb-6 sm:mb-8">
+                      Beta pricing · Will update as premium features launch
                     </p>
+
+                    {/* Feature comparison — stacked on mobile, side-by-side on lg+ */}
+                    <div className="w-full mb-8 sm:mb-10 flex flex-col lg:flex-row gap-3">
+                      {/* Free card */}
+                      <div className="flex-1 border border-[#1a1a1a] rounded-sm p-4 sm:p-5 bg-[#080808]">
+                        <div className="text-[9px] font-mono uppercase tracking-[0.25em] text-[#444] mb-4">Free</div>
+                        <div className="space-y-2.5">
+                          {[
+                            '299 recent job listings',
+                            'Location & country filters',
+                            'Job role filters',
+                            'Map view',
+                          ].map((feat) => (
+                            <div key={feat} className="flex items-center gap-2 text-[11px] text-[#555]">
+                              <Check size={11} className="text-[#3a3a3a] shrink-0" />
+                              {feat}
+                            </div>
+                          ))}
+                          {[
+                            'Unlimited job listings',
+                            'Bookmark jobs',
+                            'Billing history',
+                          ].map((feat) => (
+                            <div key={feat} className="flex items-center gap-2 text-[11px] text-[#2a2a2a]">
+                              <X size={11} className="text-[#222] shrink-0" />
+                              {feat}
+                            </div>
+                          ))}
+                        </div>
+                      </div>
+
+                      {/* Premium card */}
+                      <div className="flex-1 border border-green-500/20 rounded-sm p-4 sm:p-5 bg-[#060a06] shadow-[0_0_40px_-10px_rgba(34,197,94,0.1)]">
+                        <div className="flex items-center justify-between mb-4">
+                          <span className="text-[9px] font-mono uppercase tracking-[0.25em] text-green-500/70">Premium</span>
+                          <span className="text-[8px] font-mono uppercase tracking-[0.15em] text-green-500 bg-green-500/10 border border-green-500/20 px-2 py-0.5">Beta Rate</span>
+                        </div>
+                        <div className="space-y-2.5">
+                          {[
+                            '299 recent job listings',
+                            'Location & country filters',
+                            'Job role filters',
+                            'Map view',
+                            'Unlimited job listings',
+                            'Bookmark jobs',
+                            'Billing history',
+                          ].map((feat) => (
+                            <div key={feat} className="flex items-center gap-2 text-[11px] text-[#888]">
+                              <Check size={11} className="text-green-500 shrink-0" />
+                              {feat}
+                            </div>
+                          ))}
+                          <div className="pt-3 mt-3 border-t border-[#111]">
+                            <div className="text-[9px] font-mono uppercase tracking-[0.2em] text-[#333] mb-2.5">Coming soon</div>
+                            {[
+                              'Auto-apply',
+                              'Resume & CV builder',
+                              'AI enhancements',
+                              'Personalised Portfolio builder',
+                            ].map((feat) => (
+                              <div key={feat} className="flex items-center gap-2 text-[11px] text-[#444] mb-2">
+                                <Clock size={11} className="text-yellow-700/50 shrink-0" />
+                                <span className="italic">{feat}</span>
+                              </div>
+                            ))}
+                          </div>
+                        </div>
+                      </div>
+                    </div>
 
                     <div className="relative group/btn w-full">
                       <div className="absolute -inset-1 bg-gradient-to-r from-blue-600 to-blue-400 rounded-sm blur opacity-25 group-hover/btn:opacity-50 transition duration-1000 group-hover/btn:duration-200" />

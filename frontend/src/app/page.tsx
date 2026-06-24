@@ -74,7 +74,11 @@ export default function LandingPage() {
   const handleExploreClick = (e: React.MouseEvent) => {
     e.preventDefault();
     if (isLoading) return;
-    router.push('/coming-soon');
+    if (!user) {
+      router.push('/login');
+    } else {
+      router.push('/explore');
+    }
   };
 
   useEffect(() => {
@@ -123,9 +127,9 @@ export default function LandingPage() {
 
       {/* Navbar */}
       <nav className="fixed top-0 left-0 w-full h-20 px-4 sm:px-8 flex items-center justify-between z-50 border-b border-white/40 bg-black/50 backdrop-blur-xl">
-        <div className="flex items-center gap-3 cursor-default">
+        <div className="cursor-default flex items-center gap-2 sm:gap-3">
           <span className="text-lg sm:text-xl font-bold tracking-[0.2em] sm:tracking-[0.3em] uppercase">KAAMLEE</span>
-          <span className="text-[8px] font-black uppercase tracking-widest px-1.5 py-0.5 rounded border border-blue-500/40 text-blue-400 bg-blue-500/10">Beta</span>
+          <span className="text-[8px] font-mono text-green-500 bg-green-500/10 border border-green-500/30 px-1.5 py-0.5 tracking-widest uppercase">BETA</span>
         </div>
 
         <div className="flex items-center gap-2 sm:gap-4">
@@ -192,10 +196,10 @@ export default function LandingPage() {
               </button>
               {/* <button
                 onClick={() => setIsPricingOpen(true)}
-                className="cursor-pointer border border-[#222] text-white px-8 sm:px-10 py-4 sm:py-5 rounded-sm font-black uppercase tracking-widest text-xs sm:text-sm flex items-center justify-center hover:border-white transition-all"
+                className="cursor-pointer border border-[#222] text-white px-8 sm:px-10 py-4 sm:py-5 rounded-sm font-black uppercase tracking-widest text-xs sm:text-sm flex items-center justify-center gap-2 hover:border-white transition-all"
               >
-                See Pricing
-              </button> */}
+                Beta — ₹9/mo
+              </button>
             </div>
           </motion.div>
 
@@ -283,8 +287,8 @@ export default function LandingPage() {
         <section className="px-6 md:px-8 py-12 sm:py-16 border-y border-white/40 bg-black/20 backdrop-blur-sm relative overflow-hidden">
           <div className="mx-auto grid grid-cols-2 md:grid-cols-4 gap-8 sm:gap-12">
             {[
-              { label: "LIVE_LISTINGS", value: stats?.total_jobs?.toLocaleString() || "10,000 +" },
-              { label: "COMPANIES", value: "5,000 +" },
+              { label: "LIVE_LISTINGS", value: stats?.total_jobs?.toLocaleString() || "40,000 +" },
+              { label: "COMPANIES", value: "50,000 +" },
               { label: "SOURCES", value: "12 boards" },
               { label: "UPTIME", value: "98.99%" }
             ].map((stat, i) => (
@@ -318,7 +322,7 @@ export default function LandingPage() {
             >
               {/* Double the array for seamless looping */}
               {(Array.isArray(recentJobs) ? [...recentJobs.slice(0, 10), ...recentJobs.slice(0, 10)] : []).map((job, i) => (
-                <div key={i} className="flex-shrink-0 w-[280px] sm:w-[350px] group p-6 sm:p-8 border border-white/5 bg-[#080808] hover:border-blue-500/30 hover:bg-[#0a0a0a] transition-all relative overflow-hidden">
+                <Link key={i} href="/explore" className="flex-shrink-0 w-[280px] sm:w-[350px] group p-6 sm:p-8 border border-white/5 bg-[#080808] hover:border-green-500/30 hover:bg-[#0a0a0a] transition-all relative overflow-hidden cursor-pointer block">
                   <div className="flex items-center justify-between mb-4">
                     <h4 className="text-xl font-bold tracking-tight text-white mb-4 line-clamp-1 truncate">{job.title}</h4>
                   </div>
@@ -334,7 +338,7 @@ export default function LandingPage() {
                   <div className="flex items-center justify-end border-t border-white/10 border-dashed pt-6 mt-6">
                     <div className="font-mono text-[10px] text-[#444] uppercase tracking-widest">{job.is_remote ? 'REMOTE' : 'ON-SITE'}</div>
                   </div>
-                </div>
+                </Link>
               ))}
             </motion.div>
           </div>
@@ -512,8 +516,16 @@ export default function LandingPage() {
                 a: "We crawl twelve major job boards (LinkedIn, Indeed, ZipRecruiter, etc.) and direct company career pages every fifteen minutes. If it's live on the internet, it's on the map."
               },
               {
-                q: "Is Kaamlee free right now?",
-                a: "Yes — Kaamlee is currently in beta and completely free to use. All features are open while we're in this phase. In the future, advanced premium features will be priced, but the core experience will always remain accessible."
+                q: "Is Kaamlee in beta? Will the price change later?",
+                a: "Yes — we're in early beta. Right now, early access is priced at ₹9/mo so you can get in and give us feedback while the product is still being shaped. As we roll out premium features (advanced filters, alerts, Auto apply, and more), the price will update to reflect them. Early access users who join now lock in the beta rate for their current billing cycle."
+              },
+              {
+                q: "How does the 'All-Access' pass work?",
+                a: `One flat beta fee of ${PRICING.currency} ${PRICING.amount_inr}/${PRICING.interval}. No tiers, no 'pro' features locked behind a paywall right now. This is early-access pricing — future plans will be priced higher as premium features launch. Payments are securely powered by Razorpay and handled by Commhawk.`
+              },
+              {
+                q: "Can I cancel my subscription easily?",
+                a: "Yes. One click in your dashboard. No 'call us to cancel' loops. No hidden retention tricks. We're here to help you get a job, not hold you hostage."
               },
               {
                 q: "How does the AI Resume Matching work?",
@@ -554,6 +566,21 @@ export default function LandingPage() {
             </div>
 
             <div className="flex flex-col items-end gap-2 text-right self-end sm:self-auto">
+              <div className="flex items-center gap-4 mb-2">
+                <Link
+                  href="/terms"
+                  className="text-[10px] font-mono tracking-[0.2em] uppercase text-[#444] hover:text-white transition-colors"
+                >
+                  Terms
+                </Link>
+                <span className="text-[#333]">·</span>
+                <Link
+                  href="/privacy"
+                  className="text-[10px] font-mono tracking-[0.2em] uppercase text-[#444] hover:text-white transition-colors"
+                >
+                  Privacy
+                </Link>
+              </div>
               <a
                 href="https://commhawk.in/"
                 target="_blank"

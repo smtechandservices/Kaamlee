@@ -1,9 +1,10 @@
-import pandas as pd
 from jobspy import scrape_jobs
 from .models import Location, Job, ScrapeSession, ScrapeLog
+from django.core.cache import cache
 import os
 import json
 from django.conf import settings
+from concurrent.futures import ThreadPoolExecutor, as_completed
 
 def log_to_db(session, message, level='info'):
     print(f"[{level.upper()}] {message}")
@@ -17,11 +18,11 @@ def sync_locations_from_json(session=None):
     if not os.path.exists(path):
         if session: log_to_db(session, f"Places JSON not found at {path}", "error")
         return
-    
+
     try:
         with open(path, 'r', encoding='utf-8') as f:
             data = json.load(f)
-        
+
         created_count = 0
         for country_data in data:
             country = country_data.get('country')
@@ -37,58 +38,127 @@ def sync_locations_from_json(session=None):
                     )
                     if created:
                         created_count += 1
-        
+
         if created_count > 0:
             if session: log_to_db(session, f"Synced {created_count} new locations from places.json", "success")
         else:
             if session: log_to_db(session, "All locations from places.json are already in DB", "info")
-            
+
+        # Geocode any locations that are still missing coordinates (runs once per new city)
+        _geocode_new_locations(session)
+
     except Exception as e:
         if session: log_to_db(session, f"Error syncing locations: {e}", "error")
         
 from django.utils import timezone
 from datetime import timedelta
+from geopy.geocoders import Nominatim
 import numpy as np
 import time
 import random
-from geopy.geocoders import Nominatim
 import re
 
-def enrich_logo(row):
-    if row.get('company_logo') and str(row['company_logo']) != 'nan' and row['company_logo'] is not None:
-        return row['company_logo']
-    company_val = row.get('company')
-    if company_val and str(company_val).lower() not in ['nan', 'none', '']:
-        company_name = str(company_val).split()[0].lower()
-        company_name = re.sub(r'[^a-z0-9]', '', company_name)
-        if company_name:
-            return f"https://logo.clearbit.com/{company_name}.com"
-    return None
+def _geocode_new_locations(session=None):
+    """Geocode Location rows that are missing coordinates. Runs once per new city."""
+    missing = Location.objects.filter(latitude__isnull=True)
+    if not missing.exists():
+        return
 
-def get_coordinates(loc_str, company=None, fallback_lat=None, fallback_lon=None):
-    geolocator = Nominatim(user_agent="kaamlee_backend")
-    if not loc_str or str(loc_str).lower() in ['nan', 'none']:
-        return (fallback_lat, fallback_lon)
+    count = missing.count()
+    if session: log_to_db(session, f"Geocoding {count} new location(s) missing coordinates...", "info")
 
-    clean_loc = str(loc_str).replace("Remote", "").strip(", ")
-    if not clean_loc:
-        return (fallback_lat, fallback_lon)
-
-    queries = []
-    if company:
-        queries.append(f"{company}, {clean_loc}")
-    queries.append(clean_loc)
-    
-    for q in queries:
+    geolocator = Nominatim(user_agent="kaamlee_locations")
+    updated = 0
+    for loc in missing:
+        query = f"{loc.city}, {loc.state}, {loc.country}" if loc.state else f"{loc.city}, {loc.country}"
         try:
-            time.sleep(1.1) # Be more respectful to Nominatim
-            location = geolocator.geocode(q, timeout=10)
-            if location:
-                return (location.latitude, location.longitude)
+            time.sleep(1.1)
+            result = geolocator.geocode(query, timeout=10)
+            if result:
+                loc.latitude = result.latitude
+                loc.longitude = result.longitude
+                loc.save(update_fields=['latitude', 'longitude'])
+                updated += 1
         except Exception:
             pass
-    
-    return (fallback_lat, fallback_lon)
+
+    if session: log_to_db(session, f"Location geocoding done: {updated}/{count} resolved.", "success")
+
+def enrich_logo(row):
+    # Logo fetching disabled — UI uses first-letter fallback
+    # if row.get('company_logo') and str(row['company_logo']) != 'nan' and row['company_logo'] is not None:
+    #     return row['company_logo']
+    # company_val = row.get('company')
+    # if company_val and str(company_val).lower() not in ['nan', 'none', '']:
+    #     company_name = str(company_val).split()[0].lower()
+    #     company_name = re.sub(r'[^a-z0-9]', '', company_name)
+    #     if company_name:
+    #         return f"https://logo.clearbit.com/{company_name}.com"
+    return None
+
+
+def geocode_missing_coordinates(session=None):
+    """
+    After scraping, geocode jobs that still have no coordinates.
+    Uses city + country extracted from location_name for a clean, reliable query.
+    Groups by unique query string — 1 Nominatim call per unique city.
+    """
+    geolocator = Nominatim(user_agent="kaamlee_jobs")
+
+    jobs_missing = Job.objects.filter(latitude__isnull=True, longitude__isnull=True)
+    total = jobs_missing.count()
+    if not total:
+        if session: log_to_db(session, "All jobs already have coordinates.", "info")
+        return
+
+    if session: log_to_db(session, f"Geocoding {total} jobs with missing coordinates...", "info")
+
+    geo_cache = {}  # query_string → (lat, lon)
+    updated = 0
+
+    for job in jobs_missing:
+        if session:
+            session.refresh_from_db()
+            if session.stop_requested or session.status != 'running':
+                log_to_db(session, "Stop signal during geocoding. Halting.", "warning")
+                return
+
+        # Build a clean query from location_name: take first part (city) + last part (country)
+        # e.g. "Greater Noida, Uttar Pradesh, India" → "Greater Noida, India"
+        raw = str(job.location_name or '').replace("Remote", "").strip(", ").strip()
+        if not raw or raw.lower() in ('nan', 'none', ''):
+            # Fall back to the FK location city + country
+            if job.location:
+                raw = f"{job.location.city}, {job.location.country}"
+            else:
+                continue
+
+        parts = [p.strip() for p in raw.split(",") if p.strip()]
+        if len(parts) >= 2:
+            query = f"{parts[0]}, {parts[-1]}"   # city, country
+        else:
+            query = parts[0] if parts else None
+
+        if not query:
+            continue
+
+        if query not in geo_cache:
+            try:
+                time.sleep(1.1)
+                result = geolocator.geocode(query, timeout=10)
+                geo_cache[query] = (result.latitude, result.longitude) if result else (None, None)
+            except Exception as e:
+                if session: log_to_db(session, f"Geocode error for '{query}': {e}", "warning")
+                geo_cache[query] = (None, None)
+
+        lat, lon = geo_cache[query]
+        if lat is not None and lon is not None:
+            job.latitude = lat + random.uniform(-0.015, 0.015)
+            job.longitude = lon + random.uniform(-0.015, 0.015)
+            job.save(update_fields=['latitude', 'longitude'])
+            updated += 1
+
+    if session: log_to_db(session, f"Geocoding complete. Updated {updated}/{total} jobs.", "success")
 
 
 def run_background_scraping(search_term="frontend developer", results_wanted=5, country=None):
@@ -192,8 +262,7 @@ def run_background_scraping(search_term="frontend developer", results_wanted=5, 
                                 if session.stop_requested or session.status != 'running':
                                     raise InterruptedError("Stop requested or status changed")
 
-
-                                logo = enrich_logo(row)
+                                # logo = enrich_logo(row)
                                 lat = row.get('latitude')
                                 lon = row.get('longitude')
                                 
@@ -210,27 +279,32 @@ def run_background_scraping(search_term="frontend developer", results_wanted=5, 
                                         lat += random.uniform(-0.015, 0.015)
                                         lon += random.uniform(-0.015, 0.015)
 
-                                if lat is not None and lon is not None:
-                                    Job.objects.update_or_create(
-                                        id_from_site=row.get('id'),
-                                        defaults={
-                                            'title': row.get('title'),
-                                            'company': row.get('company'),
-                                            'location_name': row.get('location'),
-                                            'location': loc,
-                                            'is_remote': row.get('is_remote', False),
-                                            'job_type': row.get('job_type'),
-                                            'job_url': row.get('job_url'),
-                                            'description': row.get('description'),
-                                            'site': row.get('site'),
-                                            'company_logo': logo,
-                                            'date_posted': row.get('date_posted'),
-                                            'latitude': lat,
-                                            'longitude': lon,
-                                        }
-                                    )
-                                    site_found += 1
-                                    total_found += 1
+                                # Resolve to the most accurate DB location for this job
+                                # Fall back to the search location's coordinates with jitter
+                                if (lat is None or lon is None) and loc.latitude is not None and loc.longitude is not None:
+                                    lat = loc.latitude + random.uniform(-0.015, 0.015)
+                                    lon = loc.longitude + random.uniform(-0.015, 0.015)
+
+                                Job.objects.update_or_create(
+                                    id_from_site=row.get('id'),
+                                    defaults={
+                                        'title': row.get('title'),
+                                        'company': row.get('company'),
+                                        'location_name': row.get('location'),
+                                        'location': loc,
+                                        'is_remote': row.get('is_remote', False),
+                                        'job_type': row.get('job_type'),
+                                        'job_url': row.get('job_url'),
+                                        'description': row.get('description'),
+                                        'site': row.get('site'),
+                                        'company_logo': None,
+                                        'date_posted': row.get('date_posted'),
+                                        'latitude': lat,
+                                        'longitude': lon,
+                                    }
+                                )
+                                site_found += 1
+                                total_found += 1
                                     
                             session.jobs_found = total_found
                             session.save()
@@ -256,15 +330,43 @@ def run_background_scraping(search_term="frontend developer", results_wanted=5, 
                 log_to_db(session, f"Error scraping {loc.city}: {e}", "error")
 
 
+        geocode_missing_coordinates(session)
+
         session.status = 'completed'
         session.current_location = None
         session.jobs_found = total_found
         session.end_time = timezone.now()
         session.save()
+        cache.delete('api_stats')
+        cache.delete('api_locations')
         log_to_db(session, f"Session completed successfully. Total jobs found: {total_found}", "success")
-        
+
     except Exception as e:
         session.status = 'failed'
         session.error_message = str(e)
         session.save()
+        cache.delete('api_stats')
+        cache.delete('api_locations')
         log_to_db(session, f"Scraping session failed: {e}", "error")
+
+
+def run_parallel_role_scraping(search_terms, results_wanted=5, country=None):
+    """Scrape multiple job roles in parallel. Each role gets its own ScrapeSession."""
+    if not search_terms:
+        return
+
+    print(f"[INFO] Starting parallel scrape for {len(search_terms)} roles: {search_terms}")
+
+    with ThreadPoolExecutor(max_workers=len(search_terms)) as executor:
+        futures = {
+            executor.submit(run_background_scraping, term, results_wanted, country): term
+            for term in search_terms
+        }
+        for future in as_completed(futures):
+            term = futures[future]
+            try:
+                future.result()
+            except Exception as e:
+                print(f"[ERROR] Parallel scrape failed for '{term}': {e}")
+
+    print(f"[INFO] Parallel scrape completed for all {len(search_terms)} roles.")
