@@ -4,6 +4,7 @@ from django.core.cache import cache
 import os
 import json
 from django.conf import settings
+from concurrent.futures import ThreadPoolExecutor, as_completed
 
 def log_to_db(session, message, level='info'):
     print(f"[{level.upper()}] {message}")
@@ -334,3 +335,25 @@ def run_background_scraping(search_term="frontend developer", results_wanted=5, 
         cache.delete('api_stats')
         cache.delete('api_locations')
         log_to_db(session, f"Scraping session failed: {e}", "error")
+
+
+def run_parallel_role_scraping(search_terms, results_wanted=5, country=None):
+    """Scrape multiple job roles in parallel. Each role gets its own ScrapeSession."""
+    if not search_terms:
+        return
+
+    print(f"[INFO] Starting parallel scrape for {len(search_terms)} roles: {search_terms}")
+
+    with ThreadPoolExecutor(max_workers=len(search_terms)) as executor:
+        futures = {
+            executor.submit(run_background_scraping, term, results_wanted, country): term
+            for term in search_terms
+        }
+        for future in as_completed(futures):
+            term = futures[future]
+            try:
+                future.result()
+            except Exception as e:
+                print(f"[ERROR] Parallel scrape failed for '{term}': {e}")
+
+    print(f"[INFO] Parallel scrape completed for all {len(search_terms)} roles.")

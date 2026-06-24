@@ -17,7 +17,6 @@ import {
   AlertTriangle,
   LogOut,
   Users,
-  ChevronDown,
   CreditCard,
   MessageSquare
 } from 'lucide-react';
@@ -47,6 +46,8 @@ interface ScrapeSession {
   current_location: string | null;
   error_message: string | null;
   stop_requested: boolean;
+  search_term: string;
+  results_limit: number;
 }
 
 
@@ -61,6 +62,7 @@ export default function AdminDashboard() {
   const [locations, setLocations] = useState<Location[]>([]);
   const [stats, setStats] = useState<Stats | null>(null);
   const [jobRoles, setJobRoles] = useState<string[]>([]);
+  const [activeSessions, setActiveSessions] = useState<ScrapeSession[]>([]);
   const [loading, setLoading] = useState(true);
   const [triggering, setTriggering] = useState(false);
   const [searchTerm, setSearchTerm] = useState('');
@@ -103,7 +105,16 @@ export default function AdminDashboard() {
       const statsData = await statsRes.json();
       setLocations(locData);
       setStats(statsData);
-      isScrapingRef.current = statsData.last_scrape_session?.status === 'running';
+
+      // Fetch active sessions for parallel scrape display
+      const logsRes = await fetch(`${API_BASE}/logs/`, { headers: { 'Authorization': `Token ${token}` } });
+      if (logsRes.ok) {
+        const logsData = await logsRes.json();
+        setActiveSessions(logsData.active_sessions ?? []);
+        isScrapingRef.current = (logsData.active_sessions?.length ?? 0) > 0;
+      } else {
+        isScrapingRef.current = statsData.last_scrape_session?.status === 'running';
+      }
 
       // Fetch roles only once
       if (jobRoles.length === 0) {
@@ -135,17 +146,19 @@ export default function AdminDashboard() {
       const t = localStorage.getItem('admin_token');
       if (!t) return;
       try {
-        const res = await fetch(`${API_BASE}/stats/`, {
-          headers: { 'Authorization': `Token ${t}` }
-        });
-        if (!res.ok) return;
-        const statsData: Stats = await res.json();
-        const stillRunning = statsData.last_scrape_session?.status === 'running';
-        setStats(statsData);
-        if (!stillRunning) {
-          // Scrape just finished — refresh locations once then go quiet
-          isScrapingRef.current = false;
-          fetchData();
+        const [statsRes, logsRes] = await Promise.all([
+          fetch(`${API_BASE}/stats/`, { headers: { 'Authorization': `Token ${t}` } }),
+          fetch(`${API_BASE}/logs/`, { headers: { 'Authorization': `Token ${t}` } }),
+        ]);
+        if (statsRes.ok) setStats(await statsRes.json());
+        if (logsRes.ok) {
+          const logsData = await logsRes.json();
+          const sessions: ScrapeSession[] = logsData.active_sessions ?? [];
+          setActiveSessions(sessions);
+          if (sessions.length === 0) {
+            isScrapingRef.current = false;
+            fetchData();
+          }
         }
       } catch {
         // silently ignore poll errors
@@ -162,12 +175,12 @@ export default function AdminDashboard() {
     router.push('/login');
   };
 
-  const triggerScrape = async (term: string, limit: number, country: string | null) => {
+  const triggerScrape = async (terms: string[], limit: number, country: string | null) => {
     const token = localStorage.getItem('admin_token');
     setTriggering(true);
     try {
       const body: Record<string, unknown> = {
-        search_term: term,
+        search_terms: terms,
         results_wanted: limit,
       };
       if (country !== null) body.country = country;
@@ -187,9 +200,9 @@ export default function AdminDashboard() {
         return;
       }
 
-      alert(`Scraping for "${term}" started in background!`);
       setIsSettingsModalOpen(false);
-      fetchData();
+      isScrapingRef.current = true;
+      setTimeout(fetchData, 800);
     } catch (error) {
       alert("Failed to trigger scrape");
     } finally {
@@ -283,9 +296,9 @@ export default function AdminDashboard() {
 
               <LayoutDashboard size={16} />
               System Status:
-              <span className={stats?.last_scrape_session?.status === 'running' ? 'text-blue-400' : 'text-green-400'}>
-                {stats?.last_scrape_session?.status === 'running'
-                  ? `Active Scraping: ${stats.last_scrape_session.current_location || 'Initializing...'}`
+              <span className={activeSessions.length > 0 ? 'text-blue-400' : 'text-green-400'}>
+                {activeSessions.length > 0
+                  ? `${activeSessions.length} role${activeSessions.length > 1 ? 's' : ''} running in parallel`
                   : 'Idle'}
               </span>
               </p>
@@ -333,8 +346,8 @@ export default function AdminDashboard() {
               <Terminal size={20} />
             </button>
 
-            {stats?.last_scrape_session?.status === 'running' ? (
-              stats?.last_scrape_session?.stop_requested ? (
+            {activeSessions.length > 0 ? (
+              activeSessions.some(s => s.stop_requested) ? (
                 <button
                   onClick={forceStopScrape}
                   className="cursor-pointer bg-red-800 hover:bg-red-700 text-white px-6 py-3 rounded-xl font-semibold flex items-center gap-2 transition-all shadow-lg shadow-red-900/50"
@@ -349,18 +362,17 @@ export default function AdminDashboard() {
                   className="cursor-pointer bg-red-600 hover:bg-red-500 text-white px-6 py-3 rounded-xl font-semibold flex items-center gap-2 transition-all shadow-lg shadow-red-500/20"
                 >
                   <div className="w-2 h-2 rounded-full bg-white animate-pulse" />
-                  Stop Scraping
+                  Stop All
                 </button>
               )
             ) : (
-
               <button
                 onClick={() => setIsSettingsModalOpen(true)}
                 disabled={triggering}
                 className="cursor-pointer bg-blue-600 hover:bg-blue-500 disabled:opacity-50 disabled:cursor-not-allowed text-white px-6 py-3 rounded-xl font-semibold flex items-center gap-2 transition-all shadow-lg shadow-blue-500/20"
               >
                 {triggering ? <Loader2 size={18} className="animate-spin" /> : <Play size={18} />}
-                Trigger Global Scrape
+                Parallel Scrape
               </button>
             )}
 
@@ -516,14 +528,13 @@ export default function AdminDashboard() {
       </div>
 
       <AnimatePresence>
-        {isLogsModalOpen && <LogsModal onClose={() => setIsLogsModalOpen(false)} stats={stats} />}
+        {isLogsModalOpen && <LogsModal onClose={() => setIsLogsModalOpen(false)} stats={stats} activeSessions={activeSessions} />}
         {isSettingsModalOpen && (
-          <ScrapeSettingsModal
+          <ParallelRolePickerModal
             onClose={() => setIsSettingsModalOpen(false)}
             onStart={triggerScrape}
             loading={triggering}
             jobRoles={jobRoles}
-            locations={locations}
           />
         )}
       </AnimatePresence>
@@ -544,10 +555,10 @@ function StatCard({ icon, label, value }: { icon: React.ReactNode, label: string
   );
 }
 
-function LogsModal({ onClose, stats }: { onClose: () => void, stats: Stats | null }) {
+function LogsModal({ onClose, stats, activeSessions }: { onClose: () => void, stats: Stats | null, activeSessions: ScrapeSession[] }) {
   const session = stats?.last_scrape_session ?? null;
 
-  const isRunning = session?.status === 'running';
+  const isRunning = activeSessions.length > 0;
 
   const duration = React.useMemo(() => {
     if (!session?.start_time) return null;
@@ -593,48 +604,49 @@ function LogsModal({ onClose, stats }: { onClose: () => void, stats: Stats | nul
           </button>
         </div>
 
-        {!session ? (
+        {isRunning ? (
+          <div className="p-6 flex flex-col gap-3">
+            <p className="text-[10px] font-mono tracking-[0.2em] uppercase text-[#555] mb-1">{activeSessions.length} parallel sessions</p>
+            {activeSessions.map(s => (
+              <div key={s.id} className="bg-black border border-[#222] rounded-xl p-4 flex flex-col gap-2 font-mono text-sm">
+                <div className="flex justify-between items-center">
+                  <span className="text-white font-semibold capitalize">{s.search_term}</span>
+                  <span className="text-blue-400 flex items-center gap-1.5 text-xs">
+                    <Loader2 size={11} className="animate-spin" /> running
+                  </span>
+                </div>
+                {s.current_location && (
+                  <div className="flex justify-between text-xs">
+                    <span className="text-[#555]">Location</span>
+                    <span className="text-blue-300">{s.current_location}</span>
+                  </div>
+                )}
+                <div className="flex justify-between text-xs">
+                  <span className="text-[#555]">Jobs found</span>
+                  <span className="text-green-400 font-bold">{s.jobs_found}</span>
+                </div>
+              </div>
+            ))}
+          </div>
+        ) : !session ? (
           <div className="p-12 text-center text-[#555] font-mono text-sm">
             No scrape sessions yet.
           </div>
         ) : (
           <div className="p-6 flex flex-col gap-6">
-            {/* Input */}
             <div>
-              <p className="text-[10px] font-mono tracking-[0.2em] uppercase text-[#555] mb-3">Input</p>
+              <p className="text-[10px] font-mono tracking-[0.2em] uppercase text-[#555] mb-3">Last Session</p>
               <div className="bg-black border border-[#222] rounded-xl p-4 flex flex-col gap-2 font-mono text-sm">
                 <div className="flex justify-between">
                   <span className="text-[#555]">Search term</span>
                   <span className="text-white font-semibold">{session.search_term ?? '—'}</span>
                 </div>
-                <div className="flex justify-between">
-                  <span className="text-[#555]">Results limit</span>
-                  <span className="text-white">{session.results_limit ?? '—'}</span>
-                </div>
-                <div className="flex justify-between">
-                  <span className="text-[#555]">Started</span>
-                  <span className="text-[#aaa]">{new Date(session.start_time).toLocaleString()}</span>
-                </div>
-              </div>
-            </div>
-
-            {/* Output */}
-            <div>
-              <p className="text-[10px] font-mono tracking-[0.2em] uppercase text-[#555] mb-3">Output</p>
-              <div className="bg-black border border-[#222] rounded-xl p-4 flex flex-col gap-2 font-mono text-sm">
                 <div className="flex justify-between items-center">
                   <span className="text-[#555]">Status</span>
-                  <span className={`font-bold uppercase tracking-widest flex items-center gap-2 ${statusColor[session.status] ?? 'text-[#aaa]'}`}>
-                    {isRunning && <Loader2 size={12} className="animate-spin" />}
+                  <span className={`font-bold uppercase tracking-widest ${statusColor[session.status] ?? 'text-[#aaa]'}`}>
                     {session.status}
                   </span>
                 </div>
-                {isRunning && session.current_location && (
-                  <div className="flex justify-between">
-                    <span className="text-[#555]">Current location</span>
-                    <span className="text-blue-300">{session.current_location}</span>
-                  </div>
-                )}
                 <div className="flex justify-between">
                   <span className="text-[#555]">Jobs found</span>
                   <span className="text-green-400 font-bold">{session.jobs_found}</span>
@@ -646,13 +658,7 @@ function LogsModal({ onClose, stats }: { onClose: () => void, stats: Stats | nul
                 {duration && (
                   <div className="flex justify-between">
                     <span className="text-[#555]">Duration</span>
-                    <span className="text-[#aaa]">{duration}{isRunning ? ' (running)' : ''}</span>
-                  </div>
-                )}
-                {session.end_time && (
-                  <div className="flex justify-between">
-                    <span className="text-[#555]">Finished</span>
-                    <span className="text-[#aaa]">{new Date(session.end_time).toLocaleString()}</span>
+                    <span className="text-[#aaa]">{duration}</span>
                   </div>
                 )}
                 {session.error_message && (
@@ -669,31 +675,43 @@ function LogsModal({ onClose, stats }: { onClose: () => void, stats: Stats | nul
   );
 }
 
-function ScrapeSettingsModal({ onClose, onStart, loading, jobRoles, locations }: { onClose: () => void, onStart: (term: string, limit: number, country: string | null) => void, loading: boolean, jobRoles: string[], locations: Location[] }) {
-  const [term, setTerm] = useState(jobRoles[0] || '');
+function ParallelRolePickerModal({ onClose, onStart, loading, jobRoles }: {
+  onClose: () => void;
+  onStart: (terms: string[], limit: number, country: string | null) => void;
+  loading: boolean;
+  jobRoles: string[];
+}) {
+  const [selected, setSelected] = useState<Set<string>>(new Set());
   const [limit, setLimit] = useState(5);
-  const [customTerm, setCustomTerm] = useState('');
-  const [isCustom, setIsCustom] = useState(false);
-  const [isDropdownOpen, setIsDropdownOpen] = useState(false);
-  const [isLocationDropdownOpen, setIsLocationDropdownOpen] = useState(false);
-  const [selectedCountry, setSelectedCountry] = useState<string | null>(null);
-  const countries = Array.from(new Set(locations.map(l => l.country))).sort();
+  const [customInput, setCustomInput] = useState('');
 
-  useEffect(() => {
-    if (!term && jobRoles.length > 0) {
-      setTerm(jobRoles[0]);
-    }
-  }, [jobRoles]);
+  const MAX = 3;
+
+  const toggle = (role: string) => {
+    setSelected(prev => {
+      const next = new Set(prev);
+      if (next.has(role)) next.delete(role);
+      else if (next.size < MAX) next.add(role);
+      return next;
+    });
+  };
+
+  const addCustom = () => {
+    const trimmed = customInput.trim().toLowerCase();
+    if (!trimmed || selected.size >= MAX) return;
+    toggle(trimmed);
+    setCustomInput('');
+  };
 
   return (
-    <motion.div 
+    <motion.div
       initial={{ opacity: 0 }}
       animate={{ opacity: 1 }}
       exit={{ opacity: 0 }}
       className="fixed inset-0 bg-black/80 backdrop-blur-sm z-50 flex items-center justify-center p-4"
       onClick={onClose}
     >
-      <motion.div 
+      <motion.div
         initial={{ scale: 0.95, opacity: 0 }}
         animate={{ scale: 1, opacity: 1 }}
         exit={{ scale: 0.95, opacity: 0 }}
@@ -703,168 +721,88 @@ function ScrapeSettingsModal({ onClose, onStart, loading, jobRoles, locations }:
         <div className="p-6 border-b border-[#333] bg-[#1a1a1a]">
           <h2 className="text-xl font-bold flex items-center gap-2">
             <Play size={20} className="text-blue-500" />
-            Scrape Configuration
+            Select Roles to Scrape
           </h2>
-          <p className="text-sm text-[#555] mt-1">Configure parameters for the global scraping session.</p>
+          <p className="text-sm text-[#555] mt-1">
+            {selected.size === 0 ? 'Pick up to 3 roles — they run in parallel.' : `${selected.size} / ${MAX} selected`}
+          </p>
         </div>
-        
-        <div className="p-6 space-y-6">
-          <div>
-            <label className="text-xs font-bold uppercase tracking-wider text-[#555] mb-2 block">Job Role / Search Term</label>
-            <div className="space-y-3">
-              {!isCustom ? (
-                <div className="relative">
-                  <button 
-                    onClick={() => setIsDropdownOpen(!isDropdownOpen)}
-                    className="w-full bg-[#0a0a0a] border border-[#222] rounded-xl px-4 py-2.5 text-white flex items-center justify-between hover:border-blue-500 transition-all text-sm font-medium"
-                  >
-                    <span>{term}</span>
-                    <ChevronDown size={16} className={`text-[#444] transition-transform ${isDropdownOpen ? 'rotate-180' : ''}`} />
-                  </button>
 
-                  <AnimatePresence>
-                    {isDropdownOpen && (
-                      <>
-                        <div className="fixed inset-0 z-10" onClick={() => setIsDropdownOpen(false)} />
-                        <motion.div
-                          initial={{ opacity: 0, y: -10 }}
-                          animate={{ opacity: 1, y: 0 }}
-                          exit={{ opacity: 0, y: -10 }}
-                          className="absolute z-20 w-full mt-2 bg-[#1a1a1a] border border-[#333] rounded-xl shadow-2xl overflow-hidden"
-                        >
-                          <div className="max-h-48 overflow-y-auto custom-scrollbar">
-                            {jobRoles.map(role => (
-                              <button
-                                key={role}
-                                onClick={() => {
-                                  setTerm(role);
-                                  setIsDropdownOpen(false);
-                                }}
-                                className={`w-full text-left px-4 py-2 text-xs hover:bg-blue-600/10 hover:text-blue-400 transition-colors ${term === role ? 'bg-blue-600/5 text-blue-500' : 'text-[#888]'}`}
-                              >
-                                {role}
-                              </button>
-                            ))}
-                            <button
-                              onClick={() => {
-                                setIsCustom(true);
-                                setIsDropdownOpen(false);
-                              }}
-                              className="w-full text-left px-4 py-2 text-xs text-blue-500 hover:bg-blue-600/10 border-t border-[#222] font-bold"
-                            >
-                              + Other Role...
-                            </button>
-                          </div>
-                        </motion.div>
-                      </>
-                    )}
-                  </AnimatePresence>
-                </div>
-              ) : (
-                <div className="flex gap-2">
-                  <input 
-                    autoFocus
-                    type="text" 
-                    placeholder="Enter job role..."
-                    value={customTerm}
-                    onChange={(e) => setCustomTerm(e.target.value)}
-                    className="flex-1 bg-[#0a0a0a] border border-[#222] rounded-xl px-4 py-3 text-white focus:border-blue-500 outline-none"
-                  />
-                  <button 
-                    onClick={() => setIsCustom(false)}
-                    className="px-3 bg-[#222] rounded-xl hover:bg-[#333]"
-                  >
-                    <X size={18} />
-                  </button>
-                </div>
-              )}
+        <div className="p-6 space-y-6">
+          <div className="flex flex-wrap gap-2">
+            {jobRoles.map(role => {
+              const active = selected.has(role);
+              const maxed = !active && selected.size >= MAX;
+              return (
+                <button
+                  key={role}
+                  onClick={() => toggle(role)}
+                  disabled={maxed}
+                  className={`cursor-pointer px-3 py-1.5 rounded-lg text-xs font-medium transition-all border ${
+                    active
+                      ? 'bg-blue-600/15 border-blue-500/50 text-blue-400'
+                      : maxed
+                      ? 'bg-[#0a0a0a] border-[#1a1a1a] text-[#2a2a2a] cursor-not-allowed'
+                      : 'bg-[#0a0a0a] border-[#222] text-[#555] hover:border-[#333] hover:text-[#888]'
+                  }`}
+                >
+                  {role}
+                </button>
+              );
+            })}
+          </div>
+
+          <div>
+            <label className="text-xs font-bold uppercase tracking-wider text-[#555] mb-2 block">Custom role</label>
+            <div className="flex gap-2">
+              <input
+                type="text"
+                value={customInput}
+                onChange={e => setCustomInput(e.target.value)}
+                onKeyDown={e => { if (e.key === 'Enter') { e.preventDefault(); addCustom(); } }}
+                disabled={selected.size >= MAX}
+                placeholder="e.g. blockchain engineer"
+                className="flex-1 bg-[#0a0a0a] border border-[#222] rounded-xl px-4 py-2.5 text-sm text-white placeholder-[#333] focus:border-blue-500 outline-none transition-all disabled:opacity-30"
+              />
+              <button
+                onClick={addCustom}
+                disabled={!customInput.trim() || selected.size >= MAX}
+                className="cursor-pointer px-4 py-2.5 bg-[#1a1a1a] border border-[#222] rounded-xl text-[#555] hover:border-blue-500/50 hover:text-blue-400 transition-all disabled:opacity-30 disabled:cursor-not-allowed"
+              >
+                <X size={16} className="rotate-45" />
+              </button>
             </div>
           </div>
 
           <div>
-            <label className="text-xs font-bold uppercase tracking-wider text-[#555] mb-2 block">Results Wanted per Site</label>
-            <div className="grid grid-cols-2 gap-4">
+            <label className="text-xs font-bold uppercase tracking-wider text-[#555] mb-2 block">Results per location</label>
+            <div className="grid grid-cols-2 gap-3">
               {[5, 10].map(val => (
                 <button
                   key={val}
                   onClick={() => setLimit(val)}
-                  className={`
-                    py-3 rounded-xl border font-bold transition-all
-                    ${limit === val ? 'bg-blue-600 border-blue-500 text-white' : 'bg-[#161616] border-[#222] text-[#555] hover:border-[#333]'}
-                  `}
+                  className={`py-3 rounded-xl border font-bold transition-all cursor-pointer ${
+                    limit === val ? 'bg-blue-600 border-blue-500 text-white' : 'bg-[#161616] border-[#222] text-[#555] hover:border-[#333]'
+                  }`}
                 >
                   {val} Results
                 </button>
               ))}
             </div>
-            <p className="text-[10px] text-[#444] mt-2 italic text-center">
-              Higher limits increase scraping time and risk of rate limits.
-            </p>
-          </div>
-
-          <div>
-            <label className="text-xs font-bold uppercase tracking-wider text-[#555] mb-2 block">Location</label>
-            <div className="relative">
-              <button
-                onClick={() => setIsLocationDropdownOpen(!isLocationDropdownOpen)}
-                className="w-full bg-[#0a0a0a] border border-[#222] rounded-xl px-4 py-2.5 text-white flex items-center justify-between hover:border-blue-500 transition-all text-sm font-medium"
-              >
-                <span className="flex items-center gap-2">
-                  <MapPin size={14} className="text-[#555]" />
-                  {selectedCountry ?? 'All Countries'}
-                </span>
-                <ChevronDown size={16} className={`text-[#444] transition-transform ${isLocationDropdownOpen ? 'rotate-180' : ''}`} />
-              </button>
-
-              <AnimatePresence>
-                {isLocationDropdownOpen && (
-                  <>
-                    <div className="fixed inset-0 z-10" onClick={() => setIsLocationDropdownOpen(false)} />
-                    <motion.div
-                      initial={{ opacity: 0, y: 10 }}
-                      animate={{ opacity: 1, y: 0 }}
-                      exit={{ opacity: 0, y: 10 }}
-                      className="absolute z-20 w-full bottom-full mb-2 bg-[#1a1a1a] border border-[#333] rounded-xl shadow-2xl overflow-hidden"
-                    >
-                      <div className="max-h-48 overflow-y-auto custom-scrollbar">
-                        <button
-                          onClick={() => { setSelectedCountry(null); setIsLocationDropdownOpen(false); }}
-                          className={`w-full text-left px-4 py-2 text-xs hover:bg-blue-600/10 hover:text-blue-400 transition-colors ${selectedCountry === null ? 'bg-blue-600/5 text-blue-500' : 'text-[#888]'}`}
-                        >
-                          All Countries
-                        </button>
-                        {countries.map(c => (
-                          <button
-                            key={c}
-                            onClick={() => { setSelectedCountry(c); setIsLocationDropdownOpen(false); }}
-                            className={`w-full text-left px-4 py-2 text-xs hover:bg-blue-600/10 hover:text-blue-400 transition-colors ${selectedCountry === c ? 'bg-blue-600/5 text-blue-500' : 'text-[#888]'}`}
-                          >
-                            {c}
-                          </button>
-                        ))}
-                      </div>
-                    </motion.div>
-                  </>
-                )}
-              </AnimatePresence>
-            </div>
           </div>
         </div>
 
         <div className="p-6 bg-[#1a1a1a] border-t border-[#333] flex gap-3">
-          <button
-            onClick={onClose}
-            className="flex-1 py-3 rounded-xl bg-[#222] hover:bg-[#2a2a2a] font-bold transition-all cursor-pointer"
-          >
+          <button onClick={onClose} className="cursor-pointer flex-1 py-3 rounded-xl bg-[#222] hover:bg-[#2a2a2a] font-bold transition-all">
             Cancel
           </button>
           <button
-            disabled={loading || (isCustom && !customTerm)}
-            onClick={() => onStart(isCustom ? customTerm : term, limit, selectedCountry)}
-            className="flex-1 py-3 rounded-xl bg-blue-600 hover:bg-blue-500 disabled:opacity-50 font-bold transition-all flex items-center justify-center gap-2 cursor-pointer"
+            disabled={loading || selected.size === 0}
+            onClick={() => onStart(Array.from(selected), limit, null)}
+            className="cursor-pointer flex-1 py-3 rounded-xl bg-blue-600 hover:bg-blue-500 disabled:opacity-40 disabled:cursor-not-allowed font-bold transition-all flex items-center justify-center gap-2"
           >
             {loading ? <Loader2 size={18} className="animate-spin" /> : <Play size={18} />}
-            Start Scrape
+            Run {selected.size > 0 ? `${selected.size} in parallel` : ''}
           </button>
         </div>
       </motion.div>

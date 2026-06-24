@@ -173,6 +173,7 @@ class TriggerScrapeView(views.APIView):
             if not (request.user and request.user.is_authenticated and request.user.is_superuser):
                 return Response({'error': 'Authentication credentials were not provided or invalid.'}, status=401)
 
+        search_terms = request.data.get('search_terms', None)
         search_term = request.data.get('search_term', 'frontend developer')
         results_wanted = request.data.get('results_wanted', 5)
         country = request.data.get('country', None)
@@ -182,16 +183,24 @@ class TriggerScrapeView(views.APIView):
             return Response({'status': 'Scraper already running'}, status=400)
 
         import threading
-        from .scraper_utils import run_background_scraping
+        from .scraper_utils import run_background_scraping, run_parallel_role_scraping
 
-        thread = threading.Thread(
-            target=run_background_scraping,
-            args=(search_term, results_wanted, country)
-        )
+        if search_terms and isinstance(search_terms, list) and len(search_terms) > 1:
+            thread = threading.Thread(
+                target=run_parallel_role_scraping,
+                args=(search_terms, results_wanted, country)
+            )
+        else:
+            role = search_terms[0] if search_terms and isinstance(search_terms, list) else search_term
+            thread = threading.Thread(
+                target=run_background_scraping,
+                args=(role, results_wanted, country)
+            )
+
         thread.daemon = True
         thread.start()
         cache.delete(_STATS_CACHE_KEY)
-        return Response({'status': 'Scrape triggered'})
+        return Response({'status': 'Scrape triggered', 'roles': search_terms or [search_term]})
 
 class StopScrapeView(views.APIView):
     permission_classes = [permissions.IsAdminUser]
@@ -227,9 +236,11 @@ class LogsView(generics.ListAPIView):
     def get(self, request):
         logs = ScrapeLog.objects.all().order_by('-timestamp')[:100]
         last_session = ScrapeSession.objects.all().order_by('-start_time').first()
+        active_sessions = ScrapeSession.objects.filter(status='running').order_by('-start_time')
         return Response({
             'logs': ScrapeLogSerializer(logs, many=True).data,
-            'session': ScrapeSessionSerializer(last_session).data if last_session else None
+            'session': ScrapeSessionSerializer(last_session).data if last_session else None,
+            'active_sessions': ScrapeSessionSerializer(active_sessions, many=True).data,
         })
 
 class AdminLoginView(ObtainAuthToken):
