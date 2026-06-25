@@ -5,13 +5,14 @@ from .views import (
     LocationViewSet, JobViewSet, StatsView, TriggerScrapeView,
     StopScrapeView, ForceResetView, LogsView, SignupView, UserView, RecentJobsView,
     CheckExistenceView, AdminLoginView, AdminUserViewSet, RolesView,
-    FeedbackView, AdminFeedbackView
+    FeedbackView, AdminFeedbackView, GeneratedResumeViewSet
 )
 
 router = DefaultRouter()
 router.register(r'jobs', JobViewSet, basename='jobs')
 router.register(r'users', AdminUserViewSet, basename='users')
 router.register(r'locations', LocationViewSet, basename='locations')
+router.register(r'generated-resumes', GeneratedResumeViewSet, basename='generated-resumes')
 
 urlpatterns = [
     # ==========================================

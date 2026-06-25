@@ -1,15 +1,22 @@
-from rest_framework import viewsets, views, generics, permissions
+from rest_framework import viewsets, views, generics, permissions, status
 from .permissions import IsSubscribed
 
 from rest_framework.decorators import action
 from rest_framework.authtoken.views import ObtainAuthToken
 from rest_framework.response import Response
 from rest_framework.authtoken.models import Token
-from .models import Location, Job, ScrapeSession, ScrapeLog, Bookmark, Feedback
+from .models import Location, Job, ScrapeSession, ScrapeLog, Bookmark, Feedback, GeneratedResume
 from .serializers import (
     LocationSerializer, JobSerializer, ScrapeSessionSerializer,
     ScrapeLogSerializer, UserSerializer, RegisterSerializer, RecentJobSerializer,
-    FeedbackSerializer
+    FeedbackSerializer, GeneratedResumeSerializer
+)
+from .services.resume_tailor import (
+    call_groq_resume_tailor,
+    generate_fallback_resume,
+    normalize_template,
+    render_resume_html,
+    render_resume_pdf,
 )
 from django.db.models import Count, Exists, OuterRef, Prefetch
 from django.core.cache import cache
@@ -101,6 +108,80 @@ class JobViewSet(viewsets.ModelViewSet):
             bookmark.delete()
             return Response({'status': 'unbookmarked', 'is_bookmarked': False})
         return Response({'status': 'bookmarked', 'is_bookmarked': True})
+
+    @action(detail=True, methods=['post'], permission_classes=[permissions.IsAuthenticated])
+    def generate_ats_resume(self, request, pk=None):
+        job = self.get_object()
+        template_name = request.data.get('template_name', 'modern_ats')
+        try:
+            template_name = normalize_template(template_name)
+        except ValueError as exc:
+            return Response({'error': str(exc)}, status=status.HTTP_400_BAD_REQUEST)
+
+        profile = getattr(request.user, 'profile', None)
+        if not profile or not profile.resume_text:
+            return Response({'error': 'Upload a resume in your profile before generating an ATS resume.'}, status=status.HTTP_400_BAD_REQUEST)
+        if profile.resume_credits <= 0:
+            return Response({'error': 'You do not have enough resume generation credits.'}, status=status.HTTP_402_PAYMENT_REQUIRED)
+
+        rate_key = f"resume_tailor:{request.user.id}"
+        attempts = cache.get(rate_key, 0)
+        if attempts >= 5:
+            return Response({'error': 'Resume generation limit reached. Please try again later.'}, status=status.HTTP_429_TOO_MANY_REQUESTS)
+        cache.set(rate_key, attempts + 1, 60 * 60)
+
+        try:
+            ai_resume = call_groq_resume_tailor(profile.resume_text, job)
+        except Exception as exc:
+            if os.getenv('ALLOW_RESUME_AI_FALLBACK', 'True') == 'True':
+                ai_resume = generate_fallback_resume(profile.resume_text, job)
+                ai_resume['ai_warning'] = str(exc)
+            else:
+                return Response({'error': str(exc)}, status=status.HTTP_502_BAD_GATEWAY)
+
+        html_content = render_resume_html(ai_resume, request.user, job, template_name)
+        filename, pdf_file = render_resume_pdf(ai_resume, request.user, job, template_name)
+        generated = GeneratedResume.objects.create(
+            user=request.user,
+            job=job,
+            template_name=template_name,
+            ats_score_before=ai_resume['ats_score_before'],
+            ats_score_after=ai_resume['ats_score_after'],
+            html_content=html_content,
+            json_resume=ai_resume,
+        )
+        generated.pdf_url.save(filename, pdf_file, save=True)
+        profile.resume_credits = max(0, profile.resume_credits - 1)
+        profile.save(update_fields=['resume_credits'])
+
+        return Response(
+            GeneratedResumeSerializer(generated, context={'request': request}).data,
+            status=status.HTTP_201_CREATED,
+        )
+
+
+class GeneratedResumeViewSet(viewsets.ModelViewSet):
+    serializer_class = GeneratedResumeSerializer
+    permission_classes = [permissions.IsAuthenticated]
+    http_method_names = ['get', 'post', 'delete', 'head', 'options']
+
+    def get_queryset(self):
+        return GeneratedResume.objects.filter(user=self.request.user).select_related('job', 'user')
+
+    def create(self, request, *args, **kwargs):
+        job_id = request.data.get('job_id')
+        if not job_id:
+            return Response({'error': 'job_id is required.'}, status=status.HTTP_400_BAD_REQUEST)
+        try:
+            job = Job.objects.get(pk=job_id)
+        except Job.DoesNotExist:
+            return Response({'error': 'Job not found.'}, status=status.HTTP_404_NOT_FOUND)
+        view = JobViewSet()
+        view.request = request
+        view.kwargs = {'pk': job.pk}
+        view.action = 'generate_ats_resume'
+        view.get_object = lambda: job
+        return JobViewSet.generate_ats_resume(view, request, pk=job.pk)
 
 
 class CheckExistenceView(views.APIView):

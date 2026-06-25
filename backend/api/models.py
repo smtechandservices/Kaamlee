@@ -11,6 +11,7 @@ class Profile(models.Model):
     resume_text = models.TextField(blank=True, null=True)
     is_subscribed = models.BooleanField(default=False)
     subscription_expires_at = models.DateTimeField(blank=True, null=True)
+    resume_credits = models.IntegerField(default=5)
 
     def __str__(self):
         return f"Profile for {self.user.username}"
@@ -105,3 +106,28 @@ class Feedback(models.Model):
 
     def __str__(self):
         return f"Feedback by {self.user.username} - {self.rating}/5"
+
+class GeneratedResume(models.Model):
+    TEMPLATE_MODERN = 'modern_ats'
+    TEMPLATE_CORPORATE = 'corporate_ats'
+
+    TEMPLATE_CHOICES = [
+        (TEMPLATE_MODERN, 'Modern ATS'),
+        (TEMPLATE_CORPORATE, 'Corporate ATS'),
+    ]
+
+    user = models.ForeignKey(User, on_delete=models.CASCADE, related_name='generated_resumes')
+    job = models.ForeignKey(Job, on_delete=models.CASCADE, related_name='generated_resumes')
+    template_name = models.CharField(max_length=50, choices=TEMPLATE_CHOICES)
+    ats_score_before = models.FloatField()
+    ats_score_after = models.FloatField()
+    pdf_url = models.FileField(upload_to='generated_resumes/', blank=True, null=True)
+    html_content = models.TextField(blank=True, null=True)
+    json_resume = models.JSONField(default=dict)
+    created_at = models.DateTimeField(auto_now_add=True)
+
+    class Meta:
+        ordering = ['-created_at']
+
+    def __str__(self):
+        return f"{self.user.username} - {self.job.title} ({self.template_name})"

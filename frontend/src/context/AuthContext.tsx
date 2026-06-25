@@ -15,6 +15,7 @@ interface User {
   resume_text?: string;
   is_subscribed: boolean;
   subscription_expires_at: string | null;
+  resume_credits?: number;
 }
 
 interface AuthContextType {

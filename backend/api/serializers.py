@@ -1,7 +1,7 @@
 import io
 import PyPDF2
 from rest_framework import serializers
-from .models import Location, Job, ScrapeSession, ScrapeLog, Bookmark, Feedback
+from .models import Location, Job, ScrapeSession, ScrapeLog, Bookmark, Feedback, GeneratedResume
 from django.contrib.auth.models import User
 
 def extract_text_from_pdf(pdf_file):
@@ -51,11 +51,12 @@ class UserSerializer(serializers.ModelSerializer):
     resume_text = serializers.CharField(source='profile.resume_text', read_only=True)
     is_subscribed = serializers.BooleanField(source='profile.is_subscribed', required=False)
     subscription_expires_at = serializers.DateTimeField(source='profile.subscription_expires_at', required=False, allow_null=True)
+    resume_credits = serializers.IntegerField(source='profile.resume_credits', read_only=True)
 
     class Meta:
         model = User
-        fields = ('id', 'username', 'email', 'first_name', 'last_name', 'phone', 'linkedin_url', 'resume', 'resume_text', 'is_subscribed', 'subscription_expires_at', 'is_superuser', 'is_staff')
-        read_only_fields = ('id', 'username', 'email', 'is_superuser', 'is_staff', 'resume_text')
+        fields = ('id', 'username', 'email', 'first_name', 'last_name', 'phone', 'linkedin_url', 'resume', 'resume_text', 'is_subscribed', 'subscription_expires_at', 'resume_credits', 'is_superuser', 'is_staff')
+        read_only_fields = ('id', 'username', 'email', 'is_superuser', 'is_staff', 'resume_text', 'resume_credits')
 
     def update(self, instance, validated_data):
         profile_data = validated_data.pop('profile', {})
@@ -190,6 +191,31 @@ class JobSerializer(serializers.ModelSerializer):
 
 class RecentJobSerializer(JobSerializer):
     pass
+
+class GeneratedResumeSerializer(serializers.ModelSerializer):
+    job_title = serializers.CharField(source='job.title', read_only=True)
+    company_name = serializers.CharField(source='job.company', read_only=True)
+    template_label = serializers.SerializerMethodField()
+    pdf_url = serializers.SerializerMethodField()
+
+    class Meta:
+        model = GeneratedResume
+        fields = [
+            'id', 'job', 'job_title', 'company_name', 'template_name',
+            'template_label', 'ats_score_before', 'ats_score_after',
+            'pdf_url', 'html_content', 'json_resume', 'created_at',
+        ]
+        read_only_fields = fields
+
+    def get_template_label(self, obj):
+        return obj.get_template_name_display()
+
+    def get_pdf_url(self, obj):
+        if not obj.pdf_url:
+            return None
+        request = self.context.get('request')
+        url = obj.pdf_url.url
+        return request.build_absolute_uri(url) if request else url
 
 class FeedbackSerializer(serializers.ModelSerializer):
     username = serializers.CharField(source='user.username', read_only=True)

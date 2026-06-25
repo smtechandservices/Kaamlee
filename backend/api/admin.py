@@ -1,7 +1,7 @@
 from django.contrib import admin
 from django.contrib.auth.admin import UserAdmin as BaseUserAdmin
 from django.contrib.auth.models import User
-from .models import Location, Job, ScrapeSession, Profile, ScrapeLog
+from .models import Location, Job, ScrapeSession, Profile, ScrapeLog, GeneratedResume
 
 @admin.register(Location)
 class LocationAdmin(admin.ModelAdmin):
@@ -47,6 +47,13 @@ admin.site.register(User, UserAdmin)
 
 @admin.register(Profile)
 class ProfileAdmin(admin.ModelAdmin):
-    list_display = ('user', 'phone', 'is_subscribed', 'subscription_expires_at')
+    list_display = ('user', 'phone', 'is_subscribed', 'resume_credits', 'subscription_expires_at')
     list_filter = ('is_subscribed',)
     search_fields = ('user__username', 'phone')
+
+@admin.register(GeneratedResume)
+class GeneratedResumeAdmin(admin.ModelAdmin):
+    list_display = ('user', 'job', 'template_name', 'ats_score_before', 'ats_score_after', 'created_at')
+    list_filter = ('template_name', 'created_at')
+    search_fields = ('user__username', 'job__title', 'job__company')
+    readonly_fields = ('created_at',)

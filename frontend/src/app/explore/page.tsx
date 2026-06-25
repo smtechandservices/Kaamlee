@@ -9,6 +9,7 @@ import Link from 'next/link';
 import { useAuth } from '@/context/AuthContext';
 import { useRouter } from 'next/navigation';
 import PricingModal from '@/components/PricingModal';
+import GenerateATSResumeModal from '@/components/GenerateATSResumeModal';
 
 
 function useDebounce<T>(value: T, delay: number): T {
@@ -25,6 +26,8 @@ export default function ExplorePage() {
 
   const router = useRouter();
   const [isPricingModalOpen, setIsPricingModalOpen] = useState(false);
+  const [atsResumeJob, setAtsResumeJob] = useState<any>(null);
+  const [isATSModalOpen, setIsATSModalOpen] = useState(false);
   const [jobs, setJobs] = useState<any[]>([]);
   const [locations, setLocations] = useState<any[]>([]);
   const [jobRoles, setJobRoles] = useState<string[]>([]);
@@ -193,6 +196,12 @@ export default function ExplorePage() {
       console.error("Failed to toggle bookmark:", error);
     }
   }, [token]);
+
+  const handleGenerateATSResume = React.useCallback((e: React.MouseEvent, job: any) => {
+    e.stopPropagation();
+    setAtsResumeJob(job);
+    setIsATSModalOpen(true);
+  }, []);
 
   if (isLoading || !token) {
     return (
@@ -435,11 +444,12 @@ export default function ExplorePage() {
                   id={`job-card-${job.id}`}
                   className="w-full"
                 >
-                  <JobCard 
-                    job={job} 
+                  <JobCard
+                    job={job}
                     isSelected={selectedJobId === job.id}
                     onClick={handleJobClick}
                     onToggleBookmark={handleToggleBookmark}
+                    onGenerateATSResume={handleGenerateATSResume}
                   />
                 </motion.div>
               ))}
@@ -510,6 +520,12 @@ export default function ExplorePage() {
         isOpen={isPricingModalOpen}
         onClose={() => setIsPricingModalOpen(false)}
         showCloseButton={true}
+      />
+
+      <GenerateATSResumeModal
+        job={atsResumeJob}
+        isOpen={isATSModalOpen}
+        onClose={() => { setIsATSModalOpen(false); setAtsResumeJob(null); }}
       />
 
       <style jsx global>{`

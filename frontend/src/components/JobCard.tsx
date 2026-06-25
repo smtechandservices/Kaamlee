@@ -1,7 +1,7 @@
 'use client';
 
 import React from 'react';
-import { MapPin, Briefcase, ExternalLink, Clock, Bookmark, Copy, Check } from 'lucide-react';
+import { MapPin, Briefcase, Bookmark, Copy, Check, FileText } from 'lucide-react';
 
 interface JobCardProps {
   job: {
@@ -23,9 +23,10 @@ interface JobCardProps {
   isSelected?: boolean;
   onClick?: (jobId: string) => void;
   onToggleBookmark?: (e: React.MouseEvent, jobId: string) => void;
+  onGenerateATSResume?: (e: React.MouseEvent, job: JobCardProps['job']) => void;
 }
 
-export const JobCard = React.memo(function JobCard({ job, isSelected, onClick, onToggleBookmark }: JobCardProps) {
+export const JobCard = React.memo(function JobCard({ job, isSelected, onClick, onToggleBookmark, onGenerateATSResume }: JobCardProps) {
   const [copied, setCopied] = React.useState(false);
   const companyName = job.company || 'Confidential';
   const getInitial = (name: string) => name ? name.charAt(0).toUpperCase() : '?';
@@ -180,7 +181,7 @@ export const JobCard = React.memo(function JobCard({ job, isSelected, onClick, o
             {job.description || 'No description provided...'}
           </p>
 
-          <div className="flex justify-between items-center">
+          <div className="flex flex-wrap justify-between items-center gap-2">
             <a 
               href={job.job_url} 
               target="_blank" 
@@ -190,9 +191,17 @@ export const JobCard = React.memo(function JobCard({ job, isSelected, onClick, o
             >
               Apply on {job.site}
             </a>
+
+            <button
+              onClick={(e) => onGenerateATSResume?.(e, job)}
+              className="flex items-center gap-1.5 rounded-lg border border-green-500/25 bg-green-500/10 px-2.5 py-1.5 text-[10px] font-black uppercase tracking-wider text-green-400 transition-all hover:border-green-500/50 hover:bg-green-500/20"
+            >
+              <FileText size={12} />
+              Generate ATS Resume
+            </button>
             
             {(job.date_posted || job.created_at) && (
-              <span className="text-[10px] text-[#555] ml-auto">
+              <span className="text-[10px] text-[#555]">
                 {formatDate(job.date_posted || job.created_at)}
               </span>
             )}
