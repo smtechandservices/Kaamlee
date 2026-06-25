@@ -32,6 +32,7 @@ export default function ExplorePage() {
   const [viewMode, setViewMode] = useState<'split' | 'map' | 'list'>('split');
   const [activeCountry, setActiveCountry] = useState<string>('All');
 
+  const [selectedRole, setSelectedRole] = useState('');
   const [remoteOnly, setRemoteOnly] = useState(false);
   const [bookmarkedOnly, setBookmarkedOnly] = useState(false);
   const [currentPage, setCurrentPage] = useState(1);
@@ -51,7 +52,7 @@ export default function ExplorePage() {
 
   useEffect(() => {
     setCurrentPage(1);
-  }, [debouncedSearch, locationQuery, activeCountry, remoteOnly, bookmarkedOnly]);
+  }, [debouncedSearch, locationQuery, activeCountry, remoteOnly, bookmarkedOnly, selectedRole]);
 
   // Fetch locations + roles once on mount
   useEffect(() => {
@@ -112,15 +113,18 @@ export default function ExplorePage() {
 
   const filteredJobs = React.useMemo(() => {
     return jobs.filter(job => {
-      const matchesSearch = job.title.toLowerCase().includes(debouncedSearch.toLowerCase()) ||
-                           job.company.toLowerCase().includes(debouncedSearch.toLowerCase());
+      const matchesSearch = !debouncedSearch ||
+        job.title.toLowerCase().includes(debouncedSearch.toLowerCase()) ||
+        job.company.toLowerCase().includes(debouncedSearch.toLowerCase());
       const matchesLocation = job.location.toLowerCase().includes(debouncedLocation.toLowerCase());
+      const matchesCategory = !selectedRole ||
+        job.scrape_category?.toLowerCase() === selectedRole.toLowerCase();
       const matchesRemote = remoteOnly ? job.is_remote : true;
       const matchesBookmarked = bookmarkedOnly ? job.is_bookmarked : true;
 
-      return matchesSearch && matchesLocation && matchesRemote && matchesBookmarked;
+      return matchesSearch && matchesLocation && matchesCategory && matchesRemote && matchesBookmarked;
     });
-  }, [jobs, debouncedSearch, debouncedLocation, remoteOnly, bookmarkedOnly]);
+  }, [jobs, debouncedSearch, debouncedLocation, selectedRole, remoteOnly, bookmarkedOnly]);
 
   const handleMapJobClick = React.useCallback((jobId: string | null) => {
     if (jobId) {
@@ -318,9 +322,9 @@ export default function ExplorePage() {
               <div className="h-12 sm:h-[116px] w-full sm:w-[140px] flex flex-row sm:flex-col border border-[#222] rounded-2xl bg-[#080808] overflow-hidden">
                 <div className="flex-1 flex flex-row sm:flex-col overflow-x-auto sm:overflow-y-auto no-scrollbar p-1.5 gap-1 sm:space-y-0.5 bg-black/40">
                   <button
-                    onClick={() => setSearchQuery('')}
+                    onClick={() => setSelectedRole('')}
                     className={`shrink-0 sm:w-full text-left px-2.5 py-1.5 rounded-lg text-[9px] sm:text-[10px] font-bold transition-all border ${
-                      searchQuery === ''
+                      selectedRole === ''
                         ? 'bg-green-500/10 text-green-400 border-green-500/30'
                         : 'bg-transparent text-[#555] border-transparent hover:bg-[#111] hover:text-[#888]'
                     }`}
@@ -330,9 +334,9 @@ export default function ExplorePage() {
                   {jobRoles.map((role) => (
                     <button
                       key={role}
-                      onClick={() => setSearchQuery(role)}
+                      onClick={() => setSelectedRole(prev => prev === role ? '' : role)}
                       className={`shrink-0 sm:w-full text-left px-2.5 py-1.5 rounded-lg text-[9px] sm:text-[10px] font-bold transition-all border truncate ${
-                        searchQuery === role
+                        selectedRole === role
                           ? 'bg-green-500/10 text-green-400 border-green-500/30'
                           : 'bg-transparent text-[#555] border-transparent hover:bg-[#111] hover:text-[#888]'
                       }`}

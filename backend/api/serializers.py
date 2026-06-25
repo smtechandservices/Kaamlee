@@ -163,7 +163,7 @@ class JobSerializer(serializers.ModelSerializer):
             'id', 'title', 'company', 'location_name', 'location',
             'is_remote', 'job_type', 'job_url', 'site', 'company_logo',
             'date_posted', 'created_at', 'latitude', 'longitude',
-            'is_bookmarked', 'match_score',
+            'scrape_category', 'is_bookmarked', 'match_score',
         ]
 
     def get_location_name(self, obj):

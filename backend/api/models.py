@@ -54,6 +54,7 @@ class Job(models.Model):
     latitude = models.FloatField(null=True, blank=True)
     longitude = models.FloatField(null=True, blank=True)
     created_at = models.DateTimeField(auto_now_add=True)
+    scrape_category = models.CharField(max_length=255, null=True, blank=True)
 
     def __str__(self):
         return f"{self.title} at {self.company}"

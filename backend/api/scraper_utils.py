@@ -288,6 +288,7 @@ def run_background_scraping(search_term="frontend developer", results_wanted=5, 
                                         'date_posted': row.get('date_posted'),
                                         'latitude': lat,
                                         'longitude': lon,
+                                        'scrape_category': search_term,
                                     }
                                 )
                                 site_found += 1
