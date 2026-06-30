@@ -759,9 +759,9 @@ function ParallelRolePickerModal({ onClose, onStart, loading, jobRoles, location
         animate={{ scale: 1, opacity: 1 }}
         exit={{ scale: 0.95, opacity: 0 }}
         onClick={(e) => e.stopPropagation()}
-        className="bg-[#111] border border-[#333] rounded-3xl w-full max-w-md shadow-2xl overflow-hidden"
+        className="bg-[#111] border border-[#333] rounded-3xl w-full max-w-lg shadow-2xl flex flex-col max-h-[90vh]"
       >
-        <div className="p-6 border-b border-[#333] bg-[#1a1a1a]">
+        <div className="p-6 border-b border-[#333] bg-[#1a1a1a] rounded-t-3xl shrink-0">
           <h2 className="text-xl font-bold flex items-center gap-2">
             <Play size={20} className="text-blue-500" />
             Select Roles to Scrape
@@ -771,7 +771,7 @@ function ParallelRolePickerModal({ onClose, onStart, loading, jobRoles, location
           </p>
         </div>
 
-        <div className="p-6 space-y-6">
+        <div className="p-6 space-y-6 overflow-y-auto flex-1">
           <div className="flex flex-wrap gap-2">
             {jobRoles.map(role => {
               const active = selected.has(role);
@@ -849,7 +849,7 @@ function ParallelRolePickerModal({ onClose, onStart, loading, jobRoles, location
           </div>
         </div>
 
-        <div className="p-6 bg-[#1a1a1a] border-t border-[#333] flex gap-3">
+        <div className="p-6 bg-[#1a1a1a] border-t border-[#333] flex gap-3 shrink-0 rounded-b-3xl">
           <button onClick={onClose} className="cursor-pointer flex-1 py-3 rounded-xl bg-[#222] hover:bg-[#2a2a2a] font-bold transition-all">
             Cancel
           </button>

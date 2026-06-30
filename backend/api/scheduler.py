@@ -40,7 +40,7 @@ def auto_scrape_job():
             return
 
         random.shuffle(roles)
-        terms = roles[:1]
+        terms = roles[:3]
 
         print(f"[AutoScrape] Triggering scrape for: {terms}")
         thread = threading.Thread(
@@ -59,9 +59,9 @@ def start():
     scheduler.add_job(
         auto_scrape_job,
         trigger="interval",
-        minutes=2,
+        minutes=15,
         id="auto_scrape",
         replace_existing=True,
     )
     scheduler.start()
-    print("[AutoScrape] Scheduler started — fires every 2 minutes.")
+    print("[AutoScrape] Scheduler started — fires every 15 minutes.")
