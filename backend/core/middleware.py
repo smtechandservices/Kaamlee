@@ -21,7 +21,7 @@ class RequestLogMiddleware:
         duration_ms = int((time.monotonic() - start) * 1000)
 
         ip = get_client_ip(request)
-        user = request.user.username if hasattr(request, 'user') and request.user.is_authenticated else 'anon'
+        user = request.user.username if hasattr(request, 'user') and request.user.is_authenticated else 'unknown'
 
         logger.info(
             '%s %s %s %s %dms',
