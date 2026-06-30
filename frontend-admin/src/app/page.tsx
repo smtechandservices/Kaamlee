@@ -72,6 +72,8 @@ export default function AdminDashboard() {
   const router = useRouter();
   // Tracks whether a scrape is active — interval only hits backend when true
   const isScrapingRef = React.useRef(false);
+  // Keeps a current-value reference to jobRoles for use inside intervals
+  const jobRolesRef = React.useRef<string[]>([]);
 
   const fetchData = async () => {
     const token = localStorage.getItem('admin_token');
@@ -166,6 +168,42 @@ export default function AdminDashboard() {
     };
 
     const interval = setInterval(pollStats, 10000);
+    return () => clearInterval(interval);
+  }, []);
+
+  // Sync jobRoles into a ref so the auto-scrape interval always sees the latest value
+  useEffect(() => { jobRolesRef.current = jobRoles; }, [jobRoles]);
+
+  // Auto-scrape watchdog: every 10 minutes, if the scraper is idle, pick random roles
+  // (1–3) from all available roles and trigger across all countries automatically.
+  useEffect(() => {
+    const autoCheck = async () => {
+      if (isScrapingRef.current) return;
+      const roles = jobRolesRef.current;
+      if (roles.length === 0) return;
+
+      const token = localStorage.getItem('admin_token');
+      if (!token) return;
+
+      const shuffled = [...roles].sort(() => Math.random() - 0.5);
+      const count = Math.floor(Math.random() * 3) + 1; // 1, 2, or 3
+      const terms = shuffled.slice(0, count);
+
+      try {
+        const res = await fetch(`${API_BASE}/trigger-scrape/`, {
+          method: 'POST',
+          headers: { 'Authorization': `Token ${token}`, 'Content-Type': 'application/json' },
+          body: JSON.stringify({ search_terms: terms, results_wanted: 5 }),
+        });
+        if (res.ok) {
+          isScrapingRef.current = true;
+        }
+      } catch {
+        // silently ignore — will retry on next tick
+      }
+    };
+
+    const interval = setInterval(autoCheck, 600000); // check every 10 minutes
     return () => clearInterval(interval);
   }, []);
 
@@ -535,6 +573,7 @@ export default function AdminDashboard() {
             onStart={triggerScrape}
             loading={triggering}
             jobRoles={jobRoles}
+            locations={locations}
           />
         )}
       </AnimatePresence>
@@ -675,15 +714,19 @@ function LogsModal({ onClose, stats, activeSessions }: { onClose: () => void, st
   );
 }
 
-function ParallelRolePickerModal({ onClose, onStart, loading, jobRoles }: {
+function ParallelRolePickerModal({ onClose, onStart, loading, jobRoles, locations }: {
   onClose: () => void;
   onStart: (terms: string[], limit: number, country: string | null) => void;
   loading: boolean;
   jobRoles: string[];
+  locations: Location[];
 }) {
   const [selected, setSelected] = useState<Set<string>>(new Set());
   const [limit, setLimit] = useState(5);
   const [customInput, setCustomInput] = useState('');
+
+  const availableCountries = Array.from(new Set(locations.map(l => l.country))).sort();
+  const [selectedCountry, setSelectedCountry] = useState<string>('All');
 
   const MAX = 3;
 
@@ -775,6 +818,20 @@ function ParallelRolePickerModal({ onClose, onStart, loading, jobRoles }: {
           </div>
 
           <div>
+            <label className="text-xs font-bold uppercase tracking-wider text-[#555] mb-2 block">Location (country)</label>
+            <select
+              value={selectedCountry}
+              onChange={e => setSelectedCountry(e.target.value)}
+              className="w-full bg-[#0a0a0a] border border-[#222] rounded-xl px-4 py-2.5 text-sm text-white focus:border-blue-500 outline-none transition-all appearance-none cursor-pointer"
+            >
+              <option value="All">All Countries</option>
+              {availableCountries.map(country => (
+                <option key={country} value={country}>{country}</option>
+              ))}
+            </select>
+          </div>
+
+          <div>
             <label className="text-xs font-bold uppercase tracking-wider text-[#555] mb-2 block">Results per location</label>
             <div className="grid grid-cols-2 gap-3">
               {[5, 10].map(val => (
@@ -798,7 +855,7 @@ function ParallelRolePickerModal({ onClose, onStart, loading, jobRoles }: {
           </button>
           <button
             disabled={loading || selected.size === 0}
-            onClick={() => onStart(Array.from(selected), limit, null)}
+            onClick={() => onStart(Array.from(selected), limit, selectedCountry === 'All' ? null : selectedCountry)}
             className="cursor-pointer flex-1 py-3 rounded-xl bg-blue-600 hover:bg-blue-500 disabled:opacity-40 disabled:cursor-not-allowed font-bold transition-all flex items-center justify-center gap-2"
           >
             {loading ? <Loader2 size={18} className="animate-spin" /> : <Play size={18} />}
