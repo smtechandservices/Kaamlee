@@ -10,10 +10,12 @@ from django.conf import settings
 def auto_scrape_job():
     from .models import ScrapeSession
     from .scraper_utils import run_parallel_role_scraping
+    from django.db import transaction
 
-    if ScrapeSession.objects.filter(status='running').exists():
-        print("[AutoScrape] Already running — skipping.")
-        return
+    with transaction.atomic():
+        if ScrapeSession.objects.filter(status='running').exists():
+            print("[AutoScrape] Already running — skipping.")
+            return
 
     roles_path = os.path.join(settings.BASE_DIR, 'api', 'roles.json')
     try:
