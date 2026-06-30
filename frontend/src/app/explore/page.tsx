@@ -10,6 +10,19 @@ import Link from 'next/link';
 import { useAuth } from '@/context/AuthContext';
 import { useRouter } from 'next/navigation';
 
+const CACHE_TTL = 2 * 60 * 1000;
+const _cache: Record<string, { data: any; ts: number }> = {};
+
+function getCached(key: string) {
+  const entry = _cache[key];
+  if (entry && Date.now() - entry.ts < CACHE_TTL) return entry.data;
+  return null;
+}
+
+function setCache(key: string, data: any) {
+  _cache[key] = { data, ts: Date.now() };
+}
+
 function useDebounce<T>(value: T, delay: number): T {
   const [debounced, setDebounced] = useState<T>(value);
   useEffect(() => {
@@ -58,14 +71,32 @@ export default function ExplorePage() {
     const fetchMeta = async () => {
       if (!token) return;
       try {
-        const locsRes = await fetch(`${process.env.NEXT_PUBLIC_API_URL}/api/locations/`, {
-          headers: { 'Authorization': `Token ${token}` }
-        });
-        if (locsRes.status === 401) { logout(); return; }
-        if (locsRes.ok) setLocations(await locsRes.json());
+        const cachedLocs = getCached('locations');
+        if (cachedLocs) {
+          setLocations(cachedLocs);
+        } else {
+          const locsRes = await fetch(`${process.env.NEXT_PUBLIC_API_URL}/api/locations/`, {
+            headers: { 'Authorization': `Token ${token}` }
+          });
+          if (locsRes.status === 401) { logout(); return; }
+          if (locsRes.ok) {
+            const data = await locsRes.json();
+            setCache('locations', data);
+            setLocations(data);
+          }
+        }
 
-        const rolesRes = await fetch(`${process.env.NEXT_PUBLIC_API_URL}/api/roles/`);
-        if (rolesRes.ok) setJobRoles(await rolesRes.json());
+        const cachedRoles = getCached('roles');
+        if (cachedRoles) {
+          setJobRoles(cachedRoles);
+        } else {
+          const rolesRes = await fetch(`${process.env.NEXT_PUBLIC_API_URL}/api/roles/`);
+          if (rolesRes.ok) {
+            const data = await rolesRes.json();
+            setCache('roles', data);
+            setJobRoles(data);
+          }
+        }
       } catch (error) {
         console.error('Failed to fetch meta:', error);
       }
@@ -77,6 +108,12 @@ export default function ExplorePage() {
   useEffect(() => {
     const fetchJobs = async () => {
       if (!token) return;
+      const cacheKey = `jobs-${activeCountry}`;
+      const cachedJobs = getCached(cacheKey);
+      if (cachedJobs) {
+        setJobs(cachedJobs);
+        return;
+      }
       setIsFetchingJobs(true);
       setJobs([]);
       try {
@@ -90,11 +127,13 @@ export default function ExplorePage() {
         if (!jobsRes.ok) return;
         const jobsData = await jobsRes.json();
         const jobsList = Array.isArray(jobsData) ? jobsData : (jobsData.results || []);
-        setJobs(jobsList.map((job: any) => ({
+        const mapped = jobsList.map((job: any) => ({
           ...job,
           location: job.location_name,
           locationId: job.location,
-        })));
+        }));
+        setCache(cacheKey, mapped);
+        setJobs(mapped);
       } catch (error) {
         console.error('Failed to fetch jobs:', error);
       } finally {
@@ -394,8 +433,35 @@ export default function ExplorePage() {
           
           <AnimatePresence mode="wait">
             {isFetchingJobs ? (
-              <div className="flex-1 flex items-center justify-center">
-                <div className="w-6 h-6 border-2 border-green-500 border-t-transparent rounded-full animate-spin" />
+              <div className="flex-1 overflow-y-auto p-4 sm:p-5 space-y-4 custom-scrollbar">
+                {Array.from({ length: 6 }).map((_, i) => (
+                  <div key={i} className="p-6 rounded-2xl border border-[#222] bg-[#111]">
+                    <div className="flex gap-5 items-start">
+                      <div className="flex flex-col items-center shrink-0 gap-3">
+                        <div className="w-13 h-13 sm:w-14 sm:h-14 rounded-xl bg-[#1e1e1e] animate-pulse" />
+                        <div className="w-full h-8 rounded-xl bg-[#1e1e1e] animate-pulse" />
+                        <div className="w-full h-8 rounded-xl bg-[#1e1e1e] animate-pulse" />
+                      </div>
+                      <div className="flex-1 min-w-0 space-y-3">
+                        <div className="h-4 bg-[#1e1e1e] rounded-lg animate-pulse w-3/4" />
+                        <div className="h-3 bg-[#1e1e1e] rounded-lg animate-pulse w-1/2" />
+                        <div className="flex gap-2">
+                          <div className="h-5 w-24 bg-[#1e1e1e] rounded-full animate-pulse" />
+                          <div className="h-5 w-16 bg-[#1e1e1e] rounded-full animate-pulse" />
+                          <div className="h-5 w-20 bg-[#1e1e1e] rounded-full animate-pulse" />
+                        </div>
+                        <div className="space-y-1.5">
+                          <div className="h-3 bg-[#1e1e1e] rounded animate-pulse w-full" />
+                          <div className="h-3 bg-[#1e1e1e] rounded animate-pulse w-5/6" />
+                        </div>
+                        <div className="flex justify-between pt-2">
+                          <div className="h-3 w-28 bg-[#1e1e1e] rounded animate-pulse" />
+                          <div className="h-3 w-16 bg-[#1e1e1e] rounded animate-pulse" />
+                        </div>
+                      </div>
+                    </div>
+                  </div>
+                ))}
               </div>
             ) : null}
             <motion.div
