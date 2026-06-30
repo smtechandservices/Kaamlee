@@ -48,6 +48,7 @@ INSTALLED_APPS = [
     'corsheaders',
     'api',
     'payments',
+    'django_apscheduler',
 ]
 
 REST_FRAMEWORK = {
