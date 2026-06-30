@@ -445,7 +445,7 @@ export default function AdminDashboard() {
           <StatCard
             icon={<AlertCircle className="text-orange-500" />}
             label="Last Run"
-            value={stats?.last_scrape_session?.start_time ? new Date(stats.last_scrape_session.start_time).toLocaleString('en-IN', { timeZone: 'Asia/Kolkata', day: '2-digit', month: 'short', hour: '2-digit', minute: '2-digit' }) : 'Never'}
+            value={stats?.last_scrape_session?.start_time ? new Date(stats.last_scrape_session.start_time).toLocaleString('en-IN', { timeZone: 'Asia/Kolkata', day: '2-digit', month: 'short', hour: '2-digit', minute: '2-digit' }) + ' IST' : 'Never'}
           />
         </div>
 
