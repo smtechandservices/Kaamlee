@@ -1,5 +1,6 @@
 from jobspy import scrape_jobs
-from .models import Location, Job, ScrapeSession, ScrapeLog
+from .models import Location, Job, ScrapeSession, ScrapeLog, Bookmark
+from django.db import connection
 from django.core.cache import cache
 import os
 import json
@@ -167,11 +168,30 @@ def run_background_scraping(search_term="frontend developer", results_wanted=5, 
     threshold_date = threshold_dt.date()
     
     from django.db.models import Q
-    old_jobs = Job.objects.filter(
-        Q(date_posted__lt=threshold_date) | 
-        Q(date_posted__isnull=True, created_at__lt=threshold_dt)
+    old_job_ids = list(
+        Job.objects.filter(
+            Q(date_posted__lt=threshold_date) |
+            Q(date_posted__isnull=True, created_at__lt=threshold_dt)
+        ).values_list('id', flat=True)
     )
-    deleted_count, _ = old_jobs.delete()
+
+    if old_job_ids:
+        placeholders = ','.join(['%s'] * len(old_job_ids))
+        # api_generatedresume exists in the DB but has no Django model (reverted
+        # migration left the table behind). Delete its rows first so SQLite's FK
+        # check doesn't block the job deletion.
+        with connection.cursor() as cur:
+            try:
+                cur.execute(
+                    f'DELETE FROM api_generatedresume WHERE job_id IN ({placeholders})',
+                    old_job_ids,
+                )
+            except Exception:
+                pass
+        Bookmark.objects.filter(job_id__in=old_job_ids).delete()
+        deleted_count, _ = Job.objects.filter(id__in=old_job_ids).delete()
+    else:
+        deleted_count = 0
     
     # Log cleanup: Keep only the last 100 logs to prevent DB bloat
     log_count = ScrapeLog.objects.count()

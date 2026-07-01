@@ -2,6 +2,17 @@
 
 import React, { useEffect, useState } from 'react';
 import Link from 'next/link';
+
+const CACHE_TTL = 2 * 60 * 1000;
+const _cache: Record<string, { data: any; ts: number }> = {};
+function getCached(key: string) {
+  const e = _cache[key];
+  if (e && Date.now() - e.ts < CACHE_TTL) return e.data;
+  return null;
+}
+function setCache(key: string, data: any) {
+  _cache[key] = { data, ts: Date.now() };
+}
 import { motion, AnimatePresence } from 'framer-motion';
 import { ArrowRight, Search, Zap, Globe, Shield, LogOut, Briefcase, MapPin, Building2, Plus, Minus, RotateCcw, X, ExternalLink, CreditCard } from 'lucide-react';
 import { useAuth } from '@/context/AuthContext';
@@ -68,28 +79,40 @@ export default function LandingPage() {
   };
 
   useEffect(() => {
-    fetch(`${process.env.NEXT_PUBLIC_API_URL}/api/recent-jobs/`)
-      .then(res => res.json())
-      .then(data => {
-        if (Array.isArray(data)) {
-          setRecentJobs(data);
-        } else {
-          console.error("Expected array for recent jobs, got:", data);
-          setRecentJobs([]);
-        }
-      })
-      .catch(err => console.error("Error fetching recent jobs:", err));
+    const cachedJobs = getCached('recent-jobs');
+    if (cachedJobs) {
+      setRecentJobs(cachedJobs);
+    } else {
+      fetch(`${process.env.NEXT_PUBLIC_API_URL}/api/recent-jobs/`)
+        .then(res => res.json())
+        .then(data => {
+          if (Array.isArray(data)) {
+            setCache('recent-jobs', data);
+            setRecentJobs(data);
+          } else {
+            console.error("Expected array for recent jobs, got:", data);
+            setRecentJobs([]);
+          }
+        })
+        .catch(err => console.error("Error fetching recent jobs:", err));
+    }
 
-    fetch(`${process.env.NEXT_PUBLIC_API_URL}/api/stats/`)
-      .then(res => res.json())
-      .then(data => {
-        if (data && !data.error && !data.detail) {
-          setStats(data);
-        } else {
-          console.error("Invalid stats data:", data);
-        }
-      })
-      .catch(err => console.error("Error fetching stats:", err));
+    const cachedStats = getCached('stats');
+    if (cachedStats) {
+      setStats(cachedStats);
+    } else {
+      fetch(`${process.env.NEXT_PUBLIC_API_URL}/api/stats/`)
+        .then(res => res.json())
+        .then(data => {
+          if (data && !data.error && !data.detail) {
+            setCache('stats', data);
+            setStats(data);
+          } else {
+            console.error("Invalid stats data:", data);
+          }
+        })
+        .catch(err => console.error("Error fetching stats:", err));
+    }
   }, []);
 
   const timeAgo = (dateString: string | null, createdString: string | null = null) => {
