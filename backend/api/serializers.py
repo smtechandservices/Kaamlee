@@ -1,8 +1,72 @@
 import io
+import os
+import json
 import PyPDF2
+from groq import Groq
 from rest_framework import serializers
-from .models import Location, Job, ScrapeSession, ScrapeLog, Bookmark, Feedback
+from .models import Location, Job, ScrapeSession, ScrapeLog, Bookmark, Feedback, Portfolio
 from django.contrib.auth.models import User
+
+_groq = Groq(api_key=os.getenv('GROQ_API_KEY'))
+
+_PARSE_PROMPT = """You are a resume parser. Extract all information from the resume text below and return ONLY a valid JSON object with this exact structure:
+
+{
+  "name": "Full Name",
+  "role": "Current or most recent job title / self-described role",
+  "contacts": [
+    {"type": "email", "value": "email@example.com"},
+    {"type": "phone", "value": "+91 9876543210"}
+  ],
+  "links": [
+    {"label": "GitHub", "url": "https://github.com/username", "type": "github"},
+    {"label": "LinkedIn", "url": "https://linkedin.com/in/username", "type": "linkedin"},
+    {"label": "Portfolio", "url": "https://example.com", "type": "web"}
+  ],
+  "summary": "Full summary / objective / about text",
+  "skills": [
+    {"category": "Languages", "items": ["Python", "JavaScript"]},
+    {"category": "Frameworks", "items": ["Django", "React"]}
+  ],
+  "experience": [
+    {
+      "company": "Company Name",
+      "location": "City, Country",
+      "period": "Jan 2022 – Present",
+      "role": "Job Title",
+      "bullets": ["Achievement or responsibility"]
+    }
+  ],
+  "education": [
+    {
+      "institution": "University Name",
+      "degree": "B.Tech Computer Science",
+      "period": "2018 – 2022",
+      "location": "City, Country"
+    }
+  ],
+  "projects": [
+    {
+      "name": "Project Name",
+      "description": "Short description",
+      "tech": ["React", "Node.js"],
+      "bullets": ["Key feature or achievement"],
+      "url": ""
+    }
+  ],
+  "certifications": [
+    {"name": "Cert Name", "issuer": "Issuer", "date": "2023"}
+  ],
+  "achievements": ["Award or achievement"]
+}
+
+Rules:
+- Return ONLY the JSON, no markdown, no explanation
+- If a field has no data, use empty string "" or empty array []
+- Keep all bullet points from the resume, do not summarise
+- Preserve exact dates and company names
+- For skills without categories, use category ""
+"""
 
 def extract_text_from_pdf(pdf_file):
     try:
@@ -14,6 +78,28 @@ def extract_text_from_pdf(pdf_file):
     except Exception as e:
         print(f"Error extracting text: {e}")
         return ""
+
+def parse_resume_with_groq(resume_text: str) -> dict:
+    try:
+        response = _groq.chat.completions.create(
+            model="llama-3.3-70b-versatile",
+            messages=[
+                {"role": "system", "content": _PARSE_PROMPT},
+                {"role": "user", "content": resume_text[:12000]},
+            ],
+            temperature=0.1,
+            max_tokens=4096,
+        )
+        raw = response.choices[0].message.content.strip()
+        # Strip markdown code fences if model wraps with them
+        if raw.startswith("```"):
+            raw = raw.split("```")[1]
+            if raw.startswith("json"):
+                raw = raw[4:]
+        return json.loads(raw)
+    except Exception as e:
+        print(f"Groq resume parse error: {e}")
+        return {}
 
 def calculate_match(resume_text, job_title, job_description):
     if not resume_text:
@@ -74,8 +160,7 @@ class UserSerializer(serializers.ModelSerializer):
         
         if 'resume' in profile_data:
             resume_file = profile_data['resume']
-            
-            # Physically delete the old file if it exists
+
             if profile.resume and profile.resume != resume_file:
                 try:
                     profile.resume.delete(save=False)
@@ -83,14 +168,15 @@ class UserSerializer(serializers.ModelSerializer):
                     print(f"Error deleting old resume: {e}")
 
             profile.resume = resume_file
-            # Extract text
             if resume_file:
                 if resume_file.name.endswith('.pdf'):
                     profile.resume_text = extract_text_from_pdf(resume_file)
                 else:
-                    profile.resume_text = f"Resume file: {resume_file.name}"
+                    profile.resume_text = resume_file.read().decode('utf-8', errors='ignore')
+                profile.resume_parsed = parse_resume_with_groq(profile.resume_text)
             else:
                 profile.resume_text = ""
+                profile.resume_parsed = None
 
         if 'is_subscribed' in profile_data:
             profile.is_subscribed = profile_data['is_subscribed']
@@ -216,3 +302,40 @@ class ScrapeLogSerializer(serializers.ModelSerializer):
     class Meta:
         model = ScrapeLog
         fields = '__all__'
+
+
+class PortfolioSettingsSerializer(serializers.ModelSerializer):
+    """For authenticated user to GET/PATCH their own portfolio settings."""
+    has_resume = serializers.SerializerMethodField()
+
+    class Meta:
+        model = Portfolio
+        fields = ['is_public', 'template', 'theme', 'has_resume']
+        read_only_fields = ['has_resume']
+
+    def get_has_resume(self, obj):
+        # resume_text is the reliable gate — it's always set after PDF extraction
+        return bool(obj.user.profile.resume_text)
+
+
+class PublicPortfolioSerializer(serializers.ModelSerializer):
+    username = serializers.CharField(source='user.username', read_only=True)
+    resume_parsed = serializers.SerializerMethodField()
+
+    class Meta:
+        model = Portfolio
+        fields = ['username', 'resume_parsed', 'template', 'theme']
+
+    def get_resume_parsed(self, obj):
+        profile = obj.user.profile
+        # If Groq already parsed, return it
+        if profile.resume_parsed:
+            return profile.resume_parsed
+        # Fallback: parse on-demand for users who uploaded before Groq was added
+        if profile.resume_text:
+            parsed = parse_resume_with_groq(profile.resume_text)
+            if parsed:
+                profile.resume_parsed = parsed
+                profile.save(update_fields=['resume_parsed'])
+            return parsed
+        return {}

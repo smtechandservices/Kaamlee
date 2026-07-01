@@ -9,6 +9,7 @@ class Profile(models.Model):
     linkedin_url = models.URLField(max_length=500, blank=True, null=True)
     resume = models.FileField(upload_to='resumes/', blank=True, null=True)
     resume_text = models.TextField(blank=True, null=True)
+    resume_parsed = models.JSONField(blank=True, null=True)
     is_subscribed = models.BooleanField(default=False)
     subscription_expires_at = models.DateTimeField(blank=True, null=True)
 
@@ -105,3 +106,33 @@ class Feedback(models.Model):
 
     def __str__(self):
         return f"Feedback by {self.user.username} - {self.rating}/5"
+
+
+TEMPLATE_CHOICES = [
+    ('classic', 'Classic'),
+    ('bento', 'Bento'),
+]
+
+THEME_CHOICES = [
+    ('minimal', 'Minimal'),
+    ('noir', 'Noir'),
+]
+
+class Portfolio(models.Model):
+    user = models.OneToOneField(User, on_delete=models.CASCADE, related_name='portfolio')
+    is_public = models.BooleanField(default=False)
+    template = models.CharField(max_length=20, choices=TEMPLATE_CHOICES, default='classic')
+    theme = models.CharField(max_length=20, choices=THEME_CHOICES, default='noir')
+    title = models.CharField(max_length=100, blank=True)
+    bio = models.TextField(blank=True)
+    github_url = models.URLField(max_length=500, blank=True)
+    created_at = models.DateTimeField(auto_now_add=True)
+    updated_at = models.DateTimeField(auto_now=True)
+
+    def __str__(self):
+        return f"Portfolio for {self.user.username} ({self.theme})"
+
+@receiver(post_save, sender=User)
+def create_user_portfolio(sender, instance, created, **kwargs):
+    if created:
+        Portfolio.objects.get_or_create(user=instance)

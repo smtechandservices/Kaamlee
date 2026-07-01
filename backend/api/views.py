@@ -5,11 +5,11 @@ from rest_framework.decorators import action
 from rest_framework.authtoken.views import ObtainAuthToken
 from rest_framework.response import Response
 from rest_framework.authtoken.models import Token
-from .models import Location, Job, ScrapeSession, ScrapeLog, Bookmark, Feedback
+from .models import Location, Job, ScrapeSession, ScrapeLog, Bookmark, Feedback, Portfolio
 from .serializers import (
     LocationSerializer, JobSerializer, ScrapeSessionSerializer,
     ScrapeLogSerializer, UserSerializer, RegisterSerializer, RecentJobSerializer,
-    FeedbackSerializer
+    FeedbackSerializer, PortfolioSettingsSerializer, PublicPortfolioSerializer
 )
 from django.db.models import Count, Exists, OuterRef, Prefetch
 from django.core.cache import cache
@@ -323,3 +323,58 @@ class AdminFeedbackView(generics.ListAPIView):
         if user_id:
             queryset = queryset.filter(user_id=user_id)
         return queryset
+
+
+class PublicPortfolioView(views.APIView):
+    """GET /api/portfolio/<username>/ — public, no auth required."""
+    permission_classes = [permissions.AllowAny]
+
+    def get(self, request, username):
+        try:
+            user = User.objects.select_related('profile', 'portfolio').get(username=username)
+        except User.DoesNotExist:
+            return Response({'error': 'Not found.'}, status=404)
+
+        profile = getattr(user, 'profile', None)
+        if not profile or not profile.resume_text:
+            return Response({'error': 'Portfolio not available.'}, status=404)
+
+        portfolio = getattr(user, 'portfolio', None)
+        if not portfolio:
+            return Response({'error': 'Portfolio not found.'}, status=404)
+
+        # Allow owner to view their own private portfolio
+        is_owner = request.user.is_authenticated and request.user == user
+        if not portfolio.is_public and not is_owner:
+            return Response({'error': 'Portfolio not public.'}, status=404)
+
+        serializer = PublicPortfolioSerializer(portfolio)
+        return Response(serializer.data)
+
+
+class MyPortfolioView(generics.RetrieveUpdateAPIView):
+    """GET/PATCH /api/portfolio/me/ — authenticated user managing their own portfolio."""
+    serializer_class = PortfolioSettingsSerializer
+    permission_classes = [permissions.IsAuthenticated]
+
+    def get_object(self):
+        portfolio, _ = Portfolio.objects.get_or_create(user=self.request.user)
+        return portfolio
+
+
+class MyPortfolioContentView(views.APIView):
+    """GET/PATCH /api/portfolio/content/ — read and update the parsed resume data."""
+    permission_classes = [permissions.IsAuthenticated]
+
+    def get(self, request):
+        profile = request.user.profile
+        return Response({'resume_parsed': profile.resume_parsed or {}})
+
+    def patch(self, request):
+        profile = request.user.profile
+        resume_parsed = request.data.get('resume_parsed')
+        if resume_parsed is None:
+            return Response({'error': 'resume_parsed is required.'}, status=400)
+        profile.resume_parsed = resume_parsed
+        profile.save(update_fields=['resume_parsed'])
+        return Response({'resume_parsed': profile.resume_parsed})

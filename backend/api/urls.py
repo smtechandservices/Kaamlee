@@ -5,7 +5,7 @@ from .views import (
     LocationViewSet, JobViewSet, StatsView, TriggerScrapeView,
     StopScrapeView, ForceResetView, LogsView, SignupView, UserView, RecentJobsView,
     CheckExistenceView, AdminLoginView, AdminUserViewSet, RolesView,
-    FeedbackView, AdminFeedbackView
+    FeedbackView, AdminFeedbackView, PublicPortfolioView, MyPortfolioView, MyPortfolioContentView
 )
 
 router = DefaultRouter()
@@ -35,6 +35,13 @@ urlpatterns = [
     # ==========================================
     path('feedback/', FeedbackView.as_view(), name='feedback'),
     path('admin/feedback/', AdminFeedbackView.as_view(), name='admin-feedback'),
+
+    # ==========================================
+    # PORTFOLIO
+    # ==========================================
+    path('portfolio/me/', MyPortfolioView.as_view(), name='portfolio-me'),
+    path('portfolio/content/', MyPortfolioContentView.as_view(), name='portfolio-content'),
+    path('portfolio/<str:username>/', PublicPortfolioView.as_view(), name='portfolio-public'),
 
     # ==========================================
     # SCRAPER & ADMIN
