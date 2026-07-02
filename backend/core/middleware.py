@@ -1,3 +1,4 @@
+import json
 import logging
 import time
 
@@ -59,6 +60,12 @@ def build_response_body(response, max_chars=4000):
         body = response.content.decode('utf-8')
     except UnicodeDecodeError:
         return '<non-utf8 response body>'
+
+    if 'json' in content_type:
+        try:
+            body = json.dumps(json.loads(body), indent=2, ensure_ascii=False)
+        except ValueError:
+            pass
 
     if len(body) > max_chars:
         return f'{body[:max_chars]}\n... [truncated, {len(body)} chars total]'
