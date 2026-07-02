@@ -172,15 +172,21 @@ LOGGING = {
     'disable_existing_loggers': False,
     'formatters': {
         'request': {
-            'format': '[{asctime}] {levelname} {message}',
+            'format': '[{asctime}] {levelname} {message} status={status_code}',
             'style': '{',
             'datefmt': '%Y-%m-%d %H:%M:%S',
+        },
+    },
+    'filters': {
+        'default_status_code': {
+            '()': 'core.middleware.DefaultStatusCodeFilter',
         },
     },
     'handlers': {
         'console': {
             'class': 'logging.StreamHandler',
             'formatter': 'request',
+            'filters': ['default_status_code'],
         },
         'file': {
             'class': 'logging.handlers.RotatingFileHandler',
@@ -188,6 +194,7 @@ LOGGING = {
             'maxBytes': int(2.5 * 1024 * 1024),  # 2.5 MB
             'backupCount': 1,
             'formatter': 'request',
+            'filters': ['default_status_code'],
         },
     },
     'loggers': {

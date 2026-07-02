@@ -59,6 +59,16 @@ class JobPagination(PageNumberPagination):
     page_size_query_param = 'page_size'
     max_page_size = 100
 
+_JOBS_CACHE_TTL = 120  # 2 minutes — matches the frontend's own client-side cache TTL
+
+def _jobs_cache_version(user_id):
+    """A per-user counter, bumped on bookmark changes, folded into cache keys below
+    so a toggle invalidates that user's cached jobs/map_pins without tracking keys."""
+    return cache.get(f'jobs_cache_v:{user_id}', 1)
+
+def _bump_jobs_cache_version(user_id):
+    cache.set(f'jobs_cache_v:{user_id}', _jobs_cache_version(user_id) + 1, None)
+
 class JobViewSet(viewsets.ModelViewSet):
     serializer_class = JobSerializer
     permission_classes = [permissions.IsAuthenticated]
@@ -68,6 +78,16 @@ class JobViewSet(viewsets.ModelViewSet):
         'USA': 'United States',
         'UK': 'United Kingdom',
     }
+
+    def _cache_key(self, request, prefix, scoped_to_user):
+        """scoped_to_user=False lets requests that don't depend on the caller's
+        bookmarks (e.g. map_pins without bookmarked_only) share one cache entry
+        across users instead of each user paying for their own copy."""
+        query_str = '&'.join(f'{k}={v}' for k, v in sorted(request.query_params.items()))
+        if scoped_to_user:
+            version = _jobs_cache_version(request.user.id)
+            return f'{prefix}:u{request.user.id}:v{version}:{query_str}'
+        return f'{prefix}:anon:{query_str}'
 
     def _filter_queryset(self, queryset):
         country = self.request.query_params.get('country')
@@ -117,10 +137,24 @@ class JobViewSet(viewsets.ModelViewSet):
 
         return queryset
 
+    def list(self, request, *args, **kwargs):
+        # Every job carries an is_bookmarked flag for this user, so the cache is
+        # always scoped per-user and invalidated via the version bump below.
+        cache_key = self._cache_key(request, 'api_jobs', scoped_to_user=True)
+        data = cache.get(cache_key)
+        if data is None:
+            queryset = self.filter_queryset(self.get_queryset())
+            page = self.paginate_queryset(queryset)
+            serializer = self.get_serializer(page, many=True)
+            data = self.get_paginated_response(serializer.data).data
+            cache.set(cache_key, data, _JOBS_CACHE_TTL)
+        return Response(data)
+
     @action(detail=True, methods=['post'])
     def toggle_bookmark(self, request, pk=None):
         job = self.get_object()
         bookmark, created = Bookmark.objects.get_or_create(user=request.user, job=job)
+        _bump_jobs_cache_version(request.user.id)
         if not created:
             bookmark.delete()
             return Response({'status': 'unbookmarked', 'is_bookmarked': False})
@@ -129,16 +163,49 @@ class JobViewSet(viewsets.ModelViewSet):
     @action(detail=False, methods=['get'])
     def map_pins(self, request):
         """All matching job coordinates, unpaginated — the map needs the full point
-        set to draw correct clusters, but only needs a handful of fields per job."""
+        set to draw correct clusters, but only needs a handful of fields per job.
+        Uses .values() with a joined location fallback instead of the serializer so a
+        large result set doesn't do one extra query per row (that N+1 is cheap on local
+        SQLite but multiplies into a request timeout against a networked Postgres)."""
+        bookmarked_only = request.query_params.get('bookmarked_only') == 'true'
+        cache_key = self._cache_key(request, 'api_map_pins', scoped_to_user=bookmarked_only)
+        pins = cache.get(cache_key)
+        if pins is not None:
+            return Response(pins)
+
         queryset = Job.objects.filter(latitude__isnull=False, longitude__isnull=False)
         queryset = self._filter_queryset(queryset)
 
-        bookmarked_only = request.query_params.get('bookmarked_only')
-        if bookmarked_only == 'true':
+        if bookmarked_only:
             queryset = queryset.filter(bookmarked_by__user=request.user)
 
-        serializer = JobMapPinSerializer(queryset, many=True)
-        return Response(serializer.data)
+        rows = queryset.values(
+            'id', 'title', 'company', 'location_name', 'job_type', 'job_url',
+            'latitude', 'longitude',
+            'location__city', 'location__state', 'location__country',
+        )
+
+        pins = []
+        for row in rows:
+            name = row['location_name']
+            if not name or str(name).strip().lower() in ('', 'nan', 'none'):
+                parts = [p for p in (row['location__city'], row['location__state'], row['location__country']) if p]
+                name = ', '.join(parts) if parts else None
+            else:
+                name = name.strip()
+            pins.append({
+                'id': row['id'],
+                'title': row['title'],
+                'company': row['company'],
+                'location_name': name,
+                'job_type': row['job_type'],
+                'job_url': row['job_url'],
+                'latitude': row['latitude'],
+                'longitude': row['longitude'],
+            })
+
+        cache.set(cache_key, pins, _JOBS_CACHE_TTL)
+        return Response(pins)
 
 
 class CheckExistenceView(views.APIView):
