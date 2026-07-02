@@ -46,6 +46,25 @@ def build_curl_command(request):
     return ' \\\n     '.join(parts)
 
 
+def build_response_body(response, max_chars=4000):
+    """Best-effort text dump of a response body, for log readability."""
+    if getattr(response, 'streaming', False):
+        return '<streaming response — body not logged>'
+
+    content_type = response.get('Content-Type', '')
+    if not any(t in content_type for t in ('json', 'text', 'xml')):
+        return f"<{content_type or 'binary'} response, {len(response.content)} bytes — body not logged>"
+
+    try:
+        body = response.content.decode('utf-8')
+    except UnicodeDecodeError:
+        return '<non-utf8 response body>'
+
+    if len(body) > max_chars:
+        return f'{body[:max_chars]}\n... [truncated, {len(body)} chars total]'
+    return body
+
+
 class RequestLogMiddleware:
     def __init__(self, get_response):
         self.get_response = get_response
@@ -59,13 +78,14 @@ class RequestLogMiddleware:
         user = request.user.username if hasattr(request, 'user') and request.user.is_authenticated else 'unknown'
 
         logger.info(
-            '%s %s %s %s %dms\n%s\n%s',
+            '%s %s %s %s %dms\n%s\n-- response --\n%s\n%s',
             ip,
             user,
             request.method,
             request.get_full_path(),
             duration_ms,
             build_curl_command(request),
+            build_response_body(response),
             '-' * 80,
             extra={'status_code': response.status_code},
         )
