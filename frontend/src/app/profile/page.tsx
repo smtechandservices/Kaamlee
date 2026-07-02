@@ -55,6 +55,7 @@ export default function ProfilePage() {
   const [portfolioTheme, setPortfolioTheme] = useState<Theme>('noir');
   const [portfolioHasResume, setPortfolioHasResume] = useState(false);
   const [isSavingPortfolio, setIsSavingPortfolio] = useState(false);
+  const [isTogglingPublic, setIsTogglingPublic] = useState(false);
   const [portfolioSuccess, setPortfolioSuccess] = useState(false);
   const [linkCopied, setLinkCopied] = useState(false);
 
@@ -87,6 +88,25 @@ export default function ProfilePage() {
       })
       .catch(() => {});
   }, [token]);
+
+  const handleTogglePublic = async () => {
+    const next = !portfolioPublic;
+    setPortfolioPublic(next);
+    setIsTogglingPublic(true);
+    try {
+      await fetch(`${process.env.NEXT_PUBLIC_API_URL}/api/portfolio/me/`, {
+        method: 'PATCH',
+        headers: { 'Content-Type': 'application/json', Authorization: `Token ${token}` },
+        body: JSON.stringify({ is_public: next }),
+      });
+      setPortfolioSuccess(true);
+      setTimeout(() => setPortfolioSuccess(false), 3000);
+    } catch {
+      setPortfolioPublic(!next);
+    } finally {
+      setIsTogglingPublic(false);
+    }
+  };
 
   const handleSavePortfolio = async () => {
     setIsSavingPortfolio(true);
@@ -212,8 +232,8 @@ export default function ProfilePage() {
                   <p className="text-xs font-bold text-white">Make portfolio public</p>
                   <p className="text-[10px] text-[#555] mt-0.5">Anyone with your link can view it</p>
                 </div>
-                <button type="button" onClick={() => setPortfolioPublic((v) => !v)}
-                  className={`relative w-12 h-6 rounded-full transition-colors cursor-pointer ${portfolioPublic ? 'bg-green-500' : 'bg-[#333]'}`}>
+                <button type="button" onClick={handleTogglePublic} disabled={isTogglingPublic}
+                  className={`relative w-12 h-6 rounded-full transition-colors cursor-pointer disabled:opacity-50 ${portfolioPublic ? 'bg-green-500' : 'bg-[#333]'}`}>
                   <span className={`absolute top-1 w-4 h-4 rounded-full bg-white transition-all ${portfolioPublic ? 'left-7' : 'left-1'}`} />
                 </button>
               </div>
