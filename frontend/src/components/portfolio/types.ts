@@ -61,5 +61,5 @@ export interface PortfolioData {
   username: string;
   resume_parsed: ResumeParsed;
   template: 'classic' | 'bento';
-  theme: 'minimal' | 'noir';
+  theme: 'minimal' | 'noir' | 'noir-violet' | 'minimal-violet' | 'noir-blue' | 'minimal-blue';
 }

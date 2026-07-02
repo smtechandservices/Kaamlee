@@ -9,7 +9,7 @@ import { useAuth } from '@/context/AuthContext';
 import Link from 'next/link';
 
 type Template = 'classic' | 'bento';
-type Theme = 'minimal' | 'noir';
+type Theme = 'minimal' | 'noir' | 'noir-violet' | 'minimal-violet' | 'noir-blue' | 'minimal-blue';
 
 const TEMPLATES: {
   id: Template; label: string; preview: string; themes: { id: Theme; label: string; dark: boolean; accent: string }[];
@@ -24,8 +24,13 @@ const TEMPLATES: {
   },
   {
     id: 'bento', label: 'Bento',
-    preview: 'Asymmetric grid · glassmorphism · violet accent',
-    themes: [],
+    preview: 'Asymmetric grid · glassmorphism',
+    themes: [
+      { id: 'noir-violet',    label: 'Noir Violet',    dark: true,  accent: '#7c3aed' },
+      { id: 'minimal-violet', label: 'Minimal Violet', dark: false, accent: '#7c3aed' },
+      { id: 'noir-blue',      label: 'Noir Blue',       dark: true,  accent: '#3b82f6' },
+      { id: 'minimal-blue',   label: 'Minimal Blue',    dark: false, accent: '#2563eb' },
+    ],
   },
 ];
 
@@ -251,7 +256,13 @@ export default function ProfilePage() {
                 <p className="text-[10px] font-bold text-[#555] uppercase tracking-widest">Choose a template</p>
                 <div className="grid grid-cols-2 gap-3">
                   {TEMPLATES.map((tmpl) => (
-                    <button key={tmpl.id} type="button" onClick={() => setPortfolioTemplate(tmpl.id)}
+                    <button key={tmpl.id} type="button" onClick={() => {
+                        setPortfolioTemplate(tmpl.id);
+                        const validThemeIds = tmpl.themes.map(th => th.id);
+                        if (validThemeIds.length && !validThemeIds.includes(portfolioTheme)) {
+                          setPortfolioTheme(validThemeIds[0]);
+                        }
+                      }}
                       className={`cursor-pointer rounded-2xl p-4 text-left transition-all border ${
                         portfolioTemplate === tmpl.id ? 'border-green-500 bg-green-500/5' : 'border-[#222] bg-[#0a0a0a] hover:border-[#333]'
                       }`}>
@@ -287,17 +298,19 @@ export default function ProfilePage() {
                 </div>
 
                 {/* Theme picker — only for templates that have theme variants */}
-                {portfolioTemplate === 'classic' && (
+                {TEMPLATES.find(t => t.id === portfolioTemplate)!.themes.length > 0 && (
                   <div>
                     <p className="text-[10px] font-bold text-[#555] uppercase tracking-widest mb-3">Color theme</p>
                     <div className="grid grid-cols-2 gap-3">
-                      {TEMPLATES.find(t => t.id === 'classic')!.themes.map((th) => (
+                      {TEMPLATES.find(t => t.id === portfolioTemplate)!.themes.map((th) => (
                         <button key={th.id} type="button" onClick={() => setPortfolioTheme(th.id)}
                           className={`cursor-pointer rounded-2xl p-4 text-left transition-all border ${
                             portfolioTheme === th.id ? 'border-green-500 bg-green-500/5' : 'border-[#222] bg-[#0a0a0a] hover:border-[#333]'
                           }`}>
-                          <div className="w-full h-8 rounded-lg mb-3"
-                            style={{ background: th.dark ? '#0a0a0a' : '#f5f5f5', border: `1px solid ${th.dark ? '#222' : '#e0e0e0'}` }} />
+                          <div className="w-full h-8 rounded-lg mb-3 relative overflow-hidden"
+                            style={{ background: th.dark ? '#0a0a0a' : '#f5f5f5', border: `1px solid ${th.dark ? '#222' : '#e0e0e0'}` }}>
+                            <span className="absolute right-1.5 top-1.5 w-3 h-3 rounded-full" style={{ background: th.accent }} />
+                          </div>
                           <p className="text-xs font-black text-white">{th.label}</p>
                         </button>
                       ))}

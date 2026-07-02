@@ -116,6 +116,10 @@ TEMPLATE_CHOICES = [
 THEME_CHOICES = [
     ('minimal', 'Minimal'),
     ('noir', 'Noir'),
+    ('noir-violet', 'Noir Violet'),
+    ('minimal-violet', 'Minimal Violet'),
+    ('noir-blue', 'Noir Blue'),
+    ('minimal-blue', 'Minimal Blue'),
 ]
 
 class Portfolio(models.Model):
