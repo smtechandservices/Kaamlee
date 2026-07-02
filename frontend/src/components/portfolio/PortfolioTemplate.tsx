@@ -1,6 +1,7 @@
 'use client';
 
 import { useEffect, useState, useCallback } from 'react';
+import { useRouter } from 'next/navigation';
 import { motion, AnimatePresence } from 'framer-motion';
 import { Pencil, X, Plus, Trash2, Save, Loader2, CheckCircle2, ChevronDown, ChevronUp } from 'lucide-react';
 import type { PortfolioData, ResumeParsed } from './types';
@@ -240,6 +241,7 @@ function EditPanel({ draft, setDraft, onSave, onClose, saving, saved }: {
 
 // ─── Switcher (main export) ───────────────────────────────────────────────────────
 export default function PortfolioTemplate({ data }: { data: PortfolioData }) {
+  const router = useRouter();
   const [r, setR] = useState<ResumeParsed>(data.resume_parsed ?? ({} as ResumeParsed));
   const [isOwner, setIsOwner] = useState(false);
   const [editOpen, setEditOpen] = useState(false);
@@ -251,16 +253,20 @@ export default function PortfolioTemplate({ data }: { data: PortfolioData }) {
   useEffect(() => {
     const params = new URLSearchParams(window.location.search);
     if (params.get('edit') !== '1') return;
+
+    const stripEditParam = () => router.replace(window.location.pathname, { scroll: false });
+
     const token = localStorage.getItem('kaamlee_edit_token') || sessionStorage.getItem('kaamlee_token');
     localStorage.removeItem('kaamlee_edit_token');
-    if (!token) return;
+    if (!token) { stripEditParam(); return; }
     const apiUrl = process.env.NEXT_PUBLIC_API_URL || 'http://localhost:8000';
     fetch(`${apiUrl}/api/user/`, { headers: { Authorization: `Token ${token}` } })
       .then(res => res.ok ? res.json() : null)
       .then(u => {
         if (u?.username === data.username) { setIsOwner(true); setAuthToken(token); setEditOpen(true); }
-      }).catch(() => {});
-  }, [data.username]);
+        else { stripEditParam(); }
+      }).catch(() => stripEditParam());
+  }, [data.username, router]);
 
   const handleSave = useCallback(async () => {
     setSaving(true);

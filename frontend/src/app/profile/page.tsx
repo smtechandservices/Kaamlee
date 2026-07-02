@@ -51,6 +51,7 @@ export default function ProfilePage() {
   const [portfolioHasResume, setPortfolioHasResume] = useState(false);
   const [isSavingPortfolio, setIsSavingPortfolio] = useState(false);
   const [portfolioSuccess, setPortfolioSuccess] = useState(false);
+  const [linkCopied, setLinkCopied] = useState(false);
 
   useEffect(() => {
     if (!isAuthLoading && !token) {
@@ -219,16 +220,29 @@ export default function ProfilePage() {
                   <span className="text-xs text-[#555] font-mono truncate">
                     kaamlee.in/portfolio/{user.username}
                   </span>
-                  <button
-                    type="button"
-                    onClick={() => {
-                      const token = sessionStorage.getItem('kaamlee_token');
-                      if (token) localStorage.setItem('kaamlee_edit_token', token);
-                      window.open(`/portfolio/${user.username}?edit=1`, '_blank');
-                    }}
-                    className="cursor-pointer shrink-0 flex items-center gap-1 text-[10px] text-green-500 hover:text-green-400 font-bold uppercase tracking-widest">
-                    <ExternalLink className="w-3 h-3" /> Preview
-                  </button>
+                  <div className="flex items-center gap-3 shrink-0">
+                    <button
+                      type="button"
+                      onClick={() => {
+                        navigator.clipboard.writeText(`https://kaamlee.in/portfolio/${user.username}`);
+                        setLinkCopied(true);
+                        setTimeout(() => setLinkCopied(false), 2000);
+                      }}
+                      className="cursor-pointer flex items-center gap-1 text-[10px] text-[#888] hover:text-white font-bold uppercase tracking-widest">
+                      {linkCopied ? <CheckCircle2 className="w-3 h-3 text-green-500" /> : <LinkIcon className="w-3 h-3" />}
+                      {linkCopied ? 'Copied' : 'Copy'}
+                    </button>
+                    <button
+                      type="button"
+                      onClick={() => {
+                        const token = sessionStorage.getItem('kaamlee_token');
+                        if (token) localStorage.setItem('kaamlee_edit_token', token);
+                        window.open(`/portfolio/${user.username}?edit=1`, '_blank');
+                      }}
+                      className="cursor-pointer flex items-center gap-1 text-[10px] text-green-500 hover:text-green-400 font-bold uppercase tracking-widest">
+                      <ExternalLink className="w-3 h-3" /> Preview
+                    </button>
+                  </div>
                 </motion.div>
               )}
 
