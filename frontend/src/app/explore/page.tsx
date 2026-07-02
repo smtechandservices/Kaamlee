@@ -364,6 +364,18 @@ export default function ExplorePage() {
 
           <div className="w-px h-6 bg-[#222] mx-1 sm:mx-2" />
 
+          <Link
+            href="/profile"
+            className="flex items-center gap-2 px-1.5 sm:px-2 py-1 bg-white/5 border border-[#222] rounded-full hover:border-white/20 transition-all group"
+          >
+            <div className="w-5 h-5 sm:w-6 sm:h-6 rounded-full bg-gradient-to-br from-green-500 to-green-700 flex items-center justify-center text-[8px] sm:text-[10px] font-bold shadow-lg shadow-green-500/10 group-hover:scale-110 transition-transform">
+              {user?.first_name?.[0]}{user?.last_name?.[0]}
+            </div>
+            <span className="hidden lg:inline text-xs font-medium text-[#888] group-hover:text-white transition-colors">{user?.first_name}</span>
+          </Link>
+
+          <div className="w-px h-6 bg-[#222] mx-1 sm:mx-2" />
+
           <button
             onClick={logout}
             className="cursor-pointer flex items-center gap-2 text-[#888] hover:text-white transition-colors text-sm font-medium group"
