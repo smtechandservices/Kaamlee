@@ -21,6 +21,31 @@ def get_client_ip(request):
     return request.META.get('REMOTE_ADDR', '-')
 
 
+def build_curl_command(request):
+    """Reconstruct the equivalent curl command for a request, for log readability."""
+    parts = [f"curl -X {request.method} '{request.build_absolute_uri()}'"]
+
+    for key, value in request.META.items():
+        if key.startswith('HTTP_') and key != 'HTTP_COOKIE':
+            header_name = key[5:].replace('_', '-').title()
+            parts.append(f"-H '{header_name}: {value}'")
+    content_type = request.META.get('CONTENT_TYPE')
+    if content_type:
+        parts.append(f"-H 'Content-Type: {content_type}'")
+
+    try:
+        body = request.body
+    except Exception:
+        body = None
+    if body:
+        try:
+            parts.append(f"-d '{body.decode('utf-8')}'")
+        except UnicodeDecodeError:
+            parts.append('-d <binary data>')
+
+    return ' \\\n     '.join(parts)
+
+
 class RequestLogMiddleware:
     def __init__(self, get_response):
         self.get_response = get_response
@@ -34,12 +59,14 @@ class RequestLogMiddleware:
         user = request.user.username if hasattr(request, 'user') and request.user.is_authenticated else 'unknown'
 
         logger.info(
-            '%s %s %s %s %dms',
+            '%s %s %s %s %dms\n%s\n%s',
             ip,
             user,
             request.method,
             request.get_full_path(),
             duration_ms,
+            build_curl_command(request),
+            '-' * 80,
             extra={'status_code': response.status_code},
         )
 
