@@ -6,7 +6,7 @@ from rest_framework.decorators import action
 from rest_framework.authtoken.views import ObtainAuthToken
 from rest_framework.response import Response
 from rest_framework.authtoken.models import Token
-from .models import Location, Job, ScrapeSession, ScrapeLog, Bookmark, Feedback, Portfolio
+from .models import Location, Job, ScrapeSession, ScrapeLog, Bookmark, Feedback, Portfolio, Profile
 from .serializers import (
     LocationSerializer, JobSerializer, JobMapPinSerializer, ScrapeSessionSerializer,
     ScrapeLogSerializer, UserSerializer, RegisterSerializer, RecentJobSerializer,
@@ -209,12 +209,24 @@ class JobViewSet(viewsets.ModelViewSet):
 
 
 class CheckExistenceView(views.APIView):
-    permission_classes = [permissions.IsAuthenticated]
+    permission_classes = [permissions.AllowAny]
 
     def post(self, request):
-        job_urls = request.data.get('urls', [])
-        existing_urls = Job.objects.filter(job_url__in=job_urls).values_list('job_url', flat=True)
-        return Response({'existing_urls': list(existing_urls)})
+        field = request.data.get('field')
+        value = (request.data.get('value') or '').strip()
+        if not value:
+            return Response({'exists': False})
+
+        if field == 'username':
+            exists = User.objects.filter(username__iexact=value).exists()
+        elif field == 'email':
+            exists = User.objects.filter(email__iexact=value).exists()
+        elif field == 'phone':
+            exists = Profile.objects.filter(phone=value).exists()
+        else:
+            return Response({'error': 'Invalid field'}, status=400)
+
+        return Response({'exists': exists})
 
 _LOCATIONS_CACHE_KEY = 'api_locations'
 _LOCATIONS_CACHE_TTL = 300  # 5 minutes
