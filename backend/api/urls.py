@@ -5,7 +5,8 @@ from .views import (
     LocationViewSet, JobViewSet, StatsView, TriggerScrapeView,
     StopScrapeView, ForceResetView, LogsView, SignupView, UserView, RecentJobsView,
     CheckExistenceView, AdminLoginView, AdminUserViewSet, RolesView,
-    FeedbackView, AdminFeedbackView, PublicPortfolioView, MyPortfolioView, MyPortfolioContentView
+    FeedbackView, AdminFeedbackView, PublicPortfolioView, MyPortfolioView, MyPortfolioContentView,
+    RequestLogsView
 )
 
 router = DefaultRouter()
@@ -48,6 +49,7 @@ urlpatterns = [
     # ==========================================
     path('stats/', StatsView.as_view(), name='stats'),
     path('logs/', LogsView.as_view(), name='logs'),
+    path('admin/request-logs/', RequestLogsView.as_view(), name='admin-request-logs'),
     path('trigger-scrape/', TriggerScrapeView.as_view(), name='trigger-scrape'),
     path('stop-scrape/', StopScrapeView.as_view(), name='stop-scrape'),
     path('force-reset/', ForceResetView.as_view(), name='force-reset'),

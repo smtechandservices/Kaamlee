@@ -18,7 +18,8 @@ import {
   LogOut,
   Users,
   CreditCard,
-  MessageSquare
+  MessageSquare,
+  ScrollText
 } from 'lucide-react';
 import { useRouter } from 'next/navigation';
 import Link from 'next/link';
@@ -376,10 +377,18 @@ export default function AdminDashboard() {
               <MessageSquare size={20} />
               <span className="text-sm font-bold">Feedback</span>
             </Link>
+            <Link
+              href="/logs"
+              className="cursor-pointer p-3 rounded-xl bg-[#111] border border-[#222] hover:bg-[#161616] transition-all text-[#888] hover:text-white flex items-center gap-2 px-4"
+              title="Request Logs"
+            >
+              <ScrollText size={20} />
+              <span className="text-sm font-bold">Logs</span>
+            </Link>
             <button
               onClick={() => setIsLogsModalOpen(true)}
               className="cursor-pointer p-3 rounded-xl bg-[#111] border border-[#222] hover:bg-[#161616] transition-all text-[#888] hover:text-white"
-              title="Live Logs"
+              title="Scrape Session Status"
             >
               <Terminal size={20} />
             </button>

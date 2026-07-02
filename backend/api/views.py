@@ -228,6 +228,36 @@ class CheckExistenceView(views.APIView):
 
         return Response({'exists': exists})
 
+
+class RequestLogsView(views.APIView):
+    permission_classes = [permissions.IsAdminUser]
+
+    def get(self, request):
+        log_file = settings.LOGS_DIR / 'requests.log'
+        try:
+            raw = log_file.read_text(encoding='utf-8', errors='replace')
+        except FileNotFoundError:
+            raw = ''
+
+        query = request.query_params.get('q', '').strip()
+        try:
+            max_lines = int(request.query_params.get('lines', 2000))
+        except ValueError:
+            max_lines = 2000
+        max_lines = max(1, min(max_lines, 20000))
+
+        all_lines = raw.splitlines()
+        if query:
+            all_lines = [line for line in all_lines if query.lower() in line.lower()]
+
+        shown = all_lines[-max_lines:]
+
+        return Response({
+            'lines': shown,
+            'total_matches': len(all_lines),
+            'shown_count': len(shown),
+        })
+
 _LOCATIONS_CACHE_KEY = 'api_locations'
 _LOCATIONS_CACHE_TTL = 300  # 5 minutes
 
