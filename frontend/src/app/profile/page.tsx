@@ -217,7 +217,7 @@ export default function ProfilePage() {
                 <motion.div initial={{ opacity: 0, y: -8 }} animate={{ opacity: 1, y: 0 }}
                   className="bg-[#0a0a0a] border border-[#222] rounded-xl px-4 py-3 flex items-center justify-between gap-3">
                   <span className="text-xs text-[#555] font-mono truncate">
-                    {user.username}.kaamlee.in
+                    kaamlee.in/portfolio/{user.username}
                   </span>
                   <button
                     type="button"

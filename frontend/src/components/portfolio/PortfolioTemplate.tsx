@@ -249,9 +249,6 @@ export default function PortfolioTemplate({ data }: { data: PortfolioData }) {
   const [authToken, setAuthToken] = useState<string | null>(null);
 
   useEffect(() => {
-    const rootDomain = process.env.NEXT_PUBLIC_ROOT_DOMAIN || 'kaamlee.in';
-    const hostname = window.location.hostname;
-    if (hostname !== 'localhost' && hostname.endsWith(`.${rootDomain}`)) return;
     const params = new URLSearchParams(window.location.search);
     if (params.get('edit') !== '1') return;
     const token = localStorage.getItem('kaamlee_edit_token') || sessionStorage.getItem('kaamlee_token');
