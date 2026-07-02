@@ -27,7 +27,7 @@ def save_user_profile(sender, instance, **kwargs):
         instance.profile.save()
 
 class Location(models.Model):
-    country = models.CharField(max_length=100)
+    country = models.CharField(max_length=100, db_index=True)
     country_code = models.CharField(max_length=5)
     state = models.CharField(max_length=100, blank=True, null=True)
     city = models.CharField(max_length=100)
@@ -54,7 +54,7 @@ class Job(models.Model):
     date_posted = models.DateField(null=True, blank=True)
     latitude = models.FloatField(null=True, blank=True)
     longitude = models.FloatField(null=True, blank=True)
-    created_at = models.DateTimeField(auto_now_add=True)
+    created_at = models.DateTimeField(auto_now_add=True, db_index=True)
 
     def __str__(self):
         return f"{self.title} at {self.company}"

@@ -2,16 +2,16 @@
 
 import React, { useState, useEffect } from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
-import { 
-  Users, 
-  Search, 
-  ArrowLeft, 
-  User as UserIcon, 
-  ShieldCheck, 
-  Crown, 
-  Calendar, 
-  Mail, 
-  Phone, 
+import {
+  Users,
+  Search,
+  ArrowLeft,
+  User as UserIcon,
+  ShieldCheck,
+  Crown,
+  Calendar,
+  Mail,
+  Phone,
   MoreHorizontal,
   Loader2,
   AlertCircle,
@@ -21,7 +21,11 @@ import {
   ArrowRight,
   CreditCard,
   Clock,
-  RotateCcw
+  RotateCcw,
+  FileText,
+  Link as LinkIcon,
+  Globe,
+  Lock
 } from 'lucide-react';
 import Link from 'next/link';
 import { useRouter } from 'next/navigation';
@@ -36,10 +40,12 @@ interface UserProfile {
   last_name: string;
   phone: string;
   linkedin_url: string;
+  has_resume: boolean;
   is_subscribed: boolean;
   subscription_expires_at: string | null;
   is_superuser: boolean;
   is_staff: boolean;
+  portfolio_is_public: boolean;
 }
 
 interface Transaction {
@@ -59,7 +65,14 @@ export default function UserManagement() {
   const [viewingTransactions, setViewingTransactions] = useState<UserProfile | null>(null);
   const [userTransactions, setUserTransactions] = useState<Transaction[]>([]);
   const [txLoading, setTxLoading] = useState(false);
+  const [copiedUserId, setCopiedUserId] = useState<number | null>(null);
   const router = useRouter();
+
+  const copyPortfolioLink = (user: UserProfile) => {
+    navigator.clipboard.writeText(`https://kaamlee.in/portfolio/${user.username}`);
+    setCopiedUserId(user.id);
+    setTimeout(() => setCopiedUserId(null), 2000);
+  };
 
   const fetchUsers = async () => {
     const token = localStorage.getItem('admin_token');
@@ -215,6 +228,8 @@ export default function UserManagement() {
                     <th className="text-left px-6 py-5 text-[10px] font-black uppercase tracking-[0.2em] text-[#555]">Status</th>
                     <th className="text-left px-6 py-5 text-[10px] font-black uppercase tracking-[0.2em] text-[#555]">Subscription</th>
                     <th className="text-left px-6 py-5 text-[10px] font-black uppercase tracking-[0.2em] text-[#555]">Contact</th>
+                    <th className="text-left px-6 py-5 text-[10px] font-black uppercase tracking-[0.2em] text-[#555]">Resume</th>
+                    <th className="text-left px-6 py-5 text-[10px] font-black uppercase tracking-[0.2em] text-[#555]">Portfolio</th>
                     <th className="text-right px-6 py-5 text-[10px] font-black uppercase tracking-[0.2em] text-[#555]">Actions</th>
                   </tr>
                 </thead>
@@ -287,6 +302,48 @@ export default function UserManagement() {
                                   {user.phone}
                                 </div>
                               )}
+                           </div>
+                        </td>
+                        <td className="px-6 py-6">
+                           {user.has_resume ? (
+                             <div className="flex items-center gap-2 text-green-500 font-bold text-sm">
+                               <FileText size={16} />
+                               Uploaded
+                             </div>
+                           ) : (
+                             <div className="flex items-center gap-2 text-[#444] font-bold text-sm">
+                               <XCircle size={16} />
+                               None
+                             </div>
+                           )}
+                        </td>
+                        <td className="px-6 py-6">
+                           <div className="space-y-1.5">
+                              <div className={`inline-flex items-center gap-1.5 px-3 py-1 rounded-full text-[10px] font-black uppercase tracking-wider ${
+                                user.portfolio_is_public ? 'bg-green-500/10 text-green-500' : 'bg-[#222] text-[#555]'
+                              }`}>
+                                {user.portfolio_is_public ? <Globe size={12} /> : <Lock size={12} />}
+                                {user.portfolio_is_public ? 'Public' : 'Private'}
+                              </div>
+                              <div className="flex items-center gap-3">
+                                <a
+                                  href={`https://kaamlee.in/portfolio/${user.username}`}
+                                  target="_blank"
+                                  rel="noopener noreferrer"
+                                  className="flex items-center gap-1 text-[10px] text-[#888] hover:text-white font-mono truncate max-w-[140px]"
+                                  title={`kaamlee.in/portfolio/${user.username}`}
+                                >
+                                  <ExternalLink size={10} className="shrink-0" />
+                                  <span className="truncate">/portfolio/{user.username}</span>
+                                </a>
+                                <button
+                                  onClick={() => copyPortfolioLink(user)}
+                                  className="cursor-pointer shrink-0 text-[#555] hover:text-white transition-colors"
+                                  title="Copy portfolio link"
+                                >
+                                  {copiedUserId === user.id ? <CheckCircle2 size={12} className="text-green-500" /> : <LinkIcon size={12} />}
+                                </button>
+                              </div>
                            </div>
                         </td>
                         <td className="px-6 py-6 text-right">

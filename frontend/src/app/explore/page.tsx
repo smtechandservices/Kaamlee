@@ -37,6 +37,9 @@ export default function ExplorePage() {
 
   const router = useRouter();
   const [jobs, setJobs] = useState<any[]>([]);
+  const [totalJobs, setTotalJobs] = useState(0);
+  const [mapPins, setMapPins] = useState<any[]>([]);
+  const [pinnedJob, setPinnedJob] = useState<any | null>(null);
   const [locations, setLocations] = useState<any[]>([]);
   const [jobRoles, setJobRoles] = useState<string[]>([]);
   const [selectedJobId, setSelectedJobId] = useState<string | null>(null);
@@ -55,6 +58,22 @@ export default function ExplorePage() {
   const debouncedSearch = useDebounce(searchQuery, 300);
   const debouncedLocation = useDebounce(locationQuery, 300);
 
+  const mapJobFields = (job: any) => ({
+    ...job,
+    location: job.location_name,
+    locationId: job.location,
+  });
+
+  const filterParams = React.useMemo(() => {
+    const params = new URLSearchParams();
+    if (activeCountry !== 'All') params.set('country', activeCountry);
+    if (debouncedSearch) params.set('search', debouncedSearch);
+    if (debouncedLocation) params.set('location', debouncedLocation);
+    if (remoteOnly) params.set('is_remote', 'true');
+    if (bookmarkedOnly) params.set('bookmarked_only', 'true');
+    return params;
+  }, [activeCountry, debouncedSearch, debouncedLocation, remoteOnly, bookmarkedOnly]);
+
   useEffect(() => {
     if (!isLoading && !token) {
       router.push('/login');
@@ -64,7 +83,7 @@ export default function ExplorePage() {
 
   useEffect(() => {
     setCurrentPage(1);
-  }, [debouncedSearch, locationQuery, activeCountry, remoteOnly, bookmarkedOnly]);
+  }, [debouncedSearch, debouncedLocation, activeCountry, remoteOnly, bookmarkedOnly]);
 
   // Fetch locations + roles once on mount
   useEffect(() => {
@@ -104,21 +123,22 @@ export default function ExplorePage() {
     fetchMeta();
   }, [token]);
 
-  // Re-fetch jobs whenever active country changes — backend filters at DB level
+  // Re-fetch the current page whenever filters or the page change — backend
+  // paginates and filters at the DB level, so only ~20 jobs cross the wire.
   useEffect(() => {
     const fetchJobs = async () => {
       if (!token) return;
-      const cacheKey = `jobs-${activeCountry}`;
-      const cachedJobs = getCached(cacheKey);
-      if (cachedJobs) {
-        setJobs(cachedJobs);
+      const params = new URLSearchParams(filterParams);
+      params.set('page', String(currentPage));
+      const cacheKey = `jobs-${params.toString()}`;
+      const cached = getCached(cacheKey);
+      if (cached) {
+        setJobs(cached.results);
+        setTotalJobs(cached.count);
         return;
       }
       setIsFetchingJobs(true);
-      setJobs([]);
       try {
-        const params = new URLSearchParams();
-        if (activeCountry !== 'All') params.set('country', activeCountry);
         const jobsRes = await fetch(
           `${process.env.NEXT_PUBLIC_API_URL}/api/jobs/?${params}`,
           { headers: { 'Authorization': `Token ${token}` } }
@@ -127,13 +147,11 @@ export default function ExplorePage() {
         if (!jobsRes.ok) return;
         const jobsData = await jobsRes.json();
         const jobsList = Array.isArray(jobsData) ? jobsData : (jobsData.results || []);
-        const mapped = jobsList.map((job: any) => ({
-          ...job,
-          location: job.location_name,
-          locationId: job.location,
-        }));
-        setCache(cacheKey, mapped);
-        setJobs(mapped);
+        const mapped = jobsList.map(mapJobFields);
+        const payload = { results: mapped, count: jobsData.count ?? mapped.length };
+        setCache(cacheKey, payload);
+        setJobs(payload.results);
+        setTotalJobs(payload.count);
       } catch (error) {
         console.error('Failed to fetch jobs:', error);
       } finally {
@@ -141,7 +159,36 @@ export default function ExplorePage() {
       }
     };
     fetchJobs();
-  }, [token, activeCountry]);
+  }, [token, currentPage, filterParams]);
+
+  // Map pins: independent of the list's page — the map needs every matching
+  // job's coordinates at once to render, so it hits its own lightweight endpoint.
+  useEffect(() => {
+    const fetchMapPins = async () => {
+      if (!token) return;
+      const cacheKey = `map-pins-${filterParams.toString()}`;
+      const cached = getCached(cacheKey);
+      if (cached) {
+        setMapPins(cached);
+        return;
+      }
+      try {
+        const pinsRes = await fetch(
+          `${process.env.NEXT_PUBLIC_API_URL}/api/jobs/map_pins/?${filterParams}`,
+          { headers: { 'Authorization': `Token ${token}` } }
+        );
+        if (pinsRes.status === 401) { logout(); return; }
+        if (!pinsRes.ok) return;
+        const pinsData = await pinsRes.json();
+        const mapped = (pinsData || []).map(mapJobFields);
+        setCache(cacheKey, mapped);
+        setMapPins(mapped);
+      } catch (error) {
+        console.error('Failed to fetch map pins:', error);
+      }
+    };
+    fetchMapPins();
+  }, [token, filterParams]);
 
   const countries = React.useMemo(() => ['All', ...Array.from(new Set(locations.map(loc => {
     if (loc.country === 'United States') return 'USA';
@@ -149,33 +196,37 @@ export default function ExplorePage() {
     return loc.country;
   })))], [locations]);
 
-  const filteredJobs = React.useMemo(() => {
-    return jobs.filter(job => {
-      const matchesSearch = job.title.toLowerCase().includes(debouncedSearch.toLowerCase()) ||
-                           job.company.toLowerCase().includes(debouncedSearch.toLowerCase());
-      const matchesLocation = job.location.toLowerCase().includes(debouncedLocation.toLowerCase());
-      const matchesRemote = remoteOnly ? job.is_remote : true;
-      const matchesBookmarked = bookmarkedOnly ? job.is_bookmarked : true;
+  // Jobs/pins are already filtered server-side (country, search, location,
+  // remote, bookmarked) — no client-side re-filtering needed here anymore.
 
-      return matchesSearch && matchesLocation && matchesRemote && matchesBookmarked;
-    });
-  }, [jobs, debouncedSearch, debouncedLocation, remoteOnly, bookmarkedOnly]);
-
-  const handleMapJobClick = React.useCallback((jobId: string | null) => {
-    if (jobId) {
-      const jobIndex = filteredJobs.findIndex(j => j.id === jobId);
-      if (jobIndex !== -1) {
-        const page = Math.floor(jobIndex / jobsPerPage) + 1;
-        setCurrentPage(page);
-      }
-      setSelectedJobId(jobId);
-      if (viewMode === 'map') {
-        setViewMode('split');
-      }
-    } else {
+  const handleMapJobClick = React.useCallback(async (jobId: string | null) => {
+    if (!jobId) {
       setSelectedJobId(null);
+      setPinnedJob(null);
+      return;
     }
-  }, [filteredJobs, viewMode]);
+    setSelectedJobId(jobId);
+    if (viewMode === 'map') {
+      setViewMode('split');
+    }
+    // Map pins and the paginated list are separate datasets, so a clicked pin
+    // may not be on the currently loaded page — fetch it directly if so.
+    if (jobs.some(j => j.id === jobId)) {
+      setPinnedJob(null);
+      return;
+    }
+    try {
+      const res = await fetch(`${process.env.NEXT_PUBLIC_API_URL}/api/jobs/${jobId}/`, {
+        headers: { 'Authorization': `Token ${token}` }
+      });
+      if (res.status === 401) { logout(); return; }
+      if (!res.ok) return;
+      const data = await res.json();
+      setPinnedJob(mapJobFields(data));
+    } catch (error) {
+      console.error('Failed to fetch job:', error);
+    }
+  }, [jobs, viewMode, token]);
 
   useEffect(() => {
     if (selectedJobId) {
@@ -211,6 +262,7 @@ export default function ExplorePage() {
         setJobs(prevJobs => prevJobs.map(j =>
           j.id === jobId ? { ...j, is_bookmarked: data.is_bookmarked } : j
         ));
+        setPinnedJob((prev: any) => (prev && prev.id === jobId ? { ...prev, is_bookmarked: data.is_bookmarked } : prev));
       }
     } catch (error) {
       console.error("Failed to toggle bookmark:", error);
@@ -225,8 +277,9 @@ export default function ExplorePage() {
     );
   }
 
-  const totalPages = Math.ceil(filteredJobs.length / jobsPerPage);
-  const currentJobs = filteredJobs.slice((currentPage - 1) * jobsPerPage, currentPage * jobsPerPage);
+  const totalPages = Math.max(1, Math.ceil(totalJobs / jobsPerPage));
+  // Pinned job (from a map-pin click not on the current page) shown first, deduped.
+  const displayJobs = pinnedJob ? [pinnedJob, ...jobs.filter(j => j.id !== pinnedJob.id)] : jobs;
 
   const containerVariants: Variants = {
     hidden: { opacity: 0 },
@@ -471,7 +524,7 @@ export default function ExplorePage() {
               animate="visible"
               className={`flex-1 overflow-y-auto p-4 sm:p-5 space-y-4 custom-scrollbar ${isFetchingJobs ? 'hidden' : ''}`}
             >
-              {currentJobs.map(job => (
+              {displayJobs.map(job => (
                 <motion.div 
                   key={job.id} 
                   variants={itemVariants}
@@ -504,7 +557,7 @@ export default function ExplorePage() {
                       Page {currentPage} of {totalPages}
                     </span>
                     <span className="text-[10px] text-[#555] font-medium mt-0.5">
-                      {filteredJobs.length} total jobs
+                      {totalJobs} total jobs
                     </span>
                   </div>
                   <button 
@@ -525,10 +578,10 @@ export default function ExplorePage() {
 
         {/* Map Area */}
         <section className={`${viewMode === 'list' ? 'hidden' : 'flex'} flex-1 bg-[#0a0a0a]`}>
-          <Map 
-            jobs={filteredJobs} 
-            selectedJobId={selectedJobId || undefined} 
-            onJobClick={handleMapJobClick} 
+          <Map
+            jobs={mapPins}
+            selectedJobId={selectedJobId || undefined}
+            onJobClick={handleMapJobClick}
           />
         </section>
       </div>

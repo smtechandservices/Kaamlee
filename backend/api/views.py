@@ -1,4 +1,5 @@
 from rest_framework import viewsets, views, generics, permissions
+from rest_framework.pagination import PageNumberPagination
 from .permissions import IsSubscribed
 
 from rest_framework.decorators import action
@@ -7,10 +8,11 @@ from rest_framework.response import Response
 from rest_framework.authtoken.models import Token
 from .models import Location, Job, ScrapeSession, ScrapeLog, Bookmark, Feedback, Portfolio
 from .serializers import (
-    LocationSerializer, JobSerializer, ScrapeSessionSerializer,
+    LocationSerializer, JobSerializer, JobMapPinSerializer, ScrapeSessionSerializer,
     ScrapeLogSerializer, UserSerializer, RegisterSerializer, RecentJobSerializer,
     FeedbackSerializer, PortfolioSettingsSerializer, PublicPortfolioSerializer
 )
+from django.db import models
 from django.db.models import Count, Exists, OuterRef, Prefetch
 from django.core.cache import cache
 from django.contrib.auth.models import User
@@ -52,24 +54,22 @@ class RecentJobsView(generics.ListAPIView):
         limit = min(limit, 299)
         return Job.objects.select_related('location').order_by('-created_at')[:limit]
 
+class JobPagination(PageNumberPagination):
+    page_size = 20
+    page_size_query_param = 'page_size'
+    max_page_size = 100
+
 class JobViewSet(viewsets.ModelViewSet):
     serializer_class = JobSerializer
     permission_classes = [permissions.IsAuthenticated]
-
+    pagination_class = JobPagination
 
     _COUNTRY_MAP = {
         'USA': 'United States',
         'UK': 'United Kingdom',
     }
 
-    def get_queryset(self):
-        user = self.request.user
-        queryset = Job.objects.select_related('location').annotate(
-            is_bookmarked=Exists(
-                Bookmark.objects.filter(user=user, job_id=OuterRef('pk'))
-            )
-        ).order_by('-created_at')
-
+    def _filter_queryset(self, queryset):
         country = self.request.query_params.get('country')
         if country and country != 'All':
             country_name = self._COUNTRY_MAP.get(country, country)
@@ -87,6 +87,30 @@ class JobViewSet(viewsets.ModelViewSet):
         if search:
             queryset = queryset.filter(title__icontains=search) | queryset.filter(company__icontains=search)
 
+        location_query = self.request.query_params.get('location')
+        if location_query:
+            queryset = queryset.filter(
+                models.Q(location_name__icontains=location_query) |
+                models.Q(location__city__icontains=location_query) |
+                models.Q(location__state__icontains=location_query)
+            )
+
+        is_remote = self.request.query_params.get('is_remote')
+        if is_remote == 'true':
+            queryset = queryset.filter(is_remote=True)
+
+        return queryset
+
+    def get_queryset(self):
+        user = self.request.user
+        queryset = Job.objects.select_related('location').annotate(
+            is_bookmarked=Exists(
+                Bookmark.objects.filter(user=user, job_id=OuterRef('pk'))
+            )
+        ).order_by('-created_at')
+
+        queryset = self._filter_queryset(queryset)
+
         bookmarked_only = self.request.query_params.get('bookmarked_only')
         if bookmarked_only == 'true':
             queryset = queryset.filter(is_bookmarked=True)
@@ -101,6 +125,20 @@ class JobViewSet(viewsets.ModelViewSet):
             bookmark.delete()
             return Response({'status': 'unbookmarked', 'is_bookmarked': False})
         return Response({'status': 'bookmarked', 'is_bookmarked': True})
+
+    @action(detail=False, methods=['get'])
+    def map_pins(self, request):
+        """All matching job coordinates, unpaginated — the map needs the full point
+        set to draw correct clusters, but only needs a handful of fields per job."""
+        queryset = Job.objects.filter(latitude__isnull=False, longitude__isnull=False)
+        queryset = self._filter_queryset(queryset)
+
+        bookmarked_only = request.query_params.get('bookmarked_only')
+        if bookmarked_only == 'true':
+            queryset = queryset.filter(bookmarked_by__user=request.user)
+
+        serializer = JobMapPinSerializer(queryset, many=True)
+        return Response(serializer.data)
 
 
 class CheckExistenceView(views.APIView):
@@ -261,7 +299,7 @@ class AdminUserViewSet(viewsets.ModelViewSet):
     permission_classes = [permissions.IsAuthenticated]
 
     def get_queryset(self):
-        return User.objects.all().order_by('-date_joined')
+        return User.objects.select_related('profile', 'portfolio').order_by('-date_joined')
 
 class RolesView(views.APIView):
     permission_classes = [permissions.AllowAny]

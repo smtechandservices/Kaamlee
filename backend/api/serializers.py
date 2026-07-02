@@ -135,13 +135,28 @@ class UserSerializer(serializers.ModelSerializer):
     linkedin_url = serializers.URLField(source='profile.linkedin_url', required=False)
     resume = serializers.FileField(source='profile.resume', required=False, allow_null=True)
     resume_text = serializers.CharField(source='profile.resume_text', read_only=True)
+    has_resume = serializers.SerializerMethodField()
     is_subscribed = serializers.BooleanField(source='profile.is_subscribed', required=False)
     subscription_expires_at = serializers.DateTimeField(source='profile.subscription_expires_at', required=False, allow_null=True)
+    portfolio_is_public = serializers.SerializerMethodField()
 
     class Meta:
         model = User
-        fields = ('id', 'username', 'email', 'first_name', 'last_name', 'phone', 'linkedin_url', 'resume', 'resume_text', 'is_subscribed', 'subscription_expires_at', 'is_superuser', 'is_staff')
-        read_only_fields = ('id', 'username', 'email', 'is_superuser', 'is_staff', 'resume_text')
+        fields = (
+            'id', 'username', 'email', 'first_name', 'last_name', 'phone', 'linkedin_url',
+            'resume', 'resume_text', 'has_resume', 'is_subscribed', 'subscription_expires_at',
+            'is_superuser', 'is_staff', 'portfolio_is_public',
+        )
+        read_only_fields = ('id', 'username', 'email', 'is_superuser', 'is_staff', 'resume_text', 'has_resume', 'portfolio_is_public')
+
+    def get_has_resume(self, obj):
+        # resume_text is the reliable gate — it's always set after PDF extraction
+        return bool(obj.profile.resume_text)
+
+    def get_portfolio_is_public(self, obj):
+        # Portfolio was added after some users already existed, so it may be missing.
+        portfolio = getattr(obj, 'portfolio', None)
+        return bool(portfolio.is_public) if portfolio else False
 
     def update(self, instance, validated_data):
         profile_data = validated_data.pop('profile', {})
@@ -236,6 +251,17 @@ class LocationSerializer(serializers.ModelSerializer):
         accurate_jobs = sum(1 for job in jobs if obj.city.lower() in job.location_name.lower())
         return round((accurate_jobs / len(jobs)) * 100, 1)
 
+def _resolve_job_location_name(obj):
+    name = obj.location_name
+    if name and str(name).strip().lower() not in ('', 'nan', 'none'):
+        return name.strip()
+    # Fall back to the FK location's city/country
+    if obj.location_id:
+        loc = obj.location
+        parts = [p for p in [loc.city, loc.state, loc.country] if p]
+        return ', '.join(parts)
+    return None
+
 class JobSerializer(serializers.ModelSerializer):
     match_score = serializers.SerializerMethodField()
     is_bookmarked = serializers.BooleanField(read_only=True)
@@ -253,15 +279,7 @@ class JobSerializer(serializers.ModelSerializer):
         ]
 
     def get_location_name(self, obj):
-        name = obj.location_name
-        if name and str(name).strip().lower() not in ('', 'nan', 'none'):
-            return name.strip()
-        # Fall back to the FK location's city/country
-        if obj.location_id:
-            loc = obj.location
-            parts = [p for p in [loc.city, loc.state, loc.country] if p]
-            return ', '.join(parts)
-        return None
+        return _resolve_job_location_name(obj)
 
     def get_match_score(self, obj):
         request = self.context.get('request')
@@ -276,6 +294,17 @@ class JobSerializer(serializers.ModelSerializer):
 
 class RecentJobSerializer(JobSerializer):
     pass
+
+class JobMapPinSerializer(serializers.ModelSerializer):
+    """Lightweight job shape for map markers — no match_score/is_bookmarked computation."""
+    location_name = serializers.SerializerMethodField()
+
+    class Meta:
+        model = Job
+        fields = ['id', 'title', 'company', 'location_name', 'job_type', 'job_url', 'latitude', 'longitude']
+
+    def get_location_name(self, obj):
+        return _resolve_job_location_name(obj)
 
 class FeedbackSerializer(serializers.ModelSerializer):
     username = serializers.CharField(source='user.username', read_only=True)
