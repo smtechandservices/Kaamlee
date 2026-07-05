@@ -4,8 +4,9 @@ import json
 import PyPDF2
 from groq import Groq
 from rest_framework import serializers
-from .models import Location, Job, ScrapeSession, ScrapeLog, Bookmark, Feedback, Portfolio
+from .models import Location, Job, ScrapeSession, ScrapeLog, Bookmark, Feedback, Portfolio, CustomCV, JobApplicationKit
 from django.contrib.auth.models import User
+from .ats_scoring import score_cv
 
 _groq = Groq(api_key=os.getenv('GROQ_API_KEY'))
 
@@ -99,6 +100,102 @@ def parse_resume_with_groq(resume_text: str) -> dict:
         return json.loads(raw)
     except Exception as e:
         print(f"Groq resume parse error: {e}")
+        return {}
+
+_TAILOR_PROMPT_TEMPLATE = """You are a resume editor helping a candidate retarget their existing resume for a new target role: "{target_role}".
+
+You will be given the candidate's resume as JSON (the same schema you must return). Rewrite it so it reads naturally for someone applying to "{target_role}" roles, using this reference list of relevant keywords/skills for that role where appropriate:
+{keywords}
+
+Rules — follow these strictly:
+- Return ONLY the JSON, no markdown, no explanation, same exact schema/keys as the input.
+- Do NOT invent new employers, job titles, dates, degrees, or projects that are not in the input.
+- Do NOT claim hands-on production experience with a technology that has no evidence anywhere in the input. If a reference keyword has no supporting evidence, you may add it to the "skills" section only, phrased as "Familiar with" / "Exposure to" rather than presented as production experience.
+- You MAY rephrase and re-emphasize existing bullets, summary, and skills to highlight transferable work relevant to "{target_role}" — e.g. if the candidate built a UI that called REST APIs, it is fair to emphasize that API integration work for a backend-leaning target role.
+- Update the top-level "role" field to reflect the target role framing (e.g. "Frontend Developer" -> "Fullstack Developer") only if that framing is reasonably supported by the rewritten content.
+- Preserve all company names, dates, and education exactly as given.
+- Keep the same number of experience/project/education entries as the input.
+"""
+
+def tailor_resume_with_groq(content: dict, target_role: str, keywords: list) -> dict:
+    prompt = _TAILOR_PROMPT_TEMPLATE.format(
+        target_role=target_role,
+        keywords=", ".join(keywords) if keywords else "(no specific keyword list — use general best judgement for this role)",
+    )
+    try:
+        response = _groq.chat.completions.create(
+            model="llama-3.3-70b-versatile",
+            messages=[
+                {"role": "system", "content": prompt},
+                {"role": "user", "content": json.dumps(content)},
+            ],
+            temperature=0.3,
+            max_tokens=4096,
+        )
+        raw = response.choices[0].message.content.strip()
+        if raw.startswith("```"):
+            raw = raw.split("```")[1]
+            if raw.startswith("json"):
+                raw = raw[4:]
+        return json.loads(raw)
+    except Exception as e:
+        print(f"Groq resume tailor error: {e}")
+        return {}
+
+APPLICATION_KIT_QUESTIONS = [
+    "How many years of experience do you have that are relevant to this role?",
+    "Why do you want to leave your current job / why are you interested in this opportunity?",
+    "What are you looking for in your next role?",
+    "Why should we hire you for this position?",
+    "What are your key strengths relevant to this job?",
+]
+
+_APPLICATION_KIT_PROMPT_TEMPLATE = """You are a career coach helping a candidate apply for a job. You will be given the candidate's resume as JSON, plus a job's title, company, and description.
+
+Using ONLY information grounded in the candidate's resume — do not invent employers, job titles, dates, degrees, projects, or skills not present in the resume — produce:
+
+1. "cover_letter": a concise, personalized cover letter (3-4 short paragraphs, first person, professional but warm tone). Address it to the company by name, reference the job title, and connect the candidate's real experience/skills to what the role likely needs based on the description. No placeholder text like "[Company Name]".
+2. "qa": short, natural, first-person answers (2-4 sentences each) to each of these common application questions, grounded in the resume and tailored to this specific job:
+{questions}
+
+Job title: {job_title}
+Company: {company}
+Job description: {job_description}
+
+Return ONLY valid JSON, no markdown, with this exact structure:
+{{
+  "cover_letter": "...",
+  "qa": [
+    {{"question": "...", "answer": "..."}}
+  ]
+}}
+"""
+
+def generate_application_kit_with_groq(resume_content: dict, job_title: str, company: str, job_description: str) -> dict:
+    prompt = _APPLICATION_KIT_PROMPT_TEMPLATE.format(
+        questions="\n".join(f"- {q}" for q in APPLICATION_KIT_QUESTIONS),
+        job_title=job_title,
+        company=company or "the company",
+        job_description=(job_description or "")[:4000],
+    )
+    try:
+        response = _groq.chat.completions.create(
+            model="llama-3.3-70b-versatile",
+            messages=[
+                {"role": "system", "content": prompt},
+                {"role": "user", "content": json.dumps(resume_content)},
+            ],
+            temperature=0.4,
+            max_tokens=2048,
+        )
+        raw = response.choices[0].message.content.strip()
+        if raw.startswith("```"):
+            raw = raw.split("```")[1]
+            if raw.startswith("json"):
+                raw = raw[4:]
+        return json.loads(raw)
+    except Exception as e:
+        print(f"Groq application kit error: {e}")
         return {}
 
 def calculate_match(resume_text, job_title, job_description):
@@ -368,3 +465,49 @@ class PublicPortfolioSerializer(serializers.ModelSerializer):
                 profile.save(update_fields=['resume_parsed'])
             return parsed
         return {}
+
+
+class CustomCVSerializer(serializers.ModelSerializer):
+    class Meta:
+        model = CustomCV
+        fields = [
+            'id', 'label', 'target_role', 'template', 'content',
+            'ats_score', 'ats_breakdown', 'created_at', 'updated_at',
+        ]
+        read_only_fields = ['id', 'ats_score', 'ats_breakdown', 'created_at', 'updated_at']
+
+    def update(self, instance, validated_data):
+        instance = super().update(instance, validated_data)
+        if 'content' in validated_data:
+            instance.ats_score, instance.ats_breakdown = score_cv(instance.content, instance.target_role or None)
+            instance.save(update_fields=['ats_score', 'ats_breakdown'])
+        return instance
+
+
+class CustomCVCreateSerializer(serializers.ModelSerializer):
+    class Meta:
+        model = CustomCV
+        fields = ['id', 'label', 'template', 'target_role']
+
+    def create(self, validated_data):
+        user = self.context['request'].user
+        content = user.profile.resume_parsed or {}
+        target_role = validated_data.get('target_role') or None
+        ats_score, ats_breakdown = score_cv(content, target_role)
+        return CustomCV.objects.create(
+            user=user,
+            content=content,
+            ats_score=ats_score,
+            ats_breakdown=ats_breakdown,
+            **validated_data,
+        )
+
+
+class JobApplicationKitSerializer(serializers.ModelSerializer):
+    job_title = serializers.CharField(source='job.title', read_only=True)
+    company = serializers.CharField(source='job.company', read_only=True)
+
+    class Meta:
+        model = JobApplicationKit
+        fields = ['id', 'job', 'job_title', 'company', 'cover_letter', 'qa', 'created_at', 'updated_at']
+        read_only_fields = ['id', 'job_title', 'company', 'created_at', 'updated_at']

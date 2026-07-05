@@ -140,3 +140,42 @@ class Portfolio(models.Model):
 def create_user_portfolio(sender, instance, created, **kwargs):
     if created:
         Portfolio.objects.get_or_create(user=instance)
+
+
+CV_TEMPLATE_CHOICES = [
+    ('modern', 'Modern'),
+    ('classic', 'Classic'),
+    ('ats', 'ATS Optimized'),
+]
+
+class CustomCV(models.Model):
+    user = models.ForeignKey(User, on_delete=models.CASCADE, related_name='custom_cvs')
+    label = models.CharField(max_length=100, blank=True)
+    target_role = models.CharField(max_length=100, blank=True)
+    template = models.CharField(max_length=20, choices=CV_TEMPLATE_CHOICES, default='ats')
+    content = models.JSONField()
+    ats_score = models.IntegerField(default=0)
+    ats_breakdown = models.JSONField(blank=True, null=True)
+    created_at = models.DateTimeField(auto_now_add=True)
+    updated_at = models.DateTimeField(auto_now=True)
+
+    class Meta:
+        ordering = ['-updated_at']
+
+    def __str__(self):
+        return f"CustomCV({self.label or self.target_role or self.id}) for {self.user.username}"
+
+
+class JobApplicationKit(models.Model):
+    user = models.ForeignKey(User, on_delete=models.CASCADE, related_name='application_kits')
+    job = models.ForeignKey(Job, on_delete=models.CASCADE, related_name='application_kits')
+    cover_letter = models.TextField(blank=True)
+    qa = models.JSONField(blank=True, null=True)
+    created_at = models.DateTimeField(auto_now_add=True)
+    updated_at = models.DateTimeField(auto_now=True)
+
+    class Meta:
+        unique_together = ('user', 'job')
+
+    def __str__(self):
+        return f"ApplicationKit for {self.user.username} - {self.job.title}"

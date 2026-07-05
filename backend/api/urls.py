@@ -6,7 +6,8 @@ from .views import (
     StopScrapeView, ForceResetView, LogsView, SignupView, UserView, RecentJobsView,
     CheckExistenceView, AdminLoginView, AdminUserViewSet, RolesView,
     FeedbackView, AdminFeedbackView, PublicPortfolioView, MyPortfolioView, MyPortfolioContentView,
-    RequestLogsView
+    RequestLogsView, CustomCVListCreateView, CustomCVDetailView, CustomCVTailorView, CustomCVExportView,
+    JobApplicationKitView,
 )
 
 router = DefaultRouter()
@@ -43,6 +44,19 @@ urlpatterns = [
     path('portfolio/me/', MyPortfolioView.as_view(), name='portfolio-me'),
     path('portfolio/content/', MyPortfolioContentView.as_view(), name='portfolio-content'),
     path('portfolio/<str:username>/', PublicPortfolioView.as_view(), name='portfolio-public'),
+
+    # ==========================================
+    # CUSTOM CV
+    # ==========================================
+    path('custom-cv/', CustomCVListCreateView.as_view(), name='custom-cv-list'),
+    path('custom-cv/<int:pk>/', CustomCVDetailView.as_view(), name='custom-cv-detail'),
+    path('custom-cv/<int:pk>/tailor/', CustomCVTailorView.as_view(), name='custom-cv-tailor'),
+    path('custom-cv/<int:pk>/export/', CustomCVExportView.as_view(), name='custom-cv-export'),
+
+    # ==========================================
+    # JOB APPLICATION KIT (cover letter + Q&A)
+    # ==========================================
+    path('jobs/<int:job_id>/application-kit/', JobApplicationKitView.as_view(), name='job-application-kit'),
 
     # ==========================================
     # SCRAPER & ADMIN

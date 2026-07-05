@@ -1,0 +1,117 @@
+<!DOCTYPE html>
+<html>
+<head>
+<meta charset="utf-8" />
+<style>
+  {% if template == 'modern' %}
+    body { font-family: Helvetica, Arial, sans-serif; color: #1f2937; }
+    h1 { color: #1d4ed8; }
+    .section-title { color: #1d4ed8; border-bottom: 2px solid #1d4ed8; }
+  {% elif template == 'classic' %}
+    body { font-family: "Times New Roman", Times, serif; color: #111827; }
+    h1 { color: #111827; }
+    .section-title { color: #111827; border-bottom: 1px solid #111827; }
+  {% else %}
+    body { font-family: Helvetica, Arial, sans-serif; color: #000000; }
+    h1 { color: #000000; }
+    .section-title { color: #000000; border-bottom: 1px solid #000000; }
+  {% endif %}
+  body { font-size: 11px; line-height: 1.4; }
+  h1 { font-size: 20px; margin: 0 0 2px 0; }
+  .role { font-size: 13px; margin: 0 0 8px 0; color: #4b5563; }
+  .contacts { font-size: 10px; margin-bottom: 12px; color: #4b5563; }
+  .section { margin-bottom: 10px; }
+  .section-title { font-size: 12px; text-transform: uppercase; margin-bottom: 6px; padding-bottom: 2px; }
+  .entry { margin-bottom: 6px; }
+  .entry-header { font-weight: bold; font-size: 11px; }
+  .entry-sub { font-size: 10px; color: #4b5563; margin-bottom: 2px; }
+  ul { margin: 2px 0 0 14px; padding: 0; }
+  li { margin-bottom: 2px; }
+</style>
+</head>
+<body>
+  <h1>{{ cv.name }}</h1>
+  {% if cv.role %}<p class="role">{{ cv.role }}</p>{% endif %}
+
+  <p class="contacts">
+    {% for c in cv.contacts %}{{ c.value }}{% if not forloop.last %} &nbsp;|&nbsp; {% endif %}{% endfor %}
+    {% if cv.links %} &nbsp;|&nbsp; {% for l in cv.links %}{{ l.label }}: {{ l.url }}{% if not forloop.last %} &nbsp;|&nbsp; {% endif %}{% endfor %}{% endif %}
+  </p>
+
+  {% if cv.summary %}
+  <div class="section">
+    <div class="section-title">Summary</div>
+    <p>{{ cv.summary }}</p>
+  </div>
+  {% endif %}
+
+  {% if cv.skills %}
+  <div class="section">
+    <div class="section-title">Skills</div>
+    {% for group in cv.skills %}
+    <p><b>{{ group.category }}{% if group.category %}:{% endif %}</b> {{ group.items|join:", " }}</p>
+    {% endfor %}
+  </div>
+  {% endif %}
+
+  {% if cv.experience %}
+  <div class="section">
+    <div class="section-title">Experience</div>
+    {% for exp in cv.experience %}
+    <div class="entry">
+      <div class="entry-header">{{ exp.role }} &mdash; {{ exp.company }}</div>
+      <div class="entry-sub">{{ exp.period }}{% if exp.location %} &nbsp;|&nbsp; {{ exp.location }}{% endif %}</div>
+      <ul>
+        {% for b in exp.bullets %}<li>{{ b }}</li>{% endfor %}
+      </ul>
+    </div>
+    {% endfor %}
+  </div>
+  {% endif %}
+
+  {% if cv.projects %}
+  <div class="section">
+    <div class="section-title">Projects</div>
+    {% for proj in cv.projects %}
+    <div class="entry">
+      <div class="entry-header">{{ proj.name }}{% if proj.tech %} ({{ proj.tech|join:", " }}){% endif %}</div>
+      {% if proj.description %}<div class="entry-sub">{{ proj.description }}</div>{% endif %}
+      <ul>
+        {% for b in proj.bullets %}<li>{{ b }}</li>{% endfor %}
+      </ul>
+    </div>
+    {% endfor %}
+  </div>
+  {% endif %}
+
+  {% if cv.education %}
+  <div class="section">
+    <div class="section-title">Education</div>
+    {% for edu in cv.education %}
+    <div class="entry">
+      <div class="entry-header">{{ edu.degree }} &mdash; {{ edu.institution }}</div>
+      <div class="entry-sub">{{ edu.period }}{% if edu.location %} &nbsp;|&nbsp; {{ edu.location }}{% endif %}</div>
+    </div>
+    {% endfor %}
+  </div>
+  {% endif %}
+
+  {% if cv.certifications %}
+  <div class="section">
+    <div class="section-title">Certifications</div>
+    {% for cert in cv.certifications %}
+    <p>{{ cert.name }}{% if cert.issuer %} &mdash; {{ cert.issuer }}{% endif %}{% if cert.date %} ({{ cert.date }}){% endif %}</p>
+    {% endfor %}
+  </div>
+  {% endif %}
+
+  {% if cv.achievements %}
+  <div class="section">
+    <div class="section-title">Achievements</div>
+    <ul>
+      {% for a in cv.achievements %}<li>{{ a }}</li>{% endfor %}
+    </ul>
+  </div>
+  {% endif %}
+</body>
+</html>

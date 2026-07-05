@@ -6,12 +6,17 @@ from rest_framework.decorators import action
 from rest_framework.authtoken.views import ObtainAuthToken
 from rest_framework.response import Response
 from rest_framework.authtoken.models import Token
-from .models import Location, Job, ScrapeSession, ScrapeLog, Bookmark, Feedback, Portfolio, Profile
+from .models import Location, Job, ScrapeSession, ScrapeLog, Bookmark, Feedback, Portfolio, Profile, CustomCV, JobApplicationKit
 from .serializers import (
     LocationSerializer, JobSerializer, JobMapPinSerializer, ScrapeSessionSerializer,
     ScrapeLogSerializer, UserSerializer, RegisterSerializer, RecentJobSerializer,
-    FeedbackSerializer, PortfolioSettingsSerializer, PublicPortfolioSerializer
+    FeedbackSerializer, PortfolioSettingsSerializer, PublicPortfolioSerializer,
+    CustomCVSerializer, CustomCVCreateSerializer, tailor_resume_with_groq,
+    JobApplicationKitSerializer, generate_application_kit_with_groq,
 )
+from .ats_scoring import score_cv, get_profession_keywords
+from .cv_export import render_cv_pdf, render_cv_docx
+from django.http import HttpResponse
 from django.db import models
 from django.db.models import Count, Exists, OuterRef, Prefetch
 from django.core.cache import cache
@@ -525,3 +530,127 @@ class MyPortfolioContentView(views.APIView):
         profile.resume_parsed = resume_parsed
         profile.save(update_fields=['resume_parsed'])
         return Response({'resume_parsed': profile.resume_parsed})
+
+
+class CustomCVListCreateView(generics.ListCreateAPIView):
+    """GET/POST /api/custom-cv/ — list or create the user's custom CVs.
+
+    Open to all authenticated users for now. To gate behind the premium
+    subscription later, add IsSubscribed to permission_classes below.
+    """
+    serializer_class = CustomCVSerializer
+    permission_classes = [permissions.IsAuthenticated]
+
+    def get_queryset(self):
+        return CustomCV.objects.filter(user=self.request.user)
+
+    def create(self, request, *args, **kwargs):
+        profile = getattr(request.user, 'profile', None)
+        if not profile or not profile.resume_text:
+            return Response({'error': 'Upload a resume before creating a custom CV.'}, status=400)
+        serializer = CustomCVCreateSerializer(data=request.data, context={'request': request})
+        serializer.is_valid(raise_exception=True)
+        cv = serializer.save()
+        return Response(CustomCVSerializer(cv).data, status=201)
+
+
+class CustomCVDetailView(generics.RetrieveUpdateDestroyAPIView):
+    """GET/PATCH/DELETE /api/custom-cv/<id>/"""
+    serializer_class = CustomCVSerializer
+    permission_classes = [permissions.IsAuthenticated]
+
+    def get_queryset(self):
+        return CustomCV.objects.filter(user=self.request.user)
+
+
+class CustomCVTailorView(views.APIView):
+    """POST /api/custom-cv/<id>/tailor/ — rewrite content for a new target role."""
+    permission_classes = [permissions.IsAuthenticated]
+
+    def post(self, request, pk):
+        try:
+            cv = CustomCV.objects.get(pk=pk, user=request.user)
+        except CustomCV.DoesNotExist:
+            return Response({'error': 'Not found.'}, status=404)
+
+        target_role = (request.data.get('target_role') or '').strip()
+        if not target_role:
+            return Response({'error': 'target_role is required.'}, status=400)
+
+        keywords = get_profession_keywords(target_role)
+        tailored = tailor_resume_with_groq(cv.content, target_role, keywords)
+        if not tailored:
+            return Response({'error': 'Failed to tailor resume. Please try again.'}, status=502)
+
+        cv.content = tailored
+        cv.target_role = target_role
+        cv.ats_score, cv.ats_breakdown = score_cv(cv.content, target_role)
+        cv.save()
+        return Response(CustomCVSerializer(cv).data)
+
+
+class CustomCVExportView(views.APIView):
+    """GET /api/custom-cv/<id>/export/?type=pdf|docx"""
+    permission_classes = [permissions.IsAuthenticated]
+
+    def get(self, request, pk):
+        try:
+            cv = CustomCV.objects.get(pk=pk, user=request.user)
+        except CustomCV.DoesNotExist:
+            return Response({'error': 'Not found.'}, status=404)
+
+        fmt = request.query_params.get('type', 'pdf')
+        name = (cv.content.get('name') or request.user.get_full_name() or request.user.username or 'resume').strip()
+        role = (cv.target_role or cv.content.get('role') or '').strip()
+        filename = '_'.join(p for p in [name, role, 'CV'] if p).replace(' ', '_')
+
+        if fmt == 'docx':
+            data = render_cv_docx(cv.content)
+            response = HttpResponse(
+                data,
+                content_type='application/vnd.openxmlformats-officedocument.wordprocessingml.document',
+            )
+            response['Content-Disposition'] = f'attachment; filename="{filename}.docx"'
+            return response
+        elif fmt == 'pdf':
+            data = render_cv_pdf(cv.content, cv.template)
+            if data is None:
+                return Response({'error': 'Failed to generate PDF.'}, status=500)
+            response = HttpResponse(data, content_type='application/pdf')
+            response['Content-Disposition'] = f'attachment; filename="{filename}.pdf"'
+            return response
+        else:
+            return Response({'error': 'format must be pdf or docx.'}, status=400)
+
+
+class JobApplicationKitView(views.APIView):
+    """GET/POST /api/jobs/<job_id>/application-kit/ — fetch or (re)generate a cover
+    letter + common application Q&A for a job, tailored to the user's resume."""
+    permission_classes = [permissions.IsAuthenticated]
+
+    def get(self, request, job_id):
+        kit = JobApplicationKit.objects.filter(user=request.user, job_id=job_id).first()
+        if not kit:
+            return Response({'error': 'Not found.'}, status=404)
+        return Response(JobApplicationKitSerializer(kit).data)
+
+    def post(self, request, job_id):
+        try:
+            job = Job.objects.get(pk=job_id)
+        except Job.DoesNotExist:
+            return Response({'error': 'Job not found.'}, status=404)
+
+        profile = getattr(request.user, 'profile', None)
+        content = profile.resume_parsed if profile else None
+        if not content:
+            return Response({'error': 'Upload a resume before generating a cover letter.'}, status=400)
+
+        generated = generate_application_kit_with_groq(content, job.title, job.company, job.description)
+        if not generated or not generated.get('cover_letter'):
+            return Response({'error': 'Failed to generate. Please try again.'}, status=502)
+
+        kit, _ = JobApplicationKit.objects.update_or_create(
+            user=request.user, job=job,
+            defaults={'cover_letter': generated.get('cover_letter', ''), 'qa': generated.get('qa', [])},
+        )
+        return Response(JobApplicationKitSerializer(kit).data)
