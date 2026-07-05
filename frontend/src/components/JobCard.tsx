@@ -1,7 +1,8 @@
 'use client';
 
 import React from 'react';
-import { MapPin, Briefcase, ExternalLink, Clock, Bookmark, Copy, Check } from 'lucide-react';
+import { MapPin, Briefcase, ExternalLink, Clock, Bookmark, Copy, Check, FileEdit } from 'lucide-react';
+import CoverLetterModal from '@/components/CoverLetterModal';
 
 interface JobCardProps {
   job: {
@@ -27,6 +28,7 @@ interface JobCardProps {
 
 export const JobCard = React.memo(function JobCard({ job, isSelected, onClick, onToggleBookmark }: JobCardProps) {
   const [copied, setCopied] = React.useState(false);
+  const [isCoverLetterOpen, setIsCoverLetterOpen] = React.useState(false);
   const companyName = job.company || 'Confidential';
   const getInitial = (name: string) => name ? name.charAt(0).toUpperCase() : '?';
 
@@ -50,6 +52,7 @@ export const JobCard = React.memo(function JobCard({ job, isSelected, onClick, o
   };
 
   return (
+    <>
     <div
       onClick={() => onClick?.(job.id)}
       className={`cursor-default job-card p-6 rounded-2xl border border-[#222] bg-[#111] hover:border-[#22c55e] group transition-all relative overflow-hidden ${isSelected ? 'border-[#22c55e] bg-[#161616]' : ''
@@ -180,25 +183,43 @@ export const JobCard = React.memo(function JobCard({ job, isSelected, onClick, o
             {job.description || 'No description provided...'}
           </p>
 
-          <div className="flex justify-between items-center">
-            <a 
-              href={job.job_url} 
-              target="_blank" 
+          <div className="flex justify-between items-center mb-1">
+            <a
+              href={job.job_url}
+              target="_blank"
               rel="noopener noreferrer"
               className="text-xs text-[#22c55e] hover:underline"
               onClick={(e) => e.stopPropagation()}
             >
               Apply on {job.site}
             </a>
-            
+
             {(job.date_posted || job.created_at) && (
               <span className="text-[10px] text-[#555] ml-auto">
                 {formatDate(job.date_posted || job.created_at)}
               </span>
             )}
           </div>
+
+          <button
+            onClick={(e) => {
+              e.stopPropagation();
+              setIsCoverLetterOpen(true);
+            }}
+            className="cursor-pointer mt-3 flex items-center gap-1.5 text-[11px] text-[#888] hover:text-white font-bold uppercase tracking-widest transition-colors"
+          >
+            <FileEdit size={12} />
+            Cover Letter &amp; Prep
+          </button>
         </div>
       </div>
     </div>
+
+    <CoverLetterModal
+      isOpen={isCoverLetterOpen}
+      onClose={() => setIsCoverLetterOpen(false)}
+      job={{ id: job.id, title: job.title, company: job.company }}
+    />
+    </>
   );
 });

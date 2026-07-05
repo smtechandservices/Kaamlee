@@ -10,3 +10,5 @@ numpy==1.26.3
 pandas==2.3.3
 razorpay==2.0.1
 groq
+xhtml2pdf
+python-docx

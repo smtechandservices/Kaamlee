@@ -1,0 +1,86 @@
+{
+  "Python Developer": {
+    "keywords": ["Python", "Django", "Flask", "FastAPI", "REST APIs", "PostgreSQL", "unit testing", "Celery", "Docker", "OOP design"]
+  },
+  "Fullstack Developer": {
+    "keywords": ["REST APIs", "React", "Node.js", "Express", "database design", "PostgreSQL", "MongoDB", "Docker", "CI/CD", "microservices", "authentication", "system design"]
+  },
+  "Frontend Developer": {
+    "keywords": ["React", "TypeScript", "JavaScript", "responsive design", "HTML5", "CSS3", "state management", "component libraries", "accessibility", "web performance", "REST API integration"]
+  },
+  "Backend Developer": {
+    "keywords": ["REST APIs", "database design", "PostgreSQL", "MySQL", "caching", "message queues", "microservices", "system design", "authentication", "API security", "scalability"]
+  },
+  "Node JS Developer": {
+    "keywords": ["Node.js", "Express", "REST APIs", "MongoDB", "async programming", "microservices", "WebSockets", "npm", "authentication", "unit testing"]
+  },
+  "AI Engineer": {
+    "keywords": ["machine learning", "deep learning", "PyTorch", "TensorFlow", "LLMs", "NLP", "model deployment", "MLOps", "data pipelines", "prompt engineering"]
+  },
+  "Data Scientist": {
+    "keywords": ["Python", "pandas", "NumPy", "scikit-learn", "statistical analysis", "data visualization", "SQL", "machine learning", "A/B testing", "feature engineering"]
+  },
+  "Data Analyst": {
+    "keywords": ["SQL", "Excel", "data visualization", "Tableau", "Power BI", "statistical analysis", "reporting", "data cleaning", "dashboards", "business insights"]
+  },
+  "UI/UX Designer": {
+    "keywords": ["Figma", "wireframing", "prototyping", "user research", "usability testing", "design systems", "interaction design", "information architecture", "accessibility"]
+  },
+  "Product Manager": {
+    "keywords": ["product roadmap", "user stories", "stakeholder management", "A/B testing", "market research", "agile", "prioritization", "metrics-driven", "cross-functional collaboration"]
+  },
+  "DevOps Engineer": {
+    "keywords": ["CI/CD", "Docker", "Kubernetes", "AWS", "Terraform", "infrastructure as code", "monitoring", "automation", "Linux", "cloud infrastructure"]
+  },
+  "Mobile Developer": {
+    "keywords": ["React Native", "Swift", "Kotlin", "iOS", "Android", "mobile UI", "REST API integration", "app performance", "push notifications", "app store deployment"]
+  },
+  "QA Engineer": {
+    "keywords": ["test automation", "Selenium", "manual testing", "test case design", "regression testing", "bug tracking", "CI/CD", "API testing", "quality assurance"]
+  },
+  "Marketing Manager": {
+    "keywords": ["campaign strategy", "brand management", "market research", "budget management", "cross-channel marketing", "analytics", "stakeholder communication"]
+  },
+  "Sales Representative": {
+    "keywords": ["lead generation", "CRM", "client relationship management", "quota attainment", "negotiation", "pipeline management", "cold outreach"]
+  },
+  "HR Manager": {
+    "keywords": ["talent management", "employee relations", "performance management", "HR policy", "onboarding", "compensation and benefits", "compliance"]
+  },
+  "Cybersecurity": {
+    "keywords": ["threat detection", "vulnerability assessment", "penetration testing", "SIEM", "incident response", "network security", "risk assessment", "compliance"]
+  },
+  "Project Manager": {
+    "keywords": ["project planning", "agile", "scrum", "stakeholder management", "risk management", "budget management", "cross-functional teams", "timelines"]
+  },
+  "Business Analyst": {
+    "keywords": ["requirements gathering", "process improvement", "stakeholder management", "data analysis", "documentation", "SQL", "business insights"]
+  },
+  "Digital Marketing Specialist": {
+    "keywords": ["SEO", "SEM", "social media marketing", "email marketing", "Google Analytics", "content strategy", "PPC campaigns", "conversion optimization"]
+  },
+  "SEO Specialist": {
+    "keywords": ["keyword research", "on-page SEO", "link building", "Google Analytics", "technical SEO", "content optimization", "SERP analysis"]
+  },
+  "Content Writer": {
+    "keywords": ["content strategy", "SEO writing", "editing", "storytelling", "research", "content calendars", "audience engagement"]
+  },
+  "Graphic Designer": {
+    "keywords": ["Adobe Photoshop", "Adobe Illustrator", "typography", "branding", "layout design", "visual identity", "print and digital design"]
+  },
+  "Civil Engineer": {
+    "keywords": ["AutoCAD", "structural analysis", "project planning", "site inspection", "construction management", "building codes"]
+  },
+  "Mechanical Engineer": {
+    "keywords": ["SolidWorks", "CAD design", "product design", "manufacturing processes", "prototyping", "quality control"]
+  },
+  "Financial Analyst": {
+    "keywords": ["financial modeling", "forecasting", "Excel", "budgeting", "variance analysis", "valuation", "reporting"]
+  },
+  "Customer Success Manager": {
+    "keywords": ["client onboarding", "account management", "churn reduction", "customer retention", "CRM", "upselling", "relationship management"]
+  },
+  "Scrum Master": {
+    "keywords": ["agile facilitation", "sprint planning", "backlog grooming", "team coaching", "retrospectives", "JIRA", "impediment removal"]
+  }
+}

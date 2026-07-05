@@ -3,7 +3,7 @@
 import React, { useState, useEffect } from 'react';
 import { useRouter } from 'next/navigation';
 import { motion } from 'framer-motion';
-import { ArrowLeft, User, Phone, Link as LinkIcon, Loader2, Save, CheckCircle2, Briefcase, X, Receipt, MessageSquare, Globe, ExternalLink } from 'lucide-react';
+import { ArrowLeft, User, Phone, Link as LinkIcon, Loader2, Save, CheckCircle2, Briefcase, X, Receipt, MessageSquare, Globe, ExternalLink, FileText } from 'lucide-react';
 import FeedbackModal from '@/components/FeedbackModal';
 import { useAuth } from '@/context/AuthContext';
 import Link from 'next/link';
@@ -510,8 +510,16 @@ export default function ProfilePage() {
               </button>
 
               <Link
-                href="/transactions"
+                href="/custom-cv"
                 className="cursor-pointer w-full mt-4 flex items-center justify-center gap-2 py-3 sm:py-4 text-[#555] hover:text-[#888] transition-colors text-[10px] sm:text-xs font-black uppercase tracking-[0.2em]"
+              >
+                <FileText className="w-4 h-4" />
+                Custom CV
+              </Link>
+
+              <Link
+                href="/transactions"
+                className="cursor-pointer w-full mt-2 flex items-center justify-center gap-2 py-3 sm:py-4 text-[#555] hover:text-[#888] transition-colors text-[10px] sm:text-xs font-black uppercase tracking-[0.2em]"
               >
                 <Receipt className="w-4 h-4" />
                 View Billing History
