@@ -111,6 +111,8 @@ export default function PricingModal({ isOpen, onClose, showCloseButton = true }
                         'Map view',
                         'Bookmark jobs',
                         'Billing history',
+                        'Resume & CV builder',
+                        'Personalised Portfolio builder',
                       ].map((feat) => (
                         <div key={feat} className="flex items-center gap-2 text-[11px] text-[#888]">
                           <Check size={11} className="text-green-500 shrink-0" />
@@ -121,9 +123,7 @@ export default function PricingModal({ isOpen, onClose, showCloseButton = true }
                         <div className="text-[9px] font-mono uppercase tracking-[0.2em] text-[#333] mb-2.5">Coming soon</div>
                         {[
                           'Auto-apply',
-                          'Resume & CV builder',
                           'AI enhancements',
-                          'Personalised Portfolio builder',
                         ].map((feat) => (
                           <div key={feat} className="flex items-center gap-2 text-[11px] text-[#444] mb-2">
                             <Clock size={11} className="text-yellow-700/50 shrink-0" />

@@ -1,6 +1,7 @@
 'use client';
 
 import React from 'react';
+import { createPortal } from 'react-dom';
 import { motion, AnimatePresence } from 'framer-motion';
 import { RotateCcw, Sparkles, Copy, Check, Loader2, RefreshCw, Download } from 'lucide-react';
 import { useAuth } from '@/context/AuthContext';
@@ -29,12 +30,17 @@ interface CoverLetterModalProps {
 
 export default function CoverLetterModal({ isOpen, onClose, job }: CoverLetterModalProps) {
   const { token } = useAuth();
+  const [mounted, setMounted] = React.useState(false);
   const [kit, setKit] = React.useState<ApplicationKit | null>(null);
   const [isLoading, setIsLoading] = React.useState(true);
   const [isGenerating, setIsGenerating] = React.useState(false);
   const [error, setError] = React.useState('');
   const [copiedCoverLetter, setCopiedCoverLetter] = React.useState(false);
   const [copiedQaIndex, setCopiedQaIndex] = React.useState<number | null>(null);
+
+  React.useEffect(() => {
+    setMounted(true);
+  }, []);
 
   React.useEffect(() => {
     if (!isOpen || !token) return;
@@ -112,7 +118,9 @@ export default function CoverLetterModal({ isOpen, onClose, job }: CoverLetterMo
     URL.revokeObjectURL(url);
   };
 
-  return (
+  if (!mounted) return null;
+
+  return createPortal(
     <AnimatePresence>
       {isOpen && (
         <div className="fixed inset-0 z-[100] flex items-center justify-center px-4">
@@ -242,6 +250,7 @@ export default function CoverLetterModal({ isOpen, onClose, job }: CoverLetterMo
           </motion.div>
         </div>
       )}
-    </AnimatePresence>
+    </AnimatePresence>,
+    document.body,
   );
 }

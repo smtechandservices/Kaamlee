@@ -166,7 +166,7 @@ export default function CustomCVEditorPage() {
 
         <div className="grid grid-cols-1 lg:grid-cols-[380px_1fr] gap-6">
           {/* Left: controls */}
-          <div className="space-y-4">
+          <div className="space-y-4 lg:sticky lg:top-6 lg:self-start lg:max-h-[calc(100vh-3rem)] lg:overflow-y-auto lg:pr-1">
             <div className="bg-[#111] border border-[#222] rounded-2xl p-5 space-y-4">
               <div className="space-y-2">
                 <label className="text-[10px] font-bold text-[#555] uppercase tracking-widest ml-1">Label</label>
