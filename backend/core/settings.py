@@ -29,7 +29,7 @@ BASE_DIR = Path(__file__).resolve().parent.parent
 SECRET_KEY = os.getenv('SECRET_KEY', 'django-insecure-fallback-key-change-this-in-env')
 
 # SECURITY WARNING: don't run with debug turned on in production!
-DEBUG = os.getenv('DEBUG', 'False') == 'True'
+DEBUG = os.getenv('DEBUG', 'False') == 'False'
 
 ALLOWED_HOSTS = os.getenv('ALLOWED_HOSTS', '*').split(',')
 
@@ -104,6 +104,13 @@ DATABASES = {
         conn_max_age=600,
     )
 }
+
+# SQLite allows only one writer at a time. The auto-scrape cron (APScheduler,
+# in-process) writes in the background alongside request-handling threads, so
+# without a generous busy-timeout a concurrent write elsewhere raises
+# "database is locked" instead of just waiting briefly for the lock to clear.
+if DATABASES['default']['ENGINE'] == 'django.db.backends.sqlite3':
+    DATABASES['default'].setdefault('OPTIONS', {})['timeout'] = 30
 
 
 # Password validation

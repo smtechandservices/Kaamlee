@@ -6,25 +6,26 @@ from rest_framework.decorators import action
 from rest_framework.authtoken.views import ObtainAuthToken
 from rest_framework.response import Response
 from rest_framework.authtoken.models import Token
-from .models import Location, Job, ScrapeSession, ScrapeLog, Bookmark, Feedback, Portfolio, Profile, CustomCV, JobApplicationKit
+from .models import Job, ScrapeSession, ScrapeLog, Bookmark, Feedback, Portfolio, Profile, CustomCV, JobApplicationKit, Company
 from .serializers import (
-    LocationSerializer, JobSerializer, JobMapPinSerializer, ScrapeSessionSerializer,
+    JobSerializer, JobMapPinSerializer, ScrapeSessionSerializer,
     ScrapeLogSerializer, UserSerializer, RegisterSerializer, RecentJobSerializer,
     FeedbackSerializer, PortfolioSettingsSerializer, PublicPortfolioSerializer,
     CustomCVSerializer, CustomCVCreateSerializer, tailor_resume_with_groq,
-    JobApplicationKitSerializer, generate_application_kit_with_groq,
+    JobApplicationKitSerializer, generate_application_kit_with_groq, CompanySerializer,
 )
-from .ats_scoring import score_cv, get_profession_keywords
-from .cv_export import render_cv_pdf, render_cv_docx
+from scripts.ats_scoring import score_cv, get_profession_keywords, get_all_profession_keywords
+from scripts.cv_export import render_cv_pdf, render_cv_docx
 from django.http import HttpResponse
 from django.db import models
-from django.db.models import Count, Exists, OuterRef, Prefetch
+from django.db.models import Exists, OuterRef, Q
 from django.core.cache import cache
 from django.contrib.auth.models import User
 from django.utils import timezone
 from datetime import timedelta
 import os
-import json
+import random
+import time
 from django.conf import settings
 
 class SignupView(generics.CreateAPIView):
@@ -57,7 +58,7 @@ class RecentJobsView(generics.ListAPIView):
     def get_queryset(self):
         limit = int(self.request.query_params.get('limit', 10))
         limit = min(limit, 299)
-        return Job.objects.select_related('location').order_by('-created_at')[:limit]
+        return Job.objects.order_by('-created_at')[:limit]
 
 class JobPagination(PageNumberPagination):
     page_size = 20
@@ -98,26 +99,26 @@ class JobViewSet(viewsets.ModelViewSet):
         country = self.request.query_params.get('country')
         if country and country != 'All':
             country_name = self._COUNTRY_MAP.get(country, country)
-            queryset = queryset.filter(location__country__iexact=country_name)
-
-        location_id = self.request.query_params.get('location_id')
-        if location_id:
-            queryset = queryset.filter(location_id=location_id)
+            queryset = queryset.filter(country__iexact=country_name)
 
         state = self.request.query_params.get('state')
         if state:
-            queryset = queryset.filter(location__state__iexact=state)
+            queryset = queryset.filter(state__iexact=state)
 
         search = self.request.query_params.get('search')
         if search:
             queryset = queryset.filter(title__icontains=search) | queryset.filter(company__icontains=search)
 
+        category = self.request.query_params.get('category')
+        if category and category != 'All':
+            queryset = queryset.filter(category__iexact=category)
+
         location_query = self.request.query_params.get('location')
         if location_query:
             queryset = queryset.filter(
                 models.Q(location_name__icontains=location_query) |
-                models.Q(location__city__icontains=location_query) |
-                models.Q(location__state__icontains=location_query)
+                models.Q(city__icontains=location_query) |
+                models.Q(state__icontains=location_query)
             )
 
         is_remote = self.request.query_params.get('is_remote')
@@ -128,7 +129,7 @@ class JobViewSet(viewsets.ModelViewSet):
 
     def get_queryset(self):
         user = self.request.user
-        queryset = Job.objects.select_related('location').annotate(
+        queryset = Job.objects.annotate(
             is_bookmarked=Exists(
                 Bookmark.objects.filter(user=user, job_id=OuterRef('pk'))
             )
@@ -140,7 +141,19 @@ class JobViewSet(viewsets.ModelViewSet):
         if bookmarked_only == 'true':
             queryset = queryset.filter(is_bookmarked=True)
 
-        return queryset
+        return self._shuffle(queryset)
+
+    def _shuffle(self, queryset):
+        """Random order for browsing variety, but stable within one cache window
+        so paginating doesn't repeat or skip jobs — it reshuffles only once the
+        cached page results are due to go stale anyway."""
+        ids = list(queryset.values_list('id', flat=True))
+        if not ids:
+            return queryset
+        seed = int(timezone.now().timestamp() // _JOBS_CACHE_TTL)
+        random.Random(seed).shuffle(ids)
+        order = models.Case(*[models.When(pk=pk, then=pos) for pos, pk in enumerate(ids)])
+        return queryset.order_by(order)
 
     def list(self, request, *args, **kwargs):
         # Every job carries an is_bookmarked flag for this user, so the cache is
@@ -169,9 +182,8 @@ class JobViewSet(viewsets.ModelViewSet):
     def map_pins(self, request):
         """All matching job coordinates, unpaginated — the map needs the full point
         set to draw correct clusters, but only needs a handful of fields per job.
-        Uses .values() with a joined location fallback instead of the serializer so a
-        large result set doesn't do one extra query per row (that N+1 is cheap on local
-        SQLite but multiplies into a request timeout against a networked Postgres)."""
+        Uses .values() instead of the serializer so a large result set doesn't do
+        one extra query per row."""
         bookmarked_only = request.query_params.get('bookmarked_only') == 'true'
         cache_key = self._cache_key(request, 'api_map_pins', scoped_to_user=bookmarked_only)
         pins = cache.get(cache_key)
@@ -186,15 +198,14 @@ class JobViewSet(viewsets.ModelViewSet):
 
         rows = queryset.values(
             'id', 'title', 'company', 'location_name', 'job_type', 'job_url',
-            'latitude', 'longitude',
-            'location__city', 'location__state', 'location__country',
+            'latitude', 'longitude', 'city', 'state', 'country',
         )
 
         pins = []
         for row in rows:
             name = row['location_name']
             if not name or str(name).strip().lower() in ('', 'nan', 'none'):
-                parts = [p for p in (row['location__city'], row['location__state'], row['location__country']) if p]
+                parts = [p for p in (row['city'], row['state'], row['country']) if p]
                 name = ', '.join(parts) if parts else None
             else:
                 name = name.strip()
@@ -263,28 +274,23 @@ class RequestLogsView(views.APIView):
             'shown_count': len(shown),
         })
 
-_LOCATIONS_CACHE_KEY = 'api_locations'
-_LOCATIONS_CACHE_TTL = 300  # 5 minutes
+_COUNTRIES_CACHE_KEY = 'api_countries'
+_COUNTRIES_CACHE_TTL = 300  # 5 minutes
 
-class LocationViewSet(viewsets.ModelViewSet):
-    serializer_class = LocationSerializer
-    permission_classes = [permissions.IsAuthenticated]
+class CountriesView(views.APIView):
+    """Distinct countries derived live from whatever jobs currently exist —
+    always accurate, no stale entries left behind after jobs expire."""
+    permission_classes = [permissions.AllowAny]
 
-    def get_queryset(self):
-        # Prefetch only location_name to avoid N+1 in accuracy_percentage calculation
-        lean_jobs = Job.objects.only('location_name', 'location_id')
-        return Location.objects.annotate(job_count=Count('jobs')).prefetch_related(
-            Prefetch('jobs', queryset=lean_jobs)
-        )
-
-    def list(self, request, *args, **kwargs):
-        data = cache.get(_LOCATIONS_CACHE_KEY)
-        if data is None:
-            queryset = self.get_queryset()
-            serializer = self.get_serializer(queryset, many=True)
-            data = serializer.data
-            cache.set(_LOCATIONS_CACHE_KEY, data, _LOCATIONS_CACHE_TTL)
-        return Response(data)
+    def get(self, request):
+        countries = cache.get(_COUNTRIES_CACHE_KEY)
+        if countries is None:
+            countries = list(
+                Job.objects.exclude(country='').values_list('country', flat=True)
+                .distinct().order_by('country')
+            )
+            cache.set(_COUNTRIES_CACHE_KEY, countries, _COUNTRIES_CACHE_TTL)
+        return Response(countries)
 
 _STATS_CACHE_KEY = 'api_stats'
 _STATS_CACHE_TTL = 30  # seconds
@@ -296,63 +302,115 @@ class StatsView(views.APIView):
         data = cache.get(_STATS_CACHE_KEY)
         if data is None:
             total_jobs = Job.objects.count()
-            total_locations = Location.objects.count()
             active_sessions = ScrapeSession.objects.filter(status='running').count()
             last_session = ScrapeSession.objects.order_by('-start_time').first()
             data = {
                 'total_jobs': total_jobs,
-                'total_locations': total_locations,
                 'active_sessions': active_sessions,
                 'last_scrape_session': ScrapeSessionSerializer(last_session).data if last_session else None,
             }
             cache.set(_STATS_CACHE_KEY, data, _STATS_CACHE_TTL)
         return Response(data)
 
-class TriggerScrapeView(views.APIView):
+class TriggerCompanyScrapeView(views.APIView):
     permission_classes = [permissions.AllowAny]
+    MAX_COMPANIES = 3
 
     def post(self, request):
-        # Allow if authenticated as admin OR if a secret key matches
         cron_secret = os.environ.get('CRON_SECRET', 'fallback_cron_secret')
         auth_header = request.headers.get('Authorization', '')
-        
-        is_cron_authorized = False
-        if cron_secret and auth_header == f"Bearer {cron_secret}":
-            is_cron_authorized = True
-            
-        # Check standard admin token if not cron authorized
+
+        is_cron_authorized = bool(cron_secret) and auth_header == f"Bearer {cron_secret}"
         if not is_cron_authorized:
             if not (request.user and request.user.is_authenticated and request.user.is_superuser):
                 return Response({'error': 'Authentication credentials were not provided or invalid.'}, status=401)
 
-        search_terms = request.data.get('search_terms', None)
-        search_term = request.data.get('search_term', 'frontend developer')
-        results_wanted = request.data.get('results_wanted', 5)
-        country = request.data.get('country', None)
+        companies = request.data.get('companies')
+        if not companies or not isinstance(companies, list):
+            return Response({'error': 'companies must be a non-empty list of company names.'}, status=400)
+        if len(companies) > self.MAX_COMPANIES:
+            return Response({'error': f'Pick at most {self.MAX_COMPANIES} companies.'}, status=400)
 
-        # Check if already running
         if ScrapeSession.objects.filter(status='running').exists():
             return Response({'status': 'Scraper already running'}, status=400)
 
         import threading
-        from .scraper_utils import run_background_scraping, run_parallel_role_scraping
+        from scripts.company_scraper import scrape_companies_by_names, log_to_db
 
-        if search_terms and isinstance(search_terms, list) and len(search_terms) > 1:
-            thread = threading.Thread(
-                target=run_parallel_role_scraping,
-                args=(search_terms, results_wanted, country)
-            )
-        else:
-            role = search_terms[0] if search_terms and isinstance(search_terms, list) else search_term
-            thread = threading.Thread(
-                target=run_background_scraping,
-                args=(role, results_wanted, country)
-            )
+        session = ScrapeSession.objects.create(
+            status='running', search_term=f"company_career_pages:{','.join(companies)}", results_limit=0,
+        )
 
-        thread.daemon = True
+        def _run():
+            log_to_db(session, f"Starting career-page scrape for {', '.join(companies)}", "success")
+            try:
+                scrape_companies_by_names(companies, session=session)
+                session.status = 'completed'
+            except Exception as e:
+                session.status = 'failed'
+                session.error_message = str(e)
+            session.current_location = None
+            session.end_time = timezone.now()
+            try:
+                session.save()
+            except Exception:
+                # A stuck 'running' session blocks every future scrape attempt
+                # (see the running-session check above), so retry once after a
+                # beat rather than leaving it wedged on a transient DB lock.
+                time.sleep(2)
+                session.save()
+            cache.delete(_STATS_CACHE_KEY)
+            cache.delete(_COUNTRIES_CACHE_KEY)
+
+        thread = threading.Thread(target=_run, daemon=True)
         thread.start()
         cache.delete(_STATS_CACHE_KEY)
-        return Response({'status': 'Scrape triggered', 'roles': search_terms or [search_term]})
+        return Response({'status': 'Company career-page scrape triggered', 'session_id': session.id})
+
+class CompanyViewSet(viewsets.ModelViewSet):
+    """Full CRUD for managing configured companies (add/edit/delete/activate)."""
+    queryset = Company.objects.all()
+    serializer_class = CompanySerializer
+    permission_classes = [permissions.IsAdminUser]
+
+class CompaniesView(views.APIView):
+    """All companies + their 10 most recent jobs each, for the admin dashboard's
+    company cards. For CRUD management, see CompanyViewSet."""
+    permission_classes = [permissions.IsAdminUser]
+    RECENT_JOBS_PER_COMPANY = 10
+
+    def get(self, request):
+        companies = list(
+            Company.objects.all()
+            .order_by(models.F('last_scraped_at').desc(nulls_last=True), '-created_at')
+            .values(
+                'id', 'name', 'domain', 'career_url', 'contact_url', 'contact_email',
+                'address', 'linkedin_url', 'logo_url', 'is_active', 'last_scraped_at',
+            )
+        )
+
+        result = []
+        for c in companies:
+            jobs_qs = Job.objects.filter(site__startswith='http', company=c['name'])
+            total = jobs_qs.count()
+            recent_jobs = jobs_qs.order_by('-date_posted', '-created_at')[:self.RECENT_JOBS_PER_COMPANY]
+            jobs = [{
+                'id': job.id,
+                'title': job.title,
+                'location_name': job.location_name,
+                'is_remote': job.is_remote,
+                'job_url': job.job_url,
+                'date_posted': job.date_posted,
+                'experience_required': job.experience_required,
+                'salary': job.salary,
+            } for job in recent_jobs]
+            result.append({
+                **c,
+                'job_count': total,
+                'jobs': jobs,
+            })
+
+        return Response(result)
 
 class StopScrapeView(views.APIView):
     permission_classes = [permissions.IsAdminUser]
@@ -363,7 +421,7 @@ class StopScrapeView(views.APIView):
             session.stop_requested = True
             session.save()
             cache.delete(_STATS_CACHE_KEY)
-            cache.delete(_LOCATIONS_CACHE_KEY)
+            cache.delete(_COUNTRIES_CACHE_KEY)
             return Response({'status': 'Stop request sent'})
         return Response({'status': 'No active session found'}, status=404)
 
@@ -377,7 +435,7 @@ class ForceResetView(views.APIView):
             error_message='Force reset by admin'
         )
         cache.delete(_STATS_CACHE_KEY)
-        cache.delete(_LOCATIONS_CACHE_KEY)
+        cache.delete(_COUNTRIES_CACHE_KEY)
         return Response({'status': 'All sessions reset'})
 
 class LogsView(generics.ListAPIView):
@@ -415,20 +473,12 @@ class AdminUserViewSet(viewsets.ModelViewSet):
     def get_queryset(self):
         return User.objects.select_related('profile', 'portfolio').order_by('-date_joined')
 
-class RolesView(views.APIView):
+class CategoriesView(views.APIView):
     permission_classes = [permissions.AllowAny]
 
     def get(self, request):
-        roles = cache.get('api_roles')
-        if roles is None:
-            path = os.path.join(settings.BASE_DIR, 'api', 'roles.json')
-            try:
-                with open(path, 'r') as f:
-                    roles = json.load(f)
-                cache.set('api_roles', roles, 3600)  # 1 hour — static file
-            except Exception as e:
-                return Response({"error": str(e)}, status=500)
-        return Response(roles)
+        from scripts.job_categorizer import CATEGORIES
+        return Response(CATEGORIES)
 
 class FeedbackView(views.APIView):
     permission_classes = [permissions.IsAuthenticated]
@@ -552,6 +602,17 @@ class CustomCVListCreateView(generics.ListCreateAPIView):
         serializer.is_valid(raise_exception=True)
         cv = serializer.save()
         return Response(CustomCVSerializer(cv).data, status=201)
+
+
+class AtsKeywordsView(views.APIView):
+    """GET /api/custom-cv/keywords/ — profession -> ATS keyword list reference data,
+    the same terms score_cv() checks target_role content against. Powers the
+    "ATS mapping terms" panel on the custom CV list page.
+    """
+    permission_classes = [permissions.IsAuthenticated]
+
+    def get(self, request):
+        return Response(get_all_profession_keywords())
 
 
 class CustomCVDetailView(generics.RetrieveUpdateDestroyAPIView):

@@ -20,3 +20,7 @@ export interface CustomCV {
   created_at: string;
   updated_at: string;
 }
+
+// Profession -> ATS keyword list, from GET /api/custom-cv/keywords/ — the
+// same terms score_cv() checks a CV's content against for its target_role.
+export type ProfessionKeywords = Record<string, { keywords: string[] }>;

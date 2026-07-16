@@ -1,18 +1,16 @@
 import fcntl
-import json
-import os
-import random
 import threading
+import time
 
 from apscheduler.schedulers.background import BackgroundScheduler
-from django.conf import settings
+from django.utils import timezone
 
 LOCK_FILE = '/tmp/kaamlee_autoscrape.lock'
 
-
 def auto_scrape_job():
     from .models import ScrapeSession
-    from .scraper_utils import run_parallel_role_scraping
+    from django.core.cache import cache
+    from scripts.company_scraper import run_random_companies_scraping, log_to_db
 
     # OS-level file lock — only one process across all workers proceeds per tick
     lock_fd = open(LOCK_FILE, 'w')
@@ -28,26 +26,31 @@ def auto_scrape_job():
             print("[AutoScrape] Already running — skipping.")
             return
 
-        roles_path = os.path.join(settings.BASE_DIR, 'api', 'roles.json')
-        try:
-            with open(roles_path) as f:
-                roles = json.load(f)
-        except Exception as e:
-            print(f"[AutoScrape] Could not load roles.json: {e}")
-            return
+        print("[AutoScrape] Triggering career-page scrape for 3 random companies")
+        session = ScrapeSession.objects.create(status='running', search_term='company_career_pages:auto', results_limit=0)
 
-        if not roles:
-            return
+        def _run():
+            log_to_db(session, "Auto-scrape: starting career-page scrape for 3 random companies", "success")
+            try:
+                run_random_companies_scraping(count=3, session=session)
+                session.status = 'completed'
+            except Exception as e:
+                session.status = 'failed'
+                session.error_message = str(e)
+            session.current_location = None
+            session.end_time = timezone.now()
+            try:
+                session.save()
+            except Exception:
+                # A stuck 'running' session blocks every future scrape attempt,
+                # so retry once after a beat rather than leaving it wedged on a
+                # transient DB lock (SQLite has only one writer at a time).
+                time.sleep(2)
+                session.save()
+            cache.delete('api_stats')
+            cache.delete('api_countries')
 
-        random.shuffle(roles)
-        terms = roles[:3]
-
-        print(f"[AutoScrape] Triggering scrape for: {terms}")
-        thread = threading.Thread(
-            target=run_parallel_role_scraping,
-            args=(terms, 5, None),
-            daemon=True,
-        )
+        thread = threading.Thread(target=_run, daemon=True)
         thread.start()
     finally:
         fcntl.flock(lock_fd, fcntl.LOCK_UN)

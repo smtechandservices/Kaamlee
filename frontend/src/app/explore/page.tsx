@@ -1,8 +1,9 @@
 'use client';
 
 import React, { useState, useEffect } from 'react';
-import { Search, Map as MapIcon, List, Monitor, ArrowLeft, LogOut, Bookmark, MessageSquare } from 'lucide-react';
-import FeedbackModal from '@/components/FeedbackModal';
+import { Search, Map as MapIcon, List, Monitor, ArrowLeft, Bookmark } from 'lucide-react';
+import Sidebar from '@/components/Sidebar';
+import SidebarToggle from '@/components/SidebarToggle';
 import { motion, AnimatePresence, Variants } from 'framer-motion';
 import { JobCard } from '@/components/JobCard';
 import Map from '@/components/Map';
@@ -33,18 +34,19 @@ function useDebounce<T>(value: T, delay: number): T {
 }
 
 export default function ExplorePage() {
-  const { user, token, logout, isLoading } = useAuth();
+  const { token, logout, isLoading } = useAuth();
 
   const router = useRouter();
   const [jobs, setJobs] = useState<any[]>([]);
   const [totalJobs, setTotalJobs] = useState(0);
   const [mapPins, setMapPins] = useState<any[]>([]);
   const [pinnedJob, setPinnedJob] = useState<any | null>(null);
-  const [locations, setLocations] = useState<any[]>([]);
-  const [jobRoles, setJobRoles] = useState<string[]>([]);
+  const [countries, setCountries] = useState<string[]>([]);
+  const [jobCategories, setJobCategories] = useState<string[]>([]);
   const [selectedJobId, setSelectedJobId] = useState<string | null>(null);
   const [searchQuery, setSearchQuery] = useState('');
   const [locationQuery, setLocationQuery] = useState('');
+  const [selectedCategory, setSelectedCategory] = useState('All');
   const [viewMode, setViewMode] = useState<'split' | 'map' | 'list'>('split');
   const [activeCountry, setActiveCountry] = useState<string>('All');
 
@@ -52,7 +54,6 @@ export default function ExplorePage() {
   const [bookmarkedOnly, setBookmarkedOnly] = useState(false);
   const [currentPage, setCurrentPage] = useState(1);
   const [isFetchingJobs, setIsFetchingJobs] = useState(false);
-  const [isFeedbackOpen, setIsFeedbackOpen] = useState(false);
   const jobsPerPage = 20;
 
   const debouncedSearch = useDebounce(searchQuery, 300);
@@ -61,18 +62,18 @@ export default function ExplorePage() {
   const mapJobFields = (job: any) => ({
     ...job,
     location: job.location_name,
-    locationId: job.location,
   });
 
   const filterParams = React.useMemo(() => {
     const params = new URLSearchParams();
     if (activeCountry !== 'All') params.set('country', activeCountry);
+    if (selectedCategory !== 'All') params.set('category', selectedCategory);
     if (debouncedSearch) params.set('search', debouncedSearch);
     if (debouncedLocation) params.set('location', debouncedLocation);
     if (remoteOnly) params.set('is_remote', 'true');
     if (bookmarkedOnly) params.set('bookmarked_only', 'true');
     return params;
-  }, [activeCountry, debouncedSearch, debouncedLocation, remoteOnly, bookmarkedOnly]);
+  }, [activeCountry, selectedCategory, debouncedSearch, debouncedLocation, remoteOnly, bookmarkedOnly]);
 
   useEffect(() => {
     if (!isLoading && !token) {
@@ -83,37 +84,34 @@ export default function ExplorePage() {
 
   useEffect(() => {
     setCurrentPage(1);
-  }, [debouncedSearch, debouncedLocation, activeCountry, remoteOnly, bookmarkedOnly]);
+  }, [debouncedSearch, debouncedLocation, activeCountry, selectedCategory, remoteOnly, bookmarkedOnly]);
 
-  // Fetch locations + roles once on mount
+  // Fetch countries + categories once on mount
   useEffect(() => {
     const fetchMeta = async () => {
       if (!token) return;
       try {
-        const cachedLocs = getCached('locations');
-        if (cachedLocs) {
-          setLocations(cachedLocs);
+        const cachedCountries = getCached('countries');
+        if (cachedCountries) {
+          setCountries(cachedCountries);
         } else {
-          const locsRes = await fetch(`${process.env.NEXT_PUBLIC_API_URL}/api/locations/`, {
-            headers: { 'Authorization': `Token ${token}` }
-          });
-          if (locsRes.status === 401) { logout(); return; }
-          if (locsRes.ok) {
-            const data = await locsRes.json();
-            setCache('locations', data);
-            setLocations(data);
+          const countriesRes = await fetch(`${process.env.NEXT_PUBLIC_API_URL}/api/countries/`);
+          if (countriesRes.ok) {
+            const data = await countriesRes.json();
+            setCache('countries', data);
+            setCountries(data);
           }
         }
 
-        const cachedRoles = getCached('roles');
-        if (cachedRoles) {
-          setJobRoles(cachedRoles);
+        const cachedCategories = getCached('categories');
+        if (cachedCategories) {
+          setJobCategories(cachedCategories);
         } else {
-          const rolesRes = await fetch(`${process.env.NEXT_PUBLIC_API_URL}/api/roles/`);
-          if (rolesRes.ok) {
-            const data = await rolesRes.json();
-            setCache('roles', data);
-            setJobRoles(data);
+          const categoriesRes = await fetch(`${process.env.NEXT_PUBLIC_API_URL}/api/categories/`);
+          if (categoriesRes.ok) {
+            const data = await categoriesRes.json();
+            setCache('categories', data);
+            setJobCategories(data);
           }
         }
       } catch (error) {
@@ -190,11 +188,11 @@ export default function ExplorePage() {
     fetchMapPins();
   }, [token, filterParams]);
 
-  const countries = React.useMemo(() => ['All', ...Array.from(new Set(locations.map(loc => {
-    if (loc.country === 'United States') return 'USA';
-    if (loc.country === 'United Kingdom') return 'UK';
-    return loc.country;
-  })))], [locations]);
+  const countryOptions = React.useMemo(() => ['All', ...Array.from(new Set(countries.map(country => {
+    if (country === 'United States') return 'USA';
+    if (country === 'United Kingdom') return 'UK';
+    return country;
+  })))], [countries]);
 
   // Jobs/pins are already filtered server-side (country, search, location,
   // remote, bookmarked) — no client-side re-filtering needed here anymore.
@@ -311,15 +309,19 @@ export default function ExplorePage() {
   };
 
   return (
-    <main className="h-screen flex flex-col bg-[#0a0a0a] overflow-hidden relative">
+    <main className="h-screen flex bg-[#0a0a0a] overflow-hidden relative">
+      {/* Desktop nav rail - replaces the old header nav links (Custom CV, Billing, Profile, Logout) */}
+      <Sidebar />
+
+      <div className="flex-1 flex flex-col overflow-hidden">
       {/* Header - Always visible for navigation/logout */}
       <header className="h-16 border-b border-[#222] px-4 sm:px-6 flex items-center justify-between glass z-20 shrink-0">
         <div className="flex items-center gap-3 sm:gap-4 flex-1 overflow-hidden">
-          <Link href="/" className="group flex items-center gap-1.5 sm:gap-2 text-[#555] hover:text-white transition-colors mr-1 sm:mr-2 shrink-0">
+          <Link href="/" className="group flex md:hidden items-center gap-1.5 sm:gap-2 text-[#555] hover:text-white transition-colors mr-1 sm:mr-2 shrink-0">
             <ArrowLeft size={16} className="group-hover:-translate-x-1 transition-transform" />
             <span className="text-[10px] font-bold uppercase tracking-[0.2em] hidden sm:inline">Back</span>
           </Link>
-          <div className="w-px h-4 bg-[#222] mr-1 sm:mr-2 shrink-0" />
+          <div className="w-px h-4 bg-[#222] mr-1 sm:mr-2 shrink-0 md:hidden" />
           <h1 className="hidden sm:inline text-lg sm:text-xl font-black tracking-tighter text-white mr-2 sm:mr-4 cursor-default truncate">KAAMLEE</h1>
         </div>
 
@@ -328,21 +330,21 @@ export default function ExplorePage() {
           <div className="w-px h-6 bg-[#222] mx-1 sm:mx-2" />
           {/* View Toggles - Always visible */}
           <div className="flex items-center gap-1 sm:gap-2 bg-[#161616] rounded-full p-1 border border-[#222]">
-            <button 
+            <button
               onClick={() => setViewMode('split')}
               className={`cursor-pointer p-1 sm:p-1.5 rounded-full transition-all hidden md:block ${viewMode === 'split' ? 'bg-[#22c55e] text-white' : 'text-[#555] hover:text-[#888]'}`}
               title="Split View"
             >
               <List size={14} />
             </button>
-            <button 
+            <button
               onClick={() => setViewMode('list')}
               className={`cursor-pointer p-1 sm:p-1.5 rounded-full transition-all md:hidden ${viewMode === 'list' ? 'bg-[#22c55e] text-white' : 'text-[#555] hover:text-[#888]'}`}
               title="List View"
             >
               <List size={14} />
             </button>
-            <button 
+            <button
               onClick={() => setViewMode('map')}
               className={`cursor-pointer p-1 sm:p-1.5 rounded-full transition-all ${viewMode === 'map' ? 'bg-[#22c55e] text-white' : 'text-[#555] hover:text-[#888]'}`}
               title="Map View"
@@ -351,44 +353,15 @@ export default function ExplorePage() {
             </button>
           </div>
 
-          <div className="w-px h-6 bg-[#222] mx-1 sm:mx-2" />
-
-          <button
-            onClick={() => setIsFeedbackOpen(true)}
-            title="Send feedback"
-            className="cursor-pointer flex items-center gap-2 text-[#888] hover:text-green-500 transition-colors text-sm font-medium group"
-          >
-            <MessageSquare size={16} className="group-hover:scale-110 transition-transform" />
-            <span className="hidden lg:inline text-[10px] font-mono uppercase tracking-widest">Feedback</span>
-          </button>
-
-          <div className="w-px h-6 bg-[#222] mx-1 sm:mx-2" />
-
-          <Link
-            href="/profile"
-            className="flex items-center gap-2 px-1.5 sm:px-2 py-1 bg-white/5 border border-[#222] rounded-full hover:border-white/20 transition-all group"
-          >
-            <div className="w-5 h-5 sm:w-6 sm:h-6 rounded-full bg-gradient-to-br from-green-500 to-green-700 flex items-center justify-center text-[8px] sm:text-[10px] font-bold shadow-lg shadow-green-500/10 group-hover:scale-110 transition-transform">
-              {user?.first_name?.[0]}{user?.last_name?.[0]}
-            </div>
-            <span className="hidden lg:inline text-xs font-medium text-[#888] group-hover:text-white transition-colors">{user?.first_name}</span>
-          </Link>
-
-          <div className="w-px h-6 bg-[#222] mx-1 sm:mx-2" />
-
-          <button
-            onClick={logout}
-            className="cursor-pointer flex items-center gap-2 text-[#888] hover:text-white transition-colors text-sm font-medium group"
-          >
-            <LogOut size={18} className="group-hover:translate-x-0.5 transition-transform" />
-            <span className="hidden lg:inline">Logout</span>
-          </button>
+          {/* Mobile sidebar toggle - desktop uses the always-visible left sidebar instead */}
+          <div className="w-px h-6 bg-[#222] mx-1 sm:mx-2 md:hidden" />
+          <SidebarToggle />
         </div>
       </header>
 
       {/* Main Content Area */}
       <div className="flex-1 flex overflow-hidden">
-        {/* Sidebar */}
+        {/* Job list sidebar */}
         <aside className={`${viewMode === 'map' ? 'hidden' : 'flex'} w-full md:w-[500px] flex-col border-r border-[#222] bg-[#0a0a0a] z-10 shrink-0`}>
           
           {/* Search Area */}
@@ -418,31 +391,31 @@ export default function ExplorePage() {
                 </div>
               </div>
 
-              {/* Quick Roles Vertical Scrollable List - Fixed height */}
+              {/* Quick Categories Vertical Scrollable List - Fixed height */}
               <div className="h-12 sm:h-[116px] w-full sm:w-[140px] flex flex-row sm:flex-col border border-[#222] rounded-2xl bg-[#080808] overflow-hidden">
                 <div className="flex-1 flex flex-row sm:flex-col overflow-x-auto sm:overflow-y-auto no-scrollbar p-1.5 gap-1 sm:space-y-0.5 bg-black/40">
                   <button
-                    onClick={() => setSearchQuery('')}
+                    onClick={() => setSelectedCategory('All')}
                     className={`shrink-0 sm:w-full text-left px-2.5 py-1.5 rounded-lg text-[9px] sm:text-[10px] font-bold transition-all border ${
-                      searchQuery === ''
+                      selectedCategory === 'All'
                         ? 'bg-green-500/10 text-green-400 border-green-500/30'
                         : 'bg-transparent text-[#555] border-transparent hover:bg-[#111] hover:text-[#888]'
                     }`}
                   >
-                    All Roles
+                    All Categories
                   </button>
-                  {jobRoles.map((role) => (
+                  {jobCategories.map((category) => (
                     <button
-                      key={role}
-                      onClick={() => setSearchQuery(role)}
+                      key={category}
+                      onClick={() => setSelectedCategory(category)}
                       className={`shrink-0 sm:w-full text-left px-2.5 py-1.5 rounded-lg text-[9px] sm:text-[10px] font-bold transition-all border truncate ${
-                        searchQuery === role
+                        selectedCategory === category
                           ? 'bg-green-500/10 text-green-400 border-green-500/30'
                           : 'bg-transparent text-[#555] border-transparent hover:bg-[#111] hover:text-[#888]'
                       }`}
-                      title={role}
+                      title={category}
                     >
-                      {role}
+                      {category}
                     </button>
                   ))}
                 </div>
@@ -453,7 +426,7 @@ export default function ExplorePage() {
           {/* Category Filters */}
           <div className="px-4 sm:px-5 py-3 sm:py-4 border-b border-[#222] bg-[#0a0a0a] flex items-center justify-between gap-2 sm:gap-3">
             <div className="flex items-center gap-2 overflow-x-auto no-scrollbar flex-1">
-              {countries.map((country) => (
+              {countryOptions.map((country) => (
                 <button
                   key={country}
                   onClick={() => setActiveCountry(country)}
@@ -530,7 +503,7 @@ export default function ExplorePage() {
               </div>
             ) : null}
             <motion.div
-              key={`${currentPage}-${debouncedSearch}-${debouncedLocation}-${activeCountry}-${remoteOnly}-${bookmarkedOnly}`}
+              key={`${currentPage}-${debouncedSearch}-${debouncedLocation}-${activeCountry}-${selectedCategory}-${remoteOnly}-${bookmarkedOnly}`}
               variants={containerVariants}
               initial="hidden"
               animate="visible"
@@ -597,7 +570,7 @@ export default function ExplorePage() {
           />
         </section>
       </div>
-
+      </div>
 
       <style jsx global>{`
         .custom-scrollbar::-webkit-scrollbar {
@@ -614,8 +587,6 @@ export default function ExplorePage() {
           background: #333;
         }
       `}</style>
-
-      <FeedbackModal isOpen={isFeedbackOpen} onClose={() => setIsFeedbackOpen(false)} />
     </main>
   );
 }

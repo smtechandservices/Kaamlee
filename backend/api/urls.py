@@ -2,18 +2,18 @@ from django.urls import path, include
 from rest_framework.routers import DefaultRouter
 from rest_framework.authtoken.views import obtain_auth_token
 from .views import (
-    LocationViewSet, JobViewSet, StatsView, TriggerScrapeView,
+    JobViewSet, StatsView, TriggerCompanyScrapeView, CompaniesView, CompanyViewSet,
     StopScrapeView, ForceResetView, LogsView, SignupView, UserView, RecentJobsView,
-    CheckExistenceView, AdminLoginView, AdminUserViewSet, RolesView,
+    CheckExistenceView, AdminLoginView, AdminUserViewSet, CategoriesView, CountriesView,
     FeedbackView, AdminFeedbackView, PublicPortfolioView, MyPortfolioView, MyPortfolioContentView,
     RequestLogsView, CustomCVListCreateView, CustomCVDetailView, CustomCVTailorView, CustomCVExportView,
-    JobApplicationKitView,
+    JobApplicationKitView, AtsKeywordsView,
 )
 
 router = DefaultRouter()
 router.register(r'jobs', JobViewSet, basename='jobs')
 router.register(r'users', AdminUserViewSet, basename='users')
-router.register(r'locations', LocationViewSet, basename='locations')
+router.register(r'admin/companies', CompanyViewSet, basename='admin-companies')
 
 urlpatterns = [
     # ==========================================
@@ -30,7 +30,8 @@ urlpatterns = [
     path('', include(router.urls)),
     path('recent-jobs/', RecentJobsView.as_view(), name='recent-jobs'),
     path('check-existence/', CheckExistenceView.as_view(), name='check-existence'),
-    path('roles/', RolesView.as_view(), name='roles'),
+    path('categories/', CategoriesView.as_view(), name='categories'),
+    path('countries/', CountriesView.as_view(), name='countries'),
     
     # ==========================================
     # FEEDBACK
@@ -49,6 +50,7 @@ urlpatterns = [
     # CUSTOM CV
     # ==========================================
     path('custom-cv/', CustomCVListCreateView.as_view(), name='custom-cv-list'),
+    path('custom-cv/keywords/', AtsKeywordsView.as_view(), name='custom-cv-keywords'),
     path('custom-cv/<int:pk>/', CustomCVDetailView.as_view(), name='custom-cv-detail'),
     path('custom-cv/<int:pk>/tailor/', CustomCVTailorView.as_view(), name='custom-cv-tailor'),
     path('custom-cv/<int:pk>/export/', CustomCVExportView.as_view(), name='custom-cv-export'),
@@ -64,7 +66,8 @@ urlpatterns = [
     path('stats/', StatsView.as_view(), name='stats'),
     path('logs/', LogsView.as_view(), name='logs'),
     path('admin/request-logs/', RequestLogsView.as_view(), name='admin-request-logs'),
-    path('trigger-scrape/', TriggerScrapeView.as_view(), name='trigger-scrape'),
+    path('trigger-company-scrape/', TriggerCompanyScrapeView.as_view(), name='trigger-company-scrape'),
+    path('companies/', CompaniesView.as_view(), name='companies'),
     path('stop-scrape/', StopScrapeView.as_view(), name='stop-scrape'),
     path('force-reset/', ForceResetView.as_view(), name='force-reset'),
 ]

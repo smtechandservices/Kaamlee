@@ -4,9 +4,9 @@ import json
 import PyPDF2
 from groq import Groq
 from rest_framework import serializers
-from .models import Location, Job, ScrapeSession, ScrapeLog, Bookmark, Feedback, Portfolio, CustomCV, JobApplicationKit
+from .models import Job, ScrapeSession, ScrapeLog, Bookmark, Feedback, Portfolio, CustomCV, JobApplicationKit, Company
 from django.contrib.auth.models import User
-from .ats_scoring import score_cv
+from scripts.ats_scoring import score_cv
 
 _groq = Groq(api_key=os.getenv('GROQ_API_KEY'))
 
@@ -333,50 +333,51 @@ class RegisterSerializer(serializers.ModelSerializer):
         
         return user
 
-class LocationSerializer(serializers.ModelSerializer):
-    job_count = serializers.IntegerField(read_only=True)
-    accuracy_percentage = serializers.SerializerMethodField()
-    
+class CompanySerializer(serializers.ModelSerializer):
     class Meta:
-        model = Location
-        fields = ['id', 'country', 'country_code', 'state', 'city', 'last_scraped', 'job_count', 'accuracy_percentage']
-
-    def get_accuracy_percentage(self, obj):
-        jobs = obj.jobs.all()
-        if not jobs:
-            return 0
-        accurate_jobs = sum(1 for job in jobs if obj.city.lower() in job.location_name.lower())
-        return round((accurate_jobs / len(jobs)) * 100, 1)
+        model = Company
+        fields = [
+            'id', 'name', 'domain', 'career_url', 'contact_url', 'contact_email',
+            'address', 'linkedin_url', 'logo_url', 'is_active', 'last_scraped_at', 'created_at',
+        ]
+        read_only_fields = ['last_scraped_at', 'created_at']
 
 def _resolve_job_location_name(obj):
     name = obj.location_name
     if name and str(name).strip().lower() not in ('', 'nan', 'none'):
         return name.strip()
-    # Fall back to the FK location's city/country
-    if obj.location_id:
-        loc = obj.location
-        parts = [p for p in [loc.city, loc.state, loc.country] if p]
-        return ', '.join(parts)
-    return None
+    # Fall back to the plain city/state/country fields
+    parts = [p for p in [obj.city, obj.state, obj.country] if p]
+    return ', '.join(parts) if parts else None
 
 class JobSerializer(serializers.ModelSerializer):
     match_score = serializers.SerializerMethodField()
     is_bookmarked = serializers.BooleanField(read_only=True)
     location_name = serializers.SerializerMethodField()
+    description = serializers.SerializerMethodField()
+
+    DESCRIPTION_PREVIEW_LENGTH = 220
 
     class Meta:
         model = Job
-        # description and id_from_site excluded — description is a large TextField
-        # not needed for card/list/map views
+        # id_from_site excluded (internal dedup key only). description is a large
+        # TextField, so `description` here is a truncated preview, not the raw field.
         fields = [
-            'id', 'title', 'company', 'location_name', 'location',
+            'id', 'title', 'company', 'location_name', 'country',
             'is_remote', 'job_type', 'job_url', 'site', 'company_logo',
             'date_posted', 'created_at', 'latitude', 'longitude',
-            'is_bookmarked', 'match_score',
+            'is_bookmarked', 'match_score', 'category',
+            'experience_required', 'salary', 'description',
         ]
 
     def get_location_name(self, obj):
         return _resolve_job_location_name(obj)
+
+    def get_description(self, obj):
+        text = (obj.description or '').strip()
+        if len(text) <= self.DESCRIPTION_PREVIEW_LENGTH:
+            return text
+        return text[:self.DESCRIPTION_PREVIEW_LENGTH].rsplit(' ', 1)[0] + '…'
 
     def get_match_score(self, obj):
         request = self.context.get('request')
@@ -390,7 +391,8 @@ class JobSerializer(serializers.ModelSerializer):
         return calculate_match(resume_text, obj.title, getattr(obj, 'description', '') or '')
 
 class RecentJobSerializer(JobSerializer):
-    pass
+    class Meta(JobSerializer.Meta):
+        fields = [f for f in JobSerializer.Meta.fields if f != 'site']
 
 class JobMapPinSerializer(serializers.ModelSerializer):
     """Lightweight job shape for map markers — no match_score/is_bookmarked computation."""

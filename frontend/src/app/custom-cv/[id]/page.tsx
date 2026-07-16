@@ -10,6 +10,9 @@ import { useAuth } from '@/context/AuthContext';
 import type { CustomCV, CVTemplate } from '@/components/customcv/types';
 import type { ResumeParsed, ExpEntry, Project, EduEntry, SkillGroup } from '@/components/portfolio/types';
 import { CV_TEMPLATE_COMPONENTS } from '@/components/customcv/templates';
+import Sidebar from '@/components/Sidebar';
+import SidebarToggle from '@/components/SidebarToggle';
+import Link from 'next/link';
 
 const TEMPLATE_LABELS: Record<CVTemplate, string> = {
   modern: 'Modern',
@@ -151,8 +154,24 @@ export default function CustomCVEditorPage() {
   const PreviewComponent = CV_TEMPLATE_COMPONENTS[template];
 
   return (
-    <main className="min-h-screen bg-[#0a0a0a] text-white p-6">
-      <div className="max-w-6xl mx-auto">
+    <main className="h-screen flex bg-[#0a0a0a] text-white overflow-hidden relative">
+      <Sidebar />
+
+      <div className="flex-1 flex flex-col overflow-hidden">
+        <header className="h-16 border-b border-[#222] px-4 sm:px-6 flex items-center justify-between glass z-20 shrink-0">
+          <div className="flex items-center gap-3 sm:gap-4 flex-1 overflow-hidden">
+            <Link href="/custom-cv" className="group flex md:hidden items-center gap-1.5 sm:gap-2 text-[#555] hover:text-white transition-colors mr-1 sm:mr-2 shrink-0">
+              <ArrowLeft size={16} className="group-hover:-translate-x-1 transition-transform" />
+              <span className="text-[10px] font-bold uppercase tracking-[0.2em] hidden sm:inline">Back</span>
+            </Link>
+            <div className="w-px h-4 bg-[#222] mr-1 sm:mr-2 shrink-0 md:hidden" />
+            <h1 className="hidden sm:inline text-lg sm:text-xl font-black tracking-tighter text-white mr-2 sm:mr-4 cursor-default truncate">KAAMLEE</h1>
+          </div>
+          <SidebarToggle />
+        </header>
+
+        <div className="flex-1 overflow-y-auto p-6 relative">
+      <div className="mx-auto">
         <button
           onClick={() => router.push('/custom-cv')}
           className="cursor-pointer inline-flex items-center gap-2 text-[#888] hover:text-white transition-colors mb-6 text-sm"
@@ -286,6 +305,8 @@ export default function CustomCVEditorPage() {
           <div className="bg-[#0a0a0a] border border-[#222] rounded-2xl p-4 sm:p-8 overflow-x-auto">
             <PreviewComponent r={content} />
           </div>
+        </div>
+      </div>
         </div>
       </div>
     </main>

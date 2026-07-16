@@ -240,10 +240,13 @@ function EditPanel({ draft, setDraft, onSave, onClose, saving, saved }: {
 }
 
 // ─── Switcher (main export) ───────────────────────────────────────────────────────
-export default function PortfolioTemplate({ data }: { data: PortfolioData }) {
+export default function PortfolioTemplate({ data, forceOwner }: { data: PortfolioData; forceOwner?: boolean }) {
   const router = useRouter();
   const [r, setR] = useState<ResumeParsed>(data.resume_parsed ?? ({} as ResumeParsed));
-  const [isOwner, setIsOwner] = useState(false);
+  // forceOwner: set by OwnerPreviewGate once it has already proven — via an
+  // authenticated re-fetch — that the viewer owns this portfolio, so the
+  // edit affordances show up without needing the ?edit=1 preview link.
+  const [isOwner, setIsOwner] = useState(!!forceOwner);
   const [editOpen, setEditOpen] = useState(false);
   const [draft, setDraft] = useState<ResumeParsed>(r);
   const [saving, setSaving] = useState(false);
