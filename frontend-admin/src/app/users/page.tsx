@@ -221,7 +221,8 @@ export default function UserManagement() {
         ) : (
           <div className="grid grid-cols-1 gap-4">
             <div className="bg-[#111] border border-[#222] rounded-3xl overflow-hidden shadow-2xl">
-              <table className="w-full border-collapse">
+              <div className="overflow-x-auto">
+              <table className="w-full min-w-[1100px] border-collapse">
                 <thead>
                   <tr className="border-b border-[#222] bg-[#161616]/50">
                     <th className="text-left px-6 py-5 text-[10px] font-black uppercase tracking-[0.2em] text-[#555]">User Details</th>
@@ -378,7 +379,8 @@ export default function UserManagement() {
                   </AnimatePresence>
                 </tbody>
               </table>
-              
+              </div>
+
               {filteredUsers.length === 0 && (
                 <div className="py-20 text-center">
                   <AlertCircle className="w-12 h-12 text-[#222] mx-auto mb-4" />
