@@ -58,7 +58,12 @@ REST_FRAMEWORK = {
     ],
     'DEFAULT_PERMISSION_CLASSES': [
         'rest_framework.permissions.AllowAny',
-    ]
+    ],
+    'DEFAULT_THROTTLE_RATES': {
+        # CheckExistenceView must stay unauthenticated (used pre-signup), so it's
+        # throttled per-IP instead to make username/email/phone enumeration impractical.
+        'check-existence': '20/minute',
+    },
 }
 
 MIDDLEWARE = [
@@ -105,6 +110,13 @@ DATABASES = {
     )
 }
 
+# SQLite allows only one writer at a time. The auto-scrape cron (APScheduler,
+# in-process) writes in the background alongside request-handling threads, so
+# without a generous busy-timeout a concurrent write elsewhere raises
+# "database is locked" instead of just waiting briefly for the lock to clear.
+if DATABASES['default']['ENGINE'] == 'django.db.backends.sqlite3':
+    DATABASES['default'].setdefault('OPTIONS', {})['timeout'] = 30
+
 
 # Password validation
 # https://docs.djangoproject.com/en/5.0/ref/settings/#auth-password-validators
@@ -141,6 +153,12 @@ USE_TZ = True
 # https://docs.djangoproject.com/en/5.0/howto/static-files/
 
 STATIC_URL = 'static/'
+
+# User-uploaded files (resumes, etc.). Explicit MEDIA_ROOT so uploads land in one
+# gitignored directory instead of resolving relative to whatever the cwd happens to
+# be when manage.py/gunicorn is launched.
+MEDIA_URL = 'media/'
+MEDIA_ROOT = BASE_DIR / 'media'
 
 # Default primary key field type
 # https://docs.djangoproject.com/en/5.0/ref/settings/#default-auto-field

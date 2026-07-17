@@ -28,6 +28,9 @@ db.sqlite3-journal
 local_settings.py
 staticfiles/
 
+# User-uploaded files (resumes, etc.) — contains real user PII, never commit
+media/
+
 # Environments
 .env
 .venv

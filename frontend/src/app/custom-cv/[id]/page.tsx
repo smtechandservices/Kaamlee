@@ -10,6 +10,8 @@ import { useAuth } from '@/context/AuthContext';
 import type { CustomCV, CVTemplate } from '@/components/customcv/types';
 import type { ResumeParsed, ExpEntry, Project, EduEntry, SkillGroup } from '@/components/portfolio/types';
 import { CV_TEMPLATE_COMPONENTS } from '@/components/customcv/templates';
+import Sidebar from '@/components/Sidebar';
+import PageHeader from '@/components/PageHeader';
 
 const TEMPLATE_LABELS: Record<CVTemplate, string> = {
   modern: 'Modern',
@@ -151,8 +153,14 @@ export default function CustomCVEditorPage() {
   const PreviewComponent = CV_TEMPLATE_COMPONENTS[template];
 
   return (
-    <main className="min-h-screen bg-[#0a0a0a] text-white p-6">
-      <div className="max-w-6xl mx-auto">
+    <main className="h-screen flex bg-[#0a0a0a] text-white overflow-hidden relative">
+      <Sidebar />
+
+      <div className="flex-1 flex flex-col overflow-hidden">
+        <PageHeader backHref="/custom-cv" title="Custom CV" wordmark />
+
+        <div className="flex-1 overflow-y-auto p-6 relative">
+      <div className="mx-auto">
         <button
           onClick={() => router.push('/custom-cv')}
           className="cursor-pointer inline-flex items-center gap-2 text-[#888] hover:text-white transition-colors mb-6 text-sm"
@@ -286,6 +294,8 @@ export default function CustomCVEditorPage() {
           <div className="bg-[#0a0a0a] border border-[#222] rounded-2xl p-4 sm:p-8 overflow-x-auto">
             <PreviewComponent r={content} />
           </div>
+        </div>
+      </div>
         </div>
       </div>
     </main>

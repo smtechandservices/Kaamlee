@@ -26,34 +26,45 @@ def save_user_profile(sender, instance, **kwargs):
     if hasattr(instance, 'profile'):
         instance.profile.save()
 
-class Location(models.Model):
-    country = models.CharField(max_length=100, db_index=True)
-    country_code = models.CharField(max_length=5)
-    state = models.CharField(max_length=100, blank=True, null=True)
-    city = models.CharField(max_length=100)
-    latitude = models.FloatField(null=True, blank=True)
-    longitude = models.FloatField(null=True, blank=True)
-    last_scraped = models.DateTimeField(null=True, blank=True)
+class Company(models.Model):
+    name = models.CharField(max_length=255, unique=True)
+    domain = models.CharField(max_length=255, blank=True)
+    career_url = models.URLField(max_length=1000)
+    contact_url = models.URLField(max_length=1000, blank=True)
+    contact_email = models.EmailField(max_length=255, blank=True)
+    address = models.CharField(max_length=500, blank=True)
+    linkedin_url = models.URLField(max_length=500, blank=True)
+    logo_url = models.URLField(max_length=1000, blank=True)
+    is_active = models.BooleanField(default=True)
+    last_scraped_at = models.DateTimeField(null=True, blank=True)
+    created_at = models.DateTimeField(auto_now_add=True)
 
+    class Meta:
+        ordering = ['name']
 
     def __str__(self):
-        return f"{self.city}, {self.state or self.country}"
+        return self.name
 
 class Job(models.Model):
     id_from_site = models.CharField(max_length=255, unique=True)
     title = models.CharField(max_length=255)
     company = models.CharField(max_length=255)
     location_name = models.CharField(max_length=255) # The string returned by scraper
-    location = models.ForeignKey(Location, on_delete=models.CASCADE, related_name='jobs')
+    city = models.CharField(max_length=100, blank=True)
+    state = models.CharField(max_length=100, blank=True, null=True)
+    country = models.CharField(max_length=100, blank=True, db_index=True)
     is_remote = models.BooleanField(default=False)
     job_type = models.CharField(max_length=100, null=True, blank=True)
     job_url = models.URLField(max_length=1000)
     description = models.TextField(null=True, blank=True)
-    site = models.CharField(max_length=100)
+    site = models.CharField(max_length=500)
     company_logo = models.URLField(max_length=1000, null=True, blank=True)
     date_posted = models.DateField(null=True, blank=True)
     latitude = models.FloatField(null=True, blank=True)
     longitude = models.FloatField(null=True, blank=True)
+    experience_required = models.CharField(max_length=100, null=True, blank=True)
+    salary = models.CharField(max_length=100, null=True, blank=True)
+    category = models.CharField(max_length=50, default='Other', db_index=True)
     created_at = models.DateTimeField(auto_now_add=True, db_index=True)
 
     def __str__(self):
@@ -86,9 +97,19 @@ class ScrapeLog(models.Model):
     def __str__(self):
         return f"[{self.timestamp.strftime('%H:%M:%S')}] {self.message}"
 
+APPLICATION_STATUS_CHOICES = [
+    ('saved', 'Saved'),
+    ('applied', 'Applied'),
+    ('interviewing', 'Interviewing'),
+    ('offered', 'Offered'),
+    ('rejected', 'Rejected'),
+]
+
 class Bookmark(models.Model):
     user = models.ForeignKey(User, on_delete=models.CASCADE, related_name='bookmarks')
     job = models.ForeignKey(Job, on_delete=models.CASCADE, related_name='bookmarked_by')
+    status = models.CharField(max_length=20, choices=APPLICATION_STATUS_CHOICES, default='saved')
+    status_updated_at = models.DateTimeField(auto_now=True)
     created_at = models.DateTimeField(auto_now_add=True)
 
     class Meta:
@@ -140,6 +161,23 @@ class Portfolio(models.Model):
 def create_user_portfolio(sender, instance, created, **kwargs):
     if created:
         Portfolio.objects.get_or_create(user=instance)
+
+
+class PortfolioView(models.Model):
+    portfolio = models.ForeignKey(Portfolio, on_delete=models.CASCADE, related_name='page_views')
+    ip_address = models.GenericIPAddressField(null=True, blank=True)
+    country = models.CharField(max_length=100, blank=True)
+    country_code = models.CharField(max_length=4, blank=True)
+    device = models.CharField(max_length=20, blank=True)
+    browser = models.CharField(max_length=50, blank=True)
+    operating_system = models.CharField(max_length=50, blank=True)
+    viewed_at = models.DateTimeField(auto_now_add=True)
+
+    class Meta:
+        ordering = ['-viewed_at']
+
+    def __str__(self):
+        return f"View of {self.portfolio.user.username} at {self.viewed_at}"
 
 
 CV_TEMPLATE_CHOICES = [

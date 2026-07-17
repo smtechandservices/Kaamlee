@@ -1,18 +1,19 @@
 from django.contrib import admin
 from django.contrib.auth.admin import UserAdmin as BaseUserAdmin
 from django.contrib.auth.models import User
-from .models import Location, Job, ScrapeSession, Profile, ScrapeLog
+from .models import Job, ScrapeSession, Profile, ScrapeLog, Company, Portfolio, PortfolioView
 
-@admin.register(Location)
-class LocationAdmin(admin.ModelAdmin):
-    list_display = ('city', 'state', 'country', 'country_code', 'last_scraped')
-    search_fields = ('city', 'state', 'country')
-    list_filter = ('country',)
+@admin.register(Company)
+class CompanyAdmin(admin.ModelAdmin):
+    list_display = ('name', 'domain', 'is_active', 'last_scraped_at', 'created_at')
+    search_fields = ('name', 'domain')
+    list_filter = ('is_active',)
+    readonly_fields = ('created_at',)
 
 @admin.register(Job)
 class JobAdmin(admin.ModelAdmin):
-    list_display = ('title', 'company', 'location', 'site', 'created_at')
-    search_fields = ('title', 'company', 'location__city')
+    list_display = ('title', 'company', 'city', 'country', 'site', 'created_at')
+    search_fields = ('title', 'company', 'city')
     list_filter = ('site', 'is_remote', 'date_posted')
     readonly_fields = ('created_at',)
 
@@ -50,3 +51,17 @@ class ProfileAdmin(admin.ModelAdmin):
     list_display = ('user', 'phone', 'is_subscribed', 'subscription_expires_at')
     list_filter = ('is_subscribed',)
     search_fields = ('user__username', 'phone')
+
+@admin.register(Portfolio)
+class PortfolioAdmin(admin.ModelAdmin):
+    list_display = ('user', 'is_public', 'template', 'theme', 'updated_at')
+    list_filter = ('is_public', 'template', 'theme')
+    search_fields = ('user__username',)
+    readonly_fields = ('created_at', 'updated_at')
+
+@admin.register(PortfolioView)
+class PortfolioViewAdmin(admin.ModelAdmin):
+    list_display = ('portfolio', 'ip_address', 'country', 'device', 'browser', 'operating_system', 'viewed_at')
+    list_filter = ('country', 'device', 'browser', 'operating_system')
+    search_fields = ('portfolio__user__username', 'ip_address')
+    readonly_fields = ('viewed_at',)

@@ -147,13 +147,6 @@ export default function LandingPage() {
         </div>
 
         <div className="flex items-center gap-2 sm:gap-4">
-          <button
-            onClick={handleExploreClick}
-            className="cursor-pointer bg-white text-black px-4 sm:px-6 py-2 sm:py-2.5 rounded-sm text-[10px] sm:text-xs font-black uppercase tracking-widest hidden sm:flex items-center gap-2 hover:bg-[#ededed] transition-all"
-          >
-            <span>Find Jobs</span>
-            <ArrowRight className="w-3 h-3 sm:w-3.5 sm:h-3.5" />
-          </button>
           {!user ? (
             <Link href="/login" className="cursor-pointer text-xs sm:text-sm font-medium text-[#888] hover:text-white transition-colors">
               Log in
@@ -188,7 +181,7 @@ export default function LandingPage() {
             <div className="inline-flex items-center gap-2 sm:gap-3 bg-[#111] border border-[#222] px-3 sm:px-4 py-1 sm:py-1.5 rounded-full mb-6 sm:mb-10">
               <span className="w-1.5 h-1.5 sm:w-2 sm:h-2 rounded-full bg-green-500 animate-pulse" />
               <span className="text-[10px] sm:text-md font-black tracking-widest uppercase text-[#888]">
-                <span className='text-sm sm:text-lg text-white'>{stats?.total_jobs?.toLocaleString()?.toLocaleString() || '420'} </span> NEW ROLES IN LAST 72H
+                <span className='text-sm sm:text-lg text-white'>{stats?.total_jobs?.toLocaleString()?.toLocaleString() || '420'} </span> NEW ROLES IN LAST 7 DAYS
               </span>
             </div>
 

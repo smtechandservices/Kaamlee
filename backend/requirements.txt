@@ -5,6 +5,9 @@ dj-database-url==3.1.2
 python-dotenv==1.2.2
 geopy==2.4.1
 python-jobspy==1.1.82
+requests
+beautifulsoup4
+certifi
 PyPDF2==3.0.1
 numpy==1.26.3
 pandas==2.3.3

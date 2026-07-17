@@ -33,6 +33,7 @@ export const metadata: Metadata = {
 };
 
 import { AuthProvider } from "@/context/AuthContext";
+import { SidebarProvider } from "@/context/SidebarContext";
 
 export default function RootLayout({
   children,
@@ -47,7 +48,9 @@ export default function RootLayout({
       <body className="min-h-full flex flex-col">
         <Script src="https://checkout.razorpay.com/v1/checkout.js" strategy="lazyOnload" />
         <AuthProvider>
-          {children}
+          <SidebarProvider>
+            {children}
+          </SidebarProvider>
         </AuthProvider>
       </body>
     </html>

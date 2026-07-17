@@ -1,7 +1,7 @@
 'use client';
 
 import React from 'react';
-import { MapPin, Briefcase, ExternalLink, Clock, Bookmark, Copy, Check, FileEdit } from 'lucide-react';
+import { MapPin, Briefcase, ExternalLink, Clock, Bookmark, Copy, Check, FileEdit, DollarSign, Tag, GraduationCap } from 'lucide-react';
 import CoverLetterModal from '@/components/CoverLetterModal';
 
 interface JobCardProps {
@@ -13,6 +13,9 @@ interface JobCardProps {
     job_type: string;
     job_url: string;
     description: string;
+    salary?: string | null;
+    category?: string | null;
+    experience_required?: string | null;
     site: string;
     company_logo?: string;
     date_posted?: string | null;
@@ -175,8 +178,24 @@ export const JobCard = React.memo(function JobCard({ job, isSelected, onClick, o
                 {job.job_type.split(',')[0]}
               </div>
             )}
-
-
+            {job.category && (
+              <div className="flex items-center gap-1 text-[11px] text-[#666] bg-[#1a1a1a] px-2 py-1 rounded-full border border-[#222]">
+                <Tag size={12} />
+                {job.category}
+              </div>
+            )}
+            {job.experience_required && (
+              <div className="flex items-center gap-1 text-[11px] text-[#666] bg-[#1a1a1a] px-2 py-1 rounded-full border border-[#222]">
+                <GraduationCap size={12} />
+                {job.experience_required}
+              </div>
+            )}
+            {job.salary && (
+              <div className="flex items-center gap-1 text-[11px] text-green-500/80 bg-green-500/5 px-2 py-1 rounded-full border border-green-500/10">
+                <DollarSign size={12} />
+                {job.salary}
+              </div>
+            )}
           </div>
 
           <p className="text-xs text-[#555] line-clamp-2 leading-relaxed mb-5">
@@ -191,7 +210,7 @@ export const JobCard = React.memo(function JobCard({ job, isSelected, onClick, o
               className="text-xs text-[#22c55e] hover:underline"
               onClick={(e) => e.stopPropagation()}
             >
-              Apply on {job.site}
+              Apply here
             </a>
 
             {(job.date_posted || job.created_at) && (

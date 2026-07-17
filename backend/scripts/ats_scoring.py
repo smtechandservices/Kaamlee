@@ -19,7 +19,7 @@ _keywords_cache = None
 def _load_profession_keywords():
     global _keywords_cache
     if _keywords_cache is None:
-        path = os.path.join(settings.BASE_DIR, 'api', 'profession_keywords.json')
+        path = os.path.join(settings.BASE_DIR, 'scripts', 'profession_keywords.json')
         try:
             with open(path, 'r') as f:
                 _keywords_cache = json.load(f)
@@ -32,6 +32,11 @@ def get_profession_keywords(role):
     if not role:
         return []
     return (_load_profession_keywords().get(role) or {}).get('keywords') or []
+
+
+def get_all_profession_keywords():
+    """role -> {"keywords": [...]} mapping for every profession we score against."""
+    return _load_profession_keywords()
 
 
 def _all_bullets(content):

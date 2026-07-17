@@ -1,12 +1,14 @@
 'use client';
 
-import Link from 'next/link';
 import { motion, AnimatePresence } from 'framer-motion';
 import { useRouter } from 'next/navigation';
 import { useAuth } from '@/context/AuthContext';
 import React, { useState, useEffect } from 'react';
 import PricingModal from '@/components/PricingModal';
-import { ArrowLeft, Loader2, CreditCard, CheckCircle2, XCircle, Clock, Shield, Calendar, Zap, RotateCcw } from 'lucide-react';
+import FeedbackModal from '@/components/FeedbackModal';
+import Sidebar from '@/components/Sidebar';
+import PageHeader from '@/components/PageHeader';
+import { Loader2, CreditCard, CheckCircle2, XCircle, Clock, Shield, Calendar, Zap, RotateCcw, MessageSquare } from 'lucide-react';
 
 interface Transaction {
   id: number;
@@ -23,6 +25,7 @@ export default function TransactionsPage() {
   const [transactions, setTransactions] = useState<Transaction[]>([]);
   const [loading, setLoading] = useState(true);
   const [isPricingModalOpen, setIsPricingModalOpen] = useState(false);
+  const [isFeedbackOpen, setIsFeedbackOpen] = useState(false);
   const [checkingStatus, setCheckingStatus] = useState<string | null>(null);
   const [statusMessage, setStatusMessage] = useState<{ text: string, type: 'error' | 'info' } | null>(null);
 
@@ -98,23 +101,16 @@ export default function TransactionsPage() {
   const daysLeft = getDaysLeft(user?.subscription_expires_at);
 
   return (
-    <main className="min-h-screen bg-[#0a0a0a] text-white p-6 relative overflow-hidden font-sans">
+    <main className="h-screen flex bg-[#0a0a0a] text-white overflow-hidden relative font-sans">
+      <Sidebar />
+
+      <div className="flex-1 flex flex-col overflow-hidden">
+        <PageHeader backHref="/profile" title="Billing" wordmark />
+
+        <div className="flex-1 overflow-y-auto p-6 relative">
       <div className="absolute top-0 left-1/2 -translate-x-1/2 w-[800px] h-[500px] bg-green-500/5 blur-[120px] rounded-full pointer-events-none" />
 
-      <div className="max-w-7xl mx-auto z-10 relative pt-8 sm:pt-12">
-        <Link 
-          href="/profile"
-          className="cursor-pointer inline-flex items-center gap-2 text-[#888] hover:text-white transition-colors mb-8 group text-sm"
-        >
-          <ArrowLeft className="w-4 h-4" />
-          Back to Profile
-        </Link>
-
-        <header className="mb-12">
-          <h1 className="text-4xl font-black tracking-tight mb-2 uppercase">Billing & Subscription</h1>
-          <p className="text-[#555] font-mono text-xs uppercase tracking-widest">Manage your account and view payment history</p>
-        </header>
-
+      <div className="mx-auto z-10 relative">
         <div className="grid grid-cols-1 lg:grid-cols-3 gap-8">
           {/* Subscription Sidebar */}
           <div className="lg:col-span-1 space-y-6">
@@ -188,6 +184,15 @@ export default function TransactionsPage() {
                 </p>
               </div>
             </div>
+
+            <button
+              type="button"
+              onClick={() => setIsFeedbackOpen(true)}
+              className="cursor-pointer w-full flex items-center justify-center gap-2 bg-[#111] border border-[#222] hover:border-[#333] text-[#888] hover:text-white py-4 rounded-3xl font-black uppercase tracking-widest text-xs transition-all"
+            >
+              <MessageSquare size={16} />
+              Give Feedback
+            </button>
           </div>
 
           {/* Transaction History List */}
@@ -254,8 +259,12 @@ export default function TransactionsPage() {
           </div>
         </div>
       </div>
+        </div>
+      </div>
 
-      <PricingModal 
+      <FeedbackModal isOpen={isFeedbackOpen} onClose={() => setIsFeedbackOpen(false)} />
+
+      <PricingModal
         isOpen={isPricingModalOpen}
         onClose={() => setIsPricingModalOpen(false)}
         showCloseButton={true}

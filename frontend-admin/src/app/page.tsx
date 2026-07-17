@@ -4,38 +4,26 @@ import React, { useState, useEffect } from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
 import {
   LayoutDashboard,
-  MapPin,
+  Building2,
   Play,
   RefreshCcw,
   Briefcase,
   CheckCircle2,
   AlertCircle,
-  Search,
   Loader2,
   Terminal,
   X,
   AlertTriangle,
   LogOut,
-  Users,
-  CreditCard,
-  MessageSquare,
-  ScrollText
+  Globe,
+  Mail,
+  MapPin,
+  ExternalLink
 } from 'lucide-react';
 import { useRouter } from 'next/navigation';
 import Link from 'next/link';
 
 const API_BASE = `${process.env.NEXT_PUBLIC_API_URL}/api`;
-
-interface Location {
-  id: number;
-  country: string;
-  country_code: string;
-  state: string;
-  city: string;
-  last_scraped: string | null;
-  job_count: number;
-  accuracy_percentage: number;
-}
 
 interface ScrapeSession {
   id: number;
@@ -54,27 +42,58 @@ interface ScrapeSession {
 
 interface Stats {
   total_jobs: number;
-  total_locations: number;
   last_scrape_session: (ScrapeSession & { search_term: string; results_limit: number }) | null;
   jobs_by_site: { site: string; count: number }[];
 }
 
+interface CompanyJob {
+  id: number;
+  title: string;
+  location_name: string;
+  is_remote: boolean;
+  job_url: string;
+  date_posted: string | null;
+  experience_required: string | null;
+  salary: string | null;
+}
+
+interface RecentJob {
+  id: number;
+  title: string;
+  company: string;
+  location_name: string;
+  is_remote: boolean;
+  category: string;
+}
+
+interface Company {
+  name: string;
+  domain: string;
+  career_url: string;
+  contact_url: string;
+  contact_email: string;
+  address: string;
+  linkedin_url: string;
+  logo_url: string;
+  is_active: boolean;
+  last_scraped_at: string | null;
+  job_count: number;
+  jobs: CompanyJob[];
+}
+
 export default function AdminDashboard() {
-  const [locations, setLocations] = useState<Location[]>([]);
   const [stats, setStats] = useState<Stats | null>(null);
-  const [jobRoles, setJobRoles] = useState<string[]>([]);
+  const [companies, setCompanies] = useState<Company[]>([]);
+  const [recentJobs, setRecentJobs] = useState<RecentJob[]>([]);
   const [activeSessions, setActiveSessions] = useState<ScrapeSession[]>([]);
   const [loading, setLoading] = useState(true);
-  const [triggering, setTriggering] = useState(false);
-  const [searchTerm, setSearchTerm] = useState('');
-  const [selectedCountry, setSelectedCountry] = useState('All');
+  const [triggeringCompany, setTriggeringCompany] = useState(false);
+  const [triggeringCompanyName, setTriggeringCompanyName] = useState<string | null>(null);
   const [isLogsModalOpen, setIsLogsModalOpen] = useState(false);
-  const [isSettingsModalOpen, setIsSettingsModalOpen] = useState(false);
+  const [isCompanyPickerOpen, setIsCompanyPickerOpen] = useState(false);
   const router = useRouter();
-  // Tracks whether a scrape is active — interval only hits backend when true
+  // Tracks whether a scrape is active, so we know when one just finished
   const isScrapingRef = React.useRef(false);
-  // Keeps a current-value reference to jobRoles for use inside intervals
-  const jobRolesRef = React.useRef<string[]>([]);
 
   const fetchData = async () => {
     const token = localStorage.getItem('admin_token');
@@ -85,31 +104,36 @@ export default function AdminDashboard() {
 
     setLoading(true);
     try {
-      const [locRes, statsRes] = await Promise.all([
-        fetch(`${API_BASE}/locations/`, {
-          headers: { 'Authorization': `Token ${token}` }
-        }),
-        fetch(`${API_BASE}/stats/`, {
-          headers: { 'Authorization': `Token ${token}` }
-        })
-      ]);
+      const statsRes = await fetch(`${API_BASE}/stats/`, {
+        headers: { 'Authorization': `Token ${token}` }
+      });
 
-      if (locRes.status === 401 || statsRes.status === 401) {
+      if (statsRes.status === 401) {
         localStorage.removeItem('admin_token');
         router.push('/login');
         return;
       }
 
-      if (!locRes.ok || !statsRes.ok) {
+      if (!statsRes.ok) {
         throw new Error('Backend responded with an error');
       }
 
-      const locData = await locRes.json();
       const statsData = await statsRes.json();
-      setLocations(locData);
       setStats(statsData);
 
-      // Fetch active sessions for parallel scrape display
+      // Fetch companies (career-page scrape targets + their scraped jobs)
+      const companiesRes = await fetch(`${API_BASE}/companies/`, { headers: { 'Authorization': `Token ${token}` } });
+      if (companiesRes.ok) {
+        setCompanies(await companiesRes.json());
+      }
+
+      // Fetch recent jobs for the marquee
+      const recentJobsRes = await fetch(`${API_BASE}/recent-jobs/?limit=15`);
+      if (recentJobsRes.ok) {
+        setRecentJobs(await recentJobsRes.json());
+      }
+
+      // Fetch active sessions for scrape status display
       const logsRes = await fetch(`${API_BASE}/logs/`, { headers: { 'Authorization': `Token ${token}` } });
       if (logsRes.ok) {
         const logsData = await logsRes.json();
@@ -117,15 +141,6 @@ export default function AdminDashboard() {
         isScrapingRef.current = (logsData.active_sessions?.length ?? 0) > 0;
       } else {
         isScrapingRef.current = statsData.last_scrape_session?.status === 'running';
-      }
-
-      // Fetch roles only once
-      if (jobRoles.length === 0) {
-        const rolesRes = await fetch(`${API_BASE}/roles/`);
-        if (rolesRes.ok) {
-          const rolesData = await rolesRes.json();
-          setJobRoles(rolesData);
-        }
       }
     } catch (error) {
       console.error("Failed to fetch data:", error);
@@ -143,23 +158,21 @@ export default function AdminDashboard() {
 
     fetchData();
 
-    // Only hits the backend while a scrape is actively running
+    // Always checks /logs/ (cheap) so we also notice scrapes kicked off elsewhere
+    // (e.g. the auto-scrape cron) — not just ones triggered from this tab — and
+    // refresh companies/stats the moment any of them finishes.
     const pollStats = async () => {
-      if (!isScrapingRef.current) return;
       const t = localStorage.getItem('admin_token');
       if (!t) return;
       try {
-        const [statsRes, logsRes] = await Promise.all([
-          fetch(`${API_BASE}/stats/`, { headers: { 'Authorization': `Token ${t}` } }),
-          fetch(`${API_BASE}/logs/`, { headers: { 'Authorization': `Token ${t}` } }),
-        ]);
-        if (statsRes.ok) setStats(await statsRes.json());
+        const logsRes = await fetch(`${API_BASE}/logs/`, { headers: { 'Authorization': `Token ${t}` } });
         if (logsRes.ok) {
           const logsData = await logsRes.json();
           const sessions: ScrapeSession[] = logsData.active_sessions ?? [];
           setActiveSessions(sessions);
-          if (sessions.length === 0) {
-            isScrapingRef.current = false;
+          const wasScraping = isScrapingRef.current;
+          isScrapingRef.current = sessions.length > 0;
+          if (wasScraping && sessions.length === 0) {
             fetchData();
           }
         }
@@ -172,80 +185,60 @@ export default function AdminDashboard() {
     return () => clearInterval(interval);
   }, []);
 
-  // Sync jobRoles into a ref so the auto-scrape interval always sees the latest value
-  useEffect(() => { jobRolesRef.current = jobRoles; }, [jobRoles]);
-
-  // Auto-scrape watchdog: every 10 minutes, if the scraper is idle, pick random roles
-  // (1–3) from all available roles and trigger across all countries automatically.
-  useEffect(() => {
-    const autoCheck = async () => {
-      if (isScrapingRef.current) return;
-      const roles = jobRolesRef.current;
-      if (roles.length === 0) return;
-
-      const token = localStorage.getItem('admin_token');
-      if (!token) return;
-
-      const shuffled = [...roles].sort(() => Math.random() - 0.5);
-      const count = Math.floor(Math.random() * 3) + 1; // 1, 2, or 3
-      const terms = shuffled.slice(0, count);
-
-      try {
-        const res = await fetch(`${API_BASE}/trigger-scrape/`, {
-          method: 'POST',
-          headers: { 'Authorization': `Token ${token}`, 'Content-Type': 'application/json' },
-          body: JSON.stringify({ search_terms: terms, results_wanted: 5 }),
-        });
-        if (res.ok) {
-          isScrapingRef.current = true;
-        }
-      } catch {
-        // silently ignore — will retry on next tick
-      }
-    };
-
-    const interval = setInterval(autoCheck, 600000); // check every 10 minutes
-    return () => clearInterval(interval);
-  }, []);
-
   const handleLogout = () => {
     localStorage.removeItem('admin_token');
     localStorage.removeItem('admin_user');
     router.push('/login');
   };
 
-  const triggerScrape = async (terms: string[], limit: number, country: string | null) => {
+  const triggerCompanyScrape = async (names: string[]) => {
     const token = localStorage.getItem('admin_token');
-    setTriggering(true);
+    setTriggeringCompany(true);
     try {
-      const body: Record<string, unknown> = {
-        search_terms: terms,
-        results_wanted: limit,
-      };
-      if (country !== null) body.country = country;
-
-      const res = await fetch(`${API_BASE}/trigger-scrape/`, {
+      const res = await fetch(`${API_BASE}/trigger-company-scrape/`, {
         method: 'POST',
-        headers: {
-          'Authorization': `Token ${token}`,
-          'Content-Type': 'application/json'
-        },
-        body: JSON.stringify(body)
+        headers: { 'Authorization': `Token ${token}`, 'Content-Type': 'application/json' },
+        body: JSON.stringify({ companies: names })
       });
 
       if (!res.ok) {
         const errorData = await res.json();
-        alert(errorData.status || "Failed to trigger scrape");
+        alert(errorData.status || errorData.error || "Failed to trigger company scrape");
         return;
       }
 
-      setIsSettingsModalOpen(false);
+      setIsCompanyPickerOpen(false);
       isScrapingRef.current = true;
       setTimeout(fetchData, 800);
     } catch (error) {
-      alert("Failed to trigger scrape");
+      alert("Failed to trigger company scrape");
     } finally {
-      setTriggering(false);
+      setTriggeringCompany(false);
+    }
+  };
+
+  const triggerCompanyScrapeOne = async (name: string) => {
+    const token = localStorage.getItem('admin_token');
+    setTriggeringCompanyName(name);
+    try {
+      const res = await fetch(`${API_BASE}/trigger-company-scrape/`, {
+        method: 'POST',
+        headers: { 'Authorization': `Token ${token}`, 'Content-Type': 'application/json' },
+        body: JSON.stringify({ companies: [name] })
+      });
+
+      if (!res.ok) {
+        const errorData = await res.json();
+        alert(errorData.status || errorData.error || `Failed to trigger scrape for ${name}`);
+        return;
+      }
+
+      isScrapingRef.current = true;
+      setTimeout(fetchData, 800);
+    } catch (error) {
+      alert(`Failed to trigger scrape for ${name}`);
+    } finally {
+      setTriggeringCompanyName(null);
     }
   };
 
@@ -277,22 +270,6 @@ export default function AdminDashboard() {
     }
   };
 
-
-  const countries = ['All', ...Array.from(new Set(locations.map(loc => {
-    if (loc.country === 'United States') return 'USA';
-    if (loc.country === 'United Kingdom') return 'UK';
-    return loc.country;
-  })))];
-
-  const filteredLocations = locations.filter(loc => {
-    const normalizedCountry = loc.country === 'United States' ? 'USA' : (loc.country === 'United Kingdom' ? 'UK' : loc.country);
-
-    const matchesSearch = loc.city.toLowerCase().includes(searchTerm.toLowerCase()) ||
-      loc.country.toLowerCase().includes(searchTerm.toLowerCase()) ||
-      (loc.state && loc.state.toLowerCase().includes(searchTerm.toLowerCase()));
-    const matchesCountry = selectedCountry === 'All' || normalizedCountry === selectedCountry;
-    return matchesSearch && matchesCountry;
-  });
 
   if (loading && !stats) {
     return (
@@ -337,7 +314,7 @@ export default function AdminDashboard() {
               System Status:
               <span className={activeSessions.length > 0 ? 'text-blue-400' : 'text-green-400'}>
                 {activeSessions.length > 0
-                  ? `${activeSessions.length} role${activeSessions.length > 1 ? 's' : ''} running in parallel`
+                  ? `${activeSessions.length} session${activeSessions.length > 1 ? 's' : ''} running`
                   : 'Idle'}
               </span>
               </p>
@@ -353,38 +330,6 @@ export default function AdminDashboard() {
             >
               <RefreshCcw size={20} className={loading ? 'animate-spin' : ''} />
             </button>
-            <Link
-              href="/revenue"
-              className="cursor-pointer p-3 rounded-xl bg-[#111] border border-[#222] hover:bg-[#161616] transition-all text-[#888] hover:text-white flex items-center gap-2 px-4"
-              title="Financial Oversight"
-            >
-              <CreditCard size={20} />
-              <span className="text-sm font-bold">Finance</span>
-            </Link>
-            <Link
-              href="/users"
-              className="cursor-pointer p-3 rounded-xl bg-[#111] border border-[#222] hover:bg-[#161616] transition-all text-[#888] hover:text-white flex items-center gap-2 px-4"
-              title="User Management"
-            >
-              <Users size={20} />
-              <span className="text-sm font-bold">Users</span>
-            </Link>
-            <Link
-              href="/feedback"
-              className="cursor-pointer p-3 rounded-xl bg-[#111] border border-[#222] hover:bg-[#161616] transition-all text-[#888] hover:text-white flex items-center gap-2 px-4"
-              title="User Feedback"
-            >
-              <MessageSquare size={20} />
-              <span className="text-sm font-bold">Feedback</span>
-            </Link>
-            <Link
-              href="/logs"
-              className="cursor-pointer p-3 rounded-xl bg-[#111] border border-[#222] hover:bg-[#161616] transition-all text-[#888] hover:text-white flex items-center gap-2 px-4"
-              title="Request Logs"
-            >
-              <ScrollText size={20} />
-              <span className="text-sm font-bold">Logs</span>
-            </Link>
             <button
               onClick={() => setIsLogsModalOpen(true)}
               className="cursor-pointer p-3 rounded-xl bg-[#111] border border-[#222] hover:bg-[#161616] transition-all text-[#888] hover:text-white"
@@ -414,12 +359,13 @@ export default function AdminDashboard() {
               )
             ) : (
               <button
-                onClick={() => setIsSettingsModalOpen(true)}
-                disabled={triggering}
-                className="cursor-pointer bg-blue-600 hover:bg-blue-500 disabled:opacity-50 disabled:cursor-not-allowed text-white px-6 py-3 rounded-xl font-semibold flex items-center gap-2 transition-all shadow-lg shadow-blue-500/20"
+                onClick={() => setIsCompanyPickerOpen(true)}
+                disabled={triggeringCompany}
+                className="cursor-pointer bg-purple-600 hover:bg-purple-500 disabled:opacity-50 disabled:cursor-not-allowed text-white px-6 py-3 rounded-xl font-semibold flex items-center gap-2 transition-all shadow-lg shadow-purple-500/20"
+                title="Scrape jobs from company career pages (scripts/companies.json)"
               >
-                {triggering ? <Loader2 size={18} className="animate-spin" /> : <Play size={18} />}
-                Parallel Scrape
+                {triggeringCompany ? <Loader2 size={18} className="animate-spin" /> : <Building2 size={18} />}
+                Scrape by Company
               </button>
             )}
 
@@ -435,16 +381,11 @@ export default function AdminDashboard() {
         </header>
 
         {/* Stats Grid */}
-        <div className="grid grid-cols-1 md:grid-cols-4 gap-6 mb-12">
+        <div className="grid grid-cols-1 md:grid-cols-3 gap-6 mb-12">
           <StatCard
             icon={<Briefcase className="text-blue-500" />}
             label="Total Jobs"
             value={stats?.total_jobs.toLocaleString() || '0'}
-          />
-          <StatCard
-            icon={<MapPin className="text-indigo-500" />}
-            label="Active Locations"
-            value={stats?.total_locations || '0'}
           />
           <StatCard
             icon={<CheckCircle2 className="text-green-500" />}
@@ -458,134 +399,73 @@ export default function AdminDashboard() {
           />
         </div>
 
-        <h2 className="text-xl font-bold">Locations & Job Distribution</h2>
-        <div className="my-4 flex flex-col md:flex-row md:items-center justify-between gap-6">
-          {/* Country Tabs */}
-          <div className="flex items-center gap-1 p-1 bg-[#111] border border-[#222] rounded-2xl overflow-x-auto no-scrollbar max-w-full">
-            {countries.map((country) => (
-              <button
-                key={country}
-                onClick={() => setSelectedCountry(country)}
-                className={`
-                  relative px-4 py-1.5 rounded-xl text-xs font-semibold whitespace-nowrap transition-all
-                  ${selectedCountry === country ? 'text-white' : 'text-[#555] hover:text-[#888]'}
-                `}
-              >
-                {selectedCountry === country && (
-                  <motion.div
-                    layoutId="activeTab"
-                    className="absolute inset-0 bg-[#222] border border-[#333] rounded-xl shadow-lg"
-                    transition={{ type: "spring", bounce: 0.2, duration: 0.6 }}
-                  />
-                )}
-                <span className="cursor-pointer relative z-10">{country}</span>
-              </button>
-            ))}
-          </div>
-
-          <div className="relative max-w-sm w-full">
-            <Search className="absolute left-3 top-1/2 -translate-y-1/2 text-[#555]" size={18} />
-            <input
-              type="text"
-              placeholder="Search city or state..."
-              value={searchTerm}
-              onChange={(e) => setSearchTerm(e.target.value)}
-              className="w-full bg-[#111] border border-[#222] rounded-xl py-2 pl-10 pr-4 text-sm focus:outline-none focus:border-blue-500 transition-all"
-            />
-          </div>
-        </div>
-
-        <div className="columns-1 md:columns-2 lg:columns-3 xl:columns-4 gap-6 space-y-6">
-          <AnimatePresence mode='popLayout'>
-            {filteredLocations.map((loc, i) => (
-              <motion.div
-                key={loc.id}
-                initial={{ opacity: 0, scale: 0.9 }}
-                animate={{ opacity: 1, scale: 1 }}
-                exit={{ opacity: 0, scale: 0.9 }}
-                transition={{ delay: i * 0.02 }}
-                className="break-inside-avoid"
-              >
-                <div className={`
-                  bg-[#111] border border-[#222] rounded-3xl p-6 hover:border-blue-500/50 transition-all group relative overflow-hidden
-                  ${i % 3 === 0 ? 'aspect-[4/5]' : i % 2 === 0 ? 'aspect-square' : 'aspect-[4/3]'}
-                `}>
-                  {/* Background Decoration */}
-                  <div className="absolute -right-4 -top-4 w-24 h-24 bg-blue-500/5 blur-2xl rounded-full group-hover:bg-blue-500/10 transition-all" />
-
-                  <div className="h-full flex flex-col justify-between relative z-10">
-                    <div className="flex items-start justify-between mb-4">
-                      <div className="w-12 h-12 rounded-2xl bg-[#1a1a1a] flex items-center justify-center text-sm font-bold text-blue-500 shadow-inner">
-                        {loc.country_code}
-                      </div>
-                      <div className="text-right">
-                        <div className="text-3xl font-black tracking-tighter text-white group-hover:text-blue-400 transition-colors">
-                          {loc.job_count}
-                        </div>
-                        <div className="text-[10px] uppercase tracking-widest text-[#555] font-bold">Jobs Found</div>
-                      </div>
-                    </div>
-
-                    <div>
-                      <h3 className="text-xl font-bold truncate leading-tight mb-1">{loc.city}</h3>
-                      <p className="text-sm text-[#555] font-medium mb-3">{loc.state ? `${loc.state}, ` : ''}{loc.country}</p>
-
-                      <div className="flex items-center gap-2 mb-4">
-                        <div className="flex-1 h-1.5 bg-[#222] rounded-full overflow-hidden">
-                          <div 
-                            className={`h-full rounded-full transition-all duration-500 ${loc.accuracy_percentage >= 80 ? 'bg-green-500' : loc.accuracy_percentage >= 50 ? 'bg-orange-500' : 'bg-red-500'}`}
-                            style={{ width: `${loc.accuracy_percentage}%` }}
-                          />
-                        </div>
-                        <span className="text-xs font-bold text-[#888] whitespace-nowrap">{loc.accuracy_percentage}% Acc</span>
-                      </div>
-
-                      <div className="pt-4 border-t border-[#222] flex items-center justify-between">
-                        <div className="flex items-center gap-1.5 text-[10px] font-bold uppercase tracking-wider">
-                          {loc.last_scraped ? (
-                            <>
-                              <span className="w-1.5 h-1.5 rounded-full bg-green-500 shadow-[0_0_8px_rgba(34,197,94,0.5)]" />
-                              <span className="text-green-500/80">Synced</span>
-                            </>
-                          ) : (
-                            <>
-                              <span className="w-1.5 h-1.5 rounded-full bg-orange-500" />
-                              <span className="text-orange-500/80">Pending</span>
-                            </>
-                          )}
-                        </div>
-                        <div className="text-[10px] text-[#444] font-medium">
-                          {loc.last_scraped ? new Date(loc.last_scraped).toLocaleDateString() : 'Never'}
-                        </div>
-                      </div>
-                    </div>
-                  </div>
+        {recentJobs.length > 0 && (
+          <div className="relative overflow-hidden rounded-2xl border border-[#222] bg-[#111] mb-12 py-4 [mask-image:linear-gradient(to_right,transparent,black_5%,black_95%,transparent)]">
+            <div className="flex w-max gap-10 animate-marquee">
+              {[...recentJobs, ...recentJobs].map((job, i) => (
+                <div key={`${job.id}-${i}`} className="flex items-center gap-2.5 text-sm shrink-0 whitespace-nowrap">
+                  <Briefcase size={14} className="text-blue-500 shrink-0" />
+                  <span className="font-bold text-white">{job.title}</span>
+                  <span className="text-[#555]">@ {job.company}</span>
+                  {(job.location_name || job.is_remote) && (
+                    <span className="text-[#444]">• {job.is_remote ? 'Remote' : job.location_name}</span>
+                  )}
+                  <span className="w-1 h-1 rounded-full bg-[#333] ml-6" />
                 </div>
-              </motion.div>
-            ))}
-          </AnimatePresence>
+              ))}
+            </div>
+          </div>
+        )}
+
+        <div className="flex items-center justify-between mb-4">
+          <h2 className="text-xl font-bold">Companies</h2>
+          <Link href="/companies" className="text-sm font-semibold text-purple-400 hover:text-purple-300 transition-colors">
+            Manage all companies →
+          </Link>
+        </div>
+        <div className="grid grid-cols-1 md:grid-cols-2 xl:grid-cols-3 gap-6">
+          {companies.map(company => (
+            <CompanyCard
+              key={company.name}
+              company={company}
+              scraping={triggeringCompanyName === company.name}
+              onScrape={() => triggerCompanyScrapeOne(company.name)}
+            />
+          ))}
         </div>
 
-        {filteredLocations.length === 0 && (
+        {companies.length === 0 && (
           <div className="p-20 text-center text-[#555]">
-            <Search className="w-12 h-12 mx-auto mb-4 opacity-20" />
-            <p>No locations found matching "{searchTerm}"</p>
+            <Building2 className="w-12 h-12 mx-auto mb-4 opacity-20" />
+            <p>No companies configured. <Link href="/companies" className="text-purple-400 hover:underline">Add one</Link>.</p>
           </div>
         )}
       </div>
 
       <AnimatePresence>
         {isLogsModalOpen && <LogsModal onClose={() => setIsLogsModalOpen(false)} stats={stats} activeSessions={activeSessions} />}
-        {isSettingsModalOpen && (
-          <ParallelRolePickerModal
-            onClose={() => setIsSettingsModalOpen(false)}
-            onStart={triggerScrape}
-            loading={triggering}
-            jobRoles={jobRoles}
-            locations={locations}
+        {isCompanyPickerOpen && (
+          <CompanyPickerModal
+            onClose={() => setIsCompanyPickerOpen(false)}
+            onStart={triggerCompanyScrape}
+            loading={triggeringCompany}
+            companies={companies}
           />
         )}
       </AnimatePresence>
+
+      <style jsx global>{`
+        @keyframes marquee {
+          from { transform: translateX(0); }
+          to { transform: translateX(-50%); }
+        }
+        .animate-marquee {
+          animation: marquee 60s linear infinite;
+        }
+        .animate-marquee:hover {
+          animation-play-state: paused;
+        }
+      `}</style>
     </div>
   );
 }
@@ -601,6 +481,111 @@ function StatCard({ icon, label, value }: { icon: React.ReactNode, label: string
       <div className="text-2xl font-bold">{value}</div>
     </div>
   );
+}
+
+function CompanyCard({ company, scraping, onScrape }: { company: Company, scraping: boolean, onScrape: () => void }) {
+  return (
+    <div className="bg-[#111] border border-[#222] rounded-3xl p-6 hover:border-purple-500/40 transition-all flex flex-col gap-4">
+      <div className="flex items-start justify-between gap-3">
+        <div className="flex items-center gap-3 min-w-0">
+          {company.logo_url ? (
+            <img src={company.logo_url} alt="" className="w-9 h-9 rounded-xl object-contain bg-white shrink-0" />
+          ) : (
+            <div className="w-9 h-9 rounded-xl bg-[#1a1a1a] flex items-center justify-center text-xs font-bold text-[#555] shrink-0">
+              {company.name.slice(0, 1).toUpperCase()}
+            </div>
+          )}
+          <div className="min-w-0">
+            <div className="flex items-center gap-2">
+              <h3 className="text-lg font-bold truncate">{company.name}</h3>
+              {!company.is_active && (
+                <span className="shrink-0 text-[9px] font-bold uppercase tracking-wider px-1.5 py-0.5 rounded bg-[#222] text-[#666]">Inactive</span>
+              )}
+            </div>
+            {company.domain && <p className="text-xs text-[#555] font-medium truncate">{company.domain}</p>}
+          </div>
+        </div>
+        <div className="flex items-center gap-2 shrink-0">
+          <div className="text-center px-3 py-1.5 rounded-xl bg-[#1a1a1a]">
+            <div className="text-lg font-black leading-none">{company.job_count}</div>
+            <div className="text-[9px] uppercase tracking-widest text-[#555] font-bold">Jobs</div>
+          </div>
+          <button
+            onClick={onScrape}
+            disabled={scraping}
+            title={`Scrape ${company.name}'s career page`}
+            className="cursor-pointer p-2.5 rounded-xl bg-purple-600/15 border border-purple-500/30 text-purple-400 hover:bg-purple-600/25 disabled:opacity-50 disabled:cursor-not-allowed transition-all"
+          >
+            {scraping ? <Loader2 size={16} className="animate-spin" /> : <Play size={16} />}
+          </button>
+        </div>
+      </div>
+
+      <div className="flex flex-col gap-1.5 text-xs">
+        {company.career_url && (
+          <a href={company.career_url} target="_blank" rel="noreferrer" className="flex items-center gap-2 text-[#888] hover:text-blue-400 transition-colors truncate">
+            <Globe size={13} className="shrink-0" /> <span className="truncate">Career page</span> <ExternalLink size={11} className="shrink-0" />
+          </a>
+        )}
+        {company.contact_url && (
+          <a href={company.contact_url} target="_blank" rel="noreferrer" className="flex items-center gap-2 text-[#888] hover:text-blue-400 transition-colors truncate">
+            <ExternalLink size={13} className="shrink-0" /> <span className="truncate">Contact page</span>
+          </a>
+        )}
+        {company.contact_email && (
+          <a href={`mailto:${company.contact_email}`} className="flex items-center gap-2 text-[#888] hover:text-blue-400 transition-colors truncate">
+            <Mail size={13} className="shrink-0" /> <span className="truncate">{company.contact_email}</span>
+          </a>
+        )}
+        {company.address && (
+          <div className="flex items-center gap-2 text-[#888] truncate">
+            <MapPin size={13} className="shrink-0" /> <span className="truncate">{company.address}</span>
+          </div>
+        )}
+        {company.linkedin_url && (
+          <a href={company.linkedin_url} target="_blank" rel="noreferrer" className="flex items-center gap-2 text-[#888] hover:text-blue-400 transition-colors truncate">
+            <ExternalLink size={13} className="shrink-0" /> <span className="truncate">LinkedIn</span>
+          </a>
+        )}
+      </div>
+
+      <div className="pt-4 border-t border-[#222] flex-1 min-h-0">
+        {company.jobs.length === 0 ? (
+          <p className="text-xs text-[#444] text-center py-4">No jobs scraped yet.</p>
+        ) : (
+          <div className="flex flex-col gap-2 max-h-64 overflow-y-auto pr-1">
+            {company.jobs.map(job => (
+              <a
+                key={job.id}
+                href={job.job_url}
+                target="_blank"
+                rel="noreferrer"
+                className="block p-3 rounded-xl bg-[#0a0a0a] border border-[#1a1a1a] hover:border-blue-500/40 transition-all"
+              >
+                <div className="text-sm font-semibold truncate">{job.title}</div>
+                <div className="flex flex-wrap items-center gap-x-2 gap-y-1 mt-1 text-[10px] text-[#555]">
+                  {(job.location_name || job.is_remote) && (
+                    <span className="flex items-center gap-1"><MapPin size={10} /> {job.is_remote ? 'Remote' : job.location_name}</span>
+                  )}
+                  {job.salary && <span className="text-green-500/80">{job.salary}</span>}
+                  {job.experience_required && <span>{job.experience_required}</span>}
+                </div>
+              </a>
+            ))}
+          </div>
+        )}
+      </div>
+    </div>
+  );
+}
+
+// search_term encodes the full requested company list as "company_career_pages:Name1,Name2" —
+// parse it out so the UI can show all of them, not just the single current_location field.
+function parseCompanyList(searchTerm: string | undefined | null): string[] | null {
+  if (!searchTerm || !searchTerm.startsWith('company_career_pages:')) return null;
+  const rest = searchTerm.slice('company_career_pages:'.length);
+  if (!rest || rest === 'auto') return null;
+  return rest.split(',').map(s => s.trim()).filter(Boolean);
 }
 
 function LogsModal({ onClose, stats, activeSessions }: { onClose: () => void, stats: Stats | null, activeSessions: ScrapeSession[] }) {
@@ -655,26 +640,47 @@ function LogsModal({ onClose, stats, activeSessions }: { onClose: () => void, st
         {isRunning ? (
           <div className="p-6 flex flex-col gap-3">
             <p className="text-[10px] font-mono tracking-[0.2em] uppercase text-[#555] mb-1">{activeSessions.length} parallel sessions</p>
-            {activeSessions.map(s => (
-              <div key={s.id} className="bg-black border border-[#222] rounded-xl p-4 flex flex-col gap-2 font-mono text-sm">
-                <div className="flex justify-between items-center">
-                  <span className="text-white font-semibold capitalize">{s.search_term}</span>
-                  <span className="text-blue-400 flex items-center gap-1.5 text-xs">
-                    <Loader2 size={11} className="animate-spin" /> running
-                  </span>
-                </div>
-                {s.current_location && (
-                  <div className="flex justify-between text-xs">
-                    <span className="text-[#555]">Location</span>
-                    <span className="text-blue-300">{s.current_location}</span>
+            {activeSessions.map(s => {
+              const companyList = parseCompanyList(s.search_term);
+              return (
+                <div key={s.id} className="bg-black border border-[#222] rounded-xl p-4 flex flex-col gap-2 font-mono text-sm">
+                  <div className="flex justify-between items-center">
+                    <span className="text-white font-semibold">
+                      {companyList
+                        ? `Scraping ${companyList.length} compan${companyList.length > 1 ? 'ies' : 'y'}`
+                        : s.search_term?.includes(':auto') ? 'Auto-scrape (random selection)' : s.search_term}
+                    </span>
+                    <span className="text-blue-400 flex items-center gap-1.5 text-xs">
+                      <Loader2 size={11} className="animate-spin" /> running
+                    </span>
                   </div>
-                )}
-                <div className="flex justify-between text-xs">
-                  <span className="text-[#555]">Jobs found</span>
-                  <span className="text-green-400 font-bold">{s.jobs_found}</span>
+                  {companyList && (
+                    <div className="flex flex-wrap gap-1.5">
+                      {companyList.map(name => (
+                        <span
+                          key={name}
+                          className={`text-[10px] font-bold px-2 py-0.5 rounded ${
+                            name === s.current_location ? 'bg-blue-500/20 text-blue-300' : 'bg-[#1a1a1a] text-[#666]'
+                          }`}
+                        >
+                          {name}
+                        </span>
+                      ))}
+                    </div>
+                  )}
+                  {s.current_location && (
+                    <div className="flex justify-between text-xs">
+                      <span className="text-[#555]">Currently scraping</span>
+                      <span className="text-blue-300">{s.current_location}</span>
+                    </div>
+                  )}
+                  <div className="flex justify-between text-xs">
+                    <span className="text-[#555]">Jobs found</span>
+                    <span className="text-green-400 font-bold">{s.jobs_found}</span>
+                  </div>
                 </div>
-              </div>
-            ))}
+              );
+            })}
           </div>
         ) : !session ? (
           <div className="p-12 text-center text-[#555] font-mono text-sm">
@@ -685,10 +691,19 @@ function LogsModal({ onClose, stats, activeSessions }: { onClose: () => void, st
             <div>
               <p className="text-[10px] font-mono tracking-[0.2em] uppercase text-[#555] mb-3">Last Session</p>
               <div className="bg-black border border-[#222] rounded-xl p-4 flex flex-col gap-2 font-mono text-sm">
-                <div className="flex justify-between">
-                  <span className="text-[#555]">Search term</span>
-                  <span className="text-white font-semibold">{session.search_term ?? '—'}</span>
-                </div>
+                {(() => {
+                  const companyList = parseCompanyList(session.search_term);
+                  return (
+                    <div className="flex justify-between gap-4">
+                      <span className="text-[#555] shrink-0">{companyList ? 'Companies' : 'Search term'}</span>
+                      <span className="text-white font-semibold text-right">
+                        {companyList
+                          ? companyList.join(', ')
+                          : session.search_term?.includes(':auto') ? 'Auto-scrape (random selection)' : (session.search_term ?? '—')}
+                      </span>
+                    </div>
+                  );
+                })()}
                 <div className="flex justify-between items-center">
                   <span className="text-[#555]">Status</span>
                   <span className={`font-bold uppercase tracking-widest ${statusColor[session.status] ?? 'text-[#aaa]'}`}>
@@ -723,36 +738,23 @@ function LogsModal({ onClose, stats, activeSessions }: { onClose: () => void, st
   );
 }
 
-function ParallelRolePickerModal({ onClose, onStart, loading, jobRoles, locations }: {
+function CompanyPickerModal({ onClose, onStart, loading, companies }: {
   onClose: () => void;
-  onStart: (terms: string[], limit: number, country: string | null) => void;
+  onStart: (names: string[]) => void;
   loading: boolean;
-  jobRoles: string[];
-  locations: Location[];
+  companies: Company[];
 }) {
   const [selected, setSelected] = useState<Set<string>>(new Set());
-  const [limit, setLimit] = useState(5);
-  const [customInput, setCustomInput] = useState('');
-
-  const availableCountries = Array.from(new Set(locations.map(l => l.country))).sort();
-  const [selectedCountry, setSelectedCountry] = useState<string>('All');
 
   const MAX = 3;
 
-  const toggle = (role: string) => {
+  const toggle = (name: string) => {
     setSelected(prev => {
       const next = new Set(prev);
-      if (next.has(role)) next.delete(role);
-      else if (next.size < MAX) next.add(role);
+      if (next.has(name)) next.delete(name);
+      else if (next.size < MAX) next.add(name);
       return next;
     });
-  };
-
-  const addCustom = () => {
-    const trimmed = customInput.trim().toLowerCase();
-    if (!trimmed || selected.size >= MAX) return;
-    toggle(trimmed);
-    setCustomInput('');
   };
 
   return (
@@ -772,90 +774,44 @@ function ParallelRolePickerModal({ onClose, onStart, loading, jobRoles, location
       >
         <div className="p-6 border-b border-[#333] bg-[#1a1a1a] rounded-t-3xl shrink-0">
           <h2 className="text-xl font-bold flex items-center gap-2">
-            <Play size={20} className="text-blue-500" />
-            Select Roles to Scrape
+            <Building2 size={20} className="text-purple-500" />
+            Select Companies to Scrape
           </h2>
           <p className="text-sm text-[#555] mt-1">
-            {selected.size === 0 ? 'Pick up to 3 roles — they run in parallel.' : `${selected.size} / ${MAX} selected`}
+            {selected.size === 0 ? 'Pick up to 3 companies to scrape their career pages.' : `${selected.size} / ${MAX} selected`}
           </p>
         </div>
 
-        <div className="p-6 space-y-6 overflow-y-auto flex-1">
+        <div className="p-6 overflow-y-auto flex-1">
           <div className="flex flex-wrap gap-2">
-            {jobRoles.map(role => {
-              const active = selected.has(role);
+            {companies.map(company => {
+              const active = selected.has(company.name);
               const maxed = !active && selected.size >= MAX;
               return (
                 <button
-                  key={role}
-                  onClick={() => toggle(role)}
+                  key={company.name}
+                  onClick={() => toggle(company.name)}
                   disabled={maxed}
-                  className={`cursor-pointer px-3 py-1.5 rounded-lg text-xs font-medium transition-all border ${
+                  className={`cursor-pointer px-3 py-1.5 rounded-lg text-xs font-medium transition-all border flex items-center gap-1.5 ${
                     active
-                      ? 'bg-blue-600/15 border-blue-500/50 text-blue-400'
+                      ? 'bg-purple-600/15 border-purple-500/50 text-purple-400'
                       : maxed
                       ? 'bg-[#0a0a0a] border-[#1a1a1a] text-[#2a2a2a] cursor-not-allowed'
                       : 'bg-[#0a0a0a] border-[#222] text-[#555] hover:border-[#333] hover:text-[#888]'
                   }`}
                 >
-                  {role}
+                  {company.name}
+                  <span className={`text-[10px] font-bold ${active ? 'text-purple-300' : maxed ? 'text-[#2a2a2a]' : 'text-[#444]'}`}>
+                    {company.job_count}
+                  </span>
                 </button>
               );
             })}
           </div>
 
-          <div>
-            <label className="text-xs font-bold uppercase tracking-wider text-[#555] mb-2 block">Custom role</label>
-            <div className="flex gap-2">
-              <input
-                type="text"
-                value={customInput}
-                onChange={e => setCustomInput(e.target.value)}
-                onKeyDown={e => { if (e.key === 'Enter') { e.preventDefault(); addCustom(); } }}
-                disabled={selected.size >= MAX}
-                placeholder="e.g. blockchain engineer"
-                className="flex-1 bg-[#0a0a0a] border border-[#222] rounded-xl px-4 py-2.5 text-sm text-white placeholder-[#333] focus:border-blue-500 outline-none transition-all disabled:opacity-30"
-              />
-              <button
-                onClick={addCustom}
-                disabled={!customInput.trim() || selected.size >= MAX}
-                className="cursor-pointer px-4 py-2.5 bg-[#1a1a1a] border border-[#222] rounded-xl text-[#555] hover:border-blue-500/50 hover:text-blue-400 transition-all disabled:opacity-30 disabled:cursor-not-allowed"
-              >
-                <X size={16} className="rotate-45" />
-              </button>
-            </div>
-          </div>
-
-          <div>
-            <label className="text-xs font-bold uppercase tracking-wider text-[#555] mb-2 block">Location (country)</label>
-            <select
-              value={selectedCountry}
-              onChange={e => setSelectedCountry(e.target.value)}
-              className="w-full bg-[#0a0a0a] border border-[#222] rounded-xl px-4 py-2.5 text-sm text-white focus:border-blue-500 outline-none transition-all appearance-none cursor-pointer"
-            >
-              <option value="All">All Countries</option>
-              {availableCountries.map(country => (
-                <option key={country} value={country}>{country}</option>
-              ))}
-            </select>
-          </div>
-
-          <div>
-            <label className="text-xs font-bold uppercase tracking-wider text-[#555] mb-2 block">Results per location</label>
-            <div className="grid grid-cols-2 gap-3">
-              {[5, 10].map(val => (
-                <button
-                  key={val}
-                  onClick={() => setLimit(val)}
-                  className={`py-3 rounded-xl border font-bold transition-all cursor-pointer ${
-                    limit === val ? 'bg-blue-600 border-blue-500 text-white' : 'bg-[#161616] border-[#222] text-[#555] hover:border-[#333]'
-                  }`}
-                >
-                  {val} Results
-                </button>
-              ))}
-            </div>
-          </div>
+          {companies.length === 0 && (
+            <p className="text-xs text-[#555] text-center py-6">No companies configured in scripts/companies.json.</p>
+          )}
         </div>
 
         <div className="p-6 bg-[#1a1a1a] border-t border-[#333] flex gap-3 shrink-0 rounded-b-3xl">
@@ -864,11 +820,11 @@ function ParallelRolePickerModal({ onClose, onStart, loading, jobRoles, location
           </button>
           <button
             disabled={loading || selected.size === 0}
-            onClick={() => onStart(Array.from(selected), limit, selectedCountry === 'All' ? null : selectedCountry)}
-            className="cursor-pointer flex-1 py-3 rounded-xl bg-blue-600 hover:bg-blue-500 disabled:opacity-40 disabled:cursor-not-allowed font-bold transition-all flex items-center justify-center gap-2"
+            onClick={() => onStart(Array.from(selected))}
+            className="cursor-pointer flex-1 py-3 rounded-xl bg-purple-600 hover:bg-purple-500 disabled:opacity-40 disabled:cursor-not-allowed font-bold transition-all flex items-center justify-center gap-2"
           >
             {loading ? <Loader2 size={18} className="animate-spin" /> : <Play size={18} />}
-            Run {selected.size > 0 ? `${selected.size} in parallel` : ''}
+            Scrape {selected.size > 0 ? `${selected.size} compan${selected.size > 1 ? 'ies' : 'y'}` : ''}
           </button>
         </div>
       </motion.div>
