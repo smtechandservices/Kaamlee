@@ -149,37 +149,62 @@ def _geocode_missing_job_coordinates(session=None):
     unique city is only queried once even though many jobs share it."""
     missing_cities = (
         Job.objects.filter(latitude__isnull=True)
-        .exclude(city='')
+        .exclude(city='').exclude(city='Unspecified')
         .values('city', 'state', 'country')
         .distinct()
     )
     cities = list(missing_cities)
-    if not cities:
-        return
-
-    if session:
-        log_to_db(session, f"Geocoding {len(cities)} new distinct location(s) missing coordinates...", "info")
 
     geolocator = Nominatim(user_agent="kaamlee_locations", ssl_context=_GEOCODER_SSL_CONTEXT)
     updated_jobs = 0
-    for c in cities:
-        city, state, country = c['city'], c['state'], c['country']
-        # "Unspecified" is our own placeholder, not a real place — querying with
-        # it as a literal term only confuses the geocoder, so drop it from the query.
-        query_parts = [p for p in (city, state, country) if p and p != 'Unspecified']
-        query = ', '.join(query_parts)
-        try:
-            time.sleep(1.1)
-            result = geolocator.geocode(query, timeout=10)
-            if result:
-                updated_jobs += Job.objects.filter(
-                    city=city, state=state, country=country, latitude__isnull=True,
-                ).update(latitude=result.latitude, longitude=result.longitude)
-        except Exception:
-            pass
 
-    if session:
-        log_to_db(session, f"Location geocoding done: {updated_jobs} job(s) across {len(cities)} distinct location(s) resolved.", "success")
+    if cities:
+        if session:
+            log_to_db(session, f"Geocoding {len(cities)} new distinct location(s) missing coordinates...", "info")
+        for c in cities:
+            city, state, country = c['city'], c['state'], c['country']
+            # "Unspecified" is our own placeholder, not a real place — querying with
+            # it as a literal term only confuses the geocoder, so drop it from the query.
+            query_parts = [p for p in (city, state, country) if p and p != 'Unspecified']
+            query = ', '.join(query_parts)
+            try:
+                time.sleep(1.1)
+                result = geolocator.geocode(query, timeout=10)
+                if result:
+                    updated_jobs += Job.objects.filter(
+                        city=city, state=state, country=country, latitude__isnull=True,
+                    ).update(latitude=result.latitude, longitude=result.longitude)
+            except Exception:
+                pass
+
+    # Jobs with no scraped location fall back to the company's raw address as
+    # location_name (city stays 'Unspecified' since that text isn't a "City,
+    # State" pair — see scrape_company). Geocode those by the full address
+    # text instead, deduped per distinct address so every job at the same
+    # company shares one lookup.
+    missing_addresses = (
+        Job.objects.filter(latitude__isnull=True, city='Unspecified')
+        .exclude(location_name='')
+        .values_list('location_name', flat=True)
+        .distinct()
+    )
+    addresses = list(missing_addresses)
+    if addresses:
+        if session:
+            log_to_db(session, f"Geocoding {len(addresses)} company address(es) for jobs missing location...", "info")
+        for address in addresses:
+            try:
+                time.sleep(1.1)
+                result = geolocator.geocode(address, timeout=10)
+                if result:
+                    updated_jobs += Job.objects.filter(
+                        location_name=address, latitude__isnull=True,
+                    ).update(latitude=result.latitude, longitude=result.longitude)
+            except Exception:
+                pass
+
+    if session and (cities or addresses):
+        log_to_db(session, f"Location geocoding done: {updated_jobs} job(s) across {len(cities) + len(addresses)} distinct location(s) resolved.", "success")
 
 
 def _delete_stale_jobs(session=None):
@@ -588,7 +613,24 @@ def scrape_company(company, session=None, limit=None):
         description = p.get('description')
         experience_required = p.get('experience_required') or _extract_experience(description or title)
         salary = p.get('salary') or _extract_salary(description or '')
-        city, state, country, is_remote = _resolve_location(p.get('location_name'))
+        # Fall back to the company's own address when the posting itself has no
+        # location — better to show the HQ than an "Unspecified" placeholder.
+        raw_location = (p.get('location_name') or '').strip()
+        company_address = (company.get('address') or '').strip()
+        if raw_location:
+            location_name = raw_location
+            city, state, country, is_remote = _resolve_location(raw_location)
+        elif company_address:
+            # _resolve_location's comma-split assumes ATS-style "City, State"
+            # text; a free-form street address ("123 Main St, Springfield, IL")
+            # would get mangled into a bogus city/state, so leave those as
+            # Unspecified and let geocoding key off the full address text
+            # instead (see the location_name-based pass below).
+            location_name = company_address
+            city, state, country, is_remote = 'Unspecified', None, 'Unspecified', False
+        else:
+            location_name = ''
+            city, state, country, is_remote = _resolve_location('')
         category = categorize_job(title, department_hint=p.get('department_hint'))
         job_type = _normalize_job_type(p.get('job_type')) or _extract_job_type(title, description)
 
@@ -607,7 +649,7 @@ def scrape_company(company, session=None, limit=None):
             defaults={
                 'title': title,
                 'company': name,
-                'location_name': p.get('location_name') or '',
+                'location_name': location_name,
                 'city': city,
                 'state': state,
                 'country': country,
