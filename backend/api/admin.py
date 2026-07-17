@@ -1,7 +1,7 @@
 from django.contrib import admin
 from django.contrib.auth.admin import UserAdmin as BaseUserAdmin
 from django.contrib.auth.models import User
-from .models import Job, ScrapeSession, Profile, ScrapeLog, Company
+from .models import Job, ScrapeSession, Profile, ScrapeLog, Company, Portfolio, PortfolioView
 
 @admin.register(Company)
 class CompanyAdmin(admin.ModelAdmin):
@@ -51,3 +51,17 @@ class ProfileAdmin(admin.ModelAdmin):
     list_display = ('user', 'phone', 'is_subscribed', 'subscription_expires_at')
     list_filter = ('is_subscribed',)
     search_fields = ('user__username', 'phone')
+
+@admin.register(Portfolio)
+class PortfolioAdmin(admin.ModelAdmin):
+    list_display = ('user', 'is_public', 'template', 'theme', 'updated_at')
+    list_filter = ('is_public', 'template', 'theme')
+    search_fields = ('user__username',)
+    readonly_fields = ('created_at', 'updated_at')
+
+@admin.register(PortfolioView)
+class PortfolioViewAdmin(admin.ModelAdmin):
+    list_display = ('portfolio', 'ip_address', 'country', 'device', 'browser', 'operating_system', 'viewed_at')
+    list_filter = ('country', 'device', 'browser', 'operating_system')
+    search_fields = ('portfolio__user__username', 'ip_address')
+    readonly_fields = ('viewed_at',)

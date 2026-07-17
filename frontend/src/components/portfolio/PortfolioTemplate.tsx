@@ -32,9 +32,9 @@ function TagInput({ value, onChange, placeholder }: {
   );
 }
 
-function EditPanel({ draft, setDraft, onSave, onClose, saving, saved }: {
+function EditPanel({ draft, setDraft, onSave, onClose, saving, saved, saveError }: {
   draft: ResumeParsed; setDraft: (r: ResumeParsed) => void;
-  onSave: () => void; onClose: () => void; saving: boolean; saved: boolean;
+  onSave: () => void; onClose: () => void; saving: boolean; saved: boolean; saveError: string | null;
 }) {
   const set = (field: keyof ResumeParsed, value: unknown) => setDraft({ ...draft, [field]: value });
   const [open, setOpen] = useState('basics');
@@ -57,6 +57,7 @@ function EditPanel({ draft, setDraft, onSave, onClose, saving, saved }: {
       <div className="flex items-center justify-between px-5 py-4 border-b border-[#1f1f1f] shrink-0">
         <p className="text-sm font-black uppercase tracking-widest text-white">Edit Portfolio</p>
         <div className="flex items-center gap-2">
+          {saveError && <span className="text-xs text-red-500 font-medium">{saveError}</span>}
           {saved && <span className="flex items-center gap-1.5 text-xs text-green-500 font-medium"><CheckCircle2 className="w-3.5 h-3.5" /> Saved</span>}
           <button onClick={onSave} disabled={saving}
             className="flex items-center gap-2 px-4 py-2 rounded-xl bg-white text-black text-xs font-black uppercase tracking-widest hover:bg-[#ededed] disabled:opacity-50 transition-colors">
@@ -251,6 +252,7 @@ export default function PortfolioTemplate({ data, forceOwner }: { data: Portfoli
   const [draft, setDraft] = useState<ResumeParsed>(r);
   const [saving, setSaving] = useState(false);
   const [saved, setSaved] = useState(false);
+  const [saveError, setSaveError] = useState<string | null>(null);
   const [authToken, setAuthToken] = useState<string | null>(null);
 
   useEffect(() => {
@@ -273,6 +275,7 @@ export default function PortfolioTemplate({ data, forceOwner }: { data: Portfoli
 
   const handleSave = useCallback(async () => {
     setSaving(true);
+    setSaveError(null);
     try {
       const token = authToken || sessionStorage.getItem('kaamlee_token');
       const apiUrl = process.env.NEXT_PUBLIC_API_URL || 'http://localhost:8000';
@@ -281,7 +284,13 @@ export default function PortfolioTemplate({ data, forceOwner }: { data: Portfoli
         headers: { 'Content-Type': 'application/json', Authorization: `Token ${token}` },
         body: JSON.stringify({ resume_parsed: draft }),
       });
-      if (res.ok) { setR(draft); setSaved(true); setTimeout(() => setSaved(false), 3000); }
+      if (res.ok) {
+        setR(draft); setSaved(true); setTimeout(() => setSaved(false), 3000);
+      } else {
+        setSaveError('Failed to save. Please try again.');
+      }
+    } catch {
+      setSaveError('Failed to save. Check your connection and try again.');
     } finally { setSaving(false); }
   }, [draft, authToken]);
 
@@ -310,7 +319,7 @@ export default function PortfolioTemplate({ data, forceOwner }: { data: Portfoli
               onClick={() => setEditOpen(false)} />
             <EditPanel draft={draft} setDraft={setDraft}
               onSave={handleSave} onClose={() => setEditOpen(false)}
-              saving={saving} saved={saved} />
+              saving={saving} saved={saved} saveError={saveError} />
           </>
         )}
       </AnimatePresence>

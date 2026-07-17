@@ -1,6 +1,5 @@
 'use client';
 
-import Link from 'next/link';
 import { motion, AnimatePresence } from 'framer-motion';
 import { useRouter } from 'next/navigation';
 import { useAuth } from '@/context/AuthContext';
@@ -8,8 +7,8 @@ import React, { useState, useEffect } from 'react';
 import PricingModal from '@/components/PricingModal';
 import FeedbackModal from '@/components/FeedbackModal';
 import Sidebar from '@/components/Sidebar';
-import SidebarToggle from '@/components/SidebarToggle';
-import { ArrowLeft, Loader2, CreditCard, CheckCircle2, XCircle, Clock, Shield, Calendar, Zap, RotateCcw, MessageSquare } from 'lucide-react';
+import PageHeader from '@/components/PageHeader';
+import { Loader2, CreditCard, CheckCircle2, XCircle, Clock, Shield, Calendar, Zap, RotateCcw, MessageSquare } from 'lucide-react';
 
 interface Transaction {
   id: number;
@@ -106,17 +105,7 @@ export default function TransactionsPage() {
       <Sidebar />
 
       <div className="flex-1 flex flex-col overflow-hidden">
-        <header className="h-16 border-b border-[#222] px-4 sm:px-6 flex items-center justify-between glass z-20 shrink-0">
-          <div className="flex items-center gap-3 sm:gap-4 flex-1 overflow-hidden">
-            <Link href="/profile" className="group flex md:hidden items-center gap-1.5 sm:gap-2 text-[#555] hover:text-white transition-colors mr-1 sm:mr-2 shrink-0">
-              <ArrowLeft size={16} className="group-hover:-translate-x-1 transition-transform" />
-              <span className="text-[10px] font-bold uppercase tracking-[0.2em] hidden sm:inline">Back</span>
-            </Link>
-            <div className="w-px h-4 bg-[#222] mr-1 sm:mr-2 shrink-0 md:hidden" />
-            <h1 className="hidden sm:inline text-lg sm:text-xl font-black tracking-tighter text-white mr-2 sm:mr-4 cursor-default truncate">KAAMLEE</h1>
-          </div>
-          <SidebarToggle />
-        </header>
+        <PageHeader backHref="/profile" title="Billing" wordmark />
 
         <div className="flex-1 overflow-y-auto p-6 relative">
       <div className="absolute top-0 left-1/2 -translate-x-1/2 w-[800px] h-[500px] bg-green-500/5 blur-[120px] rounded-full pointer-events-none" />

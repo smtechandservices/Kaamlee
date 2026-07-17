@@ -97,9 +97,19 @@ class ScrapeLog(models.Model):
     def __str__(self):
         return f"[{self.timestamp.strftime('%H:%M:%S')}] {self.message}"
 
+APPLICATION_STATUS_CHOICES = [
+    ('saved', 'Saved'),
+    ('applied', 'Applied'),
+    ('interviewing', 'Interviewing'),
+    ('offered', 'Offered'),
+    ('rejected', 'Rejected'),
+]
+
 class Bookmark(models.Model):
     user = models.ForeignKey(User, on_delete=models.CASCADE, related_name='bookmarks')
     job = models.ForeignKey(Job, on_delete=models.CASCADE, related_name='bookmarked_by')
+    status = models.CharField(max_length=20, choices=APPLICATION_STATUS_CHOICES, default='saved')
+    status_updated_at = models.DateTimeField(auto_now=True)
     created_at = models.DateTimeField(auto_now_add=True)
 
     class Meta:
@@ -151,6 +161,23 @@ class Portfolio(models.Model):
 def create_user_portfolio(sender, instance, created, **kwargs):
     if created:
         Portfolio.objects.get_or_create(user=instance)
+
+
+class PortfolioView(models.Model):
+    portfolio = models.ForeignKey(Portfolio, on_delete=models.CASCADE, related_name='page_views')
+    ip_address = models.GenericIPAddressField(null=True, blank=True)
+    country = models.CharField(max_length=100, blank=True)
+    country_code = models.CharField(max_length=4, blank=True)
+    device = models.CharField(max_length=20, blank=True)
+    browser = models.CharField(max_length=50, blank=True)
+    operating_system = models.CharField(max_length=50, blank=True)
+    viewed_at = models.DateTimeField(auto_now_add=True)
+
+    class Meta:
+        ordering = ['-viewed_at']
+
+    def __str__(self):
+        return f"View of {self.portfolio.user.username} at {self.viewed_at}"
 
 
 CV_TEMPLATE_CHOICES = [

@@ -1,13 +1,12 @@
 'use client';
 
 import React, { useState, useEffect } from 'react';
-import { Search, Map as MapIcon, List, Monitor, ArrowLeft, Bookmark } from 'lucide-react';
+import { Search, Map as MapIcon, List, Monitor, Bookmark } from 'lucide-react';
 import Sidebar from '@/components/Sidebar';
-import SidebarToggle from '@/components/SidebarToggle';
+import PageHeader from '@/components/PageHeader';
 import { motion, AnimatePresence, Variants } from 'framer-motion';
 import { JobCard } from '@/components/JobCard';
 import Map from '@/components/Map';
-import Link from 'next/link';
 import { useAuth } from '@/context/AuthContext';
 import { useRouter } from 'next/navigation';
 
@@ -315,54 +314,41 @@ export default function ExplorePage() {
 
       <div className="flex-1 flex flex-col overflow-hidden">
       {/* Header - Always visible for navigation/logout */}
-      <header className="h-16 border-b border-[#222] px-4 sm:px-6 flex items-center justify-between glass z-20 shrink-0">
-        <div className="flex items-center gap-3 sm:gap-4 flex-1 overflow-hidden">
-          <Link href="/" className="group flex md:hidden items-center gap-1.5 sm:gap-2 text-[#555] hover:text-white transition-colors mr-1 sm:mr-2 shrink-0">
-            <ArrowLeft size={16} className="group-hover:-translate-x-1 transition-transform" />
-            <span className="text-[10px] font-bold uppercase tracking-[0.2em] hidden sm:inline">Back</span>
-          </Link>
-          <div className="w-px h-4 bg-[#222] mr-1 sm:mr-2 shrink-0 md:hidden" />
-          <h1 className="hidden sm:inline text-lg sm:text-xl font-black tracking-tighter text-white mr-2 sm:mr-4 cursor-default truncate">KAAMLEE</h1>
+      <PageHeader backHref="/" title="Explore" wordmark>
+        <div className="w-px h-6 bg-[#222] mx-1 sm:mx-2" />
+        {/* View Toggles - Always visible */}
+        <div className="flex items-center gap-1 sm:gap-2 bg-[#161616] rounded-full p-1 border border-[#222]">
+          <button
+            onClick={() => setViewMode('split')}
+            className={`cursor-pointer p-1 sm:p-1.5 rounded-full transition-all hidden md:block ${viewMode === 'split' ? 'bg-[#22c55e] text-white' : 'text-[#555] hover:text-[#888]'}`}
+            title="Split View"
+          >
+            <List size={14} />
+          </button>
+          <button
+            onClick={() => setViewMode('list')}
+            className={`cursor-pointer p-1 sm:p-1.5 rounded-full transition-all md:hidden ${viewMode === 'list' ? 'bg-[#22c55e] text-white' : 'text-[#555] hover:text-[#888]'}`}
+            title="List View"
+          >
+            <List size={14} />
+          </button>
+          <button
+            onClick={() => setViewMode('map')}
+            className={`cursor-pointer p-1 sm:p-1.5 rounded-full transition-all ${viewMode === 'map' ? 'bg-[#22c55e] text-white' : 'text-[#555] hover:text-[#888]'}`}
+            title="Map View"
+          >
+            <MapIcon size={14} />
+          </button>
         </div>
 
-        <div className="flex items-center gap-2">
-
-          <div className="w-px h-6 bg-[#222] mx-1 sm:mx-2" />
-          {/* View Toggles - Always visible */}
-          <div className="flex items-center gap-1 sm:gap-2 bg-[#161616] rounded-full p-1 border border-[#222]">
-            <button
-              onClick={() => setViewMode('split')}
-              className={`cursor-pointer p-1 sm:p-1.5 rounded-full transition-all hidden md:block ${viewMode === 'split' ? 'bg-[#22c55e] text-white' : 'text-[#555] hover:text-[#888]'}`}
-              title="Split View"
-            >
-              <List size={14} />
-            </button>
-            <button
-              onClick={() => setViewMode('list')}
-              className={`cursor-pointer p-1 sm:p-1.5 rounded-full transition-all md:hidden ${viewMode === 'list' ? 'bg-[#22c55e] text-white' : 'text-[#555] hover:text-[#888]'}`}
-              title="List View"
-            >
-              <List size={14} />
-            </button>
-            <button
-              onClick={() => setViewMode('map')}
-              className={`cursor-pointer p-1 sm:p-1.5 rounded-full transition-all ${viewMode === 'map' ? 'bg-[#22c55e] text-white' : 'text-[#555] hover:text-[#888]'}`}
-              title="Map View"
-            >
-              <MapIcon size={14} />
-            </button>
-          </div>
-
-          {/* Mobile sidebar toggle - desktop uses the always-visible left sidebar instead */}
-          <div className="w-px h-6 bg-[#222] mx-1 sm:mx-2 md:hidden" />
-          <SidebarToggle />
-        </div>
-      </header>
+        {/* Mobile sidebar toggle - desktop uses the always-visible left sidebar instead */}
+        <div className="w-px h-6 bg-[#222] mx-1 sm:mx-2 md:hidden" />
+      </PageHeader>
 
       {/* Main Content Area */}
       <div className="flex-1 flex overflow-hidden">
         {/* Job list sidebar */}
-        <aside className={`${viewMode === 'map' ? 'hidden' : 'flex'} w-full md:w-[500px] flex-col border-r border-[#222] bg-[#0a0a0a] z-10 shrink-0`}>
+        <aside className={`${viewMode === 'map' ? 'hidden' : 'flex'} w-full md:w-[420px] flex-col border-r border-[#222] bg-[#0a0a0a] z-10 shrink-0`}>
           
           {/* Search Area */}
           <div className="p-4 sm:p-5 border-b border-[#222] bg-[#0a0a0a]">

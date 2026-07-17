@@ -15,7 +15,7 @@ type Status = 'loading' | 'ready' | 'failed';
 // token — if they really are the owner, the backend's bypass kicks in and we
 // render their real (private) portfolio with edit affordances. Anyone else
 // still gets a normal 404, and an owner whose re-fetch still fails falls
-// back to /profile.
+// back to /portfolio.
 export default function OwnerPreviewGate({ username }: { username: string }) {
   const router = useRouter();
   const { user, token, isLoading } = useAuth();
@@ -40,7 +40,7 @@ export default function OwnerPreviewGate({ username }: { username: string }) {
   }, [isLoading, isOwner, token, username]);
 
   useEffect(() => {
-    if (status === 'failed' && isOwner) router.replace('/profile');
+    if (status === 'failed' && isOwner) router.replace('/portfolio');
   }, [status, isOwner, router]);
 
   if (status === 'ready' && data) {

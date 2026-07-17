@@ -7,14 +7,14 @@ import { useAuth } from '@/context/AuthContext';
 // Rendered when the public portfolio API 404s for a reason that might just
 // mean the owner hasn't finished setup yet (no resume, no portfolio row, or
 // not public). If the visitor turns out to be that account's own owner,
-// send them to /profile to fix it up instead of showing a generic 404.
+// send them to /portfolio to fix it up instead of showing a generic 404.
 export default function OwnerResumeGate({ username }: { username: string }) {
   const router = useRouter();
   const { user, isLoading } = useAuth();
   const isOwner = !isLoading && user?.username === username;
 
   useEffect(() => {
-    if (isOwner) router.replace('/profile');
+    if (isOwner) router.replace('/portfolio');
   }, [isOwner, router]);
 
   if (!isLoading && !isOwner) {

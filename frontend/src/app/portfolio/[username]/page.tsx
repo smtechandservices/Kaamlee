@@ -29,8 +29,12 @@ async function getPortfolio(username: string): Promise<PortfolioResult> {
   try {
     const res = await fetch(url, { cache: 'no-store' });
     if (!res.ok) {
-      console.error(`[portfolio] ${url} → ${res.status}`);
       const reason = await res.json().then((body) => body?.error).catch(() => undefined);
+      // NOT_PUBLIC_REASON / NOTHING_TO_SHOW_REASONS are expected, handled outcomes
+      // (rendered as owner gates below) — only log genuinely unexpected failures.
+      if (reason !== NOT_PUBLIC_REASON && !NOTHING_TO_SHOW_REASONS.has(reason ?? '')) {
+        console.error(`[portfolio] ${url} → ${res.status}${reason ? ` (${reason})` : ''}`);
+      }
       return { data: null, reason };
     }
     return { data: await res.json() };

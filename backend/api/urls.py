@@ -5,9 +5,9 @@ from .views import (
     JobViewSet, StatsView, TriggerCompanyScrapeView, CompaniesView, CompanyViewSet,
     StopScrapeView, ForceResetView, LogsView, SignupView, UserView, RecentJobsView,
     CheckExistenceView, AdminLoginView, AdminUserViewSet, CategoriesView, CountriesView,
-    FeedbackView, AdminFeedbackView, PublicPortfolioView, MyPortfolioView, MyPortfolioContentView,
+    FeedbackView, AdminFeedbackView, PublicPortfolioView, MyPortfolioView, MyPortfolioContentView, PortfolioAnalyticsView,
     RequestLogsView, CustomCVListCreateView, CustomCVDetailView, CustomCVTailorView, CustomCVExportView,
-    JobApplicationKitView, AtsKeywordsView,
+    JobApplicationKitView, AtsKeywordsView, ApplicationsView,
 )
 
 router = DefaultRouter()
@@ -44,6 +44,7 @@ urlpatterns = [
     # ==========================================
     path('portfolio/me/', MyPortfolioView.as_view(), name='portfolio-me'),
     path('portfolio/content/', MyPortfolioContentView.as_view(), name='portfolio-content'),
+    path('portfolio/analytics/', PortfolioAnalyticsView.as_view(), name='portfolio-analytics'),
     path('portfolio/<str:username>/', PublicPortfolioView.as_view(), name='portfolio-public'),
 
     # ==========================================
@@ -59,6 +60,11 @@ urlpatterns = [
     # JOB APPLICATION KIT (cover letter + Q&A)
     # ==========================================
     path('jobs/<int:job_id>/application-kit/', JobApplicationKitView.as_view(), name='job-application-kit'),
+
+    # ==========================================
+    # APPLICATION TRACKER (Kanban board)
+    # ==========================================
+    path('applications/', ApplicationsView.as_view(), name='applications'),
 
     # ==========================================
     # SCRAPER & ADMIN

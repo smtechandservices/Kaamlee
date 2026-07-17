@@ -1,8 +1,41 @@
 import json
 import logging
+import re
 import time
 
 logger = logging.getLogger('request_log')
+
+_REDACTED = '***REDACTED***'
+_SENSITIVE_HEADERS = {'authorization', 'cookie'}
+_SENSITIVE_BODY_KEYS = {
+    'password', 'confirm_password', 'old_password', 'new_password',
+    'token', 'access', 'refresh', 'razorpay_signature', 'razorpay_key_secret',
+}
+# Fallback for non-JSON bodies (form-encoded, etc.) — redacts key=value or "key":"value" pairs.
+_SENSITIVE_BODY_RE = re.compile(
+    r'(["\']?(?:' + '|'.join(_SENSITIVE_BODY_KEYS) + r')["\']?\s*[:=]\s*["\']?)[^"\'&\s]*',
+    re.IGNORECASE,
+)
+
+
+def _redact_json(value):
+    if isinstance(value, dict):
+        return {
+            k: (_REDACTED if k.lower() in _SENSITIVE_BODY_KEYS else _redact_json(v))
+            for k, v in value.items()
+        }
+    if isinstance(value, list):
+        return [_redact_json(v) for v in value]
+    return value
+
+
+def redact_body_text(text):
+    """Best-effort redaction of sensitive fields (passwords, tokens) in a raw
+    request/response body string before it's written to the log file."""
+    try:
+        return json.dumps(_redact_json(json.loads(text)), ensure_ascii=False)
+    except ValueError:
+        return _SENSITIVE_BODY_RE.sub(r'\1' + _REDACTED, text)
 
 
 class DefaultStatusCodeFilter(logging.Filter):
@@ -29,6 +62,8 @@ def build_curl_command(request):
     for key, value in request.META.items():
         if key.startswith('HTTP_') and key != 'HTTP_COOKIE':
             header_name = key[5:].replace('_', '-').title()
+            if header_name.lower() in _SENSITIVE_HEADERS:
+                value = _REDACTED
             parts.append(f"-H '{header_name}: {value}'")
     content_type = request.META.get('CONTENT_TYPE')
     if content_type:
@@ -40,7 +75,7 @@ def build_curl_command(request):
         body = None
     if body:
         try:
-            parts.append(f"-d '{body.decode('utf-8')}'")
+            parts.append(f"-d '{redact_body_text(body.decode('utf-8'))}'")
         except UnicodeDecodeError:
             parts.append('-d <binary data>')
 
@@ -60,6 +95,8 @@ def build_response_body(response, max_chars=4000):
         body = response.content.decode('utf-8')
     except UnicodeDecodeError:
         return '<non-utf8 response body>'
+
+    body = redact_body_text(body)
 
     if 'json' in content_type:
         try:

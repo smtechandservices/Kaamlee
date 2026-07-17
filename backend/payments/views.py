@@ -1,7 +1,9 @@
 import os
+import logging
 import razorpay
 import json
 from datetime import timedelta
+from django.db import transaction as db_transaction
 from django.utils import timezone
 from rest_framework import views, viewsets, permissions
 from rest_framework.response import Response
@@ -13,23 +15,21 @@ from api.models import Profile
 from django.db.models import Sum
 from .constants import SUBSCRIPTION_PRICE_PAISE, SUBSCRIPTION_PRICE_INR
 
+logger = logging.getLogger(__name__)
+
 class CreateOrderView(views.APIView):
     permission_classes = [permissions.IsAuthenticated]
 
     def post(self, request):
         # amount = request.data.get('amount') # in paise
-        amount = SUBSCRIPTION_PRICE_PAISE # Production price: 99 INR (9900 paise)
+        amount = SUBSCRIPTION_PRICE_PAISE # Production price: 99 INR (9900 paise), see payments/constants.py
 
         key_id = getattr(settings, 'RAZORPAY_KEY_ID', None)
         key_secret = getattr(settings, 'RAZORPAY_KEY_SECRET', None)
 
         if not key_id or not key_secret:
-            print("DEBUG: Razorpay keys are MISSING in settings")
+            logger.error("Razorpay keys are missing in settings")
             return Response({"error": "Razorpay keys are not configured"}, status=500)
-
-        # Log masked keys for debugging
-        masked_id = f"{key_id[:8]}...{key_id[-4:]}" if key_id else "None"
-        print(f"DEBUG: Initializing Razorpay with Key ID: {masked_id}")
 
         client = razorpay.Client(auth=(key_id, key_secret))
 
@@ -59,8 +59,9 @@ class CreateOrderView(views.APIView):
                 'amount': order['amount'],
                 'currency': order['currency']
             })
-        except Exception as e:
-            return Response({"error": str(e)}, status=500)
+        except Exception:
+            logger.exception("Failed to create Razorpay order for user %s", request.user.id)
+            return Response({"error": "Could not create order. Please try again."}, status=500)
 
 class VerifyPaymentView(views.APIView):
     permission_classes = [permissions.IsAuthenticated]
@@ -80,38 +81,65 @@ class VerifyPaymentView(views.APIView):
             'razorpay_signature': razorpay_signature
         }
 
-        try:
-            client.utility.verify_payment_signature(params_dict)
-            
-            # Payment successful, update user subscription
-            profile = request.user.profile
-            now = timezone.now()
-            
-            if profile.subscription_expires_at and profile.subscription_expires_at > now:
-                profile.subscription_expires_at += timedelta(days=30)
-            else:
-                profile.subscription_expires_at = now + timedelta(days=30)
-            
-            profile.is_subscribed = True
-            profile.save()
-            
-            # Update transaction
-            transaction = Transaction.objects.filter(razorpay_order_id=razorpay_order_id).first()
-            if transaction:
+        from api.serializers import UserSerializer
+
+        # verify_payment_signature is a local HMAC check (no network call), so it's
+        # safe to do inside the locked section below alongside the row locks.
+        with db_transaction.atomic():
+            # select_for_update locks the transaction + profile rows so a concurrent
+            # replay of the same (order_id, payment_id, signature) can't race past
+            # the status check below and extend the subscription twice.
+            transaction = Transaction.objects.select_for_update().filter(
+                razorpay_order_id=razorpay_order_id, user=request.user
+            ).first()
+            if not transaction:
+                return Response({"error": "Transaction not found"}, status=404)
+
+            # Idempotent: a replayed/duplicate call for an already-credited transaction
+            # must not extend the subscription again.
+            if transaction.status == 'success':
+                return Response({"status": "success", "user": UserSerializer(request.user).data})
+
+            try:
+                client.utility.verify_payment_signature(params_dict)
+            except razorpay.errors.SignatureVerificationError:
+                # The signature itself didn't check out — this genuinely wasn't a
+                # valid payment, so it's correct to mark the transaction failed.
+                transaction.status = 'failed'
+                transaction.save()
+                return Response({"error": "Invalid signature or payment failed"}, status=400)
+
+            # From here on the payment is verified as real. Any failure below is our
+            # own bug, not a bad payment — don't mark the transaction 'failed' (that
+            # would tell a user who was actually charged that their payment failed).
+            # Leave it as-is so CheckPaymentStatusView can reconcile it later.
+            try:
+                profile = Profile.objects.select_for_update().get(user=request.user)
+                now = timezone.now()
+
+                if profile.subscription_expires_at and profile.subscription_expires_at > now:
+                    profile.subscription_expires_at += timedelta(days=30)
+                else:
+                    profile.subscription_expires_at = now + timedelta(days=30)
+
+                profile.is_subscribed = True
+                profile.save()
+
                 transaction.razorpay_payment_id = razorpay_payment_id
                 transaction.razorpay_signature = razorpay_signature
                 transaction.status = 'success'
                 transaction.save()
-            
-            from api.serializers import UserSerializer
-            return Response({"status": "success", "user": UserSerializer(request.user).data})
-        except Exception as e:
-            # Update transaction as failed
-            transaction = Transaction.objects.filter(razorpay_order_id=razorpay_order_id).first()
-            if transaction:
-                transaction.status = 'failed'
-                transaction.save()
-            return Response({"error": "Invalid signature or payment failed"}, status=400)
+
+                return Response({"status": "success", "user": UserSerializer(request.user).data})
+            except Exception:
+                logger.exception(
+                    "Verified payment for order %s could not be applied to user %s",
+                    razorpay_order_id, request.user.id,
+                )
+                return Response(
+                    {"error": "Payment verified but activation failed. Please contact support."},
+                    status=500,
+                )
 
 class TransactionViewSet(viewsets.ReadOnlyModelViewSet):
     serializer_class = TransactionSerializer
@@ -145,27 +173,33 @@ class CheckPaymentStatusView(views.APIView):
             
             # Check if any payment is 'captured'
             successful_payment = next((p for p in payments['items'] if p['status'] == 'captured'), None)
-            
-            transaction = Transaction.objects.filter(razorpay_order_id=order_id).first()
-            if not transaction:
+
+            if not Transaction.objects.filter(razorpay_order_id=order_id, user=request.user).exists():
                 return Response({"error": "Transaction not found"}, status=404)
 
             if successful_payment:
-                # Update transaction and user profile
-                if transaction.status != 'success':
-                    transaction.status = 'success'
-                    transaction.razorpay_payment_id = successful_payment['id']
-                    transaction.save()
-                    
-                    profile = transaction.user.profile
-                    now = timezone.now()
-                    if profile.subscription_expires_at and profile.subscription_expires_at > now:
-                        profile.subscription_expires_at += timedelta(days=30)
-                    else:
-                        profile.subscription_expires_at = now + timedelta(days=30)
-                    profile.is_subscribed = True
-                    profile.save()
-                
+                # Row locks held only for the DB update below, not the Razorpay call above.
+                with db_transaction.atomic():
+                    transaction = Transaction.objects.select_for_update().filter(
+                        razorpay_order_id=order_id, user=request.user
+                    ).first()
+                    if not transaction:
+                        return Response({"error": "Transaction not found"}, status=404)
+
+                    if transaction.status != 'success':
+                        transaction.status = 'success'
+                        transaction.razorpay_payment_id = successful_payment['id']
+                        transaction.save()
+
+                        profile = Profile.objects.select_for_update().get(user=transaction.user)
+                        now = timezone.now()
+                        if profile.subscription_expires_at and profile.subscription_expires_at > now:
+                            profile.subscription_expires_at += timedelta(days=30)
+                        else:
+                            profile.subscription_expires_at = now + timedelta(days=30)
+                        profile.is_subscribed = True
+                        profile.save()
+
                 return Response({
                     "status": "success", 
                     "message": "Payment verified via Razorpay API",
@@ -181,8 +215,9 @@ class CheckPaymentStatusView(views.APIView):
                     "status": status,
                     "message": f"No captured payment found. Current status: {status}"
                 })
-        except Exception as e:
-            return Response({"error": str(e)}, status=500)
+        except Exception:
+            logger.exception("Failed to check payment status for order %s", order_id)
+            return Response({"error": "Could not check payment status. Please try again."}, status=500)
 
 class AdminRevenueStatsView(views.APIView):
     permission_classes = [permissions.IsAdminUser]

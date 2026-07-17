@@ -1,13 +1,15 @@
 import io
 import os
 import json
+import logging
 import PyPDF2
 from groq import Groq
 from rest_framework import serializers
-from .models import Job, ScrapeSession, ScrapeLog, Bookmark, Feedback, Portfolio, CustomCV, JobApplicationKit, Company
+from .models import Job, ScrapeSession, ScrapeLog, Bookmark, Feedback, Portfolio, PortfolioView, CustomCV, JobApplicationKit, Company
 from django.contrib.auth.models import User
 from scripts.ats_scoring import score_cv
 
+logger = logging.getLogger(__name__)
 _groq = Groq(api_key=os.getenv('GROQ_API_KEY'))
 
 _PARSE_PROMPT = """You are a resume parser. Extract all information from the resume text below and return ONLY a valid JSON object with this exact structure:
@@ -76,8 +78,8 @@ def extract_text_from_pdf(pdf_file):
         for page in reader.pages:
             text += page.extract_text()
         return text
-    except Exception as e:
-        print(f"Error extracting text: {e}")
+    except Exception:
+        logger.exception("Failed to extract text from uploaded PDF")
         return ""
 
 def parse_resume_with_groq(resume_text: str) -> dict:
@@ -98,8 +100,8 @@ def parse_resume_with_groq(resume_text: str) -> dict:
             if raw.startswith("json"):
                 raw = raw[4:]
         return json.loads(raw)
-    except Exception as e:
-        print(f"Groq resume parse error: {e}")
+    except Exception:
+        logger.exception("Groq resume parse error")
         return {}
 
 _TAILOR_PROMPT_TEMPLATE = """You are a resume editor helping a candidate retarget their existing resume for a new target role: "{target_role}".
@@ -138,8 +140,8 @@ def tailor_resume_with_groq(content: dict, target_role: str, keywords: list) -> 
             if raw.startswith("json"):
                 raw = raw[4:]
         return json.loads(raw)
-    except Exception as e:
-        print(f"Groq resume tailor error: {e}")
+    except Exception:
+        logger.exception("Groq resume tailor error")
         return {}
 
 APPLICATION_KIT_QUESTIONS = [
@@ -194,8 +196,8 @@ def generate_application_kit_with_groq(resume_content: dict, job_title: str, com
             if raw.startswith("json"):
                 raw = raw[4:]
         return json.loads(raw)
-    except Exception as e:
-        print(f"Groq application kit error: {e}")
+    except Exception:
+        logger.exception("Groq application kit error")
         return {}
 
 def calculate_match(resume_text, job_title, job_description):
@@ -246,6 +248,23 @@ class UserSerializer(serializers.ModelSerializer):
         )
         read_only_fields = ('id', 'username', 'email', 'is_superuser', 'is_staff', 'resume_text', 'has_resume', 'portfolio_is_public')
 
+    MAX_RESUME_SIZE_BYTES = 5 * 1024 * 1024  # 5 MB — the whole file is read into memory for extraction/Groq
+
+    def validate_resume(self, value):
+        if value is None:
+            return value
+        if value.size > self.MAX_RESUME_SIZE_BYTES:
+            raise serializers.ValidationError("Resume file is too large (max 5 MB).")
+        name = (value.name or "").lower()
+        if not name.endswith(('.pdf', '.txt')):
+            raise serializers.ValidationError("Only PDF or plain text resumes are supported.")
+        if name.endswith('.pdf'):
+            header = value.read(5)
+            value.seek(0)
+            if header != b'%PDF-':
+                raise serializers.ValidationError("File does not look like a valid PDF.")
+        return value
+
     def get_has_resume(self, obj):
         # resume_text is the reliable gate — it's always set after PDF extraction
         return bool(obj.profile.resume_text)
@@ -273,20 +292,36 @@ class UserSerializer(serializers.ModelSerializer):
         if 'resume' in profile_data:
             resume_file = profile_data['resume']
 
-            if profile.resume and profile.resume != resume_file:
-                try:
-                    profile.resume.delete(save=False)
-                except Exception as e:
-                    print(f"Error deleting old resume: {e}")
-
-            profile.resume = resume_file
             if resume_file:
-                if resume_file.name.endswith('.pdf'):
-                    profile.resume_text = extract_text_from_pdf(resume_file)
+                if resume_file.name.lower().endswith('.pdf'):
+                    new_resume_text = extract_text_from_pdf(resume_file)
                 else:
-                    profile.resume_text = resume_file.read().decode('utf-8', errors='ignore')
-                profile.resume_parsed = parse_resume_with_groq(profile.resume_text)
+                    new_resume_text = resume_file.read().decode('utf-8', errors='ignore')
+
+                # Don't silently accept an upload we couldn't read anything from —
+                # a corrupt/scanned-image PDF would otherwise save a blank resume
+                # and quietly break ATS scoring / CV tailoring downstream.
+                if not new_resume_text.strip():
+                    raise serializers.ValidationError({
+                        'resume': 'Could not extract any text from this file. Please upload a text-based PDF.'
+                    })
+
+                if profile.resume and profile.resume != resume_file:
+                    try:
+                        profile.resume.delete(save=False)
+                    except Exception:
+                        logger.exception("Error deleting old resume")
+
+                profile.resume = resume_file
+                profile.resume_text = new_resume_text
+                profile.resume_parsed = parse_resume_with_groq(new_resume_text)
             else:
+                if profile.resume:
+                    try:
+                        profile.resume.delete(save=False)
+                    except Exception:
+                        logger.exception("Error deleting old resume")
+                profile.resume = resume_file
                 profile.resume_text = ""
                 profile.resume_parsed = None
 
@@ -394,6 +429,13 @@ class RecentJobSerializer(JobSerializer):
     class Meta(JobSerializer.Meta):
         fields = [f for f in JobSerializer.Meta.fields if f != 'site']
 
+class BookmarkSerializer(serializers.ModelSerializer):
+    job = JobSerializer(read_only=True)
+
+    class Meta:
+        model = Bookmark
+        fields = ['id', 'job', 'status', 'status_updated_at', 'created_at']
+
 class JobMapPinSerializer(serializers.ModelSerializer):
     """Lightweight job shape for map markers — no match_score/is_bookmarked computation."""
     location_name = serializers.SerializerMethodField()
@@ -467,6 +509,12 @@ class PublicPortfolioSerializer(serializers.ModelSerializer):
                 profile.save(update_fields=['resume_parsed'])
             return parsed
         return {}
+
+
+class PortfolioViewSerializer(serializers.ModelSerializer):
+    class Meta:
+        model = PortfolioView
+        fields = ['ip_address', 'country', 'country_code', 'device', 'browser', 'operating_system', 'viewed_at']
 
 
 class CustomCVSerializer(serializers.ModelSerializer):
