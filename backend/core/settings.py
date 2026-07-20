@@ -181,6 +181,10 @@ APSCHEDULER_RUN_NOW_TIMEOUT = 25  # Seconds
 RAZORPAY_KEY_ID = os.getenv('RAZORPAY_KEY_ID')
 RAZORPAY_KEY_SECRET = os.getenv('RAZORPAY_KEY_SECRET')
 
+# Google Sign-In — Client ID from Google Cloud Console (OAuth 2.0 Client, Web application).
+# Must match NEXT_PUBLIC_GOOGLE_CLIENT_ID on the frontend; used to verify Google ID tokens.
+GOOGLE_CLIENT_ID = os.getenv('GOOGLE_CLIENT_ID', '')
+
 # Request Logging — 5 MB per file, keep last 5 files (25 MB max on disk)
 LOGS_DIR = BASE_DIR / 'logs'
 LOGS_DIR.mkdir(exist_ok=True)

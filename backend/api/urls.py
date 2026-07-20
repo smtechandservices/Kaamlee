@@ -3,7 +3,7 @@ from rest_framework.routers import DefaultRouter
 from rest_framework.authtoken.views import obtain_auth_token
 from .views import (
     JobViewSet, StatsView, TriggerCompanyScrapeView, CompaniesView, CompanyViewSet,
-    StopScrapeView, ForceResetView, LogsView, SignupView, UserView, RecentJobsView,
+    StopScrapeView, ForceResetView, LogsView, SignupView, GoogleAuthView, UserView, RecentJobsView,
     CheckExistenceView, AdminLoginView, AdminUserViewSet, CategoriesView, CountriesView,
     FeedbackView, AdminFeedbackView, PublicPortfolioView, MyPortfolioView, MyPortfolioContentView, PortfolioAnalyticsView,
     RequestLogsView, CustomCVListCreateView, CustomCVDetailView, CustomCVTailorView, CustomCVExportView,
@@ -22,6 +22,7 @@ urlpatterns = [
     path('user/', UserView.as_view(), name='user'),
     path('login/', obtain_auth_token, name='login'),
     path('signup/', SignupView.as_view(), name='signup'),
+    path('auth/google/', GoogleAuthView.as_view(), name='auth-google'),
     path('admin-login/', AdminLoginView.as_view(), name='admin-login'),
     
     # ==========================================

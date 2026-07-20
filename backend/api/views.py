@@ -16,6 +16,7 @@ from .serializers import (
     JobApplicationKitSerializer, generate_application_kit_with_groq, CompanySerializer,
     BookmarkSerializer,
 )
+from .google_auth import get_or_create_google_user
 from scripts.ats_scoring import score_cv, get_profession_keywords, get_all_profession_keywords
 from scripts.cv_export import render_cv_pdf, render_cv_docx
 from django.http import HttpResponse
@@ -45,6 +46,25 @@ class SignupView(generics.CreateAPIView):
         serializer = self.get_serializer(data=request.data)
         serializer.is_valid(raise_exception=True)
         user = serializer.save()
+        token, created = Token.objects.get_or_create(user=user)
+        return Response({
+            "user": UserSerializer(user).data,
+            "token": token.key
+        })
+
+class GoogleAuthView(views.APIView):
+    permission_classes = [permissions.AllowAny]
+
+    def post(self, request, *args, **kwargs):
+        credential = request.data.get('credential')
+        if not credential:
+            return Response({"error": "Missing Google credential."}, status=400)
+
+        try:
+            user = get_or_create_google_user(credential)
+        except ValueError as e:
+            return Response({"error": str(e)}, status=400)
+
         token, created = Token.objects.get_or_create(user=user)
         return Response({
             "user": UserSerializer(user).data,

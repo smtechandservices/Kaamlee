@@ -14,7 +14,7 @@ function setCache(key: string, data: any) {
   _cache[key] = { data, ts: Date.now() };
 }
 import { motion, AnimatePresence } from 'framer-motion';
-import { ArrowRight, Search, Zap, Globe, Shield, LogOut, Briefcase, MapPin, Building2, Plus, Minus, RotateCcw, X, ExternalLink, CreditCard } from 'lucide-react';
+import { ArrowRight, Search, Zap, Globe, Shield, LogOut, Briefcase, MapPin, Building2, Plus, Minus, RotateCcw, X, ExternalLink, CreditCard, FileText } from 'lucide-react';
 import { useAuth } from '@/context/AuthContext';
 import { useRouter } from 'next/navigation';
 import { Map as Mapcn, MapMarker, MarkerContent } from "@/components/ui/map";
@@ -205,8 +205,7 @@ export default function LandingPage() {
                 onClick={() => setIsPricingOpen(true)}
                 className="cursor-pointer border border-[#222] text-white px-8 sm:px-10 py-4 sm:py-5 rounded-sm font-black uppercase tracking-widest text-xs sm:text-sm flex items-center justify-center gap-2 hover:border-white transition-all"
               >
-                {/* Beta — ₹9/mo */}
-                Free · Beta
+                ₹99/mo · Beta
               </button>
             </div>
           </motion.div>
@@ -383,6 +382,234 @@ export default function LandingPage() {
           </div>
         </section>
 
+        {/* Feature Spotlight: Portfolio Generation */}
+        <section className="px-6 py-16 sm:py-20 border-t border-white/40 bg-black relative overflow-hidden">
+          <div className="grid grid-cols-1 lg:grid-cols-2 gap-16 lg:gap-24 items-center">
+            <div>
+              <div className="flex items-center gap-4 mb-4">
+                <div className="h-px w-12 sm:w-20 bg-green-500" />
+                <span className="font-mono text-[10px] sm:text-xs text-green-500 tracking-widest uppercase">// PORTFOLIO.GEN</span>
+              </div>
+              <h2 className="text-3xl sm:text-5xl font-black tracking-tight mb-6 sm:mb-8 leading-[1.1]">
+                Your resume, <br />
+                as a <span className="text-serif font-normal italic lowercase text-green-500">website.</span>
+              </h2>
+              <p className="text-lg sm:text-xl text-[#888] leading-relaxed mb-8 sm:mb-10">
+                Kaamlee turns your resume into a <span className="text-white font-bold">public portfolio site</span> — a real link you can put on your LinkedIn, your resume header, or in an email signature. Pick a layout, pick a theme, publish.
+              </p>
+              <ul className="space-y-3 sm:space-y-4 mb-10">
+                {[
+                  "Classic and Bento layout templates",
+                  "Six accent themes, light or dark",
+                  "One-click public link, toggle anytime",
+                  "Built-in view analytics on your profile"
+                ].map((feature, i) => (
+                  <li key={i} className="flex items-center gap-3 text-xs sm:text-sm font-mono text-[#555] uppercase tracking-widest">
+                    <Zap className="text-green-500 w-3 h-3 sm:w-3.5 sm:h-3.5" />
+                    {feature}
+                  </li>
+                ))}
+              </ul>
+              <Link
+                href="/portfolio"
+                className="inline-flex items-center gap-2 bg-white text-black px-8 sm:px-10 py-4 sm:py-5 rounded-sm font-black uppercase tracking-widest text-xs sm:text-sm hover:bg-[#ededed] transition-all group w-fit"
+              >
+                Build my portfolio <ArrowRight size={16} className="group-hover:translate-x-1 transition-transform" />
+              </Link>
+            </div>
+
+            <motion.div
+              initial={{ opacity: 0, scale: 0.9 }}
+              whileInView={{ opacity: 1, scale: 1 }}
+              viewport={{ once: true }}
+              className="relative aspect-video rounded-2xl border border-white/5 bg-[#050505] p-4 sm:p-6 flex flex-col gap-3 sm:gap-4 group shadow-2xl"
+            >
+              <div className="flex items-center justify-between">
+                <div className="flex gap-2">
+                  <div className="w-1.5 sm:w-2 h-1.5 sm:h-2 rounded-full bg-red-500/20" />
+                  <div className="w-1.5 sm:w-2 h-1.5 sm:h-2 rounded-full bg-yellow-500/20" />
+                  <div className="w-1.5 sm:w-2 h-1.5 sm:h-2 rounded-full bg-green-500/20" />
+                </div>
+                <div className="flex-1 mx-4 sm:mx-8 h-5 sm:h-6 rounded-full bg-white/5 border border-white/10 flex items-center px-3 font-mono text-[8px] sm:text-[10px] text-[#666] truncate">
+                  kaamlee.com/p/your-name
+                </div>
+                <div className="px-1.5 sm:px-2 py-0.5 rounded bg-green-500/20 border border-green-500/30 text-[8px] sm:text-[10px] font-black text-green-500 uppercase tracking-widest shrink-0">Live</div>
+              </div>
+
+              <div className="flex-1 grid grid-cols-3 grid-rows-2 gap-2 sm:gap-3">
+                <div className="col-span-2 row-span-2 rounded-lg bg-white/5 border border-white/10 p-3 sm:p-4 flex flex-col justify-between group-hover:border-green-500/30 transition-all">
+                  <div className="w-8 h-8 sm:w-10 sm:h-10 rounded-full bg-gradient-to-br from-green-500 to-green-700" />
+                  <div className="space-y-1.5 sm:space-y-2">
+                    <div className="h-2.5 sm:h-3 w-2/3 bg-white/20 rounded" />
+                    <div className="h-1.5 sm:h-2 w-1/2 bg-white/10 rounded" />
+                  </div>
+                </div>
+                <div className="rounded-lg bg-white/5 border border-white/10 p-2 sm:p-3 flex items-center justify-center">
+                  <div className="h-1.5 sm:h-2 w-full bg-white/10 rounded" />
+                </div>
+                <div className="rounded-lg bg-green-500/10 border border-green-500/20 p-2 sm:p-3 flex items-center justify-center">
+                  <div className="h-1.5 sm:h-2 w-3/4 bg-green-500/30 rounded" />
+                </div>
+              </div>
+
+              <div className="flex gap-2">
+                {["Noir", "Minimal", "Bento"].map((theme, i) => (
+                  <div key={i} className={`px-2 sm:px-3 py-1 rounded-full text-[8px] sm:text-[9px] font-mono uppercase tracking-widest border ${i === 0 ? 'bg-green-500/10 border-green-500/30 text-green-500' : 'border-white/10 text-[#555]'}`}>
+                    {theme}
+                  </div>
+                ))}
+              </div>
+            </motion.div>
+          </div>
+        </section>
+
+        {/* Feature Spotlight: Custom CVs */}
+        <section className="px-6 py-16 sm:py-20 border-t border-white/40 bg-[#050505] relative overflow-hidden">
+          <div className="absolute top-1/2 left-1/2 -translate-x-1/2 -translate-y-1/2 w-[300px] sm:w-[600px] h-[300px] sm:h-[600px] bg-green-500/5 blur-[120px] rounded-full pointer-events-none" />
+
+          <div className="grid grid-cols-1 lg:grid-cols-2 gap-16 lg:gap-24 items-center">
+            <motion.div
+              initial={{ opacity: 0, scale: 0.9 }}
+              whileInView={{ opacity: 1, scale: 1 }}
+              viewport={{ once: true }}
+              className="relative aspect-video rounded-2xl border border-white/5 bg-black p-4 sm:p-6 flex flex-col gap-2 sm:gap-3 group shadow-2xl lg:order-1"
+            >
+              <div className="flex gap-1.5 mb-1 opacity-30 group-hover:opacity-100 transition-opacity">
+                <div className="w-1.5 h-1.5 rounded-full bg-red-500/50" />
+                <div className="w-1.5 h-1.5 rounded-full bg-yellow-500/50" />
+                <div className="w-1.5 h-1.5 rounded-full bg-green-500/50" />
+              </div>
+
+              {[
+                { role: "Senior Backend Engineer", tmpl: "ATS Optimized", score: 92, color: "text-green-400 border-green-500/30 bg-green-500/10" },
+                { role: "Product Manager, Growth", tmpl: "Modern", score: 68, color: "text-yellow-400 border-yellow-500/30 bg-yellow-500/10" },
+                { role: "Data Platform Lead", tmpl: "Classic", score: 41, color: "text-red-400 border-red-500/30 bg-red-500/10" }
+              ].map((cv, i) => (
+                <div key={i} className="flex items-center gap-3 sm:gap-4 p-2.5 sm:p-3 rounded-xl bg-white/5 border border-white/10 group-hover:border-green-500/30 transition-all">
+                  <div className="w-8 h-8 sm:w-10 sm:h-10 rounded-lg bg-green-500/10 flex items-center justify-center shrink-0">
+                    <FileText className="text-green-500 w-4 h-4 sm:w-5 sm:h-5" />
+                  </div>
+                  <div className="flex-1 min-w-0">
+                    <div className="text-[10px] sm:text-xs font-bold text-white truncate">{cv.role}</div>
+                    <div className="text-[8px] sm:text-[10px] font-mono text-[#555] uppercase tracking-widest">{cv.tmpl}</div>
+                  </div>
+                  <div className={`px-1.5 sm:px-2 py-0.5 rounded border text-[8px] sm:text-[10px] font-black uppercase tracking-widest whitespace-nowrap ${cv.color}`}>
+                    {cv.score}% ATS
+                  </div>
+                </div>
+              ))}
+            </motion.div>
+
+            <div className="lg:order-2">
+              <div className="flex items-center gap-4 mb-4">
+                <div className="h-px w-12 sm:w-20 bg-green-500" />
+                <span className="font-mono text-[10px] sm:text-xs text-green-500 tracking-widest uppercase">// CUSTOM_CV.AI</span>
+              </div>
+              <h2 className="text-3xl sm:text-5xl font-black tracking-tight mb-6 sm:mb-8 leading-[1.1]">
+                One resume isn't <span className="text-serif font-normal italic lowercase text-green-500">enough.</span>
+              </h2>
+              <p className="text-lg sm:text-xl text-[#888] leading-relaxed mb-8 sm:mb-10">
+                Generate a <span className="text-white font-bold">tailored CV for every role</span> you target. Each version is scored against the job description so you know exactly how it'll read to an ATS.
+              </p>
+              <ul className="space-y-3 sm:space-y-4 mb-10">
+                {[
+                  "Real-time ATS compatibility score",
+                  "Modern, Classic, or ATS-optimized templates",
+                  "Tailored per target role and keywords",
+                  "Unlimited versions, saved to your account"
+                ].map((feature, i) => (
+                  <li key={i} className="flex items-center gap-3 text-xs sm:text-sm font-mono text-[#555] uppercase tracking-widest">
+                    <Zap className="text-green-500 w-3 h-3 sm:w-3.5 sm:h-3.5" />
+                    {feature}
+                  </li>
+                ))}
+              </ul>
+              <Link
+                href="/custom-cv"
+                className="inline-flex items-center gap-2 bg-white text-black px-8 sm:px-10 py-4 sm:py-5 rounded-sm font-black uppercase tracking-widest text-xs sm:text-sm hover:bg-[#ededed] transition-all group w-fit"
+              >
+                Create a custom CV <ArrowRight size={16} className="group-hover:translate-x-1 transition-transform" />
+              </Link>
+            </div>
+          </div>
+        </section>
+
+        {/* Feature Spotlight: Kanban Tracker */}
+        <section className="px-6 py-16 sm:py-20 border-t border-white/40 bg-black relative overflow-hidden">
+          <div className="grid grid-cols-1 lg:grid-cols-2 gap-16 lg:gap-24 items-center">
+            <div>
+              <div className="flex items-center gap-4 mb-4">
+                <div className="h-px w-12 sm:w-20 bg-green-500" />
+                <span className="font-mono text-[10px] sm:text-xs text-green-500 tracking-widest uppercase">// TRACKER.BOARD</span>
+              </div>
+              <h2 className="text-3xl sm:text-5xl font-black tracking-tight mb-6 sm:mb-8 leading-[1.1]">
+                Your pipeline, <br />
+                on a <span className="text-serif font-normal italic lowercase text-green-500">board.</span>
+              </h2>
+              <p className="text-lg sm:text-xl text-[#888] leading-relaxed mb-8 sm:mb-10">
+                Every job you save or apply to lands on a <span className="text-white font-bold">drag-and-drop Kanban board</span>. Move cards from Saved to Applied to Interviewing to Offered — your whole search, at a glance.
+              </p>
+              <ul className="space-y-3 sm:space-y-4 mb-10">
+                {[
+                  "Saved → Applied → Interviewing → Offered",
+                  "Drag and drop status updates",
+                  "Auto-populated from bookmarked jobs",
+                  "One view for your entire job search"
+                ].map((feature, i) => (
+                  <li key={i} className="flex items-center gap-3 text-xs sm:text-sm font-mono text-[#555] uppercase tracking-widest">
+                    <Zap className="text-green-500 w-3 h-3 sm:w-3.5 sm:h-3.5" />
+                    {feature}
+                  </li>
+                ))}
+              </ul>
+              <Link
+                href="/applications"
+                className="inline-flex items-center gap-2 bg-white text-black px-8 sm:px-10 py-4 sm:py-5 rounded-sm font-black uppercase tracking-widest text-xs sm:text-sm hover:bg-[#ededed] transition-all group w-fit"
+              >
+                Open my board <ArrowRight size={16} className="group-hover:translate-x-1 transition-transform" />
+              </Link>
+            </div>
+
+            <motion.div
+              initial={{ opacity: 0, scale: 0.9 }}
+              whileInView={{ opacity: 1, scale: 1 }}
+              viewport={{ once: true }}
+              className="relative aspect-video rounded-2xl border border-white/5 bg-[#050505] p-4 sm:p-6 shadow-2xl group"
+            >
+              <div className="flex gap-1.5 mb-3 sm:mb-4 opacity-30 group-hover:opacity-100 transition-opacity">
+                <div className="w-1.5 h-1.5 rounded-full bg-red-500/50" />
+                <div className="w-1.5 h-1.5 rounded-full bg-yellow-500/50" />
+                <div className="w-1.5 h-1.5 rounded-full bg-green-500/50" />
+              </div>
+
+              <div className="grid grid-cols-4 gap-2 sm:gap-3 h-[calc(100%-1.5rem)]">
+                {[
+                  { label: "Saved", dot: "bg-[#666]", cards: 1 },
+                  { label: "Applied", dot: "bg-blue-400", cards: 2 },
+                  { label: "Interviewing", dot: "bg-amber-400", cards: 1, tilt: true },
+                  { label: "Offered", dot: "bg-green-400", cards: 1 }
+                ].map((col, i) => (
+                  <div key={i} className="flex flex-col gap-1.5 sm:gap-2 bg-white/[0.02] border border-white/5 rounded-lg p-1.5 sm:p-2">
+                    <div className="flex items-center gap-1 sm:gap-1.5 px-0.5">
+                      <span className={`w-1 h-1 sm:w-1.5 sm:h-1.5 rounded-full ${col.dot}`} />
+                      <span className="text-[6px] sm:text-[8px] font-mono uppercase tracking-widest text-[#555] truncate">{col.label}</span>
+                    </div>
+                    {Array.from({ length: col.cards }).map((_, j) => (
+                      <div
+                        key={j}
+                        className={`rounded-md bg-white/5 border border-white/10 p-1.5 sm:p-2 space-y-1 sm:space-y-1.5 ${col.tilt ? 'border-green-500/30 shadow-lg shadow-green-500/10 -rotate-2' : ''}`}
+                      >
+                        <div className="h-1 sm:h-1.5 w-full bg-white/20 rounded" />
+                        <div className="h-1 sm:h-1.5 w-2/3 bg-white/10 rounded" />
+                      </div>
+                    ))}
+                  </div>
+                ))}
+              </div>
+            </motion.div>
+          </div>
+        </section>
+
         {/* New Feature Spotlight: AI Match */}
         <section className="px-6 py-16 sm:py-20 border-t border-white/40 bg-[#050505] relative overflow-hidden">
           <div className="absolute top-1/2 left-1/2 -translate-x-1/2 -translate-y-1/2 w-[300px] sm:w-[600px] h-[300px] sm:h-[600px] bg-green-500/5 blur-[120px] rounded-full pointer-events-none" />
@@ -523,16 +750,14 @@ export default function LandingPage() {
                 q: "Where do these jobs actually come from?",
                 a: "We crawl twelve major job boards (LinkedIn, Indeed, ZipRecruiter, etc.) and direct company career pages every fifteen minutes. If it's live on the internet, it's on the map."
               },
-              // { q: "Is Kaamlee in beta? Will the price change later?", a: "Yes — we're in early beta. Right now, early access is priced at ₹9/mo so you can get in and give us feedback while the product is still being shaped. As we roll out premium features (advanced filters, alerts, Auto apply, and more), the price will update to reflect them. Early access users who join now lock in the beta rate for their current billing cycle." },
               {
-                q: "Is Kaamlee in beta? Is it really free?",
-                a: "Yes — we're in early beta and everything is completely free right now. No payment, no subscription, no credit card required. Sign up and get full access to all job listings while we build and shape the product with your feedback."
+                q: "Is Kaamlee in beta? Will the price change later?",
+                a: "Yes — we're in early beta. Right now, early access is priced at ₹99/mo so you can get in and give us feedback while the product is still being shaped. As we roll out premium features (advanced filters, alerts, Auto apply, and more), future plans will start from ₹299/mo. Early access users who join now lock in the beta rate."
               },
-              // { q: "How does the 'All-Access' pass work?", a: `One flat beta fee of PRICING.currency PRICING.amount_inr/PRICING.interval. No tiers, no 'pro' features locked behind a paywall right now. This is early-access pricing — future plans will be priced higher as premium features launch. Payments are securely powered by Razorpay and handled by Commhawk.` },
               // { q: "Can I cancel my subscription easily?", a: "Yes. One click in your dashboard. No 'call us to cancel' loops. No hidden retention tricks. We're here to help you get a job, not hold you hostage." },
               {
                 q: "How does full access work during beta?",
-                a: "During the beta period, all features are unlocked for every user at no cost. As we roll out premium features (AI matching, Auto-apply, Resume builder, and more), we'll introduce plans — but we'll give you plenty of notice before anything changes."
+                a: "During the beta period, all features are unlocked for every user at ₹99/mo. As we roll out premium features (AI matching, Auto-apply, Resume builder, and more), we'll introduce plans starting from ₹299/mo — but we'll give you plenty of notice before anything changes."
               },
               {
                 q: "How does the AI Resume Matching work?",

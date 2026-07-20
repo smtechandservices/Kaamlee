@@ -12,6 +12,7 @@ class Profile(models.Model):
     resume_parsed = models.JSONField(blank=True, null=True)
     is_subscribed = models.BooleanField(default=False)
     subscription_expires_at = models.DateTimeField(blank=True, null=True)
+    google_id = models.CharField(max_length=255, blank=True, null=True, unique=True)
 
     def __str__(self):
         return f"Profile for {self.user.username}"

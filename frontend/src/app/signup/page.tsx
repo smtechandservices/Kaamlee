@@ -5,6 +5,7 @@ import Link from 'next/link';
 import { motion, AnimatePresence } from 'framer-motion';
 import { ArrowLeft, User, Mail, Lock, Loader2, Phone, Link as LinkIcon, Eye, EyeOff, CheckCircle2, ChevronRight } from 'lucide-react';
 import { useAuth } from '@/context/AuthContext';
+import GoogleSignInButton from '@/components/GoogleSignInButton';
 
 export default function SignupPage() {
   const [step, setStep] = useState(1);
@@ -201,10 +202,18 @@ export default function SignupPage() {
 
               {step === 1 && (
                 <div className="space-y-5">
+                  <GoogleSignInButton onError={setError} setLoading={setIsValidating} />
+
+                  <div className="flex items-center gap-3">
+                    <div className="flex-1 h-px bg-[#222]" />
+                    <span className="text-[10px] font-bold uppercase tracking-widest text-[#444]">Or sign up with email</span>
+                    <div className="flex-1 h-px bg-[#222]" />
+                  </div>
+
                   <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
                     <div className="space-y-2">
                       <label className="text-xs sm:text-sm font-bold text-[#a1a1a1] uppercase ml-1">First Name</label>
-                      <input 
+                      <input
                         type="text"
                         required
                         value={firstName}

@@ -32,6 +32,7 @@ export const metadata: Metadata = {
   },
 };
 
+import { GoogleOAuthProvider } from "@react-oauth/google";
 import { AuthProvider } from "@/context/AuthContext";
 import { SidebarProvider } from "@/context/SidebarContext";
 
@@ -47,11 +48,13 @@ export default function RootLayout({
     >
       <body className="min-h-full flex flex-col">
         <Script src="https://checkout.razorpay.com/v1/checkout.js" strategy="lazyOnload" />
-        <AuthProvider>
-          <SidebarProvider>
-            {children}
-          </SidebarProvider>
-        </AuthProvider>
+        <GoogleOAuthProvider clientId={process.env.NEXT_PUBLIC_GOOGLE_CLIENT_ID || ""}>
+          <AuthProvider>
+            <SidebarProvider>
+              {children}
+            </SidebarProvider>
+          </AuthProvider>
+        </GoogleOAuthProvider>
       </body>
     </html>
   );

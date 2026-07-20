@@ -83,17 +83,17 @@ export default function PricingModal({ isOpen, onClose, showCloseButton = true }
                 <h2 className="text-3xl sm:text-4xl md:text-5xl font-black tracking-tighter mb-6 sm:mb-8 leading-[1.1]">
                   One Portal.<br />
                   <span className="text-serif font-normal italic lowercase text-green-500">unlimited</span> Jobs.<br />
-                  Completely Free.
+                  One Flat Price.
                 </h2>
 
                 <div className="flex items-baseline gap-2 sm:gap-3 mb-3 sm:mb-4">
                   <span className="text-xl sm:text-2xl font-mono text-green-500/50">₹</span>
-                  <span className="text-6xl sm:text-7xl md:text-8xl font-black tracking-tighter text-white">0</span>
+                  <span className="text-6xl sm:text-7xl md:text-8xl font-black tracking-tighter text-white">99</span>
                   <span className="font-mono text-base sm:text-lg text-[#444] uppercase tracking-widest">/ mo</span>
                 </div>
 
                 <p className="text-[10px] sm:text-xs text-green-500/60 font-mono uppercase tracking-widest mb-6 sm:mb-8">
-                  Beta is free · No payment required
+                  Beta pricing · Lock in ₹99/mo before plans start from ₹299
                 </p>
 
                 {/* Feature comparison — stacked on mobile, side-by-side on lg+ */}
@@ -101,7 +101,7 @@ export default function PricingModal({ isOpen, onClose, showCloseButton = true }
                   <div className="border border-green-500/20 rounded-sm p-4 sm:p-5 bg-[#060a06] shadow-[0_0_40px_-10px_rgba(34,197,94,0.1)]">
                     <div className="flex items-center justify-between mb-4">
                       <span className="text-[9px] font-mono uppercase tracking-[0.25em] text-green-500/70">All Users · Beta</span>
-                      <span className="text-[8px] font-mono uppercase tracking-[0.15em] text-green-500 bg-green-500/10 border border-green-500/20 px-2 py-0.5">Free</span>
+                      <span className="text-[8px] font-mono uppercase tracking-[0.15em] text-green-500 bg-green-500/10 border border-green-500/20 px-2 py-0.5">₹99/mo</span>
                     </div>
                     <div className="space-y-2.5">
                       {[
@@ -148,7 +148,7 @@ export default function PricingModal({ isOpen, onClose, showCloseButton = true }
 
                 <div className="mt-8 sm:mt-10 pt-8 sm:pt-10 border-t border-white/5 w-full flex justify-center">
                   <div className="font-mono text-[#333] text-[10px] sm:text-[14px] uppercase tracking-widest text-center">
-                    Free during beta · No credit card required
+                    Future plans start from ₹299 · Beta users keep ₹99
                   </div>
                 </div>
               </motion.div>

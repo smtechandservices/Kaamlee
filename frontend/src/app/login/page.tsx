@@ -5,6 +5,7 @@ import Link from 'next/link';
 import { motion } from 'framer-motion';
 import { ArrowLeft, User, Lock, Loader2, Eye, EyeOff } from 'lucide-react';
 import { useAuth } from '@/context/AuthContext';
+import GoogleSignInButton from '@/components/GoogleSignInButton';
 
 export default function LoginPage() {
   const [username, setUsername] = useState('');
@@ -73,6 +74,14 @@ export default function LoginPage() {
                 {error}
               </div>
             )}
+
+            <GoogleSignInButton onError={setError} setLoading={setIsSubmitting} />
+
+            <div className="flex items-center gap-3">
+              <div className="flex-1 h-px bg-[#222]" />
+              <span className="text-[10px] font-bold uppercase tracking-widest text-[#444]">Or</span>
+              <div className="flex-1 h-px bg-[#222]" />
+            </div>
 
             <div className="space-y-2">
               <label className="text-sm font-bold text-[#a1a1a1] uppercase ml-1">Username</label>
