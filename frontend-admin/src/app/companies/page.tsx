@@ -13,6 +13,10 @@ import {
   X,
   ExternalLink,
   Search,
+  Upload,
+  Download,
+  CheckCircle2,
+  AlertTriangle,
 } from 'lucide-react';
 import Link from 'next/link';
 import { useRouter } from 'next/navigation';
@@ -48,11 +52,96 @@ const EMPTY_FORM: CompanyFormData = {
   is_active: true,
 };
 
+const BULK_CSV_COLUMNS = [
+  'name', 'domain', 'career_url', 'contact_url', 'contact_email', 'address', 'linkedin_url', 'logo_url', 'is_active',
+] as const;
+
+const SAMPLE_CSV_ROWS = [
+  BULK_CSV_COLUMNS,
+  ['Notion', 'notion.so', 'https://jobs.ashbyhq.com/notion', 'https://notion.so/contact', 'hello@notion.so', 'San Francisco, CA', 'https://linkedin.com/company/notionhq', 'https://logo.clearbit.com/notion.so', 'true'],
+  ['Figma', 'figma.com', 'https://www.figma.com/careers/', '', '', 'San Francisco, CA', 'https://linkedin.com/company/figma', 'https://logo.clearbit.com/figma.com', 'true'],
+];
+
+function toCsvValue(value: string): string {
+  if (/[",\n]/.test(value)) return `"${value.replace(/"/g, '""')}"`;
+  return value;
+}
+
+function downloadSampleCsv() {
+  const csv = SAMPLE_CSV_ROWS.map(row => row.map(toCsvValue).join(',')).join('\n');
+  const blob = new Blob([csv], { type: 'text/csv;charset=utf-8;' });
+  const url = URL.createObjectURL(blob);
+  const link = document.createElement('a');
+  link.href = url;
+  link.download = 'companies_sample.csv';
+  link.click();
+  URL.revokeObjectURL(url);
+}
+
+// Minimal RFC-4180 CSV parser: handles quoted fields, escaped quotes, and commas/newlines within quotes.
+function parseCsv(text: string): string[][] {
+  const rows: string[][] = [];
+  let row: string[] = [];
+  let field = '';
+  let inQuotes = false;
+
+  for (let i = 0; i < text.length; i++) {
+    const char = text[i];
+    if (inQuotes) {
+      if (char === '"') {
+        if (text[i + 1] === '"') { field += '"'; i++; }
+        else inQuotes = false;
+      } else {
+        field += char;
+      }
+    } else if (char === '"') {
+      inQuotes = true;
+    } else if (char === ',') {
+      row.push(field);
+      field = '';
+    } else if (char === '\n' || char === '\r') {
+      if (char === '\r' && text[i + 1] === '\n') i++;
+      row.push(field);
+      field = '';
+      if (row.some(cell => cell.trim() !== '')) rows.push(row);
+      row = [];
+    } else {
+      field += char;
+    }
+  }
+  if (field !== '' || row.length > 0) {
+    row.push(field);
+    if (row.some(cell => cell.trim() !== '')) rows.push(row);
+  }
+  return rows;
+}
+
+function parseCompaniesCsv(text: string): Record<string, string | boolean>[] {
+  const rows = parseCsv(text);
+  if (rows.length < 2) return [];
+  const header = rows[0].map(h => h.trim().toLowerCase());
+  return rows.slice(1).map(cells => {
+    const record: Record<string, string | boolean> = {};
+    header.forEach((key, i) => {
+      if (!BULK_CSV_COLUMNS.includes(key as typeof BULK_CSV_COLUMNS[number])) return;
+      const raw = (cells[i] ?? '').trim();
+      record[key] = key === 'is_active' ? !['false', '0', 'no', ''].includes(raw.toLowerCase()) : raw;
+    });
+    return record;
+  }).filter(r => typeof r.name === 'string' && r.name.trim() !== '');
+}
+
+interface BulkResult {
+  created: unknown[];
+  errors: { row: number; name: string; errors: Record<string, string[]> }[];
+}
+
 export default function CompaniesPage() {
   const [companies, setCompanies] = useState<Company[]>([]);
   const [loading, setLoading] = useState(true);
   const [searchTerm, setSearchTerm] = useState('');
   const [isModalOpen, setIsModalOpen] = useState(false);
+  const [isBulkModalOpen, setIsBulkModalOpen] = useState(false);
   const [editingCompany, setEditingCompany] = useState<Company | null>(null);
   const [saving, setSaving] = useState(false);
   const router = useRouter();
@@ -137,6 +226,19 @@ export default function CompaniesPage() {
     }
   };
 
+  const handleBulkUpload = async (companies: Record<string, string | boolean>[]): Promise<BulkResult> => {
+    const token = localStorage.getItem('admin_token');
+    const res = await fetch(`${API_BASE}/admin/companies/bulk/`, {
+      method: 'POST',
+      headers: { Authorization: `Token ${token}`, 'Content-Type': 'application/json' },
+      body: JSON.stringify({ companies }),
+    });
+    const data = await res.json();
+    if (!res.ok && !data.created) throw new Error(data.error || 'Bulk upload failed');
+    if (data.created?.length) fetchCompanies();
+    return data as BulkResult;
+  };
+
   const handleDelete = async (company: Company) => {
     if (!window.confirm(`Delete ${company.name}? This won't delete its already-scraped jobs.`)) return;
     const token = localStorage.getItem('admin_token');
@@ -165,16 +267,8 @@ export default function CompaniesPage() {
       <div className="mx-auto max-w-6xl">
         <header className="flex flex-col md:flex-row md:items-center justify-between gap-6 mb-10">
           <div className="flex items-center gap-6">
-            <Link
-              href="/"
-              className="p-3 rounded-2xl bg-[#111] border border-[#222] hover:bg-[#161616] transition-all text-[#888] hover:text-white md:hidden"
-              title="Go to Dashboard"
-            >
-              <ArrowLeft size={20} />
-            </Link>
             <div>
               <h1 className="text-3xl font-bold tracking-tight mb-1 flex items-center gap-3">
-                <Building2 size={28} className="text-purple-500" />
                 Companies
               </h1>
               <p className="text-[#555] font-medium">
@@ -200,6 +294,13 @@ export default function CompaniesPage() {
               title="Refresh"
             >
               <RefreshCcw size={18} className={loading ? 'animate-spin' : ''} />
+            </button>
+            <button
+              onClick={() => setIsBulkModalOpen(true)}
+              className="cursor-pointer bg-[#111] border border-[#222] hover:bg-[#161616] text-white px-5 py-3 rounded-xl font-semibold flex items-center gap-2 transition-all"
+            >
+              <Upload size={18} />
+              Bulk Add
             </button>
             <button
               onClick={openAddModal}
@@ -312,7 +413,173 @@ export default function CompaniesPage() {
           />
         )}
       </AnimatePresence>
+
+      <AnimatePresence>
+        {isBulkModalOpen && (
+          <BulkAddModal
+            onClose={() => setIsBulkModalOpen(false)}
+            onUpload={handleBulkUpload}
+          />
+        )}
+      </AnimatePresence>
     </div>
+  );
+}
+
+function BulkAddModal({ onClose, onUpload }: {
+  onClose: () => void;
+  onUpload: (companies: Record<string, string | boolean>[]) => Promise<BulkResult>;
+}) {
+  const [fileName, setFileName] = useState<string | null>(null);
+  const [parsed, setParsed] = useState<Record<string, string | boolean>[]>([]);
+  const [parseError, setParseError] = useState<string | null>(null);
+  const [uploading, setUploading] = useState(false);
+  const [result, setResult] = useState<BulkResult | null>(null);
+
+  const handleFile = async (file: File) => {
+    setFileName(file.name);
+    setResult(null);
+    setParseError(null);
+    try {
+      const text = await file.text();
+      const rows = parseCompaniesCsv(text);
+      if (rows.length === 0) {
+        setParsed([]);
+        setParseError('No valid rows found. Make sure each row has a "name" column filled in.');
+      } else {
+        setParsed(rows);
+      }
+    } catch {
+      setParsed([]);
+      setParseError('Could not read that file. Please upload a .csv file.');
+    }
+  };
+
+  const handleUpload = async () => {
+    setUploading(true);
+    setParseError(null);
+    try {
+      const res = await onUpload(parsed);
+      setResult(res);
+      if (res.errors.length === 0) setParsed([]);
+    } catch (err) {
+      setParseError(err instanceof Error ? err.message : 'Bulk upload failed');
+    } finally {
+      setUploading(false);
+    }
+  };
+
+  return (
+    <motion.div
+      initial={{ opacity: 0 }}
+      animate={{ opacity: 1 }}
+      exit={{ opacity: 0 }}
+      className="fixed inset-0 bg-black/80 backdrop-blur-sm z-50 flex items-center justify-center p-4"
+      onClick={onClose}
+    >
+      <motion.div
+        initial={{ scale: 0.95, opacity: 0 }}
+        animate={{ scale: 1, opacity: 1 }}
+        exit={{ scale: 0.95, opacity: 0 }}
+        onClick={(e) => e.stopPropagation()}
+        className="bg-[#111] border border-[#333] rounded-3xl w-full max-w-lg shadow-2xl flex flex-col max-h-[90vh]"
+      >
+        <div className="p-6 border-b border-[#333] bg-[#1a1a1a] rounded-t-3xl shrink-0 flex items-center justify-between">
+          <h2 className="text-xl font-bold flex items-center gap-2">
+            <Upload size={20} className="text-purple-500" />
+            Bulk Add Companies
+          </h2>
+          <button onClick={onClose} className="cursor-pointer p-2 hover:bg-[#333] rounded-lg transition-colors text-[#888] hover:text-white">
+            <X size={20} />
+          </button>
+        </div>
+
+        <div className="p-6 space-y-4 overflow-y-auto flex-1">
+          <button
+            onClick={downloadSampleCsv}
+            className="cursor-pointer w-full flex items-center justify-center gap-2 py-2.5 rounded-xl bg-[#1a1a1a] border border-[#222] text-sm font-semibold text-[#888] hover:text-white hover:border-purple-500/40 transition-all"
+          >
+            <Download size={14} />
+            Download sample CSV
+          </button>
+
+          <div>
+            <label className="text-xs font-bold uppercase tracking-wider text-[#555] mb-1.5 block">
+              Upload CSV file<span className="text-purple-400"> *</span>
+            </label>
+            <label className="flex flex-col items-center justify-center gap-2 border-2 border-dashed border-[#222] hover:border-purple-500/40 rounded-xl px-4 py-6 cursor-pointer transition-all text-center">
+              <Upload size={20} className="text-[#555]" />
+              <span className="text-sm text-[#888]">
+                {fileName ?? 'Click to choose a .csv file'}
+              </span>
+              <input
+                type="file"
+                accept=".csv,text/csv"
+                className="hidden"
+                onChange={(e) => e.target.files?.[0] && handleFile(e.target.files[0])}
+              />
+            </label>
+            <p className="text-[10px] text-[#444] mt-1.5">
+              Columns: {BULK_CSV_COLUMNS.join(', ')}. Only <span className="text-[#666]">name</span> and <span className="text-[#666]">career_url</span> are required.
+            </p>
+          </div>
+
+          {parseError && (
+            <div className="flex items-start gap-2 text-sm text-red-400 bg-red-500/10 border border-red-500/20 rounded-xl px-4 py-3">
+              <AlertTriangle size={16} className="shrink-0 mt-0.5" />
+              {parseError}
+            </div>
+          )}
+
+          {parsed.length > 0 && !result && (
+            <div className="flex items-center gap-2 text-sm text-purple-300 bg-purple-500/10 border border-purple-500/20 rounded-xl px-4 py-3">
+              <CheckCircle2 size={16} className="shrink-0" />
+              {parsed.length} compan{parsed.length !== 1 ? 'ies' : 'y'} ready to import.
+            </div>
+          )}
+
+          {result && (
+            <div className="space-y-2">
+              {result.created.length > 0 && (
+                <div className="flex items-center gap-2 text-sm text-green-400 bg-green-500/10 border border-green-500/20 rounded-xl px-4 py-3">
+                  <CheckCircle2 size={16} className="shrink-0" />
+                  {result.created.length} compan{result.created.length !== 1 ? 'ies' : 'y'} added.
+                </div>
+              )}
+              {result.errors.length > 0 && (
+                <div className="text-sm text-yellow-400 bg-yellow-500/10 border border-yellow-500/20 rounded-xl px-4 py-3">
+                  <div className="flex items-center gap-2 font-semibold mb-2">
+                    <AlertTriangle size={16} className="shrink-0" />
+                    {result.errors.length} row{result.errors.length !== 1 ? 's' : ''} skipped
+                  </div>
+                  <ul className="space-y-1 text-xs text-yellow-300/80">
+                    {result.errors.map((e) => (
+                      <li key={e.row}>
+                        Row {e.row}{e.name ? ` (${e.name})` : ''}: {Object.entries(e.errors).map(([field, msgs]) => `${field}: ${msgs.join(' ')}`).join('; ')}
+                      </li>
+                    ))}
+                  </ul>
+                </div>
+              )}
+            </div>
+          )}
+        </div>
+
+        <div className="p-6 bg-[#1a1a1a] border-t border-[#333] flex gap-3 shrink-0 rounded-b-3xl">
+          <button onClick={onClose} className="cursor-pointer flex-1 py-3 rounded-xl bg-[#222] hover:bg-[#2a2a2a] font-bold transition-all">
+            {result ? 'Close' : 'Cancel'}
+          </button>
+          <button
+            disabled={uploading || parsed.length === 0}
+            onClick={handleUpload}
+            className="cursor-pointer flex-1 py-3 rounded-xl bg-purple-600 hover:bg-purple-500 disabled:opacity-40 disabled:cursor-not-allowed font-bold transition-all flex items-center justify-center gap-2"
+          >
+            {uploading ? <Loader2 size={18} className="animate-spin" /> : null}
+            Upload {parsed.length > 0 ? `(${parsed.length})` : ''}
+          </button>
+        </div>
+      </motion.div>
+    </motion.div>
   );
 }
 

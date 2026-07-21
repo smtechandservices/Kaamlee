@@ -8,7 +8,7 @@ import { motion, AnimatePresence, Variants } from 'framer-motion';
 import { JobCard } from '@/components/JobCard';
 import Map from '@/components/Map';
 import { useAuth } from '@/context/AuthContext';
-import { useRouter } from 'next/navigation';
+import { useSubscriptionGate } from '@/hooks/useSubscriptionGate';
 
 const CACHE_TTL = 2 * 60 * 1000;
 const _cache: Record<string, { data: any; ts: number }> = {};
@@ -33,9 +33,9 @@ function useDebounce<T>(value: T, delay: number): T {
 }
 
 export default function ExplorePage() {
-  const { token, logout, isLoading } = useAuth();
+  const { token, logout } = useAuth();
+  const { isReady, isSubscribed } = useSubscriptionGate();
 
-  const router = useRouter();
   const [jobs, setJobs] = useState<any[]>([]);
   const [totalJobs, setTotalJobs] = useState(0);
   const [mapPins, setMapPins] = useState<any[]>([]);
@@ -73,13 +73,6 @@ export default function ExplorePage() {
     if (bookmarkedOnly) params.set('bookmarked_only', 'true');
     return params;
   }, [activeCountry, selectedCategory, debouncedSearch, debouncedLocation, remoteOnly, bookmarkedOnly]);
-
-  useEffect(() => {
-    if (!isLoading && !token) {
-      router.push('/login');
-    }
-  }, [token, isLoading, router]);
-
 
   useEffect(() => {
     setCurrentPage(1);
@@ -124,7 +117,7 @@ export default function ExplorePage() {
   // paginates and filters at the DB level, so only ~20 jobs cross the wire.
   useEffect(() => {
     const fetchJobs = async () => {
-      if (!token) return;
+      if (!token || !isSubscribed) return;
       const params = new URLSearchParams(filterParams);
       params.set('page', String(currentPage));
       const cacheKey = `jobs-${params.toString()}`;
@@ -156,13 +149,13 @@ export default function ExplorePage() {
       }
     };
     fetchJobs();
-  }, [token, currentPage, filterParams]);
+  }, [token, isSubscribed, currentPage, filterParams]);
 
   // Map pins: independent of the list's page — the map needs every matching
   // job's coordinates at once to render, so it hits its own lightweight endpoint.
   useEffect(() => {
     const fetchMapPins = async () => {
-      if (!token) return;
+      if (!token || !isSubscribed) return;
       const cacheKey = `map-pins-${filterParams.toString()}`;
       const cached = getCached(cacheKey);
       if (cached) {
@@ -185,7 +178,7 @@ export default function ExplorePage() {
       }
     };
     fetchMapPins();
-  }, [token, filterParams]);
+  }, [token, isSubscribed, filterParams]);
 
   const countryOptions = React.useMemo(() => ['All', ...Array.from(new Set(countries.map(country => {
     if (country === 'United States') return 'USA';
@@ -266,7 +259,7 @@ export default function ExplorePage() {
     }
   }, [token]);
 
-  if (isLoading || !token) {
+  if (!isReady) {
     return (
       <div className="h-screen bg-[#0a0a0a] flex items-center justify-center">
         <div className="w-8 h-8 border-2 border-green-500 border-t-transparent rounded-full animate-spin" />

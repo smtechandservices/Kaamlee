@@ -25,7 +25,8 @@ import {
   FileText,
   Link as LinkIcon,
   Globe,
-  Lock
+  Lock,
+  Trash2
 } from 'lucide-react';
 import Link from 'next/link';
 import { useRouter } from 'next/navigation';
@@ -159,6 +160,29 @@ export default function UserManagement() {
     }
   };
 
+  const handleDeleteUser = async (user: UserProfile) => {
+    if (user.is_superuser) {
+      alert("Superuser accounts can't be deleted from here.");
+      return;
+    }
+    if (!window.confirm(`Delete @${user.username}? This permanently removes their account, profile, and data. This can't be undone.`)) return;
+
+    const token = localStorage.getItem('admin_token');
+    try {
+      const res = await fetch(`${API_BASE}/users/${user.id}/`, {
+        method: 'DELETE',
+        headers: { 'Authorization': `Token ${token}` }
+      });
+      if (res.ok) {
+        setUsers(prev => prev.filter(u => u.id !== user.id));
+      } else {
+        alert('Failed to delete user');
+      }
+    } catch (error) {
+      alert('Failed to delete user');
+    }
+  };
+
   const fetchUserTransactions = async (userId: number) => {
     const token = localStorage.getItem('admin_token');
     setTxLoading(true);
@@ -189,9 +213,6 @@ export default function UserManagement() {
         {/* Header */}
         <header className="flex items-center justify-between mb-12">
           <div className="flex items-center gap-6">
-            <Link href="/" className="p-3 rounded-2xl bg-[#111] border border-[#222] hover:bg-[#161616] transition-all text-[#888] hover:text-white" title="Go to Dashboard">
-              <ArrowLeft size={20} />
-            </Link>
             <div>
               <h1 className="text-3xl font-bold tracking-tight mb-1">User Management</h1>
               <p className="text-[#555] font-medium flex items-center gap-2">
@@ -365,12 +386,20 @@ export default function UserManagement() {
                               >
                                 <CreditCard size={18} />
                               </button>
-                              <button 
+                              <button
                                 onClick={() => setEditingUser(user)}
                                 className="cursor-pointer p-2 rounded-lg bg-[#222] hover:bg-[#333] transition-colors text-[#888] hover:text-white"
                                 title="Edit User"
                               >
                                 <MoreHorizontal size={18} />
+                              </button>
+                              <button
+                                onClick={() => handleDeleteUser(user)}
+                                disabled={user.is_superuser}
+                                className="cursor-pointer p-2 rounded-lg bg-[#222] hover:bg-red-500/20 transition-colors text-[#888] hover:text-red-400 disabled:opacity-30 disabled:cursor-not-allowed disabled:hover:bg-[#222] disabled:hover:text-[#888]"
+                                title={user.is_superuser ? "Superusers can't be deleted" : "Delete User"}
+                              >
+                                <Trash2 size={18} />
                               </button>
                            </div>
                         </td>

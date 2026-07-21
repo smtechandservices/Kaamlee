@@ -141,16 +141,9 @@ export default function FeedbackPage() {
         {/* Header */}
         <header className="flex flex-col md:flex-row md:items-center justify-between gap-6 mb-10">
           <div className="flex items-center gap-6">
-            <Link
-              href="/"
-              className="p-3 rounded-2xl bg-[#111] border border-[#222] hover:bg-[#161616] transition-all text-[#888] hover:text-white"
-              title="Go to Dashboard"
-            >
-              <ArrowLeft size={20} />
-            </Link>
             <div>
               <h1 className="text-3xl font-bold tracking-tight mb-1 flex items-center gap-3">
-                <MessageSquare size={28} className="text-blue-500" />
+                {/* <MessageSquare size={28} className="text-blue-500" /> */}
                 User Feedback
               </h1>
               <p className="text-[#555] font-medium">

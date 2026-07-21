@@ -122,13 +122,6 @@ export default function RequestLogsPage() {
       <div className="mx-auto">
         <header className="flex flex-col md:flex-row md:items-center justify-between gap-6 mb-12">
           <div className="flex items-center gap-6">
-            <Link
-              href="/"
-              className="p-3 rounded-2xl bg-[#111] border border-[#222] hover:bg-[#161616] transition-all text-[#888] hover:text-white"
-              title="Go to Dashboard"
-            >
-              <ArrowLeft size={20} />
-            </Link>
             <div>
               <div className="flex items-center gap-3 mb-1">
                 <h1 className="text-3xl font-bold tracking-tight">Request Logs</h1>

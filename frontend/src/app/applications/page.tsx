@@ -5,7 +5,7 @@ import { MapPin, ExternalLink, GripVertical, Trash2 } from 'lucide-react';
 import Sidebar from '@/components/Sidebar';
 import PageHeader from '@/components/PageHeader';
 import { useAuth } from '@/context/AuthContext';
-import { useRouter } from 'next/navigation';
+import { useSubscriptionGate } from '@/hooks/useSubscriptionGate';
 
 interface Job {
   id: number;
@@ -42,8 +42,8 @@ function groupByStatus(applications: Application[]) {
 }
 
 export default function ApplicationsPage() {
-  const { token, logout, isLoading } = useAuth();
-  const router = useRouter();
+  const { token, logout } = useAuth();
+  const { isReady, isSubscribed } = useSubscriptionGate();
 
   const [columns, setColumns] = useState<Record<string, Application[]>>(() => groupByStatus([]));
   const [isFetching, setIsFetching] = useState(true);
@@ -52,14 +52,8 @@ export default function ApplicationsPage() {
   const [dragOverColumn, setDragOverColumn] = useState<string | null>(null);
 
   useEffect(() => {
-    if (!isLoading && !token) {
-      router.push('/login');
-    }
-  }, [token, isLoading, router]);
-
-  useEffect(() => {
     const fetchApplications = async () => {
-      if (!token) return;
+      if (!token || !isSubscribed) return;
       setIsFetching(true);
       try {
         const res = await fetch(`${process.env.NEXT_PUBLIC_API_URL}/api/applications/`, {
@@ -76,7 +70,7 @@ export default function ApplicationsPage() {
       }
     };
     fetchApplications();
-  }, [token]);
+  }, [token, isSubscribed]);
 
   const moveCard = useCallback((jobId: number, fromStatus: string, toStatus: string) => {
     setColumns(prev => {
@@ -149,7 +143,7 @@ export default function ApplicationsPage() {
 
   const totalCount = COLUMNS.reduce((sum, col) => sum + (columns[col.key]?.length || 0), 0);
 
-  if (isLoading || !token) {
+  if (!isReady) {
     return (
       <div className="h-screen bg-[#0a0a0a] flex items-center justify-center">
         <div className="w-8 h-8 border-2 border-green-500 border-t-transparent rounded-full animate-spin" />

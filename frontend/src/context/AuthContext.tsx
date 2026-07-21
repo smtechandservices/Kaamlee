@@ -15,6 +15,8 @@ interface User {
   resume_text?: string;
   is_subscribed: boolean;
   subscription_expires_at: string | null;
+  is_superuser?: boolean;
+  is_staff?: boolean;
 }
 
 interface AuthContextType {

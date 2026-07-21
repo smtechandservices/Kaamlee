@@ -14,7 +14,7 @@ from .serializers import (
     FeedbackSerializer, PortfolioSettingsSerializer, PublicPortfolioSerializer,
     PortfolioViewSerializer, CustomCVSerializer, CustomCVCreateSerializer, tailor_resume_with_groq,
     JobApplicationKitSerializer, generate_application_kit_with_groq, CompanySerializer,
-    BookmarkSerializer,
+    BookmarkSerializer, AdminJobSerializer,
 )
 from .google_auth import get_or_create_google_user
 from scripts.ats_scoring import score_cv, get_profession_keywords, get_all_profession_keywords
@@ -104,7 +104,7 @@ def _bump_jobs_cache_version(user_id):
 
 class JobViewSet(viewsets.ModelViewSet):
     serializer_class = JobSerializer
-    permission_classes = [permissions.IsAuthenticated]
+    permission_classes = [permissions.IsAuthenticated, IsSubscribed]
     pagination_class = JobPagination
 
     def get_permissions(self):
@@ -275,7 +275,7 @@ class JobViewSet(viewsets.ModelViewSet):
 class ApplicationsView(views.APIView):
     """Every job the user has bookmarked/tracked, for the application-tracker
     Kanban board — grouped client-side by `status`."""
-    permission_classes = [permissions.IsAuthenticated]
+    permission_classes = [permissions.IsAuthenticated, IsSubscribed]
 
     def get(self, request):
         bookmarks = Bookmark.objects.filter(user=request.user).select_related('job').order_by('-status_updated_at')
@@ -396,7 +396,7 @@ class TriggerCompanyScrapeView(views.APIView):
             return Response({'status': 'Scraper already running'}, status=400)
 
         import threading
-        from scripts.company_scraper import scrape_companies_by_names, log_to_db
+        from scripts.job_scraper import scrape_companies_by_names, log_to_db
 
         session = ScrapeSession.objects.create(
             status='running', search_term=f"company_career_pages:{','.join(companies)}", results_limit=0,
@@ -433,6 +433,34 @@ class CompanyViewSet(viewsets.ModelViewSet):
     queryset = Company.objects.all()
     serializer_class = CompanySerializer
     permission_classes = [permissions.IsAdminUser]
+
+    @action(detail=False, methods=['post'], url_path='bulk')
+    def bulk_create(self, request):
+        """Add many companies at once, e.g. from an admin-uploaded CSV.
+        Rows are validated independently so one bad row doesn't block the rest."""
+        items = request.data.get('companies')
+        if not isinstance(items, list) or not items:
+            return Response({'error': 'companies must be a non-empty list.'}, status=400)
+
+        created = []
+        errors = []
+        for idx, item in enumerate(items):
+            serializer = CompanySerializer(data=item)
+            if serializer.is_valid():
+                serializer.save()
+                created.append(serializer.data)
+            else:
+                errors.append({
+                    'row': idx + 1,
+                    'name': item.get('name', '') if isinstance(item, dict) else '',
+                    'errors': serializer.errors,
+                })
+
+        cache.delete(_STATS_CACHE_KEY)
+        return Response(
+            {'created': created, 'errors': errors},
+            status=201 if created else 400,
+        )
 
 class CompaniesView(views.APIView):
     """All companies + their 10 most recent jobs each, for the admin dashboard's
@@ -472,6 +500,28 @@ class CompaniesView(views.APIView):
             })
 
         return Response(result)
+
+class AdminJobsView(generics.ListAPIView):
+    """Paginated, filterable job listing for the admin dashboard's Jobs page.
+    Read-only — jobs themselves are managed via the scraper, not hand-edited here."""
+    serializer_class = AdminJobSerializer
+    permission_classes = [permissions.IsAdminUser]
+    pagination_class = JobPagination
+
+    def get_queryset(self):
+        queryset = Job.objects.order_by('-created_at')
+
+        company = self.request.query_params.get('company')
+        if company:
+            queryset = queryset.filter(company=company)
+
+        search = self.request.query_params.get('search')
+        if search:
+            queryset = queryset.filter(
+                models.Q(title__icontains=search) | models.Q(company__icontains=search)
+            )
+
+        return queryset
 
 class StopScrapeView(views.APIView):
     permission_classes = [permissions.IsAdminUser]
@@ -692,7 +742,7 @@ class PublicPortfolioView(views.APIView):
 class MyPortfolioView(generics.RetrieveUpdateAPIView):
     """GET/PATCH /api/portfolio/me/ — authenticated user managing their own portfolio."""
     serializer_class = PortfolioSettingsSerializer
-    permission_classes = [permissions.IsAuthenticated]
+    permission_classes = [permissions.IsAuthenticated, IsSubscribed]
 
     def get_object(self):
         portfolio, _ = Portfolio.objects.get_or_create(user=self.request.user)
@@ -701,7 +751,7 @@ class MyPortfolioView(generics.RetrieveUpdateAPIView):
 
 class PortfolioAnalyticsView(views.APIView):
     """GET /api/portfolio/analytics/ — view stats for the authenticated user's own portfolio."""
-    permission_classes = [permissions.IsAuthenticated]
+    permission_classes = [permissions.IsAuthenticated, IsSubscribed]
 
     def get(self, request):
         portfolio, _ = Portfolio.objects.get_or_create(user=request.user)
@@ -790,7 +840,7 @@ class PortfolioAnalyticsView(views.APIView):
 
 class MyPortfolioContentView(views.APIView):
     """GET/PATCH /api/portfolio/content/ — read and update the parsed resume data."""
-    permission_classes = [permissions.IsAuthenticated]
+    permission_classes = [permissions.IsAuthenticated, IsSubscribed]
 
     def get(self, request):
         profile = request.user.profile
@@ -807,13 +857,9 @@ class MyPortfolioContentView(views.APIView):
 
 
 class CustomCVListCreateView(generics.ListCreateAPIView):
-    """GET/POST /api/custom-cv/ — list or create the user's custom CVs.
-
-    Open to all authenticated users for now. To gate behind the premium
-    subscription later, add IsSubscribed to permission_classes below.
-    """
+    """GET/POST /api/custom-cv/ — list or create the user's custom CVs."""
     serializer_class = CustomCVSerializer
-    permission_classes = [permissions.IsAuthenticated]
+    permission_classes = [permissions.IsAuthenticated, IsSubscribed]
 
     def get_queryset(self):
         return CustomCV.objects.filter(user=self.request.user)
@@ -833,7 +879,7 @@ class AtsKeywordsView(views.APIView):
     the same terms score_cv() checks target_role content against. Powers the
     "ATS mapping terms" panel on the custom CV list page.
     """
-    permission_classes = [permissions.IsAuthenticated]
+    permission_classes = [permissions.IsAuthenticated, IsSubscribed]
 
     def get(self, request):
         return Response(get_all_profession_keywords())
@@ -842,7 +888,7 @@ class AtsKeywordsView(views.APIView):
 class CustomCVDetailView(generics.RetrieveUpdateDestroyAPIView):
     """GET/PATCH/DELETE /api/custom-cv/<id>/"""
     serializer_class = CustomCVSerializer
-    permission_classes = [permissions.IsAuthenticated]
+    permission_classes = [permissions.IsAuthenticated, IsSubscribed]
 
     def get_queryset(self):
         return CustomCV.objects.filter(user=self.request.user)
@@ -850,7 +896,7 @@ class CustomCVDetailView(generics.RetrieveUpdateDestroyAPIView):
 
 class CustomCVTailorView(views.APIView):
     """POST /api/custom-cv/<id>/tailor/ — rewrite content for a new target role."""
-    permission_classes = [permissions.IsAuthenticated]
+    permission_classes = [permissions.IsAuthenticated, IsSubscribed]
 
     def post(self, request, pk):
         try:
@@ -876,7 +922,7 @@ class CustomCVTailorView(views.APIView):
 
 class CustomCVExportView(views.APIView):
     """GET /api/custom-cv/<id>/export/?type=pdf|docx"""
-    permission_classes = [permissions.IsAuthenticated]
+    permission_classes = [permissions.IsAuthenticated, IsSubscribed]
 
     def get(self, request, pk):
         try:
@@ -911,7 +957,7 @@ class CustomCVExportView(views.APIView):
 class JobApplicationKitView(views.APIView):
     """GET/POST /api/jobs/<job_id>/application-kit/ — fetch or (re)generate a cover
     letter + common application Q&A for a job, tailored to the user's resume."""
-    permission_classes = [permissions.IsAuthenticated]
+    permission_classes = [permissions.IsAuthenticated, IsSubscribed]
 
     def get(self, request, job_id):
         kit = JobApplicationKit.objects.filter(user=request.user, job_id=job_id).first()

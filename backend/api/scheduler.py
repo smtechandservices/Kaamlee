@@ -10,7 +10,7 @@ LOCK_FILE = '/tmp/kaamlee_autoscrape.lock'
 def auto_scrape_job():
     from .models import ScrapeSession
     from django.core.cache import cache
-    from scripts.company_scraper import run_random_companies_scraping, log_to_db
+    from scripts.job_scraper import run_random_companies_scraping, log_to_db
 
     # OS-level file lock — only one process across all workers proceeds per tick
     lock_fd = open(LOCK_FILE, 'w')

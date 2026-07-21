@@ -7,7 +7,7 @@ from .views import (
     CheckExistenceView, AdminLoginView, AdminUserViewSet, CategoriesView, CountriesView,
     FeedbackView, AdminFeedbackView, PublicPortfolioView, MyPortfolioView, MyPortfolioContentView, PortfolioAnalyticsView,
     RequestLogsView, CustomCVListCreateView, CustomCVDetailView, CustomCVTailorView, CustomCVExportView,
-    JobApplicationKitView, AtsKeywordsView, ApplicationsView,
+    JobApplicationKitView, AtsKeywordsView, ApplicationsView, AdminJobsView,
 )
 
 router = DefaultRouter()
@@ -75,6 +75,7 @@ urlpatterns = [
     path('admin/request-logs/', RequestLogsView.as_view(), name='admin-request-logs'),
     path('trigger-company-scrape/', TriggerCompanyScrapeView.as_view(), name='trigger-company-scrape'),
     path('companies/', CompaniesView.as_view(), name='companies'),
+    path('admin/jobs/', AdminJobsView.as_view(), name='admin-jobs'),
     path('stop-scrape/', StopScrapeView.as_view(), name='stop-scrape'),
     path('force-reset/', ForceResetView.as_view(), name='force-reset'),
 ]

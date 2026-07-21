@@ -1,13 +1,13 @@
 'use client';
 
 import React, { useState, useEffect } from 'react';
-import { useRouter } from 'next/navigation';
 import { motion } from 'framer-motion';
 import { Loader2, Save, CheckCircle2, Briefcase, Globe, ExternalLink, Link as LinkIcon, Eye } from 'lucide-react';
 import Sidebar from '@/components/Sidebar';
 import PageHeader from '@/components/PageHeader';
 import PortfolioAnalyticsPanel, { PortfolioAnalyticsData } from '@/components/portfolio/PortfolioAnalyticsPanel';
 import { useAuth } from '@/context/AuthContext';
+import { useSubscriptionGate } from '@/hooks/useSubscriptionGate';
 import Link from 'next/link';
 
 type Template = 'classic' | 'bento';
@@ -37,8 +37,8 @@ const TEMPLATES: {
 ];
 
 export default function PortfolioSettingsPage() {
-  const { user, token, isLoading: isAuthLoading } = useAuth();
-  const router = useRouter();
+  const { user, token } = useAuth();
+  const { isReady, isSubscribed } = useSubscriptionGate();
 
   const [portfolioPublic, setPortfolioPublic] = useState(false);
   const [portfolioTemplate, setPortfolioTemplate] = useState<Template>('classic');
@@ -53,13 +53,7 @@ export default function PortfolioSettingsPage() {
   const [isFetchingAnalytics, setIsFetchingAnalytics] = useState(true);
 
   useEffect(() => {
-    if (!isAuthLoading && !token) {
-      router.push('/login');
-    }
-  }, [token, isAuthLoading, router]);
-
-  useEffect(() => {
-    if (!token) return;
+    if (!token || !isSubscribed) return;
     setIsFetching(true);
     fetch(`${process.env.NEXT_PUBLIC_API_URL}/api/portfolio/me/`, {
       headers: { Authorization: `Token ${token}` },
@@ -73,10 +67,10 @@ export default function PortfolioSettingsPage() {
       })
       .catch(() => {})
       .finally(() => setIsFetching(false));
-  }, [token]);
+  }, [token, isSubscribed]);
 
   useEffect(() => {
-    if (!token) return;
+    if (!token || !isSubscribed) return;
     setIsFetchingAnalytics(true);
     fetch(`${process.env.NEXT_PUBLIC_API_URL}/api/portfolio/analytics/`, {
       headers: { Authorization: `Token ${token}` },
@@ -85,7 +79,7 @@ export default function PortfolioSettingsPage() {
       .then(setAnalytics)
       .catch(() => {})
       .finally(() => setIsFetchingAnalytics(false));
-  }, [token]);
+  }, [token, isSubscribed]);
 
   const handleTogglePublic = async () => {
     const next = !portfolioPublic;
@@ -122,7 +116,7 @@ export default function PortfolioSettingsPage() {
     }
   };
 
-  if (isAuthLoading || !token) {
+  if (!isReady) {
     return (
       <div className="h-screen bg-[#0a0a0a] flex items-center justify-center">
         <Loader2 className="w-8 h-8 text-green-500 animate-spin" />

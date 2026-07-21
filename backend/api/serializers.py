@@ -231,7 +231,7 @@ def calculate_match(resume_text, job_title, job_description):
 
 class UserSerializer(serializers.ModelSerializer):
     phone = serializers.CharField(source='profile.phone', required=False)
-    linkedin_url = serializers.URLField(source='profile.linkedin_url', required=False)
+    linkedin_url = serializers.URLField(source='profile.linkedin_url', required=False, allow_blank=True, allow_null=True)
     resume = serializers.FileField(source='profile.resume', required=False, allow_null=True)
     resume_text = serializers.CharField(source='profile.resume_text', read_only=True)
     has_resume = serializers.SerializerMethodField()
@@ -428,6 +428,24 @@ class JobSerializer(serializers.ModelSerializer):
 class RecentJobSerializer(JobSerializer):
     class Meta(JobSerializer.Meta):
         fields = [f for f in JobSerializer.Meta.fields if f != 'site']
+
+class AdminJobSerializer(serializers.ModelSerializer):
+    """Read-only, per-user-agnostic job listing for the admin dashboard —
+    unlike JobSerializer, this carries no match_score/is_bookmarked so it
+    doesn't need a resume or bookmark lookup per row."""
+    location_name = serializers.SerializerMethodField()
+
+    class Meta:
+        model = Job
+        fields = [
+            'id', 'title', 'company', 'location_name', 'city', 'state', 'country',
+            'is_remote', 'job_type', 'job_url', 'site', 'company_logo',
+            'date_posted', 'created_at', 'category', 'experience_required', 'salary',
+            'latitude', 'longitude',
+        ]
+
+    def get_location_name(self, obj):
+        return _resolve_job_location_name(obj)
 
 class BookmarkSerializer(serializers.ModelSerializer):
     job = JobSerializer(read_only=True)

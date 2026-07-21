@@ -2,10 +2,11 @@
 
 import Link from 'next/link';
 import { usePathname, useRouter } from 'next/navigation';
-import { LayoutDashboard, Building2, CreditCard, Users, MessageSquare, ScrollText, LogOut } from 'lucide-react';
+import { LayoutDashboard, Building2, CreditCard, Users, MessageSquare, ScrollText, LogOut, Briefcase } from 'lucide-react';
 
 const NAV_ITEMS = [
   { href: '/companies', label: 'Companies', icon: Building2 },
+  { href: '/jobs', label: 'Jobs', icon: Briefcase },
   { href: '/revenue', label: 'Finance', icon: CreditCard },
   { href: '/users', label: 'Users', icon: Users },
   { href: '/feedback', label: 'Feedback', icon: MessageSquare },

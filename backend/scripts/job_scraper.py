@@ -102,6 +102,20 @@ _COUNTRY_CODE_MAP = {
 # otherwise get swallowed whole into the country slot.
 _LOCATION_NOISE_RE = re.compile(r'\s*\bor\s+remote\b', re.I)
 
+# Nominatim's free-text search fails outright (returns no match at all, not a
+# fuzzy near-miss) on two common patterns in admin-entered company addresses:
+# a legal-entity name before the street number ("Acme Corp 123 Main St...")
+# and inline unit/floor info ("Floor 2", "Suite 100"). Stripping both first
+# is the difference between a resolved pin and a silently-unset one.
+_ADDRESS_UNIT_RE = re.compile(r',?\s*\b(?:floor|fl|suite|ste|unit|apt|room|rm)\.?\s*#?\s*[\w-]+\b', re.I)
+_LEADING_NON_ADDRESS_RE = re.compile(r'^[^\d]+(?=\d)')
+
+
+def _clean_address_for_geocoding(address):
+    cleaned = _ADDRESS_UNIT_RE.sub('', address)
+    cleaned = _LEADING_NON_ADDRESS_RE.sub('', cleaned, count=1)
+    return cleaned.strip(' ,')
+
 # A bare, delimiter-free location string that exactly matches one of these is a
 # country, not a city (no city is ever literally named "Japan" or "India").
 # Maps to a canonical name so "usa"/"USA"/"United States" all normalize the same.
@@ -195,7 +209,7 @@ def _geocode_missing_job_coordinates(session=None):
         for address in addresses:
             try:
                 time.sleep(1.1)
-                result = geolocator.geocode(address, timeout=10)
+                result = geolocator.geocode(_clean_address_for_geocoding(address), timeout=10)
                 if result:
                     updated_jobs += Job.objects.filter(
                         location_name=address, latitude__isnull=True,
@@ -620,17 +634,19 @@ def scrape_company(company, session=None, limit=None):
         if raw_location:
             location_name = raw_location
             city, state, country, is_remote = _resolve_location(raw_location)
-        elif company_address:
+        else:
+            location_name = ''
+            city, state, country, is_remote = _resolve_location('')
+
+        # Remote postings have no single city of their own — anchor the map pin
+        if (is_remote or not raw_location) and company_address:
             # _resolve_location's comma-split assumes ATS-style "City, State"
             # text; a free-form street address ("123 Main St, Springfield, IL")
             # would get mangled into a bogus city/state, so leave those as
             # Unspecified and let geocoding key off the full address text
             # instead (see the location_name-based pass below).
             location_name = company_address
-            city, state, country, is_remote = 'Unspecified', None, 'Unspecified', False
-        else:
-            location_name = ''
-            city, state, country, is_remote = _resolve_location('')
+            city, state, country = 'Unspecified', None, 'Unspecified'
         category = categorize_job(title, department_hint=p.get('department_hint'))
         job_type = _normalize_job_type(p.get('job_type')) or _extract_job_type(title, description)
 

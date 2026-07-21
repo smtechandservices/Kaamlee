@@ -22,7 +22,8 @@ class CreateOrderView(views.APIView):
 
     def post(self, request):
         # amount = request.data.get('amount') # in paise
-        amount = SUBSCRIPTION_PRICE_PAISE # Production price: 99 INR (9900 paise), see payments/constants.py
+        # amount = SUBSCRIPTION_PRICE_PAISE # Production price: 99 INR (9900 paise), see payments/constants.py
+        amount = 100 # testing price: 1 INR (100 paise)
 
         key_id = getattr(settings, 'RAZORPAY_KEY_ID', None)
         key_secret = getattr(settings, 'RAZORPAY_KEY_SECRET', None)

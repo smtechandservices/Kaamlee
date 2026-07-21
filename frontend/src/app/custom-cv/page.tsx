@@ -5,6 +5,7 @@ import { useRouter } from 'next/navigation';
 import { motion } from 'framer-motion';
 import { Loader2, Plus, FileText, Trash2, Briefcase, Lightbulb, Target, CheckCircle2, Sparkles } from 'lucide-react';
 import { useAuth } from '@/context/AuthContext';
+import { useSubscriptionGate } from '@/hooks/useSubscriptionGate';
 import type { CustomCV, CVTemplate, ProfessionKeywords } from '@/components/customcv/types';
 import Sidebar from '@/components/Sidebar';
 import PageHeader from '@/components/PageHeader';
@@ -22,7 +23,8 @@ function scoreColor(score: number) {
 }
 
 export default function CustomCVListPage() {
-  const { user, token, isLoading: isAuthLoading } = useAuth();
+  const { user, token } = useAuth();
+  const { isReady, isSubscribed } = useSubscriptionGate();
   const router = useRouter();
 
   const [cvs, setCvs] = useState<CustomCV[]>([]);
@@ -38,13 +40,7 @@ export default function CustomCVListPage() {
   const [suggestionError, setSuggestionError] = useState('');
 
   useEffect(() => {
-    if (!isAuthLoading && !token) {
-      router.push('/login');
-    }
-  }, [token, isAuthLoading, router]);
-
-  useEffect(() => {
-    if (!token) return;
+    if (!token || !isSubscribed) return;
     fetch(`${process.env.NEXT_PUBLIC_API_URL}/api/custom-cv/`, {
       headers: { Authorization: `Token ${token}` },
     })
@@ -59,7 +55,7 @@ export default function CustomCVListPage() {
       .then((r) => r.json())
       .then((d) => setKeywords(d && typeof d === 'object' ? d : {}))
       .catch(() => {});
-  }, [token]);
+  }, [token, isSubscribed]);
 
   // Failed ATS checks across every CV, deduped by check name — the generic
   // "Keyword coverage for X" check is excluded here since it gets its own
@@ -179,7 +175,7 @@ export default function CustomCVListPage() {
     setCvs((prev) => prev.filter((cv) => cv.id !== id));
   };
 
-  if (isAuthLoading || !token) {
+  if (!isReady) {
     return (
       <div className="h-screen bg-[#0a0a0a] flex items-center justify-center">
         <Loader2 className="w-8 h-8 text-green-500 animate-spin" />
