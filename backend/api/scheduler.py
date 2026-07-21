@@ -62,9 +62,9 @@ def start():
     scheduler.add_job(
         auto_scrape_job,
         trigger="interval",
-        minutes=30,
+        minutes=15,
         id="auto_scrape",
         replace_existing=True,
     )
     scheduler.start()
-    print("[AutoScrape] Scheduler started — fires every 30 minutes.")
+    print("[AutoScrape] Scheduler started — fires every 15 minutes.")
