@@ -15,6 +15,7 @@ import {
   Trash2,
 } from 'lucide-react';
 import { useRouter } from 'next/navigation';
+import { getCached, setCache, invalidatePrefix } from '@/lib/cache';
 
 const API_BASE = `${process.env.NEXT_PUBLIC_API_URL}/api`;
 const PAGE_SIZE = 20;
@@ -105,18 +106,29 @@ export default function JobsPage() {
 
   const totalPages = Math.max(1, Math.ceil(count / PAGE_SIZE));
 
-  const fetchJobs = useCallback(async () => {
+  const fetchJobs = useCallback(async (force = false) => {
     const token = localStorage.getItem('admin_token');
     if (!token) {
       router.push('/login');
       return;
     }
+    const params = new URLSearchParams({ page: String(page) });
+    if (selectedCompany) params.set('company', selectedCompany);
+    if (search) params.set('search', search);
+    const cacheKey = `job-data:list:${params.toString()}`;
+
+    if (!force) {
+      const cached = getCached<JobsResponse>(cacheKey);
+      if (cached) {
+        setJobs(cached.results);
+        setCount(cached.count);
+        setSelectedIds(new Set());
+        return;
+      }
+    }
+
     setLoading(true);
     try {
-      const params = new URLSearchParams({ page: String(page) });
-      if (selectedCompany) params.set('company', selectedCompany);
-      if (search) params.set('search', search);
-
       const res = await fetch(`${API_BASE}/admin/jobs/?${params.toString()}`, {
         headers: { Authorization: `Token ${token}` },
       });
@@ -129,6 +141,7 @@ export default function JobsPage() {
         setJobs(data.results);
         setCount(data.count);
         setSelectedIds(new Set());
+        setCache(cacheKey, data);
       }
     } catch (error) {
       console.error('Failed to fetch jobs:', error);
@@ -144,9 +157,19 @@ export default function JobsPage() {
   useEffect(() => {
     const token = localStorage.getItem('admin_token');
     if (!token) return;
+    const cacheKey = 'company-data:dropdown';
+    const cached = getCached<CompanyOption[]>(cacheKey);
+    if (cached) {
+      setCompanies(cached);
+      return;
+    }
     fetch(`${API_BASE}/admin/companies/?page_size=500`, { headers: { Authorization: `Token ${token}` } })
       .then(res => (res.ok ? res.json() : { results: [] }))
-      .then((data: { results: CompanyOption[] }) => setCompanies(data.results.sort((a, b) => a.name.localeCompare(b.name))))
+      .then((data: { results: CompanyOption[] }) => {
+        const sorted = data.results.sort((a, b) => a.name.localeCompare(b.name));
+        setCompanies(sorted);
+        setCache(cacheKey, sorted);
+      })
       .catch(() => {});
   }, []);
 
@@ -194,6 +217,8 @@ export default function JobsPage() {
           next.delete(job.id);
           return next;
         });
+        invalidatePrefix('job-data:');
+        invalidatePrefix('company-data:'); // job_count per company changed
       } else {
         alert('Failed to delete job');
       }
@@ -220,6 +245,8 @@ export default function JobsPage() {
         setJobs(prev => prev.filter(j => !selectedIds.has(j.id)));
         setCount(prev => prev - (data.deleted ?? selectedIds.size));
         setSelectedIds(new Set());
+        invalidatePrefix('job-data:');
+        invalidatePrefix('company-data:');
       } else {
         alert('Failed to delete jobs');
       }
@@ -279,7 +306,7 @@ export default function JobsPage() {
             )}
 
             <button
-              onClick={fetchJobs}
+              onClick={() => fetchJobs(true)}
               className="cursor-pointer p-3 rounded-xl bg-[#111] border border-[#222] hover:bg-[#161616] transition-all"
               title="Refresh"
             >

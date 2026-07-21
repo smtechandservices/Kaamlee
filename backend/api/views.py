@@ -439,7 +439,7 @@ class TriggerCompanyScrapeView(views.APIView):
 class CompaniesPagination(PageNumberPagination):
     page_size = 20
     page_size_query_param = 'page_size'
-    max_page_size = 500  # lets callers like the "Scrape by Company" picker pull the full list in one request
+    max_page_size = 2000  # lets callers like the "Scrape by Company" picker pull the full list in one request
 
 class CompanyViewSet(viewsets.ModelViewSet):
     """Full CRUD for managing configured companies (add/edit/delete/activate)."""
@@ -512,6 +512,20 @@ class CompaniesView(views.APIView):
 
         paginator = self.pagination_class()
         page = paginator.paginate_queryset(list(companies_qs), request, view=self)
+
+        # light=true skips the recent-jobs fetch below (2 queries per company —
+        # painfully slow once there are hundreds of companies) for callers like
+        # the "Scrape by Company" picker that only need name + job_count.
+        if request.query_params.get('light') == 'true':
+            names = [c['name'] for c in page]
+            counts = dict(
+                Job.objects.filter(site__startswith='http', company__in=names)
+                .values('company')
+                .annotate(count=Count('id'))
+                .values_list('company', 'count')
+            )
+            result = [{**c, 'job_count': counts.get(c['name'], 0), 'jobs': []} for c in page]
+            return paginator.get_paginated_response(result)
 
         result = []
         for c in page:

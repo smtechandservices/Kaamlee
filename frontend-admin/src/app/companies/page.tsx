@@ -22,6 +22,7 @@ import {
 } from 'lucide-react';
 import Link from 'next/link';
 import { useRouter } from 'next/navigation';
+import { getCached, setCache, invalidatePrefix } from '@/lib/cache';
 
 const API_BASE = `${process.env.NEXT_PUBLIC_API_URL}/api`;
 const PAGE_SIZE = 20;
@@ -156,16 +157,28 @@ export default function CompaniesPage() {
 
   const totalPages = Math.max(1, Math.ceil(count / PAGE_SIZE));
 
-  const fetchCompanies = useCallback(async () => {
+  const fetchCompanies = useCallback(async (force = false) => {
     const token = localStorage.getItem('admin_token');
     if (!token) {
       router.push('/login');
       return;
     }
+    const params = new URLSearchParams({ page: String(page) });
+    if (search) params.set('search', search);
+    const cacheKey = `company-data:list:${params.toString()}`;
+
+    if (!force) {
+      const cached = getCached<{ results: Company[]; count: number }>(cacheKey);
+      if (cached) {
+        setCompanies(cached.results);
+        setCount(cached.count);
+        setSelectedIds(new Set());
+        return;
+      }
+    }
+
     setLoading(true);
     try {
-      const params = new URLSearchParams({ page: String(page) });
-      if (search) params.set('search', search);
       const res = await fetch(`${API_BASE}/admin/companies/?${params.toString()}`, {
         headers: { Authorization: `Token ${token}` },
       });
@@ -178,6 +191,7 @@ export default function CompaniesPage() {
         setCompanies(data.results);
         setCount(data.count);
         setSelectedIds(new Set());
+        setCache(cacheKey, data);
       }
     } catch (error) {
       console.error('Failed to fetch companies:', error);
@@ -223,7 +237,8 @@ export default function CompaniesPage() {
         return;
       }
       setIsModalOpen(false);
-      fetchCompanies();
+      invalidatePrefix('company-data:');
+      fetchCompanies(true);
     } catch (error) {
       alert('Failed to save company');
     } finally {
@@ -234,6 +249,7 @@ export default function CompaniesPage() {
   const toggleActive = async (company: Company) => {
     const token = localStorage.getItem('admin_token');
     setCompanies(prev => prev.map(c => c.id === company.id ? { ...c, is_active: !c.is_active } : c));
+    invalidatePrefix('company-data:');
     try {
       await fetch(`${API_BASE}/admin/companies/${company.id}/`, {
         method: 'PATCH',
@@ -242,7 +258,7 @@ export default function CompaniesPage() {
       });
     } catch (error) {
       alert('Failed to update company');
-      fetchCompanies();
+      fetchCompanies(true);
     }
   };
 
@@ -255,7 +271,10 @@ export default function CompaniesPage() {
     });
     const data = await res.json();
     if (!res.ok && !data.created) throw new Error(data.error || 'Bulk upload failed');
-    if (data.created?.length) fetchCompanies();
+    if (data.created?.length) {
+      invalidatePrefix('company-data:');
+      fetchCompanies(true);
+    }
     return data as BulkResult;
   };
 
@@ -269,6 +288,7 @@ export default function CompaniesPage() {
       });
       if (res.ok) {
         setCompanies(prev => prev.filter(c => c.id !== company.id));
+        invalidatePrefix('company-data:');
       } else {
         alert('Failed to delete company');
       }
@@ -300,6 +320,7 @@ export default function CompaniesPage() {
       if (res.ok) {
         setCompanies(prev => prev.filter(c => !selectedIds.has(c.id)));
         setSelectedIds(new Set());
+        invalidatePrefix('company-data:');
       } else {
         alert('Failed to delete companies');
       }
@@ -338,7 +359,7 @@ export default function CompaniesPage() {
               />
             </div>
             <button
-              onClick={fetchCompanies}
+              onClick={() => fetchCompanies(true)}
               className="cursor-pointer p-3 rounded-xl bg-[#111] border border-[#222] hover:bg-[#161616] transition-all"
               title="Refresh"
             >

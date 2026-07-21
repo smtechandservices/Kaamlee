@@ -24,6 +24,7 @@ import {
 } from 'lucide-react';
 import { useRouter } from 'next/navigation';
 import Link from 'next/link';
+import { getCached, setCache, invalidatePrefix } from '@/lib/cache';
 
 const API_BASE = `${process.env.NEXT_PUBLIC_API_URL}/api`;
 const COMPANIES_PAGE_SIZE = 20;
@@ -104,15 +105,25 @@ export default function AdminDashboard() {
 
   const companiesTotalPages = Math.max(1, Math.ceil(companiesCount / COMPANIES_PAGE_SIZE));
 
-  const fetchCompanies = async (page: number) => {
+  const fetchCompanies = async (page: number, force = false) => {
     const token = localStorage.getItem('admin_token');
     if (!token) return;
+    const cacheKey = `company-data:dashboard:page:${page}`;
+    if (!force) {
+      const cached = getCached<{ results: Company[]; count: number }>(cacheKey);
+      if (cached) {
+        setCompanies(cached.results);
+        setCompaniesCount(cached.count);
+        return;
+      }
+    }
     try {
       const res = await fetch(`${API_BASE}/companies/?page=${page}`, { headers: { 'Authorization': `Token ${token}` } });
       if (res.ok) {
         const data = await res.json();
         setCompanies(data.results);
         setCompaniesCount(data.count);
+        setCache(cacheKey, data);
       }
     } catch (error) {
       console.error('Failed to fetch companies:', error);
@@ -121,13 +132,23 @@ export default function AdminDashboard() {
 
   // Unpaginated, only for the "Scrape by Company" picker — it needs every
   // company to choose from, not just the current dashboard page.
-  const fetchPickerCompanies = async () => {
+  const fetchPickerCompanies = async (force = false) => {
     const token = localStorage.getItem('admin_token');
     if (!token) return;
+    const cacheKey = 'company-data:dashboard:picker';
+    if (!force) {
+      const cached = getCached<Company[]>(cacheKey);
+      if (cached) {
+        setPickerCompanies(cached);
+        return;
+      }
+    }
     try {
-      const res = await fetch(`${API_BASE}/companies/?page_size=500`, { headers: { 'Authorization': `Token ${token}` } });
+      const res = await fetch(`${API_BASE}/companies/?page_size=2000&light=true`, { headers: { 'Authorization': `Token ${token}` } });
       if (res.ok) {
-        setPickerCompanies((await res.json()).results);
+        const results = (await res.json()).results;
+        setPickerCompanies(results);
+        setCache(cacheKey, results);
       }
     } catch (error) {
       console.error('Failed to fetch picker companies:', error);
@@ -138,7 +159,7 @@ export default function AdminDashboard() {
     fetchCompanies(companiesPage);
   }, [companiesPage]);
 
-  const fetchData = async () => {
+  const fetchData = async (force = false) => {
     const token = localStorage.getItem('admin_token');
     if (!token) {
       router.push('/login');
@@ -147,40 +168,50 @@ export default function AdminDashboard() {
 
     setLoading(true);
     try {
-      const statsRes = await fetch(`${API_BASE}/stats/`, {
-        headers: { 'Authorization': `Token ${token}` }
-      });
+      let statsData = force ? null : getCached<Stats>('job-data:dashboard:stats');
+      if (!statsData) {
+        const statsRes = await fetch(`${API_BASE}/stats/`, {
+          headers: { 'Authorization': `Token ${token}` }
+        });
 
-      if (statsRes.status === 401) {
-        localStorage.removeItem('admin_token');
-        router.push('/login');
-        return;
+        if (statsRes.status === 401) {
+          localStorage.removeItem('admin_token');
+          router.push('/login');
+          return;
+        }
+
+        if (!statsRes.ok) {
+          throw new Error('Backend responded with an error');
+        }
+
+        statsData = await statsRes.json();
+        setCache('job-data:dashboard:stats', statsData);
       }
-
-      if (!statsRes.ok) {
-        throw new Error('Backend responded with an error');
-      }
-
-      const statsData = await statsRes.json();
       setStats(statsData);
 
       // Fetch companies (career-page scrape targets + their scraped jobs)
-      await Promise.all([fetchCompanies(companiesPage), fetchPickerCompanies()]);
+      await Promise.all([fetchCompanies(companiesPage, force), fetchPickerCompanies(force)]);
 
       // Fetch recent jobs for the marquee
-      const recentJobsRes = await fetch(`${API_BASE}/recent-jobs/?limit=15`);
-      if (recentJobsRes.ok) {
-        setRecentJobs(await recentJobsRes.json());
+      let recentJobsData = force ? null : getCached<RecentJob[]>('job-data:dashboard:recent');
+      if (!recentJobsData) {
+        const recentJobsRes = await fetch(`${API_BASE}/recent-jobs/?limit=15`);
+        if (recentJobsRes.ok) {
+          recentJobsData = await recentJobsRes.json();
+          setCache('job-data:dashboard:recent', recentJobsData);
+        }
       }
+      if (recentJobsData) setRecentJobs(recentJobsData);
 
-      // Fetch active sessions for scrape status display
+      // Active sessions are intentionally never cached — this is what powers
+      // live scrape-status polling, so it must always reflect the current state.
       const logsRes = await fetch(`${API_BASE}/logs/`, { headers: { 'Authorization': `Token ${token}` } });
       if (logsRes.ok) {
         const logsData = await logsRes.json();
         setActiveSessions(logsData.active_sessions ?? []);
         isScrapingRef.current = (logsData.active_sessions?.length ?? 0) > 0;
       } else {
-        isScrapingRef.current = statsData.last_scrape_session?.status === 'running';
+        isScrapingRef.current = statsData?.last_scrape_session?.status === 'running';
       }
     } catch (error) {
       console.error("Failed to fetch data:", error);
@@ -213,7 +244,11 @@ export default function AdminDashboard() {
           const wasScraping = isScrapingRef.current;
           isScrapingRef.current = sessions.length > 0;
           if (wasScraping && sessions.length === 0) {
-            fetchData();
+            // A scrape just finished — job/company counts changed everywhere,
+            // so bust the cross-page cache instead of only refreshing this page.
+            invalidatePrefix('company-data:');
+            invalidatePrefix('job-data:');
+            fetchData(true);
           }
         }
       } catch {
@@ -249,7 +284,7 @@ export default function AdminDashboard() {
 
       setIsCompanyPickerOpen(false);
       isScrapingRef.current = true;
-      setTimeout(fetchData, 800);
+      setTimeout(() => fetchData(true), 800);
     } catch (error) {
       alert("Failed to trigger company scrape");
     } finally {
@@ -274,7 +309,7 @@ export default function AdminDashboard() {
       }
 
       isScrapingRef.current = true;
-      setTimeout(fetchData, 800);
+      setTimeout(() => fetchData(true), 800);
     } catch (error) {
       alert(`Failed to trigger scrape for ${name}`);
     } finally {
@@ -290,7 +325,7 @@ export default function AdminDashboard() {
         headers: { 'Authorization': `Token ${token}` }
       });
       alert("Stop request sent. Scraper will stop after current city.");
-      fetchData();
+      fetchData(true);
     } catch (error) {
       alert("Failed to stop scrape");
     }
@@ -304,7 +339,7 @@ export default function AdminDashboard() {
         headers: { 'Authorization': `Token ${token}` }
       });
       alert("Force stopped all running sessions.");
-      fetchData();
+      fetchData(true);
     } catch (error) {
       alert("Failed to force stop scrape");
     }
@@ -328,7 +363,7 @@ export default function AdminDashboard() {
           Could not connect to the backend server. Please make sure the Django server is running at {API_BASE}.
         </p>
         <button
-          onClick={() => { setLoading(true); fetchData(); }}
+          onClick={() => { setLoading(true); fetchData(true); }}
           className="bg-[#111] border border-[#222] px-6 py-2 rounded-xl hover:bg-[#161616] transition-all flex items-center gap-2"
         >
           <RefreshCcw size={18} />
@@ -364,7 +399,7 @@ export default function AdminDashboard() {
 
           <div className="flex items-center gap-4">
             <button
-              onClick={fetchData}
+              onClick={() => fetchData(true)}
               className="cursor-pointer p-3 rounded-xl bg-[#111] border border-[#222] hover:bg-[#161616] transition-all"
               title="Refresh Data"
             >
@@ -811,6 +846,7 @@ function CompanyPickerModal({ onClose, onStart, loading, companies }: {
   companies: Company[];
 }) {
   const [selected, setSelected] = useState<Set<string>>(new Set());
+  const [search, setSearch] = useState('');
 
   const MAX = 10;
 
@@ -822,6 +858,10 @@ function CompanyPickerModal({ onClose, onStart, loading, companies }: {
       return next;
     });
   };
+
+  const filteredCompanies = search
+    ? companies.filter(c => c.name.toLowerCase().includes(search.toLowerCase()))
+    : companies;
 
   return (
     <motion.div
@@ -844,13 +884,23 @@ function CompanyPickerModal({ onClose, onStart, loading, companies }: {
             Select Companies to Scrape
           </h2>
           <p className="text-sm text-[#555] mt-1">
-            {selected.size === 0 ? 'Pick up to 3 companies to scrape their career pages.' : `${selected.size} / ${MAX} selected`}
+            {selected.size === 0 ? 'Pick up to 10 companies to scrape their career pages.' : `${selected.size} / ${MAX} selected`}
           </p>
+        </div>
+
+        <div className="px-6 pt-4 shrink-0">
+          <input
+            type="text"
+            value={search}
+            onChange={(e) => setSearch(e.target.value)}
+            placeholder={`Search ${companies.length} companies...`}
+            className="w-full bg-[#0a0a0a] border border-[#222] rounded-xl px-4 py-2.5 text-sm text-white placeholder-[#444] focus:border-purple-500 outline-none transition-all"
+          />
         </div>
 
         <div className="p-6 overflow-y-auto flex-1">
           <div className="flex flex-wrap gap-2">
-            {companies.map(company => {
+            {filteredCompanies.map(company => {
               const active = selected.has(company.name);
               const maxed = !active && selected.size >= MAX;
               return (
@@ -876,7 +926,10 @@ function CompanyPickerModal({ onClose, onStart, loading, companies }: {
           </div>
 
           {companies.length === 0 && (
-            <p className="text-xs text-[#555] text-center py-6">No companies configured in scripts/companies.json.</p>
+            <p className="text-xs text-[#555] text-center py-6">No companies configured yet.</p>
+          )}
+          {companies.length > 0 && filteredCompanies.length === 0 && (
+            <p className="text-xs text-[#555] text-center py-6">No companies match &quot;{search}&quot;.</p>
           )}
         </div>
 
