@@ -286,6 +286,24 @@ const Map = forwardRef<MapRef, MapProps>(function Map(
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []);
 
+  // MapLibre's trackResize only reacts to window resize events — it misses
+  // container-only size changes (e.g. a sibling panel being dragged wider),
+  // which otherwise leaves the canvas stretched/misaligned until the next
+  // window resize.
+  useEffect(() => {
+    if (!mapInstance || !containerRef.current) return;
+    let rafId: number | null = null;
+    const observer = new ResizeObserver(() => {
+      if (rafId !== null) cancelAnimationFrame(rafId);
+      rafId = requestAnimationFrame(() => mapInstance.resize());
+    });
+    observer.observe(containerRef.current);
+    return () => {
+      if (rafId !== null) cancelAnimationFrame(rafId);
+      observer.disconnect();
+    };
+  }, [mapInstance]);
+
   // Sync controlled viewport to map
   useEffect(() => {
     if (!mapInstance || !isControlled || !viewport) return;

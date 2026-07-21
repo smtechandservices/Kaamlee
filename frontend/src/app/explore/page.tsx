@@ -1,6 +1,6 @@
 'use client';
 
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, useRef } from 'react';
 import { Search, Map as MapIcon, List, Monitor, Bookmark } from 'lucide-react';
 import Sidebar from '@/components/Sidebar';
 import PageHeader from '@/components/PageHeader';
@@ -32,9 +32,89 @@ function useDebounce<T>(value: T, delay: number): T {
   return debounced;
 }
 
+const PANEL_WIDTH_KEY = 'explore_panel_width';
+const MIN_PANEL_WIDTH = 480;
+const MAX_PANEL_WIDTH = 720;
+
+// Desktop-only drag-to-resize for the job list panel next to the map.
+function useResizablePanel() {
+  const asideRef = useRef<HTMLElement>(null);
+  const widthRef = useRef(420);
+  const [panelWidth, setPanelWidth] = useState(420);
+  const [isResizing, setIsResizing] = useState(false);
+  const [isDesktop, setIsDesktop] = useState(false);
+
+  useEffect(() => {
+    const stored = Number(localStorage.getItem(PANEL_WIDTH_KEY));
+    if (stored) {
+      const clamped = Math.min(MAX_PANEL_WIDTH, Math.max(MIN_PANEL_WIDTH, stored));
+      widthRef.current = clamped;
+      setPanelWidth(clamped);
+    }
+
+    const mq = window.matchMedia('(min-width: 768px)');
+    const update = () => setIsDesktop(mq.matches);
+    update();
+    mq.addEventListener('change', update);
+    return () => mq.removeEventListener('change', update);
+  }, []);
+
+  useEffect(() => {
+    if (!isResizing) return;
+
+    // Raw mousemove can fire far more often than the screen can repaint (some
+    // mice poll at 1000Hz). Driving setState from every event re-renders the
+    // whole page — including the map — faster than it can redraw, which is
+    // what shows up as blinking. Coalescing to one update per animation
+    // frame keeps it at a smooth, steady rate instead.
+    let rafId: number | null = null;
+    let pendingX: number | null = null;
+
+    const applyPending = () => {
+      rafId = null;
+      if (pendingX === null || !asideRef.current) return;
+      const left = asideRef.current.getBoundingClientRect().left;
+      const next = Math.min(MAX_PANEL_WIDTH, Math.max(MIN_PANEL_WIDTH, pendingX - left));
+      widthRef.current = next;
+      setPanelWidth(next);
+    };
+
+    const handleMouseMove = (e: MouseEvent) => {
+      pendingX = e.clientX;
+      if (rafId === null) rafId = requestAnimationFrame(applyPending);
+    };
+    const handleMouseUp = () => {
+      if (rafId !== null) cancelAnimationFrame(rafId);
+      setIsResizing(false);
+      localStorage.setItem(PANEL_WIDTH_KEY, String(widthRef.current));
+    };
+
+    document.body.style.cursor = 'col-resize';
+    document.body.style.userSelect = 'none';
+    window.addEventListener('mousemove', handleMouseMove);
+    window.addEventListener('mouseup', handleMouseUp);
+    return () => {
+      if (rafId !== null) cancelAnimationFrame(rafId);
+      document.body.style.cursor = '';
+      document.body.style.userSelect = '';
+      window.removeEventListener('mousemove', handleMouseMove);
+      window.removeEventListener('mouseup', handleMouseUp);
+    };
+  }, [isResizing]);
+
+  return {
+    asideRef,
+    panelWidth,
+    isDesktop,
+    isResizing,
+    startResizing: () => setIsResizing(true),
+  };
+}
+
 export default function ExplorePage() {
   const { token, logout } = useAuth();
   const { isReady, isSubscribed } = useSubscriptionGate();
+  const { asideRef, panelWidth, isDesktop, isResizing, startResizing } = useResizablePanel();
 
   const [jobs, setJobs] = useState<any[]>([]);
   const [totalJobs, setTotalJobs] = useState(0);
@@ -341,7 +421,11 @@ export default function ExplorePage() {
       {/* Main Content Area */}
       <div className="flex-1 flex overflow-hidden">
         {/* Job list sidebar */}
-        <aside className={`${viewMode === 'map' ? 'hidden' : 'flex'} w-full md:w-[420px] flex-col border-r border-[#222] bg-[#0a0a0a] z-10 shrink-0`}>
+        <aside
+          ref={asideRef}
+          style={isDesktop ? { width: panelWidth } : undefined}
+          className={`${viewMode === 'map' ? 'hidden' : 'flex'} w-full md:w-auto flex-col border-r border-[#222] bg-[#0a0a0a] z-10 shrink-0 ${isResizing ? '' : 'transition-[width] duration-150'}`}
+        >
           
           {/* Search Area */}
           <div className="p-4 sm:p-5 border-b border-[#222] bg-[#0a0a0a]">
@@ -539,6 +623,19 @@ export default function ExplorePage() {
             </motion.div>
           </AnimatePresence>
         </aside>
+
+        {/* Drag handle — desktop split view only */}
+        {viewMode === 'split' && (
+          <div
+            onMouseDown={startResizing}
+            role="separator"
+            aria-orientation="vertical"
+            title="Drag to resize"
+            className="hidden md:flex w-1.5 shrink-0 cursor-col-resize items-center justify-center group relative z-20"
+          >
+            <div className={`w-px h-full transition-colors ${isResizing ? 'bg-[#22c55e]' : 'bg-[#222] group-hover:bg-[#22c55e]/60'}`} />
+          </div>
+        )}
 
         {/* Map Area */}
         <section className={`${viewMode === 'list' ? 'hidden' : 'flex'} flex-1 bg-[#0a0a0a]`}>
