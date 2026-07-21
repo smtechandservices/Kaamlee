@@ -812,7 +812,7 @@ function CompanyPickerModal({ onClose, onStart, loading, companies }: {
 }) {
   const [selected, setSelected] = useState<Set<string>>(new Set());
 
-  const MAX = 3;
+  const MAX = 10;
 
   const toggle = (name: string) => {
     setSelected(prev => {

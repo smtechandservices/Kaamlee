@@ -26,13 +26,13 @@ def auto_scrape_job():
             print("[AutoScrape] Already running — skipping.")
             return
 
-        print("[AutoScrape] Triggering career-page scrape for 3 random companies")
+        print("[AutoScrape] Triggering career-page scrape for 10 random companies")
         session = ScrapeSession.objects.create(status='running', search_term='company_career_pages:auto', results_limit=0)
 
         def _run():
-            log_to_db(session, "Auto-scrape: starting career-page scrape for 3 random companies", "success")
+            log_to_db(session, "Auto-scrape: starting career-page scrape for 10 random companies", "success")
             try:
-                run_random_companies_scraping(count=3, session=session)
+                run_random_companies_scraping(count=10, session=session)
                 session.status = 'completed'
             except Exception as e:
                 session.status = 'failed'
@@ -62,9 +62,9 @@ def start():
     scheduler.add_job(
         auto_scrape_job,
         trigger="interval",
-        minutes=15,
+        minutes=30,
         id="auto_scrape",
         replace_existing=True,
     )
     scheduler.start()
-    print("[AutoScrape] Scheduler started — fires every 15 minutes.")
+    print("[AutoScrape] Scheduler started — fires every 30 minutes.")

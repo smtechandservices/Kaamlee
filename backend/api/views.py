@@ -383,7 +383,7 @@ class StatsView(views.APIView):
 
 class TriggerCompanyScrapeView(views.APIView):
     permission_classes = [permissions.AllowAny]
-    MAX_COMPANIES = 3
+    MAX_COMPANIES = 10
 
     def post(self, request):
         cron_secret = os.environ.get('CRON_SECRET')
