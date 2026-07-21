@@ -144,6 +144,8 @@ export default function CompaniesPage() {
   const [isBulkModalOpen, setIsBulkModalOpen] = useState(false);
   const [editingCompany, setEditingCompany] = useState<Company | null>(null);
   const [saving, setSaving] = useState(false);
+  const [selectedIds, setSelectedIds] = useState<Set<number>>(new Set());
+  const [bulkDeleting, setBulkDeleting] = useState(false);
   const router = useRouter();
 
   const fetchCompanies = async () => {
@@ -257,6 +259,39 @@ export default function CompaniesPage() {
     }
   };
 
+  const toggleSelect = (id: number) => {
+    setSelectedIds(prev => {
+      const next = new Set(prev);
+      if (next.has(id)) next.delete(id);
+      else next.add(id);
+      return next;
+    });
+  };
+
+  const handleBulkDelete = async () => {
+    if (selectedIds.size === 0) return;
+    if (!window.confirm(`Delete ${selectedIds.size} compan${selectedIds.size !== 1 ? 'ies' : 'y'}? This won't delete their already-scraped jobs.`)) return;
+    const token = localStorage.getItem('admin_token');
+    setBulkDeleting(true);
+    try {
+      const res = await fetch(`${API_BASE}/admin/companies/bulk-delete/`, {
+        method: 'POST',
+        headers: { Authorization: `Token ${token}`, 'Content-Type': 'application/json' },
+        body: JSON.stringify({ ids: Array.from(selectedIds) }),
+      });
+      if (res.ok) {
+        setCompanies(prev => prev.filter(c => !selectedIds.has(c.id)));
+        setSelectedIds(new Set());
+      } else {
+        alert('Failed to delete companies');
+      }
+    } catch (error) {
+      alert('Failed to delete companies');
+    } finally {
+      setBulkDeleting(false);
+    }
+  };
+
   const filtered = companies.filter(c =>
     c.name.toLowerCase().includes(searchTerm.toLowerCase()) ||
     c.domain.toLowerCase().includes(searchTerm.toLowerCase())
@@ -319,6 +354,29 @@ export default function CompaniesPage() {
           </div>
         ) : (
           <>
+            {filtered.length > 0 && (
+              <div className="flex items-center justify-between mb-4 px-1">
+                <label className="flex items-center gap-2 text-sm text-[#888] cursor-pointer select-none">
+                  <input
+                    type="checkbox"
+                    checked={selectedIds.size > 0 && filtered.every(c => selectedIds.has(c.id))}
+                    onChange={(e) => setSelectedIds(e.target.checked ? new Set(filtered.map(c => c.id)) : new Set())}
+                    className="cursor-pointer w-4 h-4 accent-purple-600"
+                  />
+                  {selectedIds.size > 0 ? `${selectedIds.size} selected` : 'Select all'}
+                </label>
+                {selectedIds.size > 0 && (
+                  <button
+                    onClick={handleBulkDelete}
+                    disabled={bulkDeleting}
+                    className="cursor-pointer bg-red-500/10 border border-red-500/30 text-red-400 hover:bg-red-500/20 px-4 py-2 rounded-xl text-sm font-semibold flex items-center gap-2 transition-all disabled:opacity-50 disabled:cursor-not-allowed"
+                  >
+                    {bulkDeleting ? <Loader2 size={14} className="animate-spin" /> : <Trash2 size={14} />}
+                    Delete Selected ({selectedIds.size})
+                  </button>
+                )}
+              </div>
+            )}
             <div className="grid grid-cols-1 md:grid-cols-2 xl:grid-cols-3 gap-6">
               <AnimatePresence mode="popLayout">
                 {filtered.map((company) => (
@@ -327,10 +385,16 @@ export default function CompaniesPage() {
                     initial={{ opacity: 0, scale: 0.95 }}
                     animate={{ opacity: 1, scale: 1 }}
                     exit={{ opacity: 0, scale: 0.95 }}
-                    className="bg-[#111] border border-[#222] rounded-3xl p-6 hover:border-purple-500/40 transition-all flex flex-col gap-4"
+                    className={`bg-[#111] border rounded-3xl p-6 transition-all flex flex-col gap-4 ${selectedIds.has(company.id) ? 'border-purple-500/60' : 'border-[#222] hover:border-purple-500/40'}`}
                   >
                     <div className="flex items-start justify-between gap-3">
                       <div className="flex items-center gap-3 min-w-0">
+                        <input
+                          type="checkbox"
+                          checked={selectedIds.has(company.id)}
+                          onChange={() => toggleSelect(company.id)}
+                          className="cursor-pointer w-4 h-4 accent-purple-600 shrink-0"
+                        />
                         {company.logo_url ? (
                           <img src={company.logo_url} alt="" className="w-10 h-10 rounded-xl object-contain bg-white shrink-0" />
                         ) : (

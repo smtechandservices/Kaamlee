@@ -109,9 +109,17 @@ class JobViewSet(viewsets.ModelViewSet):
 
     def get_permissions(self):
         # Jobs are populated by the scraper; only admins may create/edit/delete them.
-        if self.action in ('create', 'update', 'partial_update', 'destroy'):
+        if self.action in ('create', 'update', 'partial_update', 'destroy', 'bulk_delete'):
             return [permissions.IsAdminUser()]
         return super().get_permissions()
+
+    @action(detail=False, methods=['post'], url_path='bulk-delete')
+    def bulk_delete(self, request):
+        ids = request.data.get('ids')
+        if not isinstance(ids, list) or not ids:
+            return Response({'error': 'ids must be a non-empty list.'}, status=400)
+        deleted_count, _ = Job.objects.filter(id__in=ids).delete()
+        return Response({'deleted': deleted_count})
 
     _COUNTRY_MAP = {
         'USA': 'United States',
@@ -461,6 +469,15 @@ class CompanyViewSet(viewsets.ModelViewSet):
             {'created': created, 'errors': errors},
             status=201 if created else 400,
         )
+
+    @action(detail=False, methods=['post'], url_path='bulk-delete')
+    def bulk_delete(self, request):
+        ids = request.data.get('ids')
+        if not isinstance(ids, list) or not ids:
+            return Response({'error': 'ids must be a non-empty list.'}, status=400)
+        deleted_count, _ = Company.objects.filter(id__in=ids).delete()
+        cache.delete(_STATS_CACHE_KEY)
+        return Response({'deleted': deleted_count})
 
 class CompaniesView(views.APIView):
     """All companies + their 10 most recent jobs each, for the admin dashboard's

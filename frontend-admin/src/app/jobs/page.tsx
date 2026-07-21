@@ -12,6 +12,7 @@ import {
   ChevronLeft,
   ChevronRight,
   X,
+  Trash2,
 } from 'lucide-react';
 import { useRouter } from 'next/navigation';
 
@@ -97,6 +98,9 @@ export default function JobsPage() {
   const [searchInput, setSearchInput] = useState('');
   const [search, setSearch] = useState('');
   const [mapPreview, setMapPreview] = useState<MapPreviewState | null>(null);
+  const [selectedIds, setSelectedIds] = useState<Set<number>>(new Set());
+  const [deletingId, setDeletingId] = useState<number | null>(null);
+  const [bulkDeleting, setBulkDeleting] = useState(false);
   const router = useRouter();
 
   const totalPages = Math.max(1, Math.ceil(count / PAGE_SIZE));
@@ -124,6 +128,7 @@ export default function JobsPage() {
         const data: JobsResponse = await res.json();
         setJobs(data.results);
         setCount(data.count);
+        setSelectedIds(new Set());
       }
     } catch (error) {
       console.error('Failed to fetch jobs:', error);
@@ -161,6 +166,68 @@ export default function JobsPage() {
     const left = Math.min(rect.left, window.innerWidth - MAP_PREVIEW_WIDTH - 16);
     const top = Math.min(rect.bottom + 8, window.innerHeight - MAP_PREVIEW_HEIGHT - 16);
     setMapPreview({ job, top, left });
+  };
+
+  const toggleSelect = (id: number) => {
+    setSelectedIds(prev => {
+      const next = new Set(prev);
+      if (next.has(id)) next.delete(id);
+      else next.add(id);
+      return next;
+    });
+  };
+
+  const handleDeleteJob = async (job: Job) => {
+    if (!window.confirm(`Delete "${job.title}" at ${job.company}?`)) return;
+    const token = localStorage.getItem('admin_token');
+    setDeletingId(job.id);
+    try {
+      const res = await fetch(`${process.env.NEXT_PUBLIC_API_URL}/api/jobs/${job.id}/`, {
+        method: 'DELETE',
+        headers: { Authorization: `Token ${token}` },
+      });
+      if (res.ok) {
+        setJobs(prev => prev.filter(j => j.id !== job.id));
+        setCount(prev => prev - 1);
+        setSelectedIds(prev => {
+          const next = new Set(prev);
+          next.delete(job.id);
+          return next;
+        });
+      } else {
+        alert('Failed to delete job');
+      }
+    } catch (error) {
+      alert('Failed to delete job');
+    } finally {
+      setDeletingId(null);
+    }
+  };
+
+  const handleBulkDeleteJobs = async () => {
+    if (selectedIds.size === 0) return;
+    if (!window.confirm(`Delete ${selectedIds.size} job${selectedIds.size !== 1 ? 's' : ''}?`)) return;
+    const token = localStorage.getItem('admin_token');
+    setBulkDeleting(true);
+    try {
+      const res = await fetch(`${process.env.NEXT_PUBLIC_API_URL}/api/jobs/bulk-delete/`, {
+        method: 'POST',
+        headers: { Authorization: `Token ${token}`, 'Content-Type': 'application/json' },
+        body: JSON.stringify({ ids: Array.from(selectedIds) }),
+      });
+      if (res.ok) {
+        const data = await res.json();
+        setJobs(prev => prev.filter(j => !selectedIds.has(j.id)));
+        setCount(prev => prev - (data.deleted ?? selectedIds.size));
+        setSelectedIds(new Set());
+      } else {
+        alert('Failed to delete jobs');
+      }
+    } catch (error) {
+      alert('Failed to delete jobs');
+    } finally {
+      setBulkDeleting(false);
+    }
   };
 
   return (
@@ -218,6 +285,17 @@ export default function JobsPage() {
             >
               <RefreshCcw size={18} className={loading ? 'animate-spin' : ''} />
             </button>
+
+            {selectedIds.size > 0 && (
+              <button
+                onClick={handleBulkDeleteJobs}
+                disabled={bulkDeleting}
+                className="cursor-pointer bg-red-500/10 border border-red-500/30 text-red-400 hover:bg-red-500/20 px-4 py-3 rounded-xl text-sm font-semibold flex items-center gap-2 transition-all disabled:opacity-50 disabled:cursor-not-allowed"
+              >
+                {bulkDeleting ? <Loader2 size={14} className="animate-spin" /> : <Trash2 size={14} />}
+                Delete Selected ({selectedIds.size})
+              </button>
+            )}
           </div>
         </header>
 
@@ -230,16 +308,24 @@ export default function JobsPage() {
           <>
             <div className="bg-[#111] border border-[#222] rounded-3xl overflow-hidden shadow-2xl">
               <div className="overflow-x-auto">
-                <table className="w-full min-w-[1050px] border-collapse">
+                <table className="w-full min-w-[1100px] border-collapse">
                   <thead>
                     <tr className="border-b border-[#222] bg-[#161616]/50">
+                      <th className="text-left px-6 py-5 w-10">
+                        <input
+                          type="checkbox"
+                          checked={jobs.length > 0 && jobs.every(j => selectedIds.has(j.id))}
+                          onChange={(e) => setSelectedIds(e.target.checked ? new Set(jobs.map(j => j.id)) : new Set())}
+                          className="cursor-pointer w-4 h-4 accent-blue-600"
+                        />
+                      </th>
                       <th className="text-left px-6 py-5 text-[10px] font-black uppercase tracking-[0.2em] text-[#555]">Job</th>
                       <th className="text-left px-6 py-5 text-[10px] font-black uppercase tracking-[0.2em] text-[#555]">Company</th>
                       <th className="text-left px-6 py-5 text-[10px] font-black uppercase tracking-[0.2em] text-[#555]">Location</th>
                       <th className="text-left px-6 py-5 text-[10px] font-black uppercase tracking-[0.2em] text-[#555]">Coordinates</th>
                       <th className="text-left px-6 py-5 text-[10px] font-black uppercase tracking-[0.2em] text-[#555]">Category</th>
                       <th className="text-left px-6 py-5 text-[10px] font-black uppercase tracking-[0.2em] text-[#555]">Posted</th>
-                      <th className="text-right px-6 py-5 text-[10px] font-black uppercase tracking-[0.2em] text-[#555]">Link</th>
+                      <th className="text-right px-6 py-5 text-[10px] font-black uppercase tracking-[0.2em] text-[#555]">Actions</th>
                     </tr>
                   </thead>
                   <tbody className="divide-y divide-[#222]/50">
@@ -250,8 +336,16 @@ export default function JobsPage() {
                           initial={{ opacity: 0 }}
                           animate={{ opacity: 1 }}
                           exit={{ opacity: 0 }}
-                          className="hover:bg-[#161616]/30 transition-colors"
+                          className={`hover:bg-[#161616]/30 transition-colors ${selectedIds.has(job.id) ? 'bg-blue-500/5' : ''}`}
                         >
+                          <td className="px-6 py-5">
+                            <input
+                              type="checkbox"
+                              checked={selectedIds.has(job.id)}
+                              onChange={() => toggleSelect(job.id)}
+                              className="cursor-pointer w-4 h-4 accent-blue-600"
+                            />
+                          </td>
                           <td className="px-6 py-5">
                             <div className="font-semibold text-white truncate max-w-[260px]">{job.title}</div>
                             {job.job_type && <div className="text-xs text-[#555] mt-0.5">{job.job_type}</div>}
@@ -297,15 +391,25 @@ export default function JobsPage() {
                               : new Date(job.created_at).toLocaleDateString('en-IN', { day: '2-digit', month: 'short', year: 'numeric' })}
                           </td>
                           <td className="px-6 py-5 text-right">
-                            <a
-                              href={job.job_url}
-                              target="_blank"
-                              rel="noreferrer"
-                              className="inline-flex items-center gap-1 text-[#888] hover:text-blue-400 transition-colors"
-                              title="Open posting"
-                            >
-                              <ExternalLink size={16} />
-                            </a>
+                            <div className="flex items-center justify-end gap-3">
+                              <a
+                                href={job.job_url}
+                                target="_blank"
+                                rel="noreferrer"
+                                className="inline-flex items-center gap-1 text-[#888] hover:text-blue-400 transition-colors"
+                                title="Open posting"
+                              >
+                                <ExternalLink size={16} />
+                              </a>
+                              <button
+                                onClick={() => handleDeleteJob(job)}
+                                disabled={deletingId === job.id}
+                                className="cursor-pointer inline-flex items-center gap-1 text-[#888] hover:text-red-400 transition-colors disabled:opacity-50 disabled:cursor-not-allowed"
+                                title="Delete job"
+                              >
+                                {deletingId === job.id ? <Loader2 size={16} className="animate-spin" /> : <Trash2 size={16} />}
+                              </button>
+                            </div>
                           </td>
                         </motion.tr>
                       ))}
