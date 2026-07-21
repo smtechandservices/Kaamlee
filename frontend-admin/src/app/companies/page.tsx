@@ -1,6 +1,6 @@
 'use client';
 
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, useCallback } from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
 import {
   ArrowLeft,
@@ -17,11 +17,14 @@ import {
   Download,
   CheckCircle2,
   AlertTriangle,
+  ChevronLeft,
+  ChevronRight,
 } from 'lucide-react';
 import Link from 'next/link';
 import { useRouter } from 'next/navigation';
 
 const API_BASE = `${process.env.NEXT_PUBLIC_API_URL}/api`;
+const PAGE_SIZE = 20;
 
 interface Company {
   id: number;
@@ -138,8 +141,11 @@ interface BulkResult {
 
 export default function CompaniesPage() {
   const [companies, setCompanies] = useState<Company[]>([]);
+  const [count, setCount] = useState(0);
+  const [page, setPage] = useState(1);
   const [loading, setLoading] = useState(true);
-  const [searchTerm, setSearchTerm] = useState('');
+  const [searchInput, setSearchInput] = useState('');
+  const [search, setSearch] = useState('');
   const [isModalOpen, setIsModalOpen] = useState(false);
   const [isBulkModalOpen, setIsBulkModalOpen] = useState(false);
   const [editingCompany, setEditingCompany] = useState<Company | null>(null);
@@ -148,7 +154,9 @@ export default function CompaniesPage() {
   const [bulkDeleting, setBulkDeleting] = useState(false);
   const router = useRouter();
 
-  const fetchCompanies = async () => {
+  const totalPages = Math.max(1, Math.ceil(count / PAGE_SIZE));
+
+  const fetchCompanies = useCallback(async () => {
     const token = localStorage.getItem('admin_token');
     if (!token) {
       router.push('/login');
@@ -156,7 +164,9 @@ export default function CompaniesPage() {
     }
     setLoading(true);
     try {
-      const res = await fetch(`${API_BASE}/admin/companies/`, {
+      const params = new URLSearchParams({ page: String(page) });
+      if (search) params.set('search', search);
+      const res = await fetch(`${API_BASE}/admin/companies/?${params.toString()}`, {
         headers: { Authorization: `Token ${token}` },
       });
       if (res.status === 401) {
@@ -164,18 +174,26 @@ export default function CompaniesPage() {
         return;
       }
       if (res.ok) {
-        setCompanies(await res.json());
+        const data = await res.json();
+        setCompanies(data.results);
+        setCount(data.count);
+        setSelectedIds(new Set());
       }
     } catch (error) {
       console.error('Failed to fetch companies:', error);
     } finally {
       setLoading(false);
     }
-  };
+  }, [page, search, router]);
 
   useEffect(() => {
     fetchCompanies();
-  }, []);
+  }, [fetchCompanies]);
+
+  const applySearch = () => {
+    setPage(1);
+    setSearch(searchInput.trim());
+  };
 
   const openAddModal = () => {
     setEditingCompany(null);
@@ -292,11 +310,6 @@ export default function CompaniesPage() {
     }
   };
 
-  const filtered = companies.filter(c =>
-    c.name.toLowerCase().includes(searchTerm.toLowerCase()) ||
-    c.domain.toLowerCase().includes(searchTerm.toLowerCase())
-  );
-
   return (
     <div className="min-h-screen bg-[#0a0a0a] text-white p-8 font-sans">
       <div className="mx-auto max-w-6xl">
@@ -307,7 +320,7 @@ export default function CompaniesPage() {
                 Companies
               </h1>
               <p className="text-[#555] font-medium">
-                {companies.length} compan{companies.length !== 1 ? 'ies' : 'y'} configured
+                {count.toLocaleString()} compan{count !== 1 ? 'ies' : 'y'} configured
               </p>
             </div>
           </div>
@@ -318,8 +331,9 @@ export default function CompaniesPage() {
               <input
                 type="text"
                 placeholder="Search companies..."
-                value={searchTerm}
-                onChange={(e) => setSearchTerm(e.target.value)}
+                value={searchInput}
+                onChange={(e) => setSearchInput(e.target.value)}
+                onKeyDown={(e) => e.key === 'Enter' && applySearch()}
                 className="w-64 bg-[#111] border border-[#222] rounded-2xl py-3 pl-11 pr-4 focus:outline-none focus:border-purple-500 transition-all text-sm"
               />
             </div>
@@ -354,13 +368,13 @@ export default function CompaniesPage() {
           </div>
         ) : (
           <>
-            {filtered.length > 0 && (
+            {companies.length > 0 && (
               <div className="flex items-center justify-between mb-4 px-1">
                 <label className="flex items-center gap-2 text-sm text-[#888] cursor-pointer select-none">
                   <input
                     type="checkbox"
-                    checked={selectedIds.size > 0 && filtered.every(c => selectedIds.has(c.id))}
-                    onChange={(e) => setSelectedIds(e.target.checked ? new Set(filtered.map(c => c.id)) : new Set())}
+                    checked={selectedIds.size > 0 && companies.every(c => selectedIds.has(c.id))}
+                    onChange={(e) => setSelectedIds(e.target.checked ? new Set(companies.map(c => c.id)) : new Set())}
                     className="cursor-pointer w-4 h-4 accent-purple-600"
                   />
                   {selectedIds.size > 0 ? `${selectedIds.size} selected` : 'Select all'}
@@ -379,7 +393,7 @@ export default function CompaniesPage() {
             )}
             <div className="grid grid-cols-1 md:grid-cols-2 xl:grid-cols-3 gap-6">
               <AnimatePresence mode="popLayout">
-                {filtered.map((company) => (
+                {companies.map((company) => (
                   <motion.div
                     key={company.id}
                     initial={{ opacity: 0, scale: 0.95 }}
@@ -455,12 +469,36 @@ export default function CompaniesPage() {
               </AnimatePresence>
             </div>
 
-            {filtered.length === 0 && (
+            {companies.length === 0 && (
               <div className="py-24 text-center">
                 <Building2 className="w-12 h-12 text-[#222] mx-auto mb-4" />
                 <p className="text-[#555] font-medium">
-                  {companies.length === 0 ? 'No companies configured yet.' : 'No results match your search.'}
+                  {count === 0 && !search ? 'No companies configured yet.' : 'No results match your search.'}
                 </p>
+              </div>
+            )}
+
+            {count > 0 && (
+              <div className="flex items-center justify-between mt-6">
+                <p className="text-xs text-[#555] font-medium">
+                  Page {page} of {totalPages}
+                </p>
+                <div className="flex items-center gap-2">
+                  <button
+                    onClick={() => setPage(p => Math.max(1, p - 1))}
+                    disabled={page <= 1}
+                    className="cursor-pointer p-2.5 rounded-xl bg-[#111] border border-[#222] hover:bg-[#161616] disabled:opacity-30 disabled:cursor-not-allowed transition-all"
+                  >
+                    <ChevronLeft size={18} />
+                  </button>
+                  <button
+                    onClick={() => setPage(p => Math.min(totalPages, p + 1))}
+                    disabled={page >= totalPages}
+                    className="cursor-pointer p-2.5 rounded-xl bg-[#111] border border-[#222] hover:bg-[#161616] disabled:opacity-30 disabled:cursor-not-allowed transition-all"
+                  >
+                    <ChevronRight size={18} />
+                  </button>
+                </div>
               </div>
             )}
           </>

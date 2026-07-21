@@ -436,11 +436,25 @@ class TriggerCompanyScrapeView(views.APIView):
         cache.delete(_STATS_CACHE_KEY)
         return Response({'status': 'Company career-page scrape triggered', 'session_id': session.id})
 
+class CompaniesPagination(PageNumberPagination):
+    page_size = 20
+    page_size_query_param = 'page_size'
+    max_page_size = 500  # lets callers like the "Scrape by Company" picker pull the full list in one request
+
 class CompanyViewSet(viewsets.ModelViewSet):
     """Full CRUD for managing configured companies (add/edit/delete/activate)."""
-    queryset = Company.objects.all()
     serializer_class = CompanySerializer
     permission_classes = [permissions.IsAdminUser]
+    pagination_class = CompaniesPagination
+
+    def get_queryset(self):
+        queryset = Company.objects.all().order_by(
+            models.F('last_scraped_at').desc(nulls_last=True), '-created_at',
+        )
+        search = self.request.query_params.get('search')
+        if search:
+            queryset = queryset.filter(models.Q(name__icontains=search) | models.Q(domain__icontains=search))
+        return queryset
 
     @action(detail=False, methods=['post'], url_path='bulk')
     def bulk_create(self, request):
@@ -480,13 +494,14 @@ class CompanyViewSet(viewsets.ModelViewSet):
         return Response({'deleted': deleted_count})
 
 class CompaniesView(views.APIView):
-    """All companies + their 10 most recent jobs each, for the admin dashboard's
-    company cards. For CRUD management, see CompanyViewSet."""
+    """Paginated companies + their 10 most recent jobs each, for the admin
+    dashboard's company cards. For CRUD management, see CompanyViewSet."""
     permission_classes = [permissions.IsAdminUser]
     RECENT_JOBS_PER_COMPANY = 10
+    pagination_class = CompaniesPagination
 
     def get(self, request):
-        companies = list(
+        companies_qs = (
             Company.objects.all()
             .order_by(models.F('last_scraped_at').desc(nulls_last=True), '-created_at')
             .values(
@@ -495,8 +510,11 @@ class CompaniesView(views.APIView):
             )
         )
 
+        paginator = self.pagination_class()
+        page = paginator.paginate_queryset(list(companies_qs), request, view=self)
+
         result = []
-        for c in companies:
+        for c in page:
             jobs_qs = Job.objects.filter(site__startswith='http', company=c['name'])
             total = jobs_qs.count()
             recent_jobs = jobs_qs.order_by('-date_posted', '-created_at')[:self.RECENT_JOBS_PER_COMPANY]
@@ -516,7 +534,7 @@ class CompaniesView(views.APIView):
                 'jobs': jobs,
             })
 
-        return Response(result)
+        return paginator.get_paginated_response(result)
 
 class AdminJobsView(generics.ListAPIView):
     """Paginated, filterable job listing for the admin dashboard's Jobs page.

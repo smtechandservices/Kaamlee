@@ -144,9 +144,9 @@ export default function JobsPage() {
   useEffect(() => {
     const token = localStorage.getItem('admin_token');
     if (!token) return;
-    fetch(`${API_BASE}/admin/companies/`, { headers: { Authorization: `Token ${token}` } })
-      .then(res => (res.ok ? res.json() : []))
-      .then((data: CompanyOption[]) => setCompanies(data.sort((a, b) => a.name.localeCompare(b.name))))
+    fetch(`${API_BASE}/admin/companies/?page_size=500`, { headers: { Authorization: `Token ${token}` } })
+      .then(res => (res.ok ? res.json() : { results: [] }))
+      .then((data: { results: CompanyOption[] }) => setCompanies(data.results.sort((a, b) => a.name.localeCompare(b.name))))
       .catch(() => {});
   }, []);
 

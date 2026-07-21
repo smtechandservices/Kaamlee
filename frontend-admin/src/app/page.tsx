@@ -18,12 +18,15 @@ import {
   Globe,
   Mail,
   MapPin,
-  ExternalLink
+  ExternalLink,
+  ChevronLeft,
+  ChevronRight
 } from 'lucide-react';
 import { useRouter } from 'next/navigation';
 import Link from 'next/link';
 
 const API_BASE = `${process.env.NEXT_PUBLIC_API_URL}/api`;
+const COMPANIES_PAGE_SIZE = 20;
 
 interface ScrapeSession {
   id: number;
@@ -67,6 +70,7 @@ interface RecentJob {
 }
 
 interface Company {
+  id: number;
   name: string;
   domain: string;
   career_url: string;
@@ -84,6 +88,9 @@ interface Company {
 export default function AdminDashboard() {
   const [stats, setStats] = useState<Stats | null>(null);
   const [companies, setCompanies] = useState<Company[]>([]);
+  const [companiesCount, setCompaniesCount] = useState(0);
+  const [companiesPage, setCompaniesPage] = useState(1);
+  const [pickerCompanies, setPickerCompanies] = useState<Company[]>([]);
   const [recentJobs, setRecentJobs] = useState<RecentJob[]>([]);
   const [activeSessions, setActiveSessions] = useState<ScrapeSession[]>([]);
   const [loading, setLoading] = useState(true);
@@ -94,6 +101,42 @@ export default function AdminDashboard() {
   const router = useRouter();
   // Tracks whether a scrape is active, so we know when one just finished
   const isScrapingRef = React.useRef(false);
+
+  const companiesTotalPages = Math.max(1, Math.ceil(companiesCount / COMPANIES_PAGE_SIZE));
+
+  const fetchCompanies = async (page: number) => {
+    const token = localStorage.getItem('admin_token');
+    if (!token) return;
+    try {
+      const res = await fetch(`${API_BASE}/companies/?page=${page}`, { headers: { 'Authorization': `Token ${token}` } });
+      if (res.ok) {
+        const data = await res.json();
+        setCompanies(data.results);
+        setCompaniesCount(data.count);
+      }
+    } catch (error) {
+      console.error('Failed to fetch companies:', error);
+    }
+  };
+
+  // Unpaginated, only for the "Scrape by Company" picker — it needs every
+  // company to choose from, not just the current dashboard page.
+  const fetchPickerCompanies = async () => {
+    const token = localStorage.getItem('admin_token');
+    if (!token) return;
+    try {
+      const res = await fetch(`${API_BASE}/companies/?page_size=500`, { headers: { 'Authorization': `Token ${token}` } });
+      if (res.ok) {
+        setPickerCompanies((await res.json()).results);
+      }
+    } catch (error) {
+      console.error('Failed to fetch picker companies:', error);
+    }
+  };
+
+  useEffect(() => {
+    fetchCompanies(companiesPage);
+  }, [companiesPage]);
 
   const fetchData = async () => {
     const token = localStorage.getItem('admin_token');
@@ -122,10 +165,7 @@ export default function AdminDashboard() {
       setStats(statsData);
 
       // Fetch companies (career-page scrape targets + their scraped jobs)
-      const companiesRes = await fetch(`${API_BASE}/companies/`, { headers: { 'Authorization': `Token ${token}` } });
-      if (companiesRes.ok) {
-        setCompanies(await companiesRes.json());
-      }
+      await Promise.all([fetchCompanies(companiesPage), fetchPickerCompanies()]);
 
       // Fetch recent jobs for the marquee
       const recentJobsRes = await fetch(`${API_BASE}/recent-jobs/?limit=15`);
@@ -418,7 +458,9 @@ export default function AdminDashboard() {
         )}
 
         <div className="flex items-center justify-between mb-4">
-          <h2 className="text-xl font-bold">Companies</h2>
+          <h2 className="text-xl font-bold">
+            Companies {companiesCount > 0 && <span className="text-[#555] font-medium">({companiesCount})</span>}
+          </h2>
           <Link href="/companies" className="text-sm font-semibold text-purple-400 hover:text-purple-300 transition-colors">
             Manage all companies →
           </Link>
@@ -426,7 +468,7 @@ export default function AdminDashboard() {
         <div className="grid grid-cols-1 md:grid-cols-2 xl:grid-cols-3 gap-6">
           {companies.map(company => (
             <CompanyCard
-              key={company.name}
+              key={company.id}
               company={company}
               scraping={triggeringCompanyName === company.name}
               onScrape={() => triggerCompanyScrapeOne(company.name)}
@@ -440,6 +482,30 @@ export default function AdminDashboard() {
             <p>No companies configured. <Link href="/companies" className="text-purple-400 hover:underline">Add one</Link>.</p>
           </div>
         )}
+
+        {companiesCount > 0 && (
+          <div className="flex items-center justify-between mt-6">
+            <p className="text-xs text-[#555] font-medium">
+              Page {companiesPage} of {companiesTotalPages}
+            </p>
+            <div className="flex items-center gap-2">
+              <button
+                onClick={() => setCompaniesPage(p => Math.max(1, p - 1))}
+                disabled={companiesPage <= 1}
+                className="cursor-pointer p-2.5 rounded-xl bg-[#111] border border-[#222] hover:bg-[#161616] disabled:opacity-30 disabled:cursor-not-allowed transition-all"
+              >
+                <ChevronLeft size={18} />
+              </button>
+              <button
+                onClick={() => setCompaniesPage(p => Math.min(companiesTotalPages, p + 1))}
+                disabled={companiesPage >= companiesTotalPages}
+                className="cursor-pointer p-2.5 rounded-xl bg-[#111] border border-[#222] hover:bg-[#161616] disabled:opacity-30 disabled:cursor-not-allowed transition-all"
+              >
+                <ChevronRight size={18} />
+              </button>
+            </div>
+          </div>
+        )}
       </div>
 
       <AnimatePresence>
@@ -449,7 +515,7 @@ export default function AdminDashboard() {
             onClose={() => setIsCompanyPickerOpen(false)}
             onStart={triggerCompanyScrape}
             loading={triggeringCompany}
-            companies={companies}
+            companies={pickerCompanies}
           />
         )}
       </AnimatePresence>
