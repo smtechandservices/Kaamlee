@@ -26,7 +26,8 @@ import {
   Link as LinkIcon,
   Globe,
   Lock,
-  Trash2
+  Trash2,
+  KeyRound
 } from 'lucide-react';
 import Link from 'next/link';
 import { useRouter } from 'next/navigation';
@@ -47,6 +48,7 @@ interface UserProfile {
   is_superuser: boolean;
   is_staff: boolean;
   portfolio_is_public: boolean;
+  signed_in_with_google: boolean;
 }
 
 interface Transaction {
@@ -63,6 +65,7 @@ export default function UserManagement() {
   const [loading, setLoading] = useState(true);
   const [searchTerm, setSearchTerm] = useState('');
   const [editingUser, setEditingUser] = useState<UserProfile | null>(null);
+  const [settingPasswordUser, setSettingPasswordUser] = useState<UserProfile | null>(null);
   const [viewingTransactions, setViewingTransactions] = useState<UserProfile | null>(null);
   const [userTransactions, setUserTransactions] = useState<Transaction[]>([]);
   const [txLoading, setTxLoading] = useState(false);
@@ -104,10 +107,10 @@ export default function UserManagement() {
     fetchUsers();
   }, []);
 
-  const handleUpdateUser = async (updatedData: any) => {
-    if (!editingUser) return;
+  const handleUpdateUser = async (updatedData: any): Promise<string | null> => {
+    if (!editingUser) return null;
     const token = localStorage.getItem('admin_token');
-    
+
     try {
       const res = await fetch(`${API_BASE}/users/${editingUser.id}/`, {
         method: 'PATCH',
@@ -121,9 +124,12 @@ export default function UserManagement() {
       if (res.ok) {
         setEditingUser(null);
         fetchUsers();
+        return null;
       }
+      const data = await res.json().catch(() => ({}));
+      return data.username?.[0] || data.detail || 'Failed to update user.';
     } catch (error) {
-      alert("Failed to update user");
+      return 'Failed to update user.';
     }
   };
 
@@ -248,6 +254,7 @@ export default function UserManagement() {
                   <tr className="border-b border-[#222] bg-[#161616]/50">
                     <th className="text-left px-6 py-5 text-[10px] font-black uppercase tracking-[0.2em] text-[#555]">User Details</th>
                     <th className="text-left px-6 py-5 text-[10px] font-black uppercase tracking-[0.2em] text-[#555]">Status</th>
+                    <th className="text-left px-6 py-5 text-[10px] font-black uppercase tracking-[0.2em] text-[#555]">Sign-in</th>
                     <th className="text-left px-6 py-5 text-[10px] font-black uppercase tracking-[0.2em] text-[#555]">Subscription</th>
                     <th className="text-left px-6 py-5 text-[10px] font-black uppercase tracking-[0.2em] text-[#555]">Contact</th>
                     <th className="text-left px-6 py-5 text-[10px] font-black uppercase tracking-[0.2em] text-[#555]">Resume</th>
@@ -267,9 +274,9 @@ export default function UserManagement() {
                       >
                         <td className="px-6 py-6">
                           <div className="flex items-center gap-4">
-                            <div className={`w-12 h-12 rounded-2xl flex items-center justify-center text-lg font-bold shadow-inner ${user.is_superuser ? 'bg-amber-500/10 text-amber-500' : 'bg-blue-500/10 text-blue-500'}`}>
+                            {/* <div className={`w-12 h-12 rounded-2xl flex items-center justify-center text-lg font-bold shadow-inner ${user.is_superuser ? 'bg-amber-500/10 text-amber-500' : 'bg-blue-500/10 text-blue-500'}`}>
                               {user.first_name ? user.first_name[0] : user.username[0].toUpperCase()}
-                            </div>
+                            </div> */}
                             <div>
                               <div className="flex items-center gap-2">
                                 <span className="font-bold text-white leading-tight">{user.first_name} {user.last_name}</span>
@@ -290,14 +297,23 @@ export default function UserManagement() {
                           </div>
                         </td>
                         <td className="px-6 py-6">
+                          <div className="flex items-center gap-2">
+                             {user.signed_in_with_google ? (
+                               <span className="px-3 py-1 rounded-full bg-blue-500/10 text-blue-500 text-[10px] font-black uppercase tracking-wider">Google</span>
+                             ) : (
+                               <span className="px-3 py-1 rounded-full bg-[#222] text-[#555] text-[10px] font-black uppercase tracking-wider">Password</span>
+                             )}
+                          </div>
+                        </td>
+                        <td className="px-6 py-6">
                            <div className="flex flex-col gap-1">
                               {user.is_subscribed ? (
                                 <>
-                                  <div className="flex items-center gap-2 text-green-500 font-bold text-sm">
+                                  <div className="flex items-center gap-2 text-green-500 font-bold text-sm text-nowrap">
                                     <CheckCircle2 size={16} />
                                     Active Access
                                   </div>
-                                  <div className="text-[14px] text-[#555] font-medium">
+                                  <div className="text-[14px] text-[#555] font-medium text-nowrap">
                                     Expires: {user.subscription_expires_at ? (() => {
                                       const d = new Date(user.subscription_expires_at);
                                       return `${d.getDate().toString().padStart(2, '0')}/${(d.getMonth() + 1).toString().padStart(2, '0')}/${d.getFullYear()}`;
@@ -372,9 +388,9 @@ export default function UserManagement() {
                            <div className="flex items-center justify-end gap-3 transition-opacity">
                               <button 
                                 onClick={() => toggleSubscription(user.id)}
-                                className={`cursor-pointer px-4 py-2 rounded-xl text-xs font-bold transition-all ${user.is_subscribed ? 'bg-red-500/10 text-red-500 hover:bg-red-500/20' : 'bg-green-500/10 text-green-500 hover:bg-green-500/20'}`}
+                                className={`text-nowrap cursor-pointer px-4 py-2 rounded-xl text-xs font-bold transition-all ${user.is_subscribed ? 'bg-red-500/10 text-red-500 hover:bg-red-500/20' : 'bg-green-500/10 text-green-500 hover:bg-green-500/20'}`}
                               >
-                                {user.is_subscribed ? 'Revoke' : 'Grant Access'}
+                                {user.is_subscribed ? 'Revoke' : 'Grant'} Access
                               </button>
                                <button 
                                 onClick={() => {
@@ -392,6 +408,13 @@ export default function UserManagement() {
                                 title="Edit User"
                               >
                                 <MoreHorizontal size={18} />
+                              </button>
+                              <button
+                                onClick={() => setSettingPasswordUser(user)}
+                                className="cursor-pointer p-2 rounded-lg bg-[#222] hover:bg-[#333] transition-colors text-[#888] hover:text-white"
+                                title="Reset Password"
+                              >
+                                <KeyRound size={18} />
                               </button>
                               <button
                                 onClick={() => handleDeleteUser(user)}
@@ -423,10 +446,17 @@ export default function UserManagement() {
 
       <AnimatePresence>
         {editingUser && (
-          <EditUserModal 
-            user={editingUser} 
-            onClose={() => setEditingUser(null)} 
-            onSave={handleUpdateUser} 
+          <EditUserModal
+            user={editingUser}
+            onClose={() => setEditingUser(null)}
+            onSave={handleUpdateUser}
+          />
+        )}
+
+        {settingPasswordUser && (
+          <SetPasswordModal
+            user={settingPasswordUser}
+            onClose={() => setSettingPasswordUser(null)}
           />
         )}
 
@@ -447,8 +477,9 @@ export default function UserManagement() {
   );
 }
 
-function EditUserModal({ user, onClose, onSave }: { user: UserProfile, onClose: () => void, onSave: (data: any) => void }) {
+function EditUserModal({ user, onClose, onSave }: { user: UserProfile, onClose: () => void, onSave: (data: any) => Promise<string | null> }) {
   const [formData, setFormData] = useState({
+    username: user.username,
     first_name: user.first_name,
     last_name: user.last_name,
     phone: user.phone,
@@ -459,16 +490,22 @@ function EditUserModal({ user, onClose, onSave }: { user: UserProfile, onClose: 
       return `${d.getDate().toString().padStart(2, '0')}/${(d.getMonth() + 1).toString().padStart(2, '0')}/${d.getFullYear()}`;
     })() : ''
   });
+  const [error, setError] = useState<string | null>(null);
+  const [saving, setSaving] = useState(false);
 
-  const handleSave = () => {
-    const data = { ...formData };
+  const handleSave = async () => {
+    const data: any = { ...formData };
     if (data.subscription_expires_at) {
       const [day, month, year] = data.subscription_expires_at.split('/');
       if (day && month && year) {
         data.subscription_expires_at = new Date(`${year}-${month}-${day}`).toISOString();
       }
     }
-    onSave(data);
+    setSaving(true);
+    setError(null);
+    const errorMessage = await onSave(data);
+    setSaving(false);
+    if (errorMessage) setError(errorMessage);
   };
 
   return (
@@ -487,6 +524,22 @@ function EditUserModal({ user, onClose, onSave }: { user: UserProfile, onClose: 
         </div>
 
         <div className="p-8 space-y-6">
+          {error && (
+            <div className="bg-red-500/10 border border-red-500/20 text-red-400 text-sm py-3 px-4 rounded-xl">
+              {error}
+            </div>
+          )}
+
+          <div>
+            <label className="block text-[10px] font-black uppercase tracking-widest text-[#555] mb-2 px-1">Username</label>
+            <input
+              type="text"
+              value={formData.username}
+              onChange={(e) => setFormData({...formData, username: e.target.value})}
+              className="w-full bg-black border border-[#222] rounded-xl py-3 px-4 focus:outline-none focus:border-blue-500 transition-all"
+            />
+          </div>
+
           <div className="grid grid-cols-2 gap-4">
             <div>
               <label className="block text-[10px] font-black uppercase tracking-widest text-[#555] mb-2 px-1">First Name</label>
@@ -555,11 +608,119 @@ function EditUserModal({ user, onClose, onSave }: { user: UserProfile, onClose: 
 
         <div className="p-8 bg-[#161616]/50 border-t border-[#222] flex items-center justify-end gap-4">
           <button onClick={onClose} className="cursor-pointer px-6 py-3 font-bold text-[#555] hover:text-white transition-colors">Cancel</button>
-          <button 
+          <button
             onClick={handleSave}
-            className="cursor-pointer bg-white text-black hover:bg-gray-200 px-8 py-3 rounded-xl font-bold transition-all shadow-lg shadow-blue-600/20"
+            disabled={saving}
+            className="cursor-pointer bg-white text-black hover:bg-gray-200 px-8 py-3 rounded-xl font-bold transition-all shadow-lg shadow-blue-600/20 disabled:opacity-50"
           >
-            Save Changes
+            {saving ? 'Saving...' : 'Save Changes'}
+          </button>
+        </div>
+      </motion.div>
+    </div>
+  );
+}
+
+function SetPasswordModal({ user, onClose }: { user: UserProfile, onClose: () => void }) {
+  const [newPassword, setNewPassword] = useState('');
+  const [confirmPassword, setConfirmPassword] = useState('');
+  const [error, setError] = useState<string | null>(null);
+  const [success, setSuccess] = useState(false);
+  const [saving, setSaving] = useState(false);
+
+  const handleSubmit = async () => {
+    setSaving(true);
+    setError(null);
+    setSuccess(false);
+    const token = localStorage.getItem('admin_token');
+
+    try {
+      const res = await fetch(`${API_BASE}/users/${user.id}/set-password/`, {
+        method: 'POST',
+        headers: {
+          'Authorization': `Token ${token}`,
+          'Content-Type': 'application/json'
+        },
+        body: JSON.stringify({ new_password: newPassword, confirm_password: confirmPassword })
+      });
+
+      if (res.ok) {
+        setNewPassword('');
+        setConfirmPassword('');
+        setSuccess(true);
+      } else {
+        const data = await res.json().catch(() => ({}));
+        setError(data.new_password?.[0] || data.confirm_password?.[0] || data.detail || 'Failed to reset password.');
+      }
+    } catch (err) {
+      setError('Failed to reset password.');
+    } finally {
+      setSaving(false);
+    }
+  };
+
+  return (
+    <div className="fixed inset-0 bg-black/80 backdrop-blur-sm z-50 flex items-center justify-center p-4">
+      <motion.div
+        initial={{ opacity: 0, scale: 0.95 }}
+        animate={{ opacity: 1, scale: 1 }}
+        exit={{ opacity: 0, scale: 0.95 }}
+        className="bg-[#111] border border-[#222] rounded-3xl w-full lg:max-w-md overflow-hidden shadow-2xl"
+      >
+        <div className="p-8 border-b border-[#222] flex items-center justify-between">
+          <div>
+            <h2 className="text-2xl font-bold">Reset Password</h2>
+            <p className="text-sm text-[#555]">@{user.username}</p>
+          </div>
+          <button onClick={onClose} className="cursor-pointer p-2 hover:bg-[#222] rounded-xl text-[#555] hover:text-white transition-colors">
+            <ArrowRight size={20} className="rotate-180" />
+          </button>
+        </div>
+
+        <div className="p-8 space-y-6">
+          <p className="text-xs text-[#555]">Sets a new password for this account directly — the user isn&apos;t asked for their current one.</p>
+
+          {error && (
+            <div className="bg-red-500/10 border border-red-500/20 text-red-400 text-sm py-3 px-4 rounded-xl">
+              {error}
+            </div>
+          )}
+          {success && (
+            <div className="bg-green-500/10 border border-green-500/20 text-green-400 text-sm py-3 px-4 rounded-xl">
+              Password updated successfully.
+            </div>
+          )}
+
+          <div>
+            <label className="block text-[10px] font-black uppercase tracking-widest text-[#555] mb-2 px-1">New Password</label>
+            <input
+              type="password"
+              autoComplete="new-password"
+              value={newPassword}
+              onChange={(e) => setNewPassword(e.target.value)}
+              className="w-full bg-black border border-[#222] rounded-xl py-3 px-4 focus:outline-none focus:border-blue-500 transition-all"
+            />
+          </div>
+          <div>
+            <label className="block text-[10px] font-black uppercase tracking-widest text-[#555] mb-2 px-1">Confirm Password</label>
+            <input
+              type="password"
+              autoComplete="new-password"
+              value={confirmPassword}
+              onChange={(e) => setConfirmPassword(e.target.value)}
+              className="w-full bg-black border border-[#222] rounded-xl py-3 px-4 focus:outline-none focus:border-blue-500 transition-all"
+            />
+          </div>
+        </div>
+
+        <div className="p-8 bg-[#161616]/50 border-t border-[#222] flex items-center justify-end gap-4">
+          <button onClick={onClose} className="cursor-pointer px-6 py-3 font-bold text-[#555] hover:text-white transition-colors">Cancel</button>
+          <button
+            onClick={handleSubmit}
+            disabled={saving || !newPassword || !confirmPassword}
+            className="cursor-pointer bg-white text-black hover:bg-gray-200 px-8 py-3 rounded-xl font-bold transition-all shadow-lg shadow-blue-600/20 disabled:opacity-50"
+          >
+            {saving ? 'Saving...' : 'Set Password'}
           </button>
         </div>
       </motion.div>

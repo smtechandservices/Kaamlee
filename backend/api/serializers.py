@@ -5,12 +5,26 @@ import logging
 import PyPDF2
 from groq import Groq
 from rest_framework import serializers
-from .models import Job, ScrapeSession, ScrapeLog, Bookmark, Feedback, Portfolio, PortfolioView, CustomCV, JobApplicationKit, Company
+from .models import Job, ScrapeSession, ScrapeLog, Bookmark, Feedback, Portfolio, PortfolioView, CustomCV, JobApplicationKit, Company, EmailOTP
 from django.contrib.auth.models import User
+from django.contrib.auth.password_validation import validate_password
+from django.utils import timezone
+from datetime import timedelta
 from scripts.ats_scoring import score_cv
 
 logger = logging.getLogger(__name__)
 _groq = Groq(api_key=os.getenv('GROQ_API_KEY'))
+
+EMAIL_VERIFICATION_WINDOW_MINUTES = 60
+
+def _email_recently_verified(email):
+    """True if `email` completed an OTP check (via /otp/confirm/ or /otp/verify/)
+    within the last EMAIL_VERIFICATION_WINDOW_MINUTES."""
+    return EmailOTP.objects.filter(
+        email=email.lower(),
+        is_used=True,
+        created_at__gte=timezone.now() - timedelta(minutes=EMAIL_VERIFICATION_WINDOW_MINUTES),
+    ).exists()
 
 _PARSE_PROMPT = """You are a resume parser. Extract all information from the resume text below and return ONLY a valid JSON object with this exact structure:
 
@@ -238,15 +252,16 @@ class UserSerializer(serializers.ModelSerializer):
     is_subscribed = serializers.BooleanField(source='profile.is_subscribed', required=False)
     subscription_expires_at = serializers.DateTimeField(source='profile.subscription_expires_at', required=False, allow_null=True)
     portfolio_is_public = serializers.SerializerMethodField()
+    signed_in_with_google = serializers.SerializerMethodField()
 
     class Meta:
         model = User
         fields = (
             'id', 'username', 'email', 'first_name', 'last_name', 'phone', 'linkedin_url',
             'resume', 'resume_text', 'has_resume', 'is_subscribed', 'subscription_expires_at',
-            'is_superuser', 'is_staff', 'portfolio_is_public',
+            'is_superuser', 'is_staff', 'portfolio_is_public', 'signed_in_with_google',
         )
-        read_only_fields = ('id', 'username', 'email', 'is_superuser', 'is_staff', 'resume_text', 'has_resume', 'portfolio_is_public')
+        read_only_fields = ('id', 'email', 'is_superuser', 'is_staff', 'resume_text', 'has_resume', 'portfolio_is_public', 'signed_in_with_google')
 
     MAX_RESUME_SIZE_BYTES = 5 * 1024 * 1024  # 5 MB — the whole file is read into memory for extraction/Groq
 
@@ -274,10 +289,20 @@ class UserSerializer(serializers.ModelSerializer):
         portfolio = getattr(obj, 'portfolio', None)
         return bool(portfolio.is_public) if portfolio else False
 
+    def get_signed_in_with_google(self, obj):
+        return bool(obj.profile.google_id)
+
+    def validate_username(self, value):
+        # Case-insensitive, matching CheckExistenceView's pre-check — otherwise
+        if User.objects.exclude(pk=self.instance.pk).filter(username__iexact=value).exists():
+            raise serializers.ValidationError('This username is already taken.')
+        return value
+
     def update(self, instance, validated_data):
         profile_data = validated_data.pop('profile', {})
-        
+
         # Update User fields
+        instance.username = validated_data.get('username', instance.username)
         instance.first_name = validated_data.get('first_name', instance.first_name)
         instance.last_name = validated_data.get('last_name', instance.last_name)
         instance.save()
@@ -333,6 +358,45 @@ class UserSerializer(serializers.ModelSerializer):
 
         return instance
 
+class ChangePasswordSerializer(serializers.Serializer):
+    new_password = serializers.CharField(write_only=True)
+    confirm_password = serializers.CharField(write_only=True)
+
+    def validate_new_password(self, value):
+        validate_password(value, user=self.context['request'].user)
+        return value
+
+    def validate(self, data):
+        if data['new_password'] != data['confirm_password']:
+            raise serializers.ValidationError({'confirm_password': 'Passwords do not match.'})
+
+        user = self.context['request'].user
+        if not _email_recently_verified(user.email):
+            raise serializers.ValidationError({'non_field_errors': 'Please verify your email with the code sent before changing your password.'})
+
+        return data
+
+    def save(self):
+        user = self.context['request'].user
+        user.set_password(self.validated_data['new_password'])
+        user.save()
+        return user
+
+class AdminSetPasswordSerializer(serializers.Serializer):
+    """Lets an admin set a user's password directly — no current password
+    needed, since IsAdminUser already gates access to this."""
+    new_password = serializers.CharField(write_only=True)
+    confirm_password = serializers.CharField(write_only=True)
+
+    def validate_new_password(self, value):
+        validate_password(value, user=self.context.get('user'))
+        return value
+
+    def validate(self, data):
+        if data['new_password'] != data['confirm_password']:
+            raise serializers.ValidationError({'confirm_password': 'Passwords do not match.'})
+        return data
+
 class RegisterSerializer(serializers.ModelSerializer):
     confirm_password = serializers.CharField(write_only=True)
     phone = serializers.CharField(required=False, allow_blank=True)
@@ -346,6 +410,10 @@ class RegisterSerializer(serializers.ModelSerializer):
     def validate(self, data):
         if data['password'] != data['confirm_password']:
             raise serializers.ValidationError({"confirm_password": "Passwords do not match."})
+
+        if not _email_recently_verified(data['email']):
+            raise serializers.ValidationError({"email": "Please verify your email address before signing up."})
+
         return data
 
     def create(self, validated_data):

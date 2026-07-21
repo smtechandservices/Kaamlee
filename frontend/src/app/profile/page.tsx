@@ -3,15 +3,17 @@
 import React, { useState, useEffect } from 'react';
 import { useRouter } from 'next/navigation';
 import { motion } from 'framer-motion';
-import { User, Phone, Link as LinkIcon, Loader2, Save, CheckCircle2, Briefcase, X } from 'lucide-react';
+import { User, Phone, Link as LinkIcon, Loader2, Save, CheckCircle2, Briefcase, X, AtSign, Lock } from 'lucide-react';
 import Sidebar from '@/components/Sidebar';
 import PageHeader from '@/components/PageHeader';
+import EmailVerificationGate from '@/components/EmailVerificationGate';
 import { useAuth } from '@/context/AuthContext';
 
 export default function ProfilePage() {
   const { user, token, refreshUser, isLoading: isAuthLoading } = useAuth();
   const router = useRouter();
   
+  const [username, setUsername] = useState('');
   const [firstName, setFirstName] = useState('');
   const [lastName, setLastName] = useState('');
   const [phone, setPhone] = useState('');
@@ -28,6 +30,14 @@ export default function ProfilePage() {
   const [resumeSuccess, setResumeSuccess] = useState(false);
   const [localResumePreview, setLocalResumePreview] = useState<string | null>(null);
 
+  // Change Password card state — separate from the personal details form above
+  const [otpVerified, setOtpVerified] = useState(false);
+  const [newPassword, setNewPassword] = useState('');
+  const [confirmPassword, setConfirmPassword] = useState('');
+  const [isSubmittingPassword, setIsSubmittingPassword] = useState(false);
+  const [passwordError, setPasswordError] = useState('');
+  const [passwordSuccess, setPasswordSuccess] = useState(false);
+
   useEffect(() => {
     if (!isAuthLoading && !token) {
       router.push('/login');
@@ -36,6 +46,7 @@ export default function ProfilePage() {
 
   useEffect(() => {
     if (user) {
+      setUsername(user.username || '');
       setFirstName(user.first_name || '');
       setLastName(user.last_name || '');
       setPhone(user.phone || '');
@@ -71,6 +82,7 @@ export default function ProfilePage() {
           'Authorization': `Token ${token}`
         },
         body: JSON.stringify({
+          username,
           first_name: firstName,
           last_name: lastName,
           phone,
@@ -84,12 +96,58 @@ export default function ProfilePage() {
         setTimeout(() => setSuccess(false), 3000);
       } else {
         const data = await response.json();
-        setError(data.detail || 'Failed to update profile.');
+        setError(data.username?.[0] || data.detail || 'Failed to update profile.');
       }
     } catch (err) {
       setError('An error occurred. Please try again.');
     } finally {
       setIsSubmitting(false);
+    }
+  };
+
+  const handleSubmitPassword = async (e: React.FormEvent) => {
+    e.preventDefault();
+    if (!otpVerified) {
+      setPasswordError('Please verify your email before setting a new password.');
+      return;
+    }
+    setIsSubmittingPassword(true);
+    setPasswordError('');
+    setPasswordSuccess(false);
+
+    try {
+      const response = await fetch(`${process.env.NEXT_PUBLIC_API_URL}/api/user/change-password/`, {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+          'Authorization': `Token ${token}`
+        },
+        body: JSON.stringify({
+          new_password: newPassword,
+          confirm_password: confirmPassword,
+        }),
+      });
+
+      const data = await response.json().catch(() => ({}));
+      if (response.ok) {
+        setOtpVerified(false);
+        setNewPassword('');
+        setConfirmPassword('');
+        setPasswordSuccess(true);
+        setTimeout(() => setPasswordSuccess(false), 3000);
+      } else {
+        setPasswordError(
+          data.new_password?.[0] ||
+          data.confirm_password?.[0] ||
+          data.non_field_errors?.[0] ||
+          data.detail ||
+          'Failed to update password.'
+        );
+      }
+    } catch (err) {
+      setPasswordError('An error occurred. Please try again.');
+    } finally {
+      setIsSubmittingPassword(false);
     }
   };
 
@@ -173,6 +231,21 @@ export default function ProfilePage() {
                 Profile updated successfully!
               </motion.div>
             )}
+
+            <div className="space-y-2 sm:space-y-3">
+              <label className="text-[10px] sm:text-xs font-bold text-[#555] uppercase tracking-widest ml-1">Username</label>
+              <div className="relative">
+                <AtSign className="absolute left-4 top-1/2 -translate-y-1/2 text-[#444] w-4 h-4 sm:w-[18px] sm:h-[18px]" />
+                <input
+                  type="text"
+                  required
+                  value={username}
+                  onChange={(e) => setUsername(e.target.value)}
+                  className="w-full bg-[#0a0a0a] border border-[#222] rounded-xl sm:rounded-2xl pl-11 sm:pl-12 pr-4 py-3.5 sm:py-4 text-xs sm:text-sm focus:border-green-500/50 outline-none transition-all"
+                />
+              </div>
+              <p className="text-[9px] sm:text-[10px] text-[#555] ml-1">This is also your public portfolio link: kaamlee.in/portfolio/{username || '...'}</p>
+            </div>
 
             <div className="grid grid-cols-1 sm:grid-cols-2 gap-5 sm:gap-6">
               <div className="space-y-2 sm:space-y-3">
@@ -343,6 +416,84 @@ export default function ProfilePage() {
             </div>
           </form>
         </div>
+        </div>
+
+        {/* Change Password card */}
+        <div className="mt-4 max-w-xl bg-[#111] border border-[#222] rounded-[24px] sm:rounded-[32px] p-6 sm:p-8 shadow-2xl">
+          <div className="flex items-center gap-3 mb-6">
+            <Lock className="w-5 h-5 text-green-500" />
+            <h2 className="text-sm font-black uppercase tracking-widest text-white">Change Password</h2>
+          </div>
+
+          <form onSubmit={handleSubmitPassword} className="space-y-6">
+            {passwordError && (
+              <div className="bg-red-500/10 border border-red-500/20 text-red-400 text-sm py-4 px-5 rounded-2xl">
+                {passwordError}
+              </div>
+            )}
+
+            {passwordSuccess && (
+              <motion.div
+                initial={{ opacity: 0, scale: 0.95 }}
+                animate={{ opacity: 1, scale: 1 }}
+                className="bg-green-500/10 border border-green-500/20 text-green-400 text-sm py-4 px-5 rounded-2xl flex items-center gap-3"
+              >
+                <CheckCircle2 size={18} />
+                Password updated successfully!
+              </motion.div>
+            )}
+
+            <div className="space-y-2 sm:space-y-3">
+              <label className="text-[10px] sm:text-xs font-bold text-[#555] uppercase tracking-widest ml-1">Verify Your Identity</label>
+              <EmailVerificationGate
+                email={user?.email || ''}
+                verified={otpVerified}
+                onVerified={() => setOtpVerified(true)}
+                onError={setPasswordError}
+              />
+            </div>
+
+            <div className="space-y-2 sm:space-y-3">
+              <label className="text-[10px] sm:text-xs font-bold text-[#555] uppercase tracking-widest ml-1">New Password</label>
+              <div className="relative">
+                <Lock className="absolute left-4 top-1/2 -translate-y-1/2 text-[#444] w-4 h-4 sm:w-[18px] sm:h-[18px]" />
+                <input
+                  type="password"
+                  required
+                  autoComplete="new-password"
+                  value={newPassword}
+                  onChange={(e) => setNewPassword(e.target.value)}
+                  className="w-full bg-[#0a0a0a] border border-[#222] rounded-xl sm:rounded-2xl pl-11 sm:pl-12 pr-4 py-3.5 sm:py-4 text-xs sm:text-sm focus:border-green-500/50 outline-none transition-all"
+                />
+              </div>
+            </div>
+
+            <div className="space-y-2 sm:space-y-3">
+              <label className="text-[10px] sm:text-xs font-bold text-[#555] uppercase tracking-widest ml-1">Confirm New Password</label>
+              <div className="relative">
+                <Lock className="absolute left-4 top-1/2 -translate-y-1/2 text-[#444] w-4 h-4 sm:w-[18px] sm:h-[18px]" />
+                <input
+                  type="password"
+                  required
+                  autoComplete="new-password"
+                  value={confirmPassword}
+                  onChange={(e) => setConfirmPassword(e.target.value)}
+                  className="w-full bg-[#0a0a0a] border border-[#222] rounded-xl sm:rounded-2xl pl-11 sm:pl-12 pr-4 py-3.5 sm:py-4 text-xs sm:text-sm focus:border-green-500/50 outline-none transition-all"
+                />
+              </div>
+            </div>
+
+            <div className="pt-2 sm:pt-4">
+              <button
+                type="submit"
+                disabled={isSubmittingPassword || !otpVerified}
+                className="cursor-pointer w-full bg-white text-black font-black uppercase tracking-widest py-3.5 sm:py-4 rounded-xl sm:rounded-2xl hover:bg-[#ededed] active:scale-[0.98] transition-all flex items-center justify-center gap-2 disabled:opacity-50 text-xs sm:text-sm"
+              >
+                {isSubmittingPassword ? <Loader2 className="animate-spin w-4 h-4 sm:w-5 sm:h-5" /> : <Save className="w-4 h-4 sm:w-5 sm:h-5" />}
+                Update Password
+              </button>
+            </div>
+          </form>
         </div>
       </div>
         </div>

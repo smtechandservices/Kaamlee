@@ -1,4 +1,5 @@
 import { notFound } from 'next/navigation';
+import { headers } from 'next/headers';
 import type { Metadata } from 'next';
 import type { PortfolioData } from '@/components/portfolio/types';
 import PortfolioTemplate from '@/components/portfolio/PortfolioTemplate';
@@ -27,7 +28,20 @@ async function getPortfolio(username: string): Promise<PortfolioResult> {
   const apiUrl = process.env.NEXT_PUBLIC_API_URL || 'http://localhost:8000';
   const url = `${apiUrl}/api/portfolio/${username}/`;
   try {
-    const res = await fetch(url, { cache: 'no-store' });
+    // This fetch runs on the Next.js server, not in the visitor's browser, so
+    // the outgoing request needs the real visitor's IP/UA forwarded explicitly
+    // — otherwise the backend records this server's own IP for every view.
+    const incomingHeaders = await headers();
+    const forwardedFor = incomingHeaders.get('x-forwarded-for');
+    const realIp = incomingHeaders.get('x-real-ip');
+    const userAgent = incomingHeaders.get('user-agent');
+    const res = await fetch(url, {
+      cache: 'no-store',
+      headers: {
+        ...(forwardedFor ? { 'X-Forwarded-For': forwardedFor } : realIp ? { 'X-Forwarded-For': realIp } : {}),
+        ...(userAgent ? { 'User-Agent': userAgent } : {}),
+      },
+    });
     if (!res.ok) {
       const reason = await res.json().then((body) => body?.error).catch(() => undefined);
       // NOT_PUBLIC_REASON / NOTHING_TO_SHOW_REASONS are expected, handled outcomes

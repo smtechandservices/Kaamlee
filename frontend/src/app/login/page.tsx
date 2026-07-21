@@ -6,6 +6,7 @@ import { motion } from 'framer-motion';
 import { ArrowLeft, User, Lock, Loader2, Eye, EyeOff } from 'lucide-react';
 import { useAuth } from '@/context/AuthContext';
 import GoogleSignInButton from '@/components/GoogleSignInButton';
+import EmailOtpForm from '@/components/EmailOtpForm';
 
 export default function LoginPage() {
   const [username, setUsername] = useState('');
@@ -13,6 +14,7 @@ export default function LoginPage() {
   const [error, setError] = useState('');
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [showPassword, setShowPassword] = useState(false);
+  const [useOtp, setUseOtp] = useState(false);
   const { login } = useAuth();
 
   const handleSubmit = async (e: React.FormEvent) => {
@@ -83,51 +85,65 @@ export default function LoginPage() {
               <div className="flex-1 h-px bg-[#222]" />
             </div>
 
-            <div className="space-y-2">
-              <label className="text-sm font-bold text-[#a1a1a1] uppercase ml-1">Username</label>
-              <div className="relative">
-                <User size={16} className="absolute left-4 top-1/2 -translate-y-1/2 text-[#444]" />
-                <input 
-                  type="text"
-                  required
-                  value={username}
-                  onChange={(e) => setUsername(e.target.value)}
-                  placeholder="johndoe"
-                  className="w-full bg-[#0a0a0a] border border-[#222] rounded-xl pl-12 pr-4 py-3 text-md focus:border-green-500/50 outline-none transition-all placeholder-[#333]"
-                />
-              </div>
-            </div>
+            {useOtp ? (
+              <EmailOtpForm onError={setError} setLoading={setIsSubmitting} />
+            ) : (
+              <>
+                <div className="space-y-2">
+                  <label className="text-sm font-bold text-[#a1a1a1] uppercase ml-1">Username</label>
+                  <div className="relative">
+                    <User size={16} className="absolute left-4 top-1/2 -translate-y-1/2 text-[#444]" />
+                    <input
+                      type="text"
+                      required
+                      value={username}
+                      onChange={(e) => setUsername(e.target.value)}
+                      placeholder="johndoe"
+                      className="w-full bg-[#0a0a0a] border border-[#222] rounded-xl pl-12 pr-4 py-3 text-md focus:border-green-500/50 outline-none transition-all placeholder-[#333]"
+                    />
+                  </div>
+                </div>
 
-            <div className="space-y-2">
-              <div className="flex items-center justify-between ml-1">
-                <label className="text-sm font-bold text-[#a1a1a1] uppercase">Password</label>
-              </div>
-              <div className="relative">
-                <Lock size={16} className="absolute left-4 top-1/2 -translate-y-1/2 text-[#444]" />
-                <input 
-                  type={showPassword ? "text" : "password"}
-                  required
-                  value={password}
-                  onChange={(e) => setPassword(e.target.value)}
-                  placeholder="••••••••"
-                  className="w-full bg-[#0a0a0a] border border-[#222] rounded-xl pl-12 pr-12 py-3 text-md focus:border-green-500/50 outline-none transition-all placeholder-[#333]"
-                />
+                <div className="space-y-2">
+                  <div className="flex items-center justify-between ml-1">
+                    <label className="text-sm font-bold text-[#a1a1a1] uppercase">Password</label>
+                  </div>
+                  <div className="relative">
+                    <Lock size={16} className="absolute left-4 top-1/2 -translate-y-1/2 text-[#444]" />
+                    <input
+                      type={showPassword ? "text" : "password"}
+                      required
+                      value={password}
+                      onChange={(e) => setPassword(e.target.value)}
+                      placeholder="••••••••"
+                      className="w-full bg-[#0a0a0a] border border-[#222] rounded-xl pl-12 pr-12 py-3 text-md focus:border-green-500/50 outline-none transition-all placeholder-[#333]"
+                    />
+                    <button
+                      type="button"
+                      onClick={() => setShowPassword(!showPassword)}
+                      className="absolute right-4 top-1/2 -translate-y-1/2 text-[#444] hover:text-[#888] transition-colors z-10 cursor-pointer"
+                    >
+                      {showPassword ? <EyeOff size={16} /> : <Eye size={16} />}
+                    </button>
+                  </div>
+                </div>
+
                 <button
-                  type="button"
-                  onClick={() => setShowPassword(!showPassword)}
-                  className="absolute right-4 top-1/2 -translate-y-1/2 text-[#444] hover:text-[#888] transition-colors z-10 cursor-pointer"
+                  type="submit"
+                  disabled={isSubmitting}
+                  className="cursor-pointer w-full bg-white text-black font-bold py-3.5 rounded-xl mt-4 hover:bg-[#ededed] transition-all flex items-center justify-center gap-2 disabled:opacity-50"
                 >
-                  {showPassword ? <EyeOff size={16} /> : <Eye size={16} />}
+                  {isSubmitting ? <Loader2 size={18} className="animate-spin" /> : 'Log In'}
                 </button>
-              </div>
-            </div>
+              </>
+            )}
 
-            <button 
-              type="submit"
-              disabled={isSubmitting}
-              className="cursor-pointer w-full bg-white text-black font-bold py-3.5 rounded-xl mt-4 hover:bg-[#ededed] transition-all flex items-center justify-center gap-2 disabled:opacity-50"
+            <button
+              type="button"
+              onClick={() => { setUseOtp(!useOtp); setError(''); }}
+              className="cursor-pointer w-full text-center text-xs text-[#666] hover:text-white transition-colors"
             >
-              {isSubmitting ? <Loader2 size={18} className="animate-spin" /> : 'Log In'}
+              {useOtp ? 'Sign in with username & password instead' : 'Sign in with a one-time email code instead'}
             </button>
           </form>
 

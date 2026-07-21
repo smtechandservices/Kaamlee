@@ -63,6 +63,8 @@ REST_FRAMEWORK = {
         # CheckExistenceView must stay unauthenticated (used pre-signup), so it's
         # throttled per-IP instead to make username/email/phone enumeration impractical.
         'check-existence': '20/minute',
+        'email-otp-request': '5/minute',
+        'email-otp-verify': '10/minute',
     },
 }
 
@@ -184,6 +186,11 @@ RAZORPAY_KEY_SECRET = os.getenv('RAZORPAY_KEY_SECRET')
 # Google Sign-In — Client ID from Google Cloud Console (OAuth 2.0 Client, Web application).
 # Must match NEXT_PUBLIC_GOOGLE_CLIENT_ID on the frontend; used to verify Google ID tokens.
 GOOGLE_CLIENT_ID = os.getenv('GOOGLE_CLIENT_ID', '')
+
+# Shared secret the frontend server presents (as `Authorization: Bearer <secret>`) when
+# requesting a raw OTP code to email out — same pattern as CRON_SECRET uses for the
+# scraper cron. Must match OTP_INTERNAL_SECRET in the frontend's server-only env.
+OTP_INTERNAL_SECRET = os.getenv('OTP_INTERNAL_SECRET', '')
 
 # Request Logging — 5 MB per file, keep last 5 files (25 MB max on disk)
 LOGS_DIR = BASE_DIR / 'logs'

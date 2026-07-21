@@ -6,11 +6,13 @@ import { motion, AnimatePresence } from 'framer-motion';
 import { ArrowLeft, User, Mail, Lock, Loader2, Phone, Link as LinkIcon, Eye, EyeOff, CheckCircle2, ChevronRight } from 'lucide-react';
 import { useAuth } from '@/context/AuthContext';
 import GoogleSignInButton from '@/components/GoogleSignInButton';
+import EmailVerificationGate from '@/components/EmailVerificationGate';
 
 export default function SignupPage() {
   const [step, setStep] = useState(1);
   const [username, setUsername] = useState('');
   const [email, setEmail] = useState('');
+  const [emailVerified, setEmailVerified] = useState(false);
   const [password, setPassword] = useState('');
   const [confirmPassword, setConfirmPassword] = useState('');
   const [phone, setPhone] = useState('');
@@ -58,6 +60,10 @@ export default function SignupPage() {
     } else if (step === 2) {
       if (!email || !phone) {
         setError('Please fill in all required fields.');
+        return;
+      }
+      if (!emailVerified) {
+        setError('Please verify your email address before continuing.');
         return;
       }
       setIsValidating(true);
@@ -224,7 +230,7 @@ export default function SignupPage() {
                     </div>
                     <div className="space-y-2">
                       <label className="text-xs sm:text-sm font-bold text-[#a1a1a1] uppercase ml-1">Last Name</label>
-                      <input 
+                      <input
                         type="text"
                         required
                         value={lastName}
@@ -239,7 +245,7 @@ export default function SignupPage() {
                     <label className="text-sm font-bold text-[#a1a1a1] uppercase ml-1">Username</label>
                     <div className="relative">
                       <User size={16} className="absolute left-4 top-1/2 -translate-y-1/2 text-[#444]" />
-                      <input 
+                      <input
                         type="text"
                         required
                         value={username}
@@ -254,7 +260,7 @@ export default function SignupPage() {
                     <label className="text-sm font-bold text-[#a1a1a1] uppercase ml-1">LinkedIn Profile</label>
                     <div className="relative">
                       <LinkIcon size={16} className="absolute left-4 top-1/2 -translate-y-1/2 text-[#444]" />
-                      <input 
+                      <input
                         type="url"
                         value={linkedinUrl}
                         onChange={(e) => setLinkedinUrl(e.target.value)}
@@ -272,15 +278,22 @@ export default function SignupPage() {
                     <label className="text-sm font-bold text-[#a1a1a1] uppercase ml-1">Email Address</label>
                     <div className="relative">
                       <Mail size={16} className="absolute left-4 top-1/2 -translate-y-1/2 text-[#444]" />
-                      <input 
+                      <input
                         type="email"
                         required
                         value={email}
-                        onChange={(e) => setEmail(e.target.value)}
+                        onChange={(e) => { setEmail(e.target.value); setEmailVerified(false); }}
                         placeholder="name@example.com"
                         className="w-full bg-[#0a0a0a] border border-[#222] rounded-xl pl-12 pr-4 py-3 text-sm focus:border-green-500/50 outline-none transition-all placeholder-[#333]"
                       />
                     </div>
+                    <EmailVerificationGate
+                      email={email}
+                      verified={emailVerified}
+                      onVerified={() => setEmailVerified(true)}
+                      onError={setError}
+                      purpose="signup"
+                    />
                   </div>
 
                   <div className="space-y-2">
@@ -360,10 +373,10 @@ export default function SignupPage() {
                 )}
                 
                 {step < 3 ? (
-                  <button 
+                  <button
                     type="button"
                     onClick={handleNext}
-                    disabled={isValidating}
+                    disabled={isValidating || (step === 2 && !emailVerified)}
                     className="cursor-pointer flex-[2] bg-white text-black font-bold py-3.5 rounded-xl hover:bg-[#ededed] transition-all flex items-center justify-center gap-2 disabled:opacity-50"
                   >
                     {isValidating ? <Loader2 size={18} className="animate-spin" /> : (

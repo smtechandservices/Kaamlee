@@ -7,7 +7,8 @@ from .views import (
     CheckExistenceView, AdminLoginView, AdminUserViewSet, CategoriesView, CountriesView,
     FeedbackView, AdminFeedbackView, PublicPortfolioView, MyPortfolioView, MyPortfolioContentView, PortfolioAnalyticsView,
     RequestLogsView, CustomCVListCreateView, CustomCVDetailView, CustomCVTailorView, CustomCVExportView,
-    JobApplicationKitView, AtsKeywordsView, ApplicationsView, AdminJobsView,
+    JobApplicationKitView, AtsKeywordsView, ApplicationsView, AdminJobsView, ChangePasswordView,
+    RequestEmailOtpView, VerifyEmailOtpView, ConfirmEmailOtpView,
 )
 
 router = DefaultRouter()
@@ -20,9 +21,13 @@ urlpatterns = [
     # AUTHENTICATION & PROFILE
     # ==========================================
     path('user/', UserView.as_view(), name='user'),
+    path('user/change-password/', ChangePasswordView.as_view(), name='change-password'),
     path('login/', obtain_auth_token, name='login'),
     path('signup/', SignupView.as_view(), name='signup'),
     path('auth/google/', GoogleAuthView.as_view(), name='auth-google'),
+    path('otp/request/', RequestEmailOtpView.as_view(), name='otp-request'),
+    path('otp/verify/', VerifyEmailOtpView.as_view(), name='otp-verify'),
+    path('otp/confirm/', ConfirmEmailOtpView.as_view(), name='otp-confirm'),
     path('admin-login/', AdminLoginView.as_view(), name='admin-login'),
     
     # ==========================================

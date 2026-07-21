@@ -27,6 +27,20 @@ def save_user_profile(sender, instance, **kwargs):
     if hasattr(instance, 'profile'):
         instance.profile.save()
 
+class EmailOTP(models.Model):
+    email = models.EmailField(db_index=True)
+    code_hash = models.CharField(max_length=128)
+    attempts = models.PositiveSmallIntegerField(default=0)
+    is_used = models.BooleanField(default=False)
+    expires_at = models.DateTimeField()
+    created_at = models.DateTimeField(auto_now_add=True)
+
+    class Meta:
+        ordering = ['-created_at']
+
+    def __str__(self):
+        return f"OTP for {self.email} ({'used' if self.is_used else 'active'})"
+
 class Company(models.Model):
     name = models.CharField(max_length=255, unique=True)
     domain = models.CharField(max_length=255, blank=True)

@@ -14,9 +14,12 @@ from .serializers import (
     FeedbackSerializer, PortfolioSettingsSerializer, PublicPortfolioSerializer,
     PortfolioViewSerializer, CustomCVSerializer, CustomCVCreateSerializer, tailor_resume_with_groq,
     JobApplicationKitSerializer, generate_application_kit_with_groq, CompanySerializer,
-    BookmarkSerializer, AdminJobSerializer,
+    BookmarkSerializer, AdminJobSerializer, ChangePasswordSerializer, AdminSetPasswordSerializer,
 )
-from .google_auth import get_or_create_google_user
+from .google_auth import get_or_create_google_user, _unique_username_from_email
+from .email_otp import create_otp, verify_otp
+from django.core.validators import validate_email
+from django.core.exceptions import ValidationError as DjangoValidationError
 from scripts.ats_scoring import score_cv, get_profession_keywords, get_all_profession_keywords
 from scripts.cv_export import render_cv_pdf, render_cv_docx
 from django.http import HttpResponse
@@ -28,11 +31,14 @@ from django.contrib.auth.models import User
 from django.utils import timezone
 from datetime import timedelta
 import ipaddress
+import logging
 import os
 import random
 import requests
 import time
 from django.conf import settings
+
+logger = logging.getLogger(__name__)
 from user_agents import parse as parse_user_agent
 
 class SignupView(generics.CreateAPIView):
@@ -71,6 +77,96 @@ class GoogleAuthView(views.APIView):
             "token": token.key
         })
 
+class RequestEmailOtpView(views.APIView):
+    """Issues a one-time code for the given email and hands the raw code back
+    to the caller so it can be emailed. Only callable by the frontend server
+    (which owns SMTP delivery), authenticated via a shared secret — mirrors
+    the CRON_SECRET bearer-token check used by TriggerCompanyScrapeView.
+    """
+    permission_classes = [permissions.AllowAny]
+    throttle_scope = 'email-otp-request'
+    throttle_classes = [ScopedRateThrottle]
+
+    def post(self, request):
+        internal_secret = settings.OTP_INTERNAL_SECRET
+        auth_header = request.headers.get('Authorization', '')
+        if not internal_secret or auth_header != f"Bearer {internal_secret}":
+            return Response({"error": "Not authorized."}, status=401)
+
+        email = (request.data.get('email') or '').strip().lower()
+        purpose = request.data.get('purpose')
+        try:
+            validate_email(email)
+        except DjangoValidationError:
+            return Response({"error": "Enter a valid email address."}, status=400)
+
+        if purpose == 'signup' and User.objects.filter(email__iexact=email).exists():
+            return Response({"error": "Email is already registered. Please log in instead."}, status=400)
+
+        try:
+            code = create_otp(email)
+        except ValueError as e:
+            return Response({"error": str(e)}, status=429)
+
+        return Response({"code": code})
+
+
+class VerifyEmailOtpView(views.APIView):
+    permission_classes = [permissions.AllowAny]
+    throttle_scope = 'email-otp-verify'
+    throttle_classes = [ScopedRateThrottle]
+
+    def post(self, request):
+        email = (request.data.get('email') or '').strip().lower()
+        code = (request.data.get('code') or '').strip()
+        if not email or not code:
+            return Response({"error": "Email and code are required."}, status=400)
+
+        try:
+            verify_otp(email, code)
+        except ValueError as e:
+            return Response({"error": str(e)}, status=400)
+
+        user = User.objects.filter(email__iexact=email).first()
+        created = False
+        if not user:
+            user = User.objects.create_user(username=_unique_username_from_email(email), email=email)
+            user.set_unusable_password()
+            user.save()
+            created = True
+
+        token, _ = Token.objects.get_or_create(user=user)
+        return Response({
+            "user": UserSerializer(user).data,
+            "token": token.key,
+            "created": created,
+        })
+
+
+class ConfirmEmailOtpView(views.APIView):
+    """Verify-only variant used to gate the signup wizard's Contact Details
+    step — unlike VerifyEmailOtpView, this never creates or logs in a user;
+    it just checks the code and leaves EmailOTP.is_used=True as the proof
+    RegisterSerializer looks for at final submission.
+    """
+    permission_classes = [permissions.AllowAny]
+    throttle_scope = 'email-otp-verify'
+    throttle_classes = [ScopedRateThrottle]
+
+    def post(self, request):
+        email = (request.data.get('email') or '').strip().lower()
+        code = (request.data.get('code') or '').strip()
+        if not email or not code:
+            return Response({"error": "Email and code are required."}, status=400)
+
+        try:
+            verify_otp(email, code)
+        except ValueError as e:
+            return Response({"error": str(e)}, status=400)
+
+        return Response({"verified": True})
+
+
 class UserView(generics.RetrieveUpdateAPIView):
     serializer_class = UserSerializer
     permission_classes = [permissions.IsAuthenticated]
@@ -78,6 +174,15 @@ class UserView(generics.RetrieveUpdateAPIView):
         return self.request.user
     def perform_update(self, serializer):
         serializer.save()
+
+class ChangePasswordView(views.APIView):
+    permission_classes = [permissions.IsAuthenticated]
+
+    def post(self, request):
+        serializer = ChangePasswordSerializer(data=request.data, context={'request': request})
+        serializer.is_valid(raise_exception=True)
+        serializer.save()
+        return Response({'detail': 'Password updated successfully.'})
 
 class RecentJobsView(generics.ListAPIView):
     serializer_class = RecentJobSerializer
@@ -633,6 +738,15 @@ class AdminUserViewSet(viewsets.ModelViewSet):
     def get_queryset(self):
         return User.objects.select_related('profile', 'portfolio').order_by('-date_joined')
 
+    @action(detail=True, methods=['post'], url_path='set-password')
+    def set_password(self, request, pk=None):
+        user = self.get_object()
+        serializer = AdminSetPasswordSerializer(data=request.data, context={'user': user})
+        serializer.is_valid(raise_exception=True)
+        user.set_password(serializer.validated_data['new_password'])
+        user.save()
+        return Response({'detail': 'Password updated successfully.'})
+
 class CategoriesView(views.APIView):
     permission_classes = [permissions.AllowAny]
 
@@ -723,19 +837,25 @@ def resolve_country(ip):
     if cached is not None:
         return cached
 
-    country, country_code = '', ''
     try:
         resp = requests.get(
             f'http://ip-api.com/json/{ip}',
             params={'fields': 'status,country,countryCode'},
-            timeout=2,
+            timeout=4,
         )
         data = resp.json()
-        if data.get('status') == 'success':
-            country = data.get('country') or ''
-            country_code = data.get('countryCode') or ''
     except Exception:
-        pass
+        logger.warning('portfolio geo lookup failed for %s', ip, exc_info=True)
+        # Transient (timeout/network) failure — don't cache it, so the next
+        # view for this IP gets a fresh retry instead of a 24h blank result.
+        return '', ''
+
+    country, country_code = '', ''
+    if data.get('status') == 'success':
+        country = data.get('country') or ''
+        country_code = data.get('countryCode') or ''
+    else:
+        logger.warning('portfolio geo lookup returned non-success for %s: %s', ip, data)
 
     cache.set(cache_key, (country, country_code), 60 * 60 * 24)
     return country, country_code
