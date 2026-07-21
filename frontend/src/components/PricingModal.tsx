@@ -194,6 +194,8 @@ export default function PricingModal({ isOpen, onClose, showCloseButton = true }
                         {[
                           'Auto-apply',
                           'AI enhancements',
+                          'Mock AI interview feedback',
+                          'Aptitude prep and tests',
                         ].map((feat) => (
                           <div key={feat} className="flex items-center gap-2 text-[11px] text-[#444] mb-2">
                             <Clock size={11} className="text-yellow-700/50 shrink-0" />
