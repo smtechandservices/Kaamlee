@@ -119,9 +119,9 @@ export default function TransactionsPage() {
               animate={{ opacity: 1, x: 0 }}
               className="bg-[#111] border border-[#222] rounded-3xl p-8 relative overflow-hidden group"
             >
-              <div className="absolute top-0 right-0 p-8 opacity-[0.02] group-hover:opacity-[0.05] transition-opacity">
+              {/* <div className="absolute top-0 right-0 p-8 opacity-[0.02] group-hover:opacity-[0.05] transition-opacity">
                 <Shield size={120} />
-              </div>
+              </div> */}
               
               <div className="relative z-10">
                 <div className="space-y-4">
