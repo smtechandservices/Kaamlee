@@ -1,0 +1,578 @@
+[
+  {
+    "kind": "open",
+    "id": "intv-001",
+    "category": "interview",
+    "topic": "hr-questions",
+    "difficulty": "easy",
+    "question": "Tell me about yourself.",
+    "modelAnswer": "I'm a backend-focused software engineer with three years of experience building scalable APIs, most recently at a fintech startup where I owned the payments reconciliation service. I started out doing QA automation, which taught me to think about edge cases before I write a line of code, and that habit has stuck with me as I moved into backend development. Outside of my day job, I contribute to a couple of open-source logging libraries, which keeps me sharp on things like performance profiling. What draws me to this role specifically is the chance to work on distributed systems at a much larger scale than I have before.",
+    "tips": [
+      "Keep it to under two minutes and structure it as present, past, future.",
+      "Lead with your current role and one concrete achievement, not a chronological resume recap.",
+      "End with why you're interested in this specific role or company to create a natural segue."
+    ],
+    "tags": ["self-introduction", "communication"],
+    "estimatedTime": 90
+  },
+  {
+    "kind": "open",
+    "id": "intv-002",
+    "category": "interview",
+    "topic": "hr-questions",
+    "difficulty": "medium",
+    "question": "Why should we hire you?",
+    "modelAnswer": "Because I bring a rare combination of hands-on delivery experience and the ability to communicate technical tradeoffs to non-technical stakeholders. In my last role I rebuilt a reporting pipeline that cut a client's month-end close time from five days to one, and I did that by first spending a week just listening to what the finance team actually needed. That same mix of technical depth and client empathy is exactly what large-scale service delivery at a company like TCS demands. I also learn fast in unfamiliar domains, having picked up healthcare compliance requirements from scratch in my current project within a month.",
+    "tips": [
+      "Anchor your answer in one or two concrete achievements rather than a list of adjectives.",
+      "Connect your strengths directly to what the role or company actually needs.",
+      "Avoid generic claims like 'I'm hardworking' without evidence behind them."
+    ],
+    "tags": ["tcs", "value-proposition"],
+    "estimatedTime": 150
+  },
+  {
+    "kind": "open",
+    "id": "intv-003",
+    "category": "interview",
+    "topic": "hr-questions",
+    "difficulty": "medium",
+    "question": "Where do you see yourself in five years?",
+    "modelAnswer": "In five years, I want to have grown from an individual contributor into someone who can lead a small team on a product area end to end, while still staying close to the code. Concretely, over the next two years I want to deepen my expertise in distributed systems, and then start mentoring junior engineers and owning architectural decisions for at least one major service. I'm not fixated on a job title, but I do want to be in a place where I've built something used by millions of people and where I've helped a few engineers grow the way senior folks helped me. I see this role as a strong first step toward that because of the scale of the systems here.",
+    "tips": [
+      "Show ambition without sounding like you'll leave the moment a better offer appears.",
+      "Tie your five-year vision back to skills or scope this specific company can offer.",
+      "Avoid overly rigid answers like a specific job title; focus on scope and impact instead."
+    ],
+    "tags": ["career-goals"],
+    "estimatedTime": 150
+  },
+  {
+    "kind": "open",
+    "id": "intv-004",
+    "category": "interview",
+    "topic": "technical-questions",
+    "difficulty": "hard",
+    "question": "Walk me through a technically challenging problem you solved recently.",
+    "modelAnswer": "Last year our checkout service started timing out under peak load, and the on-call rotation was getting paged every night during a flash sale. I traced it to a database connection pool that was being exhausted because a downstream inventory service had gotten slower without anyone noticing. Instead of just bumping the pool size as a quick fix, I added circuit breakers around the inventory calls and introduced a cache with a short TTL for read-heavy inventory checks. That cut p99 latency by 70% and the incident rate dropped to zero over the following three sales events. The hardest part wasn't the code, it was convincing the team to invest a week in root-causing instead of applying the quick patch everyone wanted.",
+    "tips": [
+      "Pick a problem with real technical depth, not just a bug fix.",
+      "Explain your diagnostic process, not just the final solution.",
+      "Quantify the impact with a specific metric like latency, cost, or incident count."
+    ],
+    "tags": ["amazon", "problem-solving"],
+    "estimatedTime": 240
+  },
+  {
+    "kind": "open",
+    "id": "intv-005",
+    "category": "interview",
+    "topic": "technical-questions",
+    "difficulty": "easy",
+    "question": "How do you stay updated with new technologies in your field?",
+    "modelAnswer": "I follow a small set of newsletters like TLDR and a couple of engineering blogs from companies whose scale I admire, but my main habit is building something small with a new tool before I trust it. When I wanted to understand vector databases, I didn't just read about them, I built a tiny semantic search tool over my own notes over a weekend. I also block out time every other Friday to read one paper or RFC that's relevant to my stack, which keeps me from only learning things reactively when a project demands it.",
+    "tips": [
+      "Give a specific habit or routine rather than a vague 'I read blogs' answer.",
+      "Mention how you validate learning through building something, not just consuming content.",
+      "Keep it brief since this is usually a warm-up question."
+    ],
+    "tags": ["continuous-learning"],
+    "estimatedTime": 90
+  },
+  {
+    "kind": "open",
+    "id": "intv-006",
+    "category": "interview",
+    "topic": "technical-questions",
+    "difficulty": "medium",
+    "question": "Describe a time you had to learn a new technology quickly for a project.",
+    "modelAnswer": "When our team decided to migrate a service to gRPC from REST, I had never used protocol buffers in production before, and we had three weeks before a client demo. I spent the first weekend building a small toy service end to end to understand streaming and code generation, then paired with a teammate who had used it before to review my first real implementation. I documented what I learned as I went, which ended up becoming the onboarding guide the rest of the team used later. We shipped the migration on time and it actually reduced payload size by 40% for our mobile clients.",
+    "tips": [
+      "Show a concrete method for fast learning, like building a toy project first.",
+      "Mention who you leaned on and how, since asking for help is a strength, not a weakness.",
+      "Close with the outcome to prove the learning translated into delivery."
+    ],
+    "tags": ["adaptability"],
+    "estimatedTime": 150
+  },
+  {
+    "kind": "open",
+    "id": "intv-007",
+    "category": "interview",
+    "topic": "behavioral-questions",
+    "difficulty": "medium",
+    "question": "Tell me about a time you failed.",
+    "modelAnswer": "In my second year as a developer, I was asked to lead a small internal tool project on my own for the first time and needed to deliver a scheduling tool for the operations team within six weeks. I got excited about the technical design and skipped writing down requirements properly, assuming I understood what ops needed. I demoed a polished tool that missed a core requirement around shift swapping, and we lost two weeks rebuilding it. Since then, I always start any project, however small, with a one-page written requirements doc that the stakeholder signs off on before I write code.",
+    "tips": [
+      "Choose a real failure with a genuine consequence, not a humblebrag disguised as a flaw.",
+      "Be explicit about what you learned and how your behavior changed afterward.",
+      "Keep the tone matter-of-fact rather than overly self-critical."
+    ],
+    "tags": ["failure", "resilience"],
+    "estimatedTime": 150
+  },
+  {
+    "kind": "open",
+    "id": "intv-008",
+    "category": "interview",
+    "topic": "behavioral-questions",
+    "difficulty": "hard",
+    "question": "Describe a situation where you had to work under pressure.",
+    "modelAnswer": "Two weeks before a major client go-live, our lead architect went on unplanned medical leave and I was the most senior person left on the integration workstream, needing to finalize and test API contracts with a much smaller team than planned. I broke the remaining work into daily checkpoints, took over the client calls myself even though that wasn't my usual role, and flagged early to my manager exactly which items were at risk so there were no surprises later. We went live on schedule with only one minor issue, which we fixed within a day, and the client specifically called out how well-communicated the process had been despite the disruption. I learned that under pressure, over-communicating status is more valuable than trying to look like everything is under control.",
+    "tips": [
+      "Use the STAR structure explicitly so the interviewer can follow the logic easily.",
+      "Highlight a decision you made under pressure, not just that you 'stayed calm'.",
+      "End with a concrete result and a lesson you've since applied elsewhere."
+    ],
+    "tags": ["infosys", "pressure"],
+    "estimatedTime": 240
+  },
+  {
+    "kind": "open",
+    "id": "intv-009",
+    "category": "interview",
+    "topic": "behavioral-questions",
+    "difficulty": "medium",
+    "question": "Give an example of a time you went above and beyond at work.",
+    "modelAnswer": "During a release week, I noticed our deployment runbook was scattered across five different Slack threads and nobody owned it, which was causing avoidable mistakes during releases. It wasn't part of my role, but I spent a weekend consolidating it into a single living document and set up a quick review with the on-call team to validate it. It's now the standard reference every new engineer gets during onboarding, and our release-related incidents dropped noticeably in the following quarter. I did it because I'd personally been burned by outdated instructions during an on-call shift and didn't want anyone else to go through that.",
+    "tips": [
+      "Pick an example that shows initiative beyond your formal job description.",
+      "Tie the extra effort back to a measurable team benefit, not just personal satisfaction.",
+      "Keep the motivation genuine rather than framing it as pure self-sacrifice."
+    ],
+    "tags": ["initiative"],
+    "estimatedTime": 150
+  },
+  {
+    "kind": "open",
+    "id": "intv-010",
+    "category": "interview",
+    "topic": "star-method",
+    "difficulty": "hard",
+    "question": "Tell me about a time you had to persuade someone to see things your way.",
+    "modelAnswer": "Situation: My team wanted to rewrite a legacy billing module from scratch, but I believed an incremental strangler-fig approach would be safer given how revenue-critical it was. Task: I needed to convince both my manager and two senior engineers who favored the rewrite. Action: Instead of arguing in the meeting, I put together a short doc comparing failure scenarios and timelines for both approaches, including a real incident from another team's failed rewrite as a case study, and I proposed a two-week spike to test the incremental approach on one small piece first. Result: The spike results were convincing enough that the team adopted the incremental strategy, and we shipped the full migration over four months with zero billing incidents.",
+    "tips": [
+      "Show that you persuaded through evidence and a low-risk trial, not through authority or insistence.",
+      "Make clear you respected the other perspective before proposing an alternative.",
+      "End with the measurable outcome of the approach you argued for."
+    ],
+    "tags": ["influence"],
+    "estimatedTime": 240
+  },
+  {
+    "kind": "open",
+    "id": "intv-011",
+    "category": "interview",
+    "topic": "star-method",
+    "difficulty": "medium",
+    "question": "Describe a time you made a mistake and how you handled it.",
+    "modelAnswer": "Situation: I once pushed a config change directly to production on a Friday afternoon to unblock a client demo, skipping our usual staging validation because I was confident it was low-risk. Task: The change actually broke email notifications for a subset of users, and I needed to fix it fast and be transparent about the cause. Action: I rolled back within fifteen minutes of the first alert, posted a clear incident summary in our team channel before anyone asked, and proposed a small process change requiring at least one reviewer for any Friday deploys. Result: The fix was quick and no client-facing damage was done, and that reviewer rule is still part of our deploy checklist today.",
+    "tips": [
+      "Own the mistake plainly instead of shifting blame to circumstances.",
+      "Describe the concrete corrective action you took right after noticing it.",
+      "Show a lasting process change that came out of the mistake."
+    ],
+    "tags": ["accountability"],
+    "estimatedTime": 150
+  },
+  {
+    "kind": "open",
+    "id": "intv-012",
+    "category": "interview",
+    "topic": "star-method",
+    "difficulty": "easy",
+    "question": "Tell me about a time you had to meet a tight deadline.",
+    "modelAnswer": "Situation: A client requested an urgent data migration script with only two days' notice before a compliance audit. Task: I needed to build, test, and validate the migration without disrupting the client's live database. Action: I scoped the work down to the exact fields the audit needed rather than trying to migrate everything, wrote a rollback script in parallel with the main one, and ran the whole thing against a cloned database first. Result: We delivered the migration six hours ahead of the deadline with a clean audit and no downtime.",
+    "tips": [
+      "Show how you scoped down the work realistically instead of just working longer hours.",
+      "Mention any risk mitigation, like testing on a clone or having a rollback plan.",
+      "Keep the STAR beats short since this is a lower-difficulty prompt."
+    ],
+    "tags": ["time-management"],
+    "estimatedTime": 90
+  },
+  {
+    "kind": "open",
+    "id": "intv-013",
+    "category": "interview",
+    "topic": "projects",
+    "difficulty": "hard",
+    "question": "Walk me through your most impactful project.",
+    "modelAnswer": "The project I'm proudest of is a returns-fraud detection system I built that flagged suspicious return patterns before refunds were issued. I owned it end to end, from talking to the operations team to understand the fraud patterns they were seeing manually, to designing the rules-plus-ML hybrid model, to deploying it behind a feature flag so we could validate it safely. It ended up catching around 18% of fraudulent returns that had previously gone through, saving the business a meaningful amount each month, and it's still running in production two years later with only minor tuning. What made it impactful wasn't the model itself, it was spending real time with the ops team upfront so the system solved the actual problem instead of a theoretical one.",
+    "tips": [
+      "Pick a project you can speak to in real depth, including tradeoffs you made.",
+      "Emphasize your specific ownership and decisions, not just team output.",
+      "Close with the measurable business or user impact and its durability over time."
+    ],
+    "tags": ["flipkart", "project-ownership"],
+    "estimatedTime": 240
+  },
+  {
+    "kind": "open",
+    "id": "intv-014",
+    "category": "interview",
+    "topic": "projects",
+    "difficulty": "medium",
+    "question": "What was the biggest technical decision you made in a project and why?",
+    "modelAnswer": "The biggest decision was choosing to build our notification service on an event-driven architecture with a message queue instead of the simpler direct API-call approach the team initially favored. It added upfront complexity and about a week of extra design time, but it meant that when one downstream service went down, notifications simply queued up instead of failing silently, which had been a recurring complaint from users. I made the call after we mapped out the failure modes of both approaches on a whiteboard and realized the direct-call version had no good story for partial outages. Eighteen months later, that decision is why we've had zero notification-loss incidents despite two major downstream outages.",
+    "tips": [
+      "Explain the tradeoff you weighed, not just the decision itself.",
+      "Justify the decision with a concrete failure mode or requirement, not just 'best practices'.",
+      "Show the long-term payoff to demonstrate the decision held up over time."
+    ],
+    "tags": ["decision-making"],
+    "estimatedTime": 150
+  },
+  {
+    "kind": "open",
+    "id": "intv-015",
+    "category": "interview",
+    "topic": "projects",
+    "difficulty": "medium",
+    "question": "Tell me about a project that didn't go as planned.",
+    "modelAnswer": "We set out to build a recommendation engine for a client's app in what we scoped as an eight-week project, but we hit a wall around week five when we realized the client's data had far more duplicate and inconsistent user records than their documentation suggested. Rather than push forward on a flawed foundation, I flagged the issue immediately to my manager and the client, and we renegotiated the timeline to add two weeks for a data-cleaning phase. It delayed the launch, but the recommendations that shipped were meaningfully more accurate, and the client later told us they appreciated the transparency more than they would have appreciated us hitting the original date with a shaky model. I learned to validate data assumptions in week one, not week five, on any project since.",
+    "tips": [
+      "Be honest about what actually went wrong rather than downplaying it.",
+      "Show how you communicated the problem early instead of hiding it.",
+      "Explain what you changed in how you work as a result."
+    ],
+    "tags": ["risk-management"],
+    "estimatedTime": 150
+  },
+  {
+    "kind": "open",
+    "id": "intv-016",
+    "category": "interview",
+    "topic": "resume-discussion",
+    "difficulty": "medium",
+    "question": "Why is there a gap in your resume?",
+    "modelAnswer": "The eight-month gap on my resume was when I took time off to care for a parent recovering from surgery. I stayed connected to the field during that time by finishing a cloud certification and doing a couple of small freelance projects, which kept my skills current. I'm mentioning it plainly because I don't think it should be a red flag, and I want to be transparent about it rather than have it look unexplained. I'm fully available now and actually came back from that period with a clearer sense of wanting stability, which is part of why long-term roles like this one appeal to me.",
+    "tips": [
+      "State the reason for the gap plainly and briefly; don't over-apologize or over-explain.",
+      "Mention anything you did to stay current or productive during the gap if applicable.",
+      "Redirect toward your readiness and interest in the role now."
+    ],
+    "tags": ["career-break"],
+    "estimatedTime": 150
+  },
+  {
+    "kind": "open",
+    "id": "intv-017",
+    "category": "interview",
+    "topic": "resume-discussion",
+    "difficulty": "hard",
+    "question": "I see you've switched jobs fairly often. Can you explain why?",
+    "modelAnswer": "My first two roles out of college were both at companies that had layoffs within a year of me joining, which wasn't something I could control, and I want to be upfront that it wasn't due to performance in either case. Since joining my current company three years ago, I've stayed and been promoted once, which is a better reflection of how I actually want to build a career. I'm looking for my next role to be a similarly long-term move, and I chose to apply here specifically because of the team's reputation for investing in people over multiple years.",
+    "tips": [
+      "Give honest, specific context for each short stint rather than a vague excuse.",
+      "Show a recent pattern of stability if one exists to counter the earlier history.",
+      "Make clear you're seeking longevity in your next move and why this company fits that."
+    ],
+    "tags": ["job-hopping"],
+    "estimatedTime": 240
+  },
+  {
+    "kind": "open",
+    "id": "intv-018",
+    "category": "interview",
+    "topic": "resume-discussion",
+    "difficulty": "easy",
+    "question": "Walk me through your resume.",
+    "modelAnswer": "I started as a support engineer right out of college, which is where I learned to debug production issues under time pressure and to talk to customers directly about technical problems. After eighteen months I moved into a development role on the same team, since I'd been picking up feature work informally already, and spent two years there building out our internal tooling. Most recently at Accenture I've been on a client-facing delivery team building integration pipelines, which is where I picked up a lot of my current data engineering skills. Each move has been toward more ownership and more technical depth, which is also what's drawing me to this role.",
+    "tips": [
+      "Narrate your resume as a story of intentional growth, not just a list of jobs.",
+      "Spend more time on recent, relevant roles than early-career ones.",
+      "Connect the arc of your resume to why you want this specific next role."
+    ],
+    "tags": ["accenture", "career-summary"],
+    "estimatedTime": 90
+  },
+  {
+    "kind": "open",
+    "id": "intv-019",
+    "category": "interview",
+    "topic": "strengths",
+    "difficulty": "easy",
+    "question": "What is your greatest strength?",
+    "modelAnswer": "My greatest strength is breaking down ambiguous problems into a concrete plan quickly. When a stakeholder comes to me with a vague request like 'make the dashboard faster', I don't start coding immediately, I first figure out what 'faster' actually means to them, whether it's load time, query time, or perceived responsiveness, and then scope the work from there. That habit has saved my teams from building the wrong thing more than once. It comes from my early QA background, where I had to get precise about what 'working' actually meant before I could test anything.",
+    "tips": [
+      "Choose a strength you can back up with a specific habit or example, not just an adjective.",
+      "Explain where the strength comes from to make it sound authentic.",
+      "Keep it relevant to the role you're interviewing for."
+    ],
+    "tags": ["self-awareness"],
+    "estimatedTime": 90
+  },
+  {
+    "kind": "open",
+    "id": "intv-020",
+    "category": "interview",
+    "topic": "strengths",
+    "difficulty": "medium",
+    "question": "How has your strength helped you succeed at work?",
+    "modelAnswer": "My ability to communicate technical constraints in business terms has directly helped close two client escalations at my current company. In one case, a client was frustrated that a report was 'always slow', and instead of giving a technical explanation about indexing, I reframed it in terms of what tradeoff they were implicitly asking for between report freshness and speed, and let them choose. That reframing turned a tense call into a collaborative one, and we agreed on a caching approach within the same conversation. Being able to translate between engineering and business language is why I'm often the one put in front of clients on technical topics.",
+    "tips": [
+      "Use a real, specific scenario rather than describing the strength abstractly.",
+      "Show the tangible outcome the strength produced.",
+      "Tie it to something the interviewer's company would actually value."
+    ],
+    "tags": ["impact"],
+    "estimatedTime": 150
+  },
+  {
+    "kind": "open",
+    "id": "intv-021",
+    "category": "interview",
+    "topic": "strengths",
+    "difficulty": "medium",
+    "question": "What do your colleagues say is your best quality?",
+    "modelAnswer": "In my last performance review, my manager mentioned that peers specifically called out how I make code review feedback feel collaborative rather than critical, usually by asking questions instead of issuing directives. For example, instead of saying 'this is wrong', I'll ask 'what happens if this input is null here', which usually leads the person to catch the issue themselves and learn from it. A couple of junior engineers have told me directly that they started asking me for reviews specifically because of that style. I think it matters because it builds people's confidence rather than just fixing the immediate bug.",
+    "tips": [
+      "Reference actual feedback you've received rather than guessing what colleagues would say.",
+      "Give a concrete behavior, like a specific phrasing or habit, not a vague trait.",
+      "Show the downstream effect on team dynamics or morale."
+    ],
+    "tags": ["peer-feedback"],
+    "estimatedTime": 150
+  },
+  {
+    "kind": "open",
+    "id": "intv-022",
+    "category": "interview",
+    "topic": "weaknesses",
+    "difficulty": "medium",
+    "question": "What is your greatest weakness?",
+    "modelAnswer": "I tend to want to polish something more than is actually necessary before sharing it, which used to mean I'd sit on a piece of work for an extra day when feedback earlier would have been more valuable. I noticed this hurting a project last year when a teammate had already solved a problem I was still quietly refining, and we wasted a day working in parallel. Since then I've set myself a rule to share a rough draft or a design doc within the first day of starting significant work, even if it feels unfinished. It's been uncomfortable at times, but it's made my collaboration noticeably faster.",
+    "tips": [
+      "Pick a real weakness with a genuine past cost, not a disguised strength like 'I work too hard'.",
+      "Describe the specific system or rule you've put in place to manage it.",
+      "Show evidence that the fix is actually working, not just a stated intention."
+    ],
+    "tags": ["self-awareness"],
+    "estimatedTime": 150
+  },
+  {
+    "kind": "open",
+    "id": "intv-023",
+    "category": "interview",
+    "topic": "weaknesses",
+    "difficulty": "easy",
+    "question": "Tell me about a skill you're actively working to improve.",
+    "modelAnswer": "I'm actively working on public speaking, since most of my communication so far has been in writing or small team settings, and I know that presenting to larger groups doesn't come naturally to me yet. I signed up to present at our internal engineering all-hands twice this year specifically to get the practice, even though nobody required it of me. It's gotten noticeably easier each time, and I've started taking notes afterward on what landed well and what didn't. I see it as a skill I need for the kind of technical leadership roles I want next.",
+    "tips": [
+      "Choose a skill that's genuinely still developing, and be specific about your practice method.",
+      "Show you're taking deliberate action, not just noting the gap passively.",
+      "Connect the skill to where you want to grow next in your career."
+    ],
+    "tags": ["growth-mindset"],
+    "estimatedTime": 90
+  },
+  {
+    "kind": "open",
+    "id": "intv-024",
+    "category": "interview",
+    "topic": "weaknesses",
+    "difficulty": "hard",
+    "question": "Describe a time your weakness affected your work and how you addressed it.",
+    "modelAnswer": "Early in my time at Oracle, my tendency to want full control over a project's architecture meant I under-delegated on a database migration project, keeping the trickiest pieces to myself instead of spreading the work. That created a bottleneck, and we nearly missed the deadline because I was the single point of failure on three critical tasks at once. I recognized it mid-project, pulled in two teammates, and spent time pairing with them to hand off ownership even though it was slower in the short term. We finished on time, and I've since made it a habit to explicitly identify which pieces of any project I should not be the only person who understands.",
+    "tips": [
+      "Show a weakness with a concrete negative consequence you experienced.",
+      "Describe the corrective action you took in the moment, not just afterward.",
+      "End with a durable change to how you work now."
+    ],
+    "tags": ["oracle", "growth"],
+    "estimatedTime": 240
+  },
+  {
+    "kind": "open",
+    "id": "intv-025",
+    "category": "interview",
+    "topic": "leadership",
+    "difficulty": "hard",
+    "question": "Tell me about a time you led a team through a difficult situation.",
+    "modelAnswer": "Situation: I was asked to lead a five-person team at Deloitte on a client project after our previous lead left abruptly, two months before a critical delivery deadline. Task: I needed to rebuild team confidence, redistribute unclear ownership, and keep the client informed without alarming them. Action: I held one-on-ones with each team member in the first two days to understand where things actually stood, reassigned two workstreams that had no clear owner, and gave the client a revised but honest timeline instead of pretending nothing had changed. Result: We delivered only one week later than the original plan, the client's trust in the team actually increased because of the transparency, and two of the team members later told me that period was when they felt most supported by a lead.",
+    "tips": [
+      "Show the specific actions you took to stabilize the team, not just that you 'took charge'.",
+      "Include how you managed communication with stakeholders, since that's often the hardest part of leadership.",
+      "End with a lesson about leadership philosophy, not just the project outcome."
+    ],
+    "tags": ["deloitte", "leadership"],
+    "estimatedTime": 240
+  },
+  {
+    "kind": "open",
+    "id": "intv-026",
+    "category": "interview",
+    "topic": "leadership",
+    "difficulty": "medium",
+    "question": "How do you motivate team members who are underperforming?",
+    "modelAnswer": "When I noticed a normally strong engineer on my team had become quiet in standups and was missing minor deadlines, I didn't assume it was a motivation problem, I asked for a one-on-one to understand what was going on. It turned out they felt their recent work wasn't being recognized because it was mostly unglamorous maintenance work. I started explicitly calling out that work in team updates and gave them a slightly more visible feature to own the next sprint. Within a month they were back to their usual pace, and the lesson for me was that underperformance is usually a symptom, and the fix is almost never a generic pep talk.",
+    "tips": [
+      "Show that you diagnose the underlying cause before acting, rather than assuming laziness or low motivation.",
+      "Describe a specific, tailored intervention rather than a generic motivational tactic.",
+      "Close with the outcome to show the approach actually worked."
+    ],
+    "tags": ["team-management"],
+    "estimatedTime": 150
+  },
+  {
+    "kind": "open",
+    "id": "intv-027",
+    "category": "interview",
+    "topic": "leadership",
+    "difficulty": "easy",
+    "question": "Describe your leadership style.",
+    "modelAnswer": "I'd describe my leadership style as servant leadership with a strong bias toward clarity. I see my job as removing blockers and making sure everyone knows exactly what 'done' looks like for their piece of work, rather than directing every decision myself. In practice, that's meant things like writing a clear one-page brief before kicking off any workstream so nobody is guessing at priorities, and checking in on people's workload before checking in on the work itself. I flex it depending on experience level though, giving more autonomy to senior folks and more structure to those newer to a domain.",
+    "tips": [
+      "Name an actual leadership philosophy or style rather than a vague description.",
+      "Back it up with a concrete practice you follow as a leader.",
+      "Show you adapt your style to the person, since a single rigid style is a red flag."
+    ],
+    "tags": ["self-awareness"],
+    "estimatedTime": 90
+  },
+  {
+    "kind": "open",
+    "id": "intv-028",
+    "category": "interview",
+    "topic": "conflict",
+    "difficulty": "medium",
+    "question": "How do you handle disagreement with a teammate?",
+    "modelAnswer": "When I disagree with a teammate, I try to separate the disagreement from the relationship by asking questions first instead of stating my position as fact. On a recent PwC engagement, a colleague wanted to use a third-party library I thought was risky for a client-facing tool, so instead of pushing back directly in a meeting, I asked him to walk me through what problem it solved for him, and it turned out he was solving for a maintenance concern I hadn't considered. We ended up finding a lighter-weight library that addressed both of our concerns. I've found that most disagreements are actually about different priorities rather than one person being wrong.",
+    "tips": [
+      "Show a process, like asking questions before asserting your view, rather than just saying you 'communicate openly'.",
+      "Give a real example where the disagreement was resolved productively.",
+      "Highlight what you learned about the other person's perspective."
+    ],
+    "tags": ["pwc", "collaboration"],
+    "estimatedTime": 150
+  },
+  {
+    "kind": "open",
+    "id": "intv-029",
+    "category": "interview",
+    "topic": "conflict",
+    "difficulty": "hard",
+    "question": "Tell me about a conflict you had with a manager and how you resolved it.",
+    "modelAnswer": "Situation: My manager wanted to ship a feature to a client a week earlier than the team felt was safe, based on pressure from sales. Task: I needed to push back on the timeline without simply refusing or going over my manager's head. Action: I put together a short risk summary showing which specific test cases we'd have to skip to hit the earlier date and what the likely failure modes were, and proposed a middle-ground scope cut that would let us hit an earlier date safely. Result: My manager took the reduced-scope option to sales, and we shipped on a date only two days later than originally requested, with no post-launch issues. I learned that disagreeing with a manager works best when you replace the debate with a concrete alternative, not just an objection.",
+    "tips": [
+      "Show respectful disagreement with a manager, backed by data rather than pure pushback.",
+      "Offer an alternative rather than only raising a concern.",
+      "Emphasize the resolution and outcome to show the conflict was handled maturely."
+    ],
+    "tags": ["conflict-resolution"],
+    "estimatedTime": 240
+  },
+  {
+    "kind": "open",
+    "id": "intv-030",
+    "category": "interview",
+    "topic": "conflict",
+    "difficulty": "medium",
+    "question": "Describe a time you disagreed with a decision but still had to implement it.",
+    "modelAnswer": "At my last company, leadership decided to standardize our team onto a monitoring tool I didn't think was the right fit for our use case, since I'd already evaluated it and found gaps in alerting granularity. I raised my concerns once, clearly and with specifics, and once the decision was made anyway, I committed to implementing it well rather than dragging my feet or quietly working around it. I did document the specific gaps I'd flagged so the team could revisit them later if the issues materialized, which they eventually did, and my notes made the follow-up conversation much faster. I think professionalism means disagreeing openly but not undermining a decision once it's made.",
+    "tips": [
+      "Show you voiced disagreement clearly but didn't sabotage the decision afterward.",
+      "Mention any way you protected the team's ability to revisit the decision later.",
+      "Frame this as a principle you hold, like 'disagree and commit', to show maturity."
+    ],
+    "tags": ["professionalism"],
+    "estimatedTime": 150
+  },
+  {
+    "kind": "open",
+    "id": "intv-031",
+    "category": "interview",
+    "topic": "salary-negotiation",
+    "difficulty": "medium",
+    "question": "What are your salary expectations?",
+    "modelAnswer": "Based on my research into similar roles at Zoho and comparable companies for my experience level and location, I'm targeting a range that reflects the current market, though I'm flexible depending on the full compensation structure including bonus and benefits. I'd rather understand the complete offer and the scope of the role first before locking into a specific number. What matters most to me is that the offer reflects the value I'd be bringing based on my track record, so I'm open to discussing it once we're both confident this is the right fit.",
+    "tips": [
+      "Give a researched range rather than a single fixed number or refusing to answer.",
+      "Mention flexibility tied to full compensation, not just base salary.",
+      "Avoid naming a number far below market value out of nervousness."
+    ],
+    "tags": ["zoho", "compensation"],
+    "estimatedTime": 150
+  },
+  {
+    "kind": "open",
+    "id": "intv-032",
+    "category": "interview",
+    "topic": "salary-negotiation",
+    "difficulty": "hard",
+    "question": "How do you respond to a lowball offer?",
+    "modelAnswer": "I'd start by thanking them for the offer and asking for a day to review it in detail rather than reacting immediately. Then I'd come back with specific market data for the role and location, and be clear about the gap between the offer and my expectations, framed around the value I'd bring rather than just 'I want more'. If there's genuinely no room on base salary, I'd ask about other levers like a signing bonus, an earlier review cycle, or additional equity. I'd also be honest that if the final number is significantly below market, I'd need to keep exploring other options, since that's fair to both sides.",
+    "tips": [
+      "Show a calm, structured response rather than an emotional reaction.",
+      "Mention alternate levers to negotiate beyond base salary.",
+      "Be willing to state your walk-away point honestly rather than only capitulating."
+    ],
+    "tags": ["negotiation"],
+    "estimatedTime": 240
+  },
+  {
+    "kind": "open",
+    "id": "intv-033",
+    "category": "interview",
+    "topic": "salary-negotiation",
+    "difficulty": "easy",
+    "question": "Are you open to negotiating on salary?",
+    "modelAnswer": "Yes, I'm open to negotiating, though my expectation is grounded in research on what similar roles at comparable companies pay for my experience level. I'd want any negotiation to be a genuine conversation about the value I bring rather than just picking a number out of the air. If the initial offer is close to my range, I'm generally quick to agree so we can move forward, but I would ask questions if something seems significantly off from market rate.",
+    "tips": [
+      "Confirm you're open to negotiating rather than sounding rigid or evasive.",
+      "Anchor your flexibility to research, not just a willingness to accept anything.",
+      "Keep this answer brief since it's typically an easier warm-up question."
+    ],
+    "tags": ["flexibility"],
+    "estimatedTime": 90
+  },
+  {
+    "kind": "open",
+    "id": "intv-034",
+    "category": "interview",
+    "topic": "mock-interview",
+    "difficulty": "easy",
+    "question": "How would you introduce yourself in a two-minute HR round?",
+    "modelAnswer": "Hi, I'm a product-minded backend engineer with about four years of experience, most recently building rider-safety features at a ride-hailing platform similar in spirit to Uber's own mission. I started in a QA role, which gave me a strong instinct for edge cases, and moved into full-stack development where I've since led two feature launches end to end. Outside of work, I mentor two junior engineers through a coding bootcamp's alumni program, which keeps me sharp on the fundamentals. I'm excited about this conversation because Uber's scale of real-time systems is exactly the kind of technical challenge I want to grow into next.",
+    "tips": [
+      "Keep the intro to under two minutes, matching the typical HR-round time budget.",
+      "Cover current role, one achievement, and future motivation in that order.",
+      "Tailor the closing line to the specific company to show genuine interest."
+    ],
+    "tags": ["uber", "self-introduction"],
+    "estimatedTime": 90
+  },
+  {
+    "kind": "open",
+    "id": "intv-035",
+    "category": "interview",
+    "topic": "mock-interview",
+    "difficulty": "medium",
+    "question": "Walk me through how you'd handle the first five minutes of a panel interview.",
+    "modelAnswer": "In the first five minutes, I'd focus on setting a calm, confident tone rather than trying to prove everything at once. I'd greet the panel, thank them for their time, and if given the floor, deliver a tight thirty-second version of my background rather than my full two-minute pitch, since panel rounds usually move fast into questions. I'd also make a point of noting each panelist's name and role if introduced, since referencing that later shows I was actually listening. At a place like Goldman Sachs where panels often include people from different teams, I'd read the room to see whether they want a formal or conversational tone before matching my energy to theirs.",
+    "tips": [
+      "Emphasize reading the room and matching tone over having one fixed script.",
+      "Mention a specific tactic, like noting panelists' names, to show attentiveness.",
+      "Keep the opening brief since panel interviews move quickly into Q&A."
+    ],
+    "tags": ["goldman-sachs", "first-impression"],
+    "estimatedTime": 150
+  },
+  {
+    "kind": "open",
+    "id": "intv-036",
+    "category": "interview",
+    "topic": "mock-interview",
+    "difficulty": "hard",
+    "question": "If this were your final round, what would you want the panel to remember about you?",
+    "modelAnswer": "I'd want them to remember that I ask good questions, not just that I gave good answers. Throughout the interview I'd try to make sure at least one or two of my responses showed genuine curiosity about their specific challenges, like asking a follow-up about how their team handles a tradeoff I'd just described handling myself. I'd also want them to remember one concrete, well-told story of impact, like a fraud-detection project I led, rather than a string of vague qualifications. At a firm like JPMorgan where technical rigor and judgment both matter, I'd want the lasting impression to be that I think carefully before I act, and that I'd be someone they'd trust with ambiguous, high-stakes problems.",
+    "tips": [
+      "Focus the answer on the impression you want to leave, not a recap of your whole background.",
+      "Mention asking thoughtful questions as part of what makes an interview memorable.",
+      "Reference a specific story to make the answer concrete rather than aspirational."
+    ],
+    "tags": ["jp-morgan", "closing-statement"],
+    "estimatedTime": 240
+  }
+]

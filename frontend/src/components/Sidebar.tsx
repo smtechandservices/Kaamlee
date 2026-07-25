@@ -3,13 +3,14 @@
 import Link from 'next/link';
 import Image from 'next/image';
 import { usePathname } from 'next/navigation';
-import { Compass, FileText, Receipt, LogOut, X, Kanban, Globe } from 'lucide-react';
+import { Compass, FileText, Receipt, LogOut, X, Kanban, Globe, GraduationCap } from 'lucide-react';
 import { useAuth } from '@/context/AuthContext';
 import { useSidebar } from '@/context/SidebarContext';
 
 const NAV_ITEMS = [
   { href: '/explore', label: 'Explore', icon: Compass },
   { href: '/applications', label: 'Tracker', icon: Kanban },
+  { href: '/preparation', label: 'Prepare', icon: GraduationCap },
   { href: '/custom-cv', label: 'Custom CV', icon: FileText },
   { href: '/portfolio', label: 'Portfolio', icon: Globe },
   { href: '/transactions', label: 'Billing', icon: Receipt },

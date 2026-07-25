@@ -1,0 +1,158 @@
+[
+  {
+    "id": "stage-1",
+    "title": "Beginner",
+    "description": "Build a solid foundation with core aptitude, verbal, coding, and interview basics before moving to tougher topics.",
+    "milestones": [
+      {
+        "id": "stage-1-m1",
+        "label": "Master Number System basics",
+        "categoryId": "aptitude",
+        "topicSlug": "number-system"
+      },
+      {
+        "id": "stage-1-m2",
+        "label": "Get comfortable with Percentage problems",
+        "categoryId": "aptitude",
+        "topicSlug": "percentage"
+      },
+      {
+        "id": "stage-1-m3",
+        "label": "Brush up on Grammar fundamentals",
+        "categoryId": "verbal",
+        "topicSlug": "grammar"
+      },
+      {
+        "id": "stage-1-m4",
+        "label": "Solve easy Arrays problems",
+        "categoryId": "coding",
+        "topicSlug": "arrays"
+      },
+      {
+        "id": "stage-1-m5",
+        "label": "Understand HR question basics",
+        "categoryId": "interview",
+        "topicSlug": "hr-questions"
+      }
+    ]
+  },
+  {
+    "id": "stage-2",
+    "title": "Intermediate",
+    "description": "Strengthen problem-solving speed and start tackling multi-step aptitude and coding problems along with behavioral prep.",
+    "milestones": [
+      {
+        "id": "stage-2-m1",
+        "label": "Practice Time & Work problems",
+        "categoryId": "aptitude",
+        "topicSlug": "time-and-work"
+      },
+      {
+        "id": "stage-2-m2",
+        "label": "Interpret data with Data Interpretation sets",
+        "categoryId": "aptitude",
+        "topicSlug": "data-interpretation"
+      },
+      {
+        "id": "stage-2-m3",
+        "label": "Improve accuracy with Sentence Correction",
+        "categoryId": "verbal",
+        "topicSlug": "sentence-correction"
+      },
+      {
+        "id": "stage-2-m4",
+        "label": "Learn the Two Pointer technique",
+        "categoryId": "coding",
+        "topicSlug": "two-pointer"
+      },
+      {
+        "id": "stage-2-m5",
+        "label": "Learn the Sliding Window technique",
+        "categoryId": "coding",
+        "topicSlug": "sliding-window"
+      },
+      {
+        "id": "stage-2-m6",
+        "label": "Practice Behavioral interview questions",
+        "categoryId": "interview",
+        "topicSlug": "behavioral-questions"
+      }
+    ]
+  },
+  {
+    "id": "stage-3",
+    "title": "Advanced",
+    "description": "Take on high-difficulty topics that separate strong candidates, spanning probability, algorithms, and system design basics.",
+    "milestones": [
+      {
+        "id": "stage-3-m1",
+        "label": "Tackle Probability problems",
+        "categoryId": "aptitude",
+        "topicSlug": "probability"
+      },
+      {
+        "id": "stage-3-m2",
+        "label": "Master Data Sufficiency questions",
+        "categoryId": "reasoning",
+        "topicSlug": "data-sufficiency"
+      },
+      {
+        "id": "stage-3-m3",
+        "label": "Speed up with Reading Comprehension",
+        "categoryId": "verbal",
+        "topicSlug": "reading-comprehension"
+      },
+      {
+        "id": "stage-3-m4",
+        "label": "Solve Dynamic Programming problems",
+        "categoryId": "coding",
+        "topicSlug": "dp"
+      },
+      {
+        "id": "stage-3-m5",
+        "label": "Practice Graphs problems",
+        "categoryId": "coding",
+        "topicSlug": "graphs"
+      },
+      {
+        "id": "stage-3-m6",
+        "label": "Learn System Design basics",
+        "categoryId": "coding",
+        "topicSlug": "system-design-basics"
+      }
+    ]
+  },
+  {
+    "id": "stage-4",
+    "title": "Placement Ready",
+    "description": "Simulate the real placement process end-to-end and shore up any remaining weak spots before interviews.",
+    "milestones": [
+      {
+        "id": "stage-4-m1",
+        "label": "Take the Mixed Placement Test",
+        "categoryId": "aptitude"
+      },
+      {
+        "id": "stage-4-m2",
+        "label": "Complete a full Coding Contest",
+        "categoryId": "coding"
+      },
+      {
+        "id": "stage-4-m3",
+        "label": "Practice the STAR Method for interviews",
+        "categoryId": "interview",
+        "topicSlug": "star-method"
+      },
+      {
+        "id": "stage-4-m4",
+        "label": "Research target Companies",
+        "categoryId": "companies"
+      },
+      {
+        "id": "stage-4-m5",
+        "label": "Review and retake your weakest topics",
+        "categoryId": "aptitude"
+      }
+    ]
+  }
+]

@@ -1,0 +1,58 @@
+[
+  {
+    "id": "ach-001",
+    "label": "7 Day Streak",
+    "description": "Practice for 7 days in a row without missing a day.",
+    "icon": "Flame",
+    "criteria": { "type": "streak", "value": 7 }
+  },
+  {
+    "id": "ach-002",
+    "label": "30 Day Streak",
+    "description": "Keep up a 30-day practice streak.",
+    "icon": "Flame",
+    "criteria": { "type": "streak", "value": 30 }
+  },
+  {
+    "id": "ach-003",
+    "label": "100 Questions",
+    "description": "Solve 100 questions across all categories.",
+    "icon": "Target",
+    "criteria": { "type": "solved", "value": 100 }
+  },
+  {
+    "id": "ach-004",
+    "label": "500 Questions",
+    "description": "Solve 500 questions across all categories.",
+    "icon": "Trophy",
+    "criteria": { "type": "solved", "value": 500 }
+  },
+  {
+    "id": "ach-005",
+    "label": "Coding Master",
+    "description": "Solve 30 coding questions.",
+    "icon": "Zap",
+    "criteria": { "type": "category-solved", "category": "coding", "value": 30 }
+  },
+  {
+    "id": "ach-006",
+    "label": "Aptitude Pro",
+    "description": "Solve 50 aptitude questions.",
+    "icon": "Award",
+    "criteria": { "type": "category-solved", "category": "aptitude", "value": 50 }
+  },
+  {
+    "id": "ach-007",
+    "label": "Interview Ready",
+    "description": "Complete 20 interview prep questions.",
+    "icon": "Star",
+    "criteria": { "type": "category-solved", "category": "interview", "value": 20 }
+  },
+  {
+    "id": "ach-008",
+    "label": "Test Champion",
+    "description": "Pass 3 mock tests.",
+    "icon": "Crown",
+    "criteria": { "type": "test-passed", "value": 3 }
+  }
+]

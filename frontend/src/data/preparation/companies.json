@@ -1,0 +1,182 @@
+[
+  {
+    "id": "comp-001",
+    "slug": "tcs",
+    "name": "TCS",
+    "difficulty": "easy",
+    "hiringNote": "Actively hiring for Ninja and Digital roles across pan-India locations.",
+    "rounds": ["Online Assessment (Aptitude + Verbal)", "Technical Interview", "HR Interview"],
+    "tags": ["aptitude-heavy", "verbal", "mass-recruiter"]
+  },
+  {
+    "id": "comp-002",
+    "slug": "infosys",
+    "name": "Infosys",
+    "difficulty": "easy",
+    "hiringNote": "Actively hiring freshers for Systems Engineer roles across multiple campuses.",
+    "rounds": ["Online Assessment (Aptitude + Verbal)", "Technical Interview", "HR Interview"],
+    "tags": ["aptitude-heavy", "verbal", "mass-recruiter"]
+  },
+  {
+    "id": "comp-003",
+    "slug": "accenture",
+    "name": "Accenture",
+    "difficulty": "easy",
+    "hiringNote": "Actively hiring Associate Software Engineers across Bangalore, Pune, and Chennai.",
+    "rounds": ["Online Assessment (Aptitude + Verbal)", "Technical Interview", "HR Interview"],
+    "tags": ["aptitude-heavy", "verbal", "mass-recruiter"]
+  },
+  {
+    "id": "comp-004",
+    "slug": "capgemini",
+    "name": "Capgemini",
+    "difficulty": "easy",
+    "hiringNote": "Actively hiring for Analyst and Senior Analyst roles in multiple technology tracks.",
+    "rounds": ["Online Assessment (Aptitude + Verbal)", "Technical Interview", "HR Interview"],
+    "tags": ["aptitude-heavy", "verbal", "mass-recruiter"]
+  },
+  {
+    "id": "comp-005",
+    "slug": "wipro",
+    "name": "Wipro",
+    "difficulty": "medium",
+    "hiringNote": "Actively hiring for WILP and Project Engineer roles across India.",
+    "rounds": ["Online Assessment (Aptitude + Verbal)", "Technical Interview", "HR Interview"],
+    "tags": ["aptitude-heavy", "verbal", "mass-recruiter"]
+  },
+  {
+    "id": "comp-006",
+    "slug": "amazon",
+    "name": "Amazon",
+    "difficulty": "hard",
+    "hiringNote": "Actively hiring for SDE-1 and SDE-2 roles across Bangalore and Hyderabad.",
+    "rounds": ["Online Assessment (DSA)", "Technical Interview 1", "Technical Interview 2", "Bar Raiser", "HR Interview"],
+    "tags": ["dsa-heavy", "system-design", "leadership-principles"]
+  },
+  {
+    "id": "comp-007",
+    "slug": "google",
+    "name": "Google",
+    "difficulty": "hard",
+    "hiringNote": "Actively hiring for Software Engineer roles across Bangalore and Hyderabad campuses.",
+    "rounds": ["Online Assessment (DSA)", "Technical Interview 1", "Technical Interview 2", "Googleyness / Hiring Committee"],
+    "tags": ["dsa-heavy", "system-design"]
+  },
+  {
+    "id": "comp-008",
+    "slug": "microsoft",
+    "name": "Microsoft",
+    "difficulty": "hard",
+    "hiringNote": "Actively hiring for SDE roles at the Hyderabad and Noida development centers.",
+    "rounds": ["Online Assessment (DSA)", "Technical Interview 1", "Technical Interview 2", "As Appropriate Round", "HR Interview"],
+    "tags": ["dsa-heavy", "system-design"]
+  },
+  {
+    "id": "comp-009",
+    "slug": "flipkart",
+    "name": "Flipkart",
+    "difficulty": "hard",
+    "hiringNote": "Actively hiring for SDE-1 roles across engineering teams in Bangalore.",
+    "rounds": ["Online Assessment (DSA)", "Technical Interview 1", "Technical Interview 2", "Hiring Manager Round", "HR Interview"],
+    "tags": ["dsa-heavy", "system-design"]
+  },
+  {
+    "id": "comp-010",
+    "slug": "adobe",
+    "name": "Adobe",
+    "difficulty": "hard",
+    "hiringNote": "Actively hiring for Member of Technical Staff roles across Noida and Bangalore.",
+    "rounds": ["Online Assessment (DSA)", "Technical Interview 1", "Technical Interview 2", "HR Interview"],
+    "tags": ["dsa-heavy", "system-design"]
+  },
+  {
+    "id": "comp-011",
+    "slug": "oracle",
+    "name": "Oracle",
+    "difficulty": "hard",
+    "hiringNote": "Actively hiring for Applications Engineer roles across Bangalore and Hyderabad.",
+    "rounds": ["Online Assessment (DSA)", "Technical Interview 1", "Technical Interview 2", "HR Interview"],
+    "tags": ["dsa-heavy", "system-design"]
+  },
+  {
+    "id": "comp-012",
+    "slug": "deloitte",
+    "name": "Deloitte",
+    "difficulty": "medium",
+    "hiringNote": "Actively hiring Analysts for Consulting and Audit practices across major cities.",
+    "rounds": ["Group Discussion", "Case Study Interview", "HR Interview"],
+    "tags": ["case-study", "communication"]
+  },
+  {
+    "id": "comp-013",
+    "slug": "ey",
+    "name": "EY",
+    "difficulty": "medium",
+    "hiringNote": "Actively hiring Associates for Assurance and Consulting practices across India.",
+    "rounds": ["Group Discussion", "Case Study Interview", "HR Interview"],
+    "tags": ["case-study", "communication"]
+  },
+  {
+    "id": "comp-014",
+    "slug": "pwc",
+    "name": "PwC",
+    "difficulty": "medium",
+    "hiringNote": "Actively hiring Associates across Advisory and Tax service lines.",
+    "rounds": ["Group Discussion", "Case Study Interview", "HR Interview"],
+    "tags": ["case-study", "communication"]
+  },
+  {
+    "id": "comp-015",
+    "slug": "cognizant",
+    "name": "Cognizant",
+    "difficulty": "easy",
+    "hiringNote": "Actively hiring GenC trainees across multiple delivery centers in India.",
+    "rounds": ["Online Assessment (Aptitude + Verbal)", "Technical Interview", "HR Interview"],
+    "tags": ["aptitude-heavy", "verbal", "mass-recruiter"]
+  },
+  {
+    "id": "comp-016",
+    "slug": "zoho",
+    "name": "Zoho",
+    "difficulty": "hard",
+    "hiringNote": "Actively hiring Member Technical Staff trainees through its recruitment written test.",
+    "rounds": ["Written Test (Aptitude + Coding)", "Technical Interview 1", "Technical Interview 2", "HR Interview"],
+    "tags": ["dsa-heavy", "aptitude-heavy"]
+  },
+  {
+    "id": "comp-017",
+    "slug": "nvidia",
+    "name": "Nvidia",
+    "difficulty": "hard",
+    "hiringNote": "Actively hiring for Software Engineer roles across Bangalore and Pune GPU teams.",
+    "rounds": ["Online Assessment (DSA)", "Technical Interview 1", "Technical Interview 2", "HR Interview"],
+    "tags": ["dsa-heavy", "system-design"]
+  },
+  {
+    "id": "comp-018",
+    "slug": "uber",
+    "name": "Uber",
+    "difficulty": "hard",
+    "hiringNote": "Actively hiring for Software Engineer roles across the Bangalore engineering hub.",
+    "rounds": ["Online Assessment (DSA)", "Technical Interview 1", "Technical Interview 2", "Bar Raiser", "HR Interview"],
+    "tags": ["dsa-heavy", "system-design"]
+  },
+  {
+    "id": "comp-019",
+    "slug": "goldman-sachs",
+    "name": "Goldman Sachs",
+    "difficulty": "hard",
+    "hiringNote": "Actively hiring Analysts for Technology and Engineering divisions across Bangalore and Hyderabad.",
+    "rounds": ["Online Assessment (Quant + Coding)", "Technical Interview", "Superday / Final Round"],
+    "tags": ["quant-heavy", "dsa-heavy"]
+  },
+  {
+    "id": "comp-020",
+    "slug": "jp-morgan",
+    "name": "JP Morgan",
+    "difficulty": "hard",
+    "hiringNote": "Actively hiring Analysts for the Corporate & Investment Bank technology teams.",
+    "rounds": ["Online Assessment (Quant + Coding)", "Technical Interview", "Superday / Final Round"],
+    "tags": ["quant-heavy", "dsa-heavy"]
+  }
+]

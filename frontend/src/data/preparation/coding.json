@@ -1,0 +1,1783 @@
+[
+  {
+    "kind": "coding",
+    "id": "code-001",
+    "category": "coding",
+    "topic": "arrays",
+    "difficulty": "easy",
+    "title": "Two Sum",
+    "question": "Given an array of integers nums and an integer target, return the indices of the two numbers such that they add up to target. You may assume exactly one solution exists, and the same element may not be used twice. 2 <= nums.length <= 10^4.",
+    "starterCode": {
+      "javascript": "function twoSum(nums, target) {\n  \n}",
+      "python": "def two_sum(nums, target):\n    pass",
+      "java": "class Solution {\n    public int[] twoSum(int[] nums, int target) {\n        \n    }\n}",
+      "cpp": "vector<int> twoSum(vector<int>& nums, int target) {\n    \n}"
+    },
+    "testCases": [
+      {
+        "input": "nums = [2,7,11,15], target = 9",
+        "expectedOutput": "[0,1]"
+      },
+      {
+        "input": "nums = [3,2,4], target = 6",
+        "expectedOutput": "[1,2]"
+      }
+    ],
+    "sampleOutput": "[0,1]\n\nAll 2 test cases passed.",
+    "hint": "Use a hash map to store each number's index as you iterate, checking if target minus the current number already exists.",
+    "explanation": "Iterate once through the array while storing seen values in a hash map keyed by value to index; for each element check if target - nums[i] is already in the map, giving an O(n) time, O(n) space solution instead of the brute-force O(n^2).",
+    "tags": [
+      "array",
+      "hash-map",
+      "amazon"
+    ],
+    "estimatedTime": 600
+  },
+  {
+    "kind": "coding",
+    "id": "code-002",
+    "category": "coding",
+    "topic": "arrays",
+    "difficulty": "medium",
+    "title": "Maximum Subarray",
+    "question": "Given an integer array nums, find the contiguous subarray (containing at least one number) which has the largest sum, and return that sum. Solve it in O(n) time. 1 <= nums.length <= 10^5, values can be negative.",
+    "starterCode": {
+      "javascript": "function maxSubArray(nums) {\n  \n}",
+      "python": "def max_sub_array(nums):\n    pass",
+      "java": "class Solution {\n    public int maxSubArray(int[] nums) {\n        \n    }\n}",
+      "cpp": "int maxSubArray(vector<int>& nums) {\n    \n}"
+    },
+    "testCases": [
+      {
+        "input": "nums = [-2,1,-3,4,-1,2,1,-5,4]",
+        "expectedOutput": "6"
+      },
+      {
+        "input": "nums = [1]",
+        "expectedOutput": "1"
+      },
+      {
+        "input": "nums = [5,4,-1,7,8]",
+        "expectedOutput": "23"
+      }
+    ],
+    "sampleOutput": "6\n\nAll 3 test cases passed.",
+    "hint": "Track a running current sum and reset it whenever it becomes negative, using Kadane's algorithm.",
+    "explanation": "Kadane's algorithm keeps a running sum that resets to the current element whenever adding the previous running sum would make it smaller, updating a global maximum along the way, giving O(n) time and O(1) space.",
+    "tags": [
+      "array",
+      "dp"
+    ],
+    "estimatedTime": 1200
+  },
+  {
+    "kind": "coding",
+    "id": "code-003",
+    "category": "coding",
+    "topic": "strings",
+    "difficulty": "easy",
+    "title": "Valid Anagram",
+    "question": "Given two strings s and t, return true if t is an anagram of s, and false otherwise. An anagram is formed by rearranging the letters of a word using all the original letters exactly once. Both strings contain only lowercase English letters.",
+    "starterCode": {
+      "javascript": "function isAnagram(s, t) {\n  \n}",
+      "python": "def is_anagram(s, t):\n    pass",
+      "java": "class Solution {\n    public boolean isAnagram(String s, String t) {\n        \n    }\n}",
+      "cpp": "bool isAnagram(string s, string t) {\n    \n}"
+    },
+    "testCases": [
+      {
+        "input": "s = \"anagram\", t = \"nagaram\"",
+        "expectedOutput": "true"
+      },
+      {
+        "input": "s = \"rat\", t = \"car\"",
+        "expectedOutput": "false"
+      }
+    ],
+    "sampleOutput": "true\n\nAll 2 test cases passed.",
+    "hint": "Count the frequency of each character in both strings and compare the counts.",
+    "explanation": "Build a 26-length frequency array for s, decrement it while scanning t, and return false if any count goes negative or the lengths differ, giving O(n) time and O(1) extra space.",
+    "tags": [
+      "string",
+      "hashing"
+    ],
+    "estimatedTime": 600
+  },
+  {
+    "kind": "coding",
+    "id": "code-004",
+    "category": "coding",
+    "topic": "strings",
+    "difficulty": "medium",
+    "title": "Longest Substring Without Repeating Characters",
+    "question": "Given a string s, find the length of the longest substring without repeating characters. The string may contain letters, digits, symbols, and spaces. 0 <= s.length <= 5 * 10^4.",
+    "starterCode": {
+      "javascript": "function lengthOfLongestSubstring(s) {\n  \n}",
+      "python": "def length_of_longest_substring(s):\n    pass",
+      "java": "class Solution {\n    public int lengthOfLongestSubstring(String s) {\n        \n    }\n}",
+      "cpp": "int lengthOfLongestSubstring(string s) {\n    \n}"
+    },
+    "testCases": [
+      {
+        "input": "s = \"abcabcbb\"",
+        "expectedOutput": "3"
+      },
+      {
+        "input": "s = \"bbbbb\"",
+        "expectedOutput": "1"
+      },
+      {
+        "input": "s = \"pwwkew\"",
+        "expectedOutput": "3"
+      }
+    ],
+    "sampleOutput": "3\n\nAll 3 test cases passed.",
+    "hint": "Use a sliding window with a set or map tracking the last seen index of each character.",
+    "explanation": "Maintain a sliding window [left, right] and a hash map of last-seen indices; whenever a repeated character is found within the window, move left past its previous occurrence, giving O(n) time.",
+    "tags": [
+      "string",
+      "sliding-window"
+    ],
+    "estimatedTime": 1200
+  },
+  {
+    "kind": "coding",
+    "id": "code-005",
+    "category": "coding",
+    "topic": "hashing",
+    "difficulty": "easy",
+    "title": "Contains Duplicate",
+    "question": "Given an integer array nums, return true if any value appears at least twice in the array, and return false if every element is distinct. 1 <= nums.length <= 10^5.",
+    "starterCode": {
+      "javascript": "function containsDuplicate(nums) {\n  \n}",
+      "python": "def contains_duplicate(nums):\n    pass",
+      "java": "class Solution {\n    public boolean containsDuplicate(int[] nums) {\n        \n    }\n}",
+      "cpp": "bool containsDuplicate(vector<int>& nums) {\n    \n}"
+    },
+    "testCases": [
+      {
+        "input": "nums = [1,2,3,1]",
+        "expectedOutput": "true"
+      },
+      {
+        "input": "nums = [1,2,3,4]",
+        "expectedOutput": "false"
+      }
+    ],
+    "sampleOutput": "true\n\nAll 2 test cases passed.",
+    "hint": "Insert elements into a hash set and check membership before inserting.",
+    "explanation": "Walk through the array while inserting each value into a hash set; if a value is already present the array has a duplicate, giving O(n) time and O(n) space.",
+    "tags": [
+      "array",
+      "hashing"
+    ],
+    "estimatedTime": 600
+  },
+  {
+    "kind": "coding",
+    "id": "code-006",
+    "category": "coding",
+    "topic": "hashing",
+    "difficulty": "medium",
+    "title": "Group Anagrams",
+    "question": "Given an array of strings strs, group the anagrams together. You can return the answer in any order. Each string consists of lowercase English letters, 1 <= strs.length <= 10^4.",
+    "starterCode": {
+      "javascript": "function groupAnagrams(strs) {\n  \n}",
+      "python": "def group_anagrams(strs):\n    pass",
+      "java": "class Solution {\n    public List<List<String>> groupAnagrams(String[] strs) {\n        \n    }\n}",
+      "cpp": "vector<vector<string>> groupAnagrams(vector<string>& strs) {\n    \n}"
+    },
+    "testCases": [
+      {
+        "input": "strs = [\"eat\",\"tea\",\"tan\",\"ate\",\"nat\",\"bat\"]",
+        "expectedOutput": "[[\"eat\",\"tea\",\"ate\"],[\"tan\",\"nat\"],[\"bat\"]]"
+      },
+      {
+        "input": "strs = [\"\"]",
+        "expectedOutput": "[[\"\"]]"
+      }
+    ],
+    "sampleOutput": "[[\"eat\",\"tea\",\"ate\"],[\"tan\",\"nat\"],[\"bat\"]]\n\nAll 2 test cases passed.",
+    "hint": "Use the sorted version of each string (or a character count signature) as a hash map key to bucket anagrams together.",
+    "explanation": "Compute a canonical key for each string by sorting its characters (or building a 26-count signature), group strings sharing a key in a hash map, then return the map's values, giving O(n * k log k) time where k is the max string length.",
+    "tags": [
+      "string",
+      "hashing",
+      "google"
+    ],
+    "estimatedTime": 1200
+  },
+  {
+    "kind": "coding",
+    "id": "code-007",
+    "category": "coding",
+    "topic": "two-pointer",
+    "difficulty": "easy",
+    "title": "Valid Palindrome",
+    "question": "Given a string s, consider only alphanumeric characters and ignore case; return true if it reads the same forward and backward, false otherwise. The string may contain spaces and punctuation. 1 <= s.length <= 2 * 10^5.",
+    "starterCode": {
+      "javascript": "function isPalindrome(s) {\n  \n}",
+      "python": "def is_palindrome(s):\n    pass",
+      "java": "class Solution {\n    public boolean isPalindrome(String s) {\n        \n    }\n}",
+      "cpp": "bool isPalindrome(string s) {\n    \n}"
+    },
+    "testCases": [
+      {
+        "input": "s = \"A man, a plan, a canal: Panama\"",
+        "expectedOutput": "true"
+      },
+      {
+        "input": "s = \"race a car\"",
+        "expectedOutput": "false"
+      }
+    ],
+    "sampleOutput": "true\n\nAll 2 test cases passed.",
+    "hint": "Use two pointers from both ends, skipping non-alphanumeric characters, and compare lowercase letters.",
+    "explanation": "Move a left and right pointer inward, skipping non-alphanumeric characters, and compare the lowercase versions of the characters at each step; a mismatch means it's not a palindrome, giving O(n) time and O(1) space.",
+    "tags": [
+      "string",
+      "two-pointer"
+    ],
+    "estimatedTime": 600
+  },
+  {
+    "kind": "coding",
+    "id": "code-008",
+    "category": "coding",
+    "topic": "two-pointer",
+    "difficulty": "medium",
+    "title": "Container With Most Water",
+    "question": "Given n non-negative integers height where each represents a vertical line at position i, find two lines that together with the x-axis form a container that holds the most water, and return that maximum area. 2 <= height.length <= 10^5.",
+    "starterCode": {
+      "javascript": "function maxArea(height) {\n  \n}",
+      "python": "def max_area(height):\n    pass",
+      "java": "class Solution {\n    public int maxArea(int[] height) {\n        \n    }\n}",
+      "cpp": "int maxArea(vector<int>& height) {\n    \n}"
+    },
+    "testCases": [
+      {
+        "input": "height = [1,8,6,2,5,4,8,3,7]",
+        "expectedOutput": "49"
+      },
+      {
+        "input": "height = [1,1]",
+        "expectedOutput": "1"
+      }
+    ],
+    "sampleOutput": "49\n\nAll 2 test cases passed.",
+    "hint": "Start with two pointers at both ends and always move the pointer at the shorter line inward.",
+    "explanation": "Place two pointers at the array's ends and repeatedly compute the area, moving the pointer pointing to the shorter line inward since moving the taller one can never increase the area, giving O(n) time and O(1) space.",
+    "tags": [
+      "array",
+      "two-pointer",
+      "flipkart"
+    ],
+    "estimatedTime": 1200
+  },
+  {
+    "kind": "coding",
+    "id": "code-009",
+    "category": "coding",
+    "topic": "sliding-window",
+    "difficulty": "easy",
+    "title": "Best Time to Buy and Sell Stock",
+    "question": "Given an array prices where prices[i] is the price of a stock on day i, find the maximum profit from choosing a single day to buy and a later day to sell. Return 0 if no profit is possible. 1 <= prices.length <= 10^5.",
+    "starterCode": {
+      "javascript": "function maxProfit(prices) {\n  \n}",
+      "python": "def max_profit(prices):\n    pass",
+      "java": "class Solution {\n    public int maxProfit(int[] prices) {\n        \n    }\n}",
+      "cpp": "int maxProfit(vector<int>& prices) {\n    \n}"
+    },
+    "testCases": [
+      {
+        "input": "prices = [7,1,5,3,6,4]",
+        "expectedOutput": "5"
+      },
+      {
+        "input": "prices = [7,6,4,3,1]",
+        "expectedOutput": "0"
+      }
+    ],
+    "sampleOutput": "5\n\nAll 2 test cases passed.",
+    "hint": "Track the minimum price seen so far and the best profit if sold today.",
+    "explanation": "Sweep left to right keeping the minimum price seen so far and updating the best profit as current price minus that minimum, giving O(n) time and O(1) space.",
+    "tags": [
+      "array",
+      "sliding-window",
+      "amazon"
+    ],
+    "estimatedTime": 600
+  },
+  {
+    "kind": "coding",
+    "id": "code-010",
+    "category": "coding",
+    "topic": "sliding-window",
+    "difficulty": "medium",
+    "title": "Minimum Size Subarray Sum",
+    "question": "Given an array of positive integers nums and a positive integer target, return the minimal length of a contiguous subarray whose sum is greater than or equal to target. Return 0 if no such subarray exists. 1 <= nums.length <= 10^5.",
+    "starterCode": {
+      "javascript": "function minSubArrayLen(target, nums) {\n  \n}",
+      "python": "def min_sub_array_len(target, nums):\n    pass",
+      "java": "class Solution {\n    public int minSubArrayLen(int target, int[] nums) {\n        \n    }\n}",
+      "cpp": "int minSubArrayLen(int target, vector<int>& nums) {\n    \n}"
+    },
+    "testCases": [
+      {
+        "input": "target = 7, nums = [2,3,1,2,4,3]",
+        "expectedOutput": "2"
+      },
+      {
+        "input": "target = 4, nums = [1,4,4]",
+        "expectedOutput": "1"
+      },
+      {
+        "input": "target = 11, nums = [1,1,1,1,1,1,1,1]",
+        "expectedOutput": "0"
+      }
+    ],
+    "sampleOutput": "2\n\nAll 3 test cases passed.",
+    "hint": "Expand a window to the right, and shrink it from the left whenever the window sum is at least target.",
+    "explanation": "Maintain a growing window with a running sum; whenever the sum meets or exceeds target, shrink from the left while updating the minimum length, giving O(n) time and O(1) space.",
+    "tags": [
+      "array",
+      "sliding-window"
+    ],
+    "estimatedTime": 1200
+  },
+  {
+    "kind": "coding",
+    "id": "code-011",
+    "category": "coding",
+    "topic": "binary-search",
+    "difficulty": "easy",
+    "title": "Binary Search",
+    "question": "Given a sorted array of distinct integers nums and a target value, return the index of target if found, otherwise return -1. Implement it with O(log n) runtime complexity. 1 <= nums.length <= 10^4.",
+    "starterCode": {
+      "javascript": "function search(nums, target) {\n  \n}",
+      "python": "def search(nums, target):\n    pass",
+      "java": "class Solution {\n    public int search(int[] nums, int target) {\n        \n    }\n}",
+      "cpp": "int search(vector<int>& nums, int target) {\n    \n}"
+    },
+    "testCases": [
+      {
+        "input": "nums = [-1,0,3,5,9,12], target = 9",
+        "expectedOutput": "4"
+      },
+      {
+        "input": "nums = [-1,0,3,5,9,12], target = 2",
+        "expectedOutput": "-1"
+      }
+    ],
+    "sampleOutput": "4\n\nAll 2 test cases passed.",
+    "hint": "Repeatedly halve the search range by comparing the middle element to the target.",
+    "explanation": "Maintain low and high pointers and compare nums[mid] to target, discarding half the search space each iteration, giving O(log n) time and O(1) space.",
+    "tags": [
+      "array",
+      "binary-search"
+    ],
+    "estimatedTime": 600
+  },
+  {
+    "kind": "coding",
+    "id": "code-012",
+    "category": "coding",
+    "topic": "binary-search",
+    "difficulty": "medium",
+    "title": "Search in Rotated Sorted Array",
+    "question": "There is an integer array nums sorted in ascending order that has been rotated at an unknown pivot. Given the rotated array and a target value, return the index of target if it exists, otherwise return -1, in O(log n) time. All values in nums are distinct.",
+    "starterCode": {
+      "javascript": "function search(nums, target) {\n  \n}",
+      "python": "def search(nums, target):\n    pass",
+      "java": "class Solution {\n    public int search(int[] nums, int target) {\n        \n    }\n}",
+      "cpp": "int search(vector<int>& nums, int target) {\n    \n}"
+    },
+    "testCases": [
+      {
+        "input": "nums = [4,5,6,7,0,1,2], target = 0",
+        "expectedOutput": "4"
+      },
+      {
+        "input": "nums = [4,5,6,7,0,1,2], target = 3",
+        "expectedOutput": "-1"
+      },
+      {
+        "input": "nums = [1], target = 0",
+        "expectedOutput": "-1"
+      }
+    ],
+    "sampleOutput": "4\n\nAll 3 test cases passed.",
+    "hint": "At each step at least one half of the array is properly sorted, so decide which half to search based on that.",
+    "explanation": "Use modified binary search: at each step determine which half [low, mid] or [mid, high] is sorted, check if target lies in that sorted half's range, and recurse into the correct half, giving O(log n) time.",
+    "tags": [
+      "array",
+      "binary-search",
+      "microsoft"
+    ],
+    "estimatedTime": 1200
+  },
+  {
+    "kind": "coding",
+    "id": "code-013",
+    "category": "coding",
+    "topic": "stack",
+    "difficulty": "easy",
+    "title": "Valid Parentheses",
+    "question": "Given a string s containing just the characters '(', ')', '{', '}', '[' and ']', determine if the input string is valid, meaning every opening bracket is closed by the same type in the correct order. 1 <= s.length <= 10^4.",
+    "starterCode": {
+      "javascript": "function isValid(s) {\n  \n}",
+      "python": "def is_valid(s):\n    pass",
+      "java": "class Solution {\n    public boolean isValid(String s) {\n        \n    }\n}",
+      "cpp": "bool isValid(string s) {\n    \n}"
+    },
+    "testCases": [
+      {
+        "input": "s = \"()[]{}\"",
+        "expectedOutput": "true"
+      },
+      {
+        "input": "s = \"(]\"",
+        "expectedOutput": "false"
+      },
+      {
+        "input": "s = \"([)]\"",
+        "expectedOutput": "false"
+      }
+    ],
+    "sampleOutput": "true\n\nAll 3 test cases passed.",
+    "hint": "Push opening brackets onto a stack and pop to match when a closing bracket appears.",
+    "explanation": "Push every opening bracket on a stack; on a closing bracket, pop and check it matches the expected type, returning false on mismatch or leftover stack items, giving O(n) time and O(n) space.",
+    "tags": [
+      "string",
+      "stack"
+    ],
+    "estimatedTime": 600
+  },
+  {
+    "kind": "coding",
+    "id": "code-014",
+    "category": "coding",
+    "topic": "stack",
+    "difficulty": "medium",
+    "title": "Min Stack",
+    "question": "Design a stack that supports push, pop, top, and retrieving the minimum element, all in O(1) time. Implement the MinStack class with push(val), pop(), top(), and getMin() methods.",
+    "starterCode": {
+      "javascript": "class MinStack {\n  constructor() {\n    \n  }\n  push(val) {\n    \n  }\n  pop() {\n    \n  }\n  top() {\n    \n  }\n  getMin() {\n    \n  }\n}",
+      "python": "class MinStack:\n    def __init__(self):\n        pass\n    def push(self, val):\n        pass\n    def pop(self):\n        pass\n    def top(self):\n        pass\n    def get_min(self):\n        pass",
+      "java": "class MinStack {\n    public MinStack() {\n        \n    }\n    public void push(int val) {\n        \n    }\n    public void pop() {\n        \n    }\n    public int top() {\n        return 0;\n    }\n    public int getMin() {\n        return 0;\n    }\n}",
+      "cpp": "class MinStack {\npublic:\n    MinStack() {\n        \n    }\n    void push(int val) {\n        \n    }\n    void pop() {\n        \n    }\n    int top() {\n        return 0;\n    }\n    int getMin() {\n        return 0;\n    }\n};"
+    },
+    "testCases": [
+      {
+        "input": "push(-2), push(0), push(-3), getMin()",
+        "expectedOutput": "-3"
+      },
+      {
+        "input": "pop(), top(), getMin()",
+        "expectedOutput": "0, -2"
+      }
+    ],
+    "sampleOutput": "-3\n\nAll 2 test cases passed.",
+    "hint": "Keep a second stack that tracks the current minimum alongside the main stack.",
+    "explanation": "Maintain an auxiliary stack that pushes the minimum-so-far each time a new value is pushed onto the main stack, so getMin() always peeks the auxiliary stack in O(1) time.",
+    "tags": [
+      "stack",
+      "design"
+    ],
+    "estimatedTime": 1200
+  },
+  {
+    "kind": "coding",
+    "id": "code-015",
+    "category": "coding",
+    "topic": "queue",
+    "difficulty": "easy",
+    "title": "Implement Queue using Stacks",
+    "question": "Implement a first-in-first-out (FIFO) queue using only two stacks. The implemented queue should support push, pop, peek, and empty, using only standard stack operations.",
+    "starterCode": {
+      "javascript": "class MyQueue {\n  constructor() {\n    \n  }\n  push(x) {\n    \n  }\n  pop() {\n    \n  }\n  peek() {\n    \n  }\n  empty() {\n    \n  }\n}",
+      "python": "class MyQueue:\n    def __init__(self):\n        pass\n    def push(self, x):\n        pass\n    def pop(self):\n        pass\n    def peek(self):\n        pass\n    def empty(self):\n        pass",
+      "java": "class MyQueue {\n    public MyQueue() {\n        \n    }\n    public void push(int x) {\n        \n    }\n    public int pop() {\n        return 0;\n    }\n    public int peek() {\n        return 0;\n    }\n    public boolean empty() {\n        return true;\n    }\n}",
+      "cpp": "class MyQueue {\npublic:\n    MyQueue() {\n        \n    }\n    void push(int x) {\n        \n    }\n    int pop() {\n        return 0;\n    }\n    int peek() {\n        return 0;\n    }\n    bool empty() {\n        return true;\n    }\n};"
+    },
+    "testCases": [
+      {
+        "input": "push(1), push(2), peek()",
+        "expectedOutput": "1"
+      },
+      {
+        "input": "pop(), empty()",
+        "expectedOutput": "1, false"
+      }
+    ],
+    "sampleOutput": "1\n\nAll 2 test cases passed.",
+    "hint": "Use one stack for incoming pushes and move elements to a second stack only when you need to pop or peek.",
+    "explanation": "Keep an input stack for pushes; when pop or peek is called and the output stack is empty, transfer all elements from input to output, reversing their order to simulate FIFO, giving amortized O(1) per operation.",
+    "tags": [
+      "stack",
+      "queue",
+      "design"
+    ],
+    "estimatedTime": 600
+  },
+  {
+    "kind": "coding",
+    "id": "code-016",
+    "category": "coding",
+    "topic": "queue",
+    "difficulty": "hard",
+    "title": "Sliding Window Maximum",
+    "question": "Given an array nums and a sliding window of size k moving from the very left to the very right, return an array of the maximum value in each window position. 1 <= k <= nums.length <= 10^5.",
+    "starterCode": {
+      "javascript": "function maxSlidingWindow(nums, k) {\n  \n}",
+      "python": "def max_sliding_window(nums, k):\n    pass",
+      "java": "class Solution {\n    public int[] maxSlidingWindow(int[] nums, int k) {\n        \n    }\n}",
+      "cpp": "vector<int> maxSlidingWindow(vector<int>& nums, int k) {\n    \n}"
+    },
+    "testCases": [
+      {
+        "input": "nums = [1,3,-1,-3,5,3,6,7], k = 3",
+        "expectedOutput": "[3,3,5,5,6,7]"
+      },
+      {
+        "input": "nums = [1], k = 1",
+        "expectedOutput": "[1]"
+      }
+    ],
+    "sampleOutput": "[3,3,5,5,6,7]\n\nAll 2 test cases passed.",
+    "hint": "Use a deque that stores indices and keeps values in decreasing order, discarding indices outside the window.",
+    "explanation": "Maintain a monotonic decreasing deque of indices; pop from the back while the new value is larger, pop from the front when the index falls out of the window, and the front always holds the current max, giving O(n) time.",
+    "tags": [
+      "array",
+      "queue",
+      "heap",
+      "google"
+    ],
+    "estimatedTime": 1800
+  },
+  {
+    "kind": "coding",
+    "id": "code-017",
+    "category": "coding",
+    "topic": "linked-list",
+    "difficulty": "easy",
+    "title": "Reverse Linked List",
+    "question": "Given the head of a singly linked list, reverse the list and return the new head. The list can contain 0 to 5000 nodes.",
+    "starterCode": {
+      "javascript": "function reverseList(head) {\n  \n}",
+      "python": "def reverse_list(head):\n    pass",
+      "java": "class Solution {\n    public ListNode reverseList(ListNode head) {\n        \n    }\n}",
+      "cpp": "ListNode* reverseList(ListNode* head) {\n    \n}"
+    },
+    "testCases": [
+      {
+        "input": "head = [1,2,3,4,5]",
+        "expectedOutput": "[5,4,3,2,1]"
+      },
+      {
+        "input": "head = []",
+        "expectedOutput": "[]"
+      }
+    ],
+    "sampleOutput": "[5,4,3,2,1]\n\nAll 2 test cases passed.",
+    "hint": "Walk the list while re-pointing each node's next pointer to the previous node.",
+    "explanation": "Iterate through the list keeping prev and curr pointers, reversing curr's next pointer to prev at each step and advancing both, giving O(n) time and O(1) space.",
+    "tags": [
+      "linked-list"
+    ],
+    "estimatedTime": 600
+  },
+  {
+    "kind": "coding",
+    "id": "code-018",
+    "category": "coding",
+    "topic": "linked-list",
+    "difficulty": "medium",
+    "title": "Linked List Cycle Detection",
+    "question": "Given the head of a linked list, determine if the linked list has a cycle in it, meaning some node can be reached again by continuously following the next pointer. Return true or false without using extra space.",
+    "starterCode": {
+      "javascript": "function hasCycle(head) {\n  \n}",
+      "python": "def has_cycle(head):\n    pass",
+      "java": "class Solution {\n    public boolean hasCycle(ListNode head) {\n        \n    }\n}",
+      "cpp": "bool hasCycle(ListNode *head) {\n    \n}"
+    },
+    "testCases": [
+      {
+        "input": "head = [3,2,0,-4], tail connects to index 1",
+        "expectedOutput": "true"
+      },
+      {
+        "input": "head = [1], pos = -1 (no cycle)",
+        "expectedOutput": "false"
+      }
+    ],
+    "sampleOutput": "true\n\nAll 2 test cases passed.",
+    "hint": "Use two pointers moving at different speeds; if they ever meet, there is a cycle.",
+    "explanation": "Floyd's tortoise and hare algorithm moves a slow pointer one step and a fast pointer two steps at a time; if they meet, a cycle exists, giving O(n) time and O(1) space.",
+    "tags": [
+      "linked-list",
+      "two-pointer"
+    ],
+    "estimatedTime": 1200
+  },
+  {
+    "kind": "coding",
+    "id": "code-019",
+    "category": "coding",
+    "topic": "trees",
+    "difficulty": "easy",
+    "title": "Maximum Depth of Binary Tree",
+    "question": "Given the root of a binary tree, return its maximum depth, meaning the number of nodes along the longest path from the root node down to the farthest leaf node. The tree has 0 to 10^4 nodes.",
+    "starterCode": {
+      "javascript": "function maxDepth(root) {\n  \n}",
+      "python": "def max_depth(root):\n    pass",
+      "java": "class Solution {\n    public int maxDepth(TreeNode root) {\n        \n    }\n}",
+      "cpp": "int maxDepth(TreeNode* root) {\n    \n}"
+    },
+    "testCases": [
+      {
+        "input": "root = [3,9,20,null,null,15,7]",
+        "expectedOutput": "3"
+      },
+      {
+        "input": "root = [1,null,2]",
+        "expectedOutput": "2"
+      }
+    ],
+    "sampleOutput": "3\n\nAll 2 test cases passed.",
+    "hint": "Recursively compute the depth of the left and right subtrees and take the larger one plus one.",
+    "explanation": "Recursively return 1 + max(maxDepth(left), maxDepth(right)), with an empty node returning 0 as the base case, giving O(n) time as every node is visited once.",
+    "tags": [
+      "tree",
+      "recursion"
+    ],
+    "estimatedTime": 600
+  },
+  {
+    "kind": "coding",
+    "id": "code-020",
+    "category": "coding",
+    "topic": "trees",
+    "difficulty": "medium",
+    "title": "Lowest Common Ancestor of a BST",
+    "question": "Given a binary search tree and two nodes p and q, find the lowest common ancestor node of p and q in the tree. All node values are unique and both p and q exist in the tree.",
+    "starterCode": {
+      "javascript": "function lowestCommonAncestor(root, p, q) {\n  \n}",
+      "python": "def lowest_common_ancestor(root, p, q):\n    pass",
+      "java": "class Solution {\n    public TreeNode lowestCommonAncestor(TreeNode root, TreeNode p, TreeNode q) {\n        \n    }\n}",
+      "cpp": "TreeNode* lowestCommonAncestor(TreeNode* root, TreeNode* p, TreeNode* q) {\n    \n}"
+    },
+    "testCases": [
+      {
+        "input": "root = [6,2,8,0,4,7,9,null,null,3,5], p = 2, q = 8",
+        "expectedOutput": "6"
+      },
+      {
+        "input": "root = [6,2,8,0,4,7,9,null,null,3,5], p = 2, q = 4",
+        "expectedOutput": "2"
+      }
+    ],
+    "sampleOutput": "6\n\nAll 2 test cases passed.",
+    "hint": "Use the BST ordering property to decide whether to move left, right, or stop at the current node.",
+    "explanation": "Starting at the root, move left if both p and q are smaller than the current node, move right if both are larger, and otherwise the current node is the split point and thus the LCA, giving O(h) time where h is the tree height.",
+    "tags": [
+      "tree",
+      "binary-search"
+    ],
+    "estimatedTime": 1200
+  },
+  {
+    "kind": "coding",
+    "id": "code-021",
+    "category": "coding",
+    "topic": "graphs",
+    "difficulty": "medium",
+    "title": "Number of Islands",
+    "question": "Given an m x n 2D binary grid which represents a map of '1's (land) and '0's (water), return the number of islands. An island is surrounded by water and is formed by connecting adjacent lands horizontally or vertically.",
+    "starterCode": {
+      "javascript": "function numIslands(grid) {\n  \n}",
+      "python": "def num_islands(grid):\n    pass",
+      "java": "class Solution {\n    public int numIslands(char[][] grid) {\n        \n    }\n}",
+      "cpp": "int numIslands(vector<vector<char>>& grid) {\n    \n}"
+    },
+    "testCases": [
+      {
+        "input": "grid = [[\"1\",\"1\",\"0\",\"0\"],[\"1\",\"1\",\"0\",\"0\"],[\"0\",\"0\",\"1\",\"0\"],[\"0\",\"0\",\"0\",\"1\"]]",
+        "expectedOutput": "3"
+      },
+      {
+        "input": "grid = [[\"1\",\"1\",\"1\"],[\"0\",\"1\",\"0\"],[\"1\",\"1\",\"1\"]]",
+        "expectedOutput": "1"
+      }
+    ],
+    "sampleOutput": "3\n\nAll 2 test cases passed.",
+    "hint": "Run DFS or BFS from every unvisited land cell, sinking the whole connected island each time.",
+    "explanation": "Scan every cell; whenever an unvisited '1' is found, increment the island count and flood-fill (DFS/BFS) all connected '1' cells to mark them visited, giving O(m*n) time.",
+    "tags": [
+      "graph",
+      "dfs",
+      "bfs",
+      "amazon",
+      "microsoft"
+    ],
+    "estimatedTime": 1200
+  },
+  {
+    "kind": "coding",
+    "id": "code-022",
+    "category": "coding",
+    "topic": "graphs",
+    "difficulty": "hard",
+    "title": "Course Schedule",
+    "question": "There are numCourses labeled 0 to numCourses-1, and prerequisites pairs [a, b] meaning you must take course b before course a. Return true if it is possible to finish all courses, i.e. there is no cycle in the prerequisite graph.",
+    "starterCode": {
+      "javascript": "function canFinish(numCourses, prerequisites) {\n  \n}",
+      "python": "def can_finish(num_courses, prerequisites):\n    pass",
+      "java": "class Solution {\n    public boolean canFinish(int numCourses, int[][] prerequisites) {\n        \n    }\n}",
+      "cpp": "bool canFinish(int numCourses, vector<vector<int>>& prerequisites) {\n    \n}"
+    },
+    "testCases": [
+      {
+        "input": "numCourses = 2, prerequisites = [[1,0]]",
+        "expectedOutput": "true"
+      },
+      {
+        "input": "numCourses = 2, prerequisites = [[1,0],[0,1]]",
+        "expectedOutput": "false"
+      }
+    ],
+    "sampleOutput": "true\n\nAll 2 test cases passed.",
+    "hint": "Build a directed graph and perform a topological sort using in-degree counting (Kahn's algorithm) or DFS cycle detection.",
+    "explanation": "Build an adjacency list with in-degrees, repeatedly remove nodes with in-degree 0 (Kahn's BFS topological sort); if all nodes are removed there is no cycle, giving O(V+E) time.",
+    "tags": [
+      "graph",
+      "topological-sort",
+      "google"
+    ],
+    "estimatedTime": 1800
+  },
+  {
+    "kind": "coding",
+    "id": "code-023",
+    "category": "coding",
+    "topic": "heap",
+    "difficulty": "medium",
+    "title": "Kth Largest Element in an Array",
+    "question": "Given an integer array nums and an integer k, return the kth largest element in the array (the kth largest in sorted order, not the kth distinct element). 1 <= k <= nums.length <= 10^5.",
+    "starterCode": {
+      "javascript": "function findKthLargest(nums, k) {\n  \n}",
+      "python": "def find_kth_largest(nums, k):\n    pass",
+      "java": "class Solution {\n    public int findKthLargest(int[] nums, int k) {\n        \n    }\n}",
+      "cpp": "int findKthLargest(vector<int>& nums, int k) {\n    \n}"
+    },
+    "testCases": [
+      {
+        "input": "nums = [3,2,1,5,6,4], k = 2",
+        "expectedOutput": "5"
+      },
+      {
+        "input": "nums = [3,2,3,1,2,4,5,5,6], k = 4",
+        "expectedOutput": "4"
+      }
+    ],
+    "sampleOutput": "5\n\nAll 2 test cases passed.",
+    "hint": "Maintain a min-heap of size k while scanning the array; the heap's top is the answer at the end.",
+    "explanation": "Push elements onto a min-heap and pop whenever the heap size exceeds k, so the heap always holds the k largest elements seen so far and its root is the kth largest, giving O(n log k) time.",
+    "tags": [
+      "heap",
+      "sorting"
+    ],
+    "estimatedTime": 1200
+  },
+  {
+    "kind": "coding",
+    "id": "code-024",
+    "category": "coding",
+    "topic": "heap",
+    "difficulty": "hard",
+    "title": "Merge K Sorted Lists",
+    "question": "You are given an array of k linked-lists, each sorted in ascending order. Merge all the linked-lists into one sorted linked list and return its head. 0 <= k <= 10^4.",
+    "starterCode": {
+      "javascript": "function mergeKLists(lists) {\n  \n}",
+      "python": "def merge_k_lists(lists):\n    pass",
+      "java": "class Solution {\n    public ListNode mergeKLists(ListNode[] lists) {\n        \n    }\n}",
+      "cpp": "ListNode* mergeKLists(vector<ListNode*>& lists) {\n    \n}"
+    },
+    "testCases": [
+      {
+        "input": "lists = [[1,4,5],[1,3,4],[2,6]]",
+        "expectedOutput": "[1,1,2,3,4,4,5,6]"
+      },
+      {
+        "input": "lists = []",
+        "expectedOutput": "[]"
+      }
+    ],
+    "sampleOutput": "[1,1,2,3,4,4,5,6]\n\nAll 2 test cases passed.",
+    "hint": "Push the head of every list into a min-heap keyed by value, and repeatedly pop the smallest and push its successor.",
+    "explanation": "Use a min-heap holding the current head node of each list; repeatedly pop the smallest node, append it to the result, and push its next node if any, giving O(N log k) time where N is total nodes and k the number of lists.",
+    "tags": [
+      "heap",
+      "linked-list",
+      "amazon"
+    ],
+    "estimatedTime": 1800
+  },
+  {
+    "kind": "coding",
+    "id": "code-025",
+    "category": "coding",
+    "topic": "greedy",
+    "difficulty": "medium",
+    "title": "Jump Game",
+    "question": "Given an array of non-negative integers nums where each element represents your maximum jump length at that position, starting at index 0, determine if you can reach the last index. 1 <= nums.length <= 10^4.",
+    "starterCode": {
+      "javascript": "function canJump(nums) {\n  \n}",
+      "python": "def can_jump(nums):\n    pass",
+      "java": "class Solution {\n    public boolean canJump(int[] nums) {\n        \n    }\n}",
+      "cpp": "bool canJump(vector<int>& nums) {\n    \n}"
+    },
+    "testCases": [
+      {
+        "input": "nums = [2,3,1,1,4]",
+        "expectedOutput": "true"
+      },
+      {
+        "input": "nums = [3,2,1,0,4]",
+        "expectedOutput": "false"
+      }
+    ],
+    "sampleOutput": "true\n\nAll 2 test cases passed.",
+    "hint": "Track the farthest index reachable so far and check if it ever falls short of the current position.",
+    "explanation": "Greedily track the farthest reachable index while scanning left to right; if at any position the current index exceeds the farthest reachable index, return false, otherwise update farthest to max(farthest, i+nums[i]), giving O(n) time.",
+    "tags": [
+      "array",
+      "greedy",
+      "dp"
+    ],
+    "estimatedTime": 1200
+  },
+  {
+    "kind": "coding",
+    "id": "code-026",
+    "category": "coding",
+    "topic": "greedy",
+    "difficulty": "hard",
+    "title": "Gas Station",
+    "question": "There are n gas stations along a circular route, gas[i] is the amount of gas at station i, and cost[i] is the gas needed to travel from station i to station i+1. Return the starting station index to complete the circuit without running out of gas, or -1 if impossible. The answer is guaranteed unique if it exists.",
+    "starterCode": {
+      "javascript": "function canCompleteCircuit(gas, cost) {\n  \n}",
+      "python": "def can_complete_circuit(gas, cost):\n    pass",
+      "java": "class Solution {\n    public int canCompleteCircuit(int[] gas, int[] cost) {\n        \n    }\n}",
+      "cpp": "int canCompleteCircuit(vector<int>& gas, vector<int>& cost) {\n    \n}"
+    },
+    "testCases": [
+      {
+        "input": "gas = [1,2,3,4,5], cost = [3,4,5,1,2]",
+        "expectedOutput": "3"
+      },
+      {
+        "input": "gas = [2,3,4], cost = [3,4,3]",
+        "expectedOutput": "-1"
+      }
+    ],
+    "sampleOutput": "3\n\nAll 2 test cases passed.",
+    "hint": "If the total gas is less than total cost no solution exists; otherwise track a running tank and reset the start whenever it goes negative.",
+    "explanation": "If sum(gas) < sum(cost) return -1; otherwise scan once keeping a running tank total, and whenever it drops below zero reset the candidate start to the next index and reset the tank to zero, giving O(n) time.",
+    "tags": [
+      "array",
+      "greedy",
+      "uber"
+    ],
+    "estimatedTime": 1800
+  },
+  {
+    "kind": "coding",
+    "id": "code-027",
+    "category": "coding",
+    "topic": "dp",
+    "difficulty": "easy",
+    "title": "Climbing Stairs",
+    "question": "You are climbing a staircase with n steps. Each time you can climb 1 or 2 steps. Return the number of distinct ways to climb to the top. 1 <= n <= 45.",
+    "starterCode": {
+      "javascript": "function climbStairs(n) {\n  \n}",
+      "python": "def climb_stairs(n):\n    pass",
+      "java": "class Solution {\n    public int climbStairs(int n) {\n        \n    }\n}",
+      "cpp": "int climbStairs(int n) {\n    \n}"
+    },
+    "testCases": [
+      {
+        "input": "n = 2",
+        "expectedOutput": "2"
+      },
+      {
+        "input": "n = 3",
+        "expectedOutput": "3"
+      }
+    ],
+    "sampleOutput": "2\n\nAll 2 test cases passed.",
+    "hint": "The number of ways to reach step n is the sum of the ways to reach step n-1 and step n-2, just like the Fibonacci sequence.",
+    "explanation": "This is the Fibonacci recurrence dp[n] = dp[n-1] + dp[n-2]; iterating bottom-up with two rolling variables gives O(n) time and O(1) space.",
+    "tags": [
+      "dp",
+      "recursion"
+    ],
+    "estimatedTime": 600
+  },
+  {
+    "kind": "coding",
+    "id": "code-028",
+    "category": "coding",
+    "topic": "dp",
+    "difficulty": "medium",
+    "title": "Longest Common Subsequence",
+    "question": "Given two strings text1 and text2, return the length of their longest common subsequence, meaning a sequence that appears in both strings in the same relative order but not necessarily contiguously. Return 0 if there is no common subsequence. 1 <= text1.length, text2.length <= 1000.",
+    "starterCode": {
+      "javascript": "function longestCommonSubsequence(text1, text2) {\n  \n}",
+      "python": "def longest_common_subsequence(text1, text2):\n    pass",
+      "java": "class Solution {\n    public int longestCommonSubsequence(String text1, String text2) {\n        \n    }\n}",
+      "cpp": "int longestCommonSubsequence(string text1, string text2) {\n    \n}"
+    },
+    "testCases": [
+      {
+        "input": "text1 = \"abcde\", text2 = \"ace\"",
+        "expectedOutput": "3"
+      },
+      {
+        "input": "text1 = \"abc\", text2 = \"abc\"",
+        "expectedOutput": "3"
+      },
+      {
+        "input": "text1 = \"abc\", text2 = \"def\"",
+        "expectedOutput": "0"
+      }
+    ],
+    "sampleOutput": "3\n\nAll 3 test cases passed.",
+    "hint": "Build a 2D DP table where dp[i][j] is the LCS length of the first i and j characters of the two strings.",
+    "explanation": "Fill a (m+1) x (n+1) DP table where dp[i][j] = dp[i-1][j-1] + 1 if text1[i-1] == text2[j-1], otherwise max(dp[i-1][j], dp[i][j-1]), giving O(m*n) time and space.",
+    "tags": [
+      "dp",
+      "string",
+      "adobe"
+    ],
+    "estimatedTime": 1200
+  },
+  {
+    "kind": "coding",
+    "id": "code-029",
+    "category": "coding",
+    "topic": "backtracking",
+    "difficulty": "medium",
+    "title": "Subsets",
+    "question": "Given an integer array nums of unique elements, return all possible subsets (the power set). The solution set must not contain duplicate subsets, and may be returned in any order. 1 <= nums.length <= 10.",
+    "starterCode": {
+      "javascript": "function subsets(nums) {\n  \n}",
+      "python": "def subsets(nums):\n    pass",
+      "java": "class Solution {\n    public List<List<Integer>> subsets(int[] nums) {\n        \n    }\n}",
+      "cpp": "vector<vector<int>> subsets(vector<int>& nums) {\n    \n}"
+    },
+    "testCases": [
+      {
+        "input": "nums = [1,2,3]",
+        "expectedOutput": "[[],[1],[2],[1,2],[3],[1,3],[2,3],[1,2,3]]"
+      },
+      {
+        "input": "nums = [0]",
+        "expectedOutput": "[[],[0]]"
+      }
+    ],
+    "sampleOutput": "[[],[1],[2],[1,2],[3],[1,3],[2,3],[1,2,3]]\n\nAll 2 test cases passed.",
+    "hint": "Use backtracking: at each index decide to include or exclude the current element and recurse.",
+    "explanation": "Backtrack over indices; at each step branch into including or excluding nums[i], adding the current combination to the result at each leaf, giving O(2^n) time to enumerate all subsets.",
+    "tags": [
+      "backtracking",
+      "array"
+    ],
+    "estimatedTime": 1200
+  },
+  {
+    "kind": "coding",
+    "id": "code-030",
+    "category": "coding",
+    "topic": "backtracking",
+    "difficulty": "hard",
+    "title": "N-Queens",
+    "question": "The n-queens puzzle is placing n queens on an n x n chessboard so that no two queens attack each other. Given an integer n, return the number of distinct solutions to the puzzle. 1 <= n <= 9.",
+    "starterCode": {
+      "javascript": "function totalNQueens(n) {\n  \n}",
+      "python": "def total_n_queens(n):\n    pass",
+      "java": "class Solution {\n    public int totalNQueens(int n) {\n        \n    }\n}",
+      "cpp": "int totalNQueens(int n) {\n    \n}"
+    },
+    "testCases": [
+      {
+        "input": "n = 4",
+        "expectedOutput": "2"
+      },
+      {
+        "input": "n = 1",
+        "expectedOutput": "1"
+      }
+    ],
+    "sampleOutput": "2\n\nAll 2 test cases passed.",
+    "hint": "Place queens row by row, backtracking whenever a placement conflicts with a previously placed queen's column or diagonal.",
+    "explanation": "Recursively place one queen per row, tracking used columns and both diagonals with sets; backtrack when a placement is invalid, counting complete valid placements, giving roughly O(n!) worst-case time.",
+    "tags": [
+      "backtracking",
+      "recursion"
+    ],
+    "estimatedTime": 1800
+  },
+  {
+    "kind": "coding",
+    "id": "code-031",
+    "category": "coding",
+    "topic": "bit-manipulation",
+    "difficulty": "easy",
+    "title": "Single Number",
+    "question": "Given a non-empty array of integers nums where every element appears twice except for one, find that single one. Solve it with linear runtime and without using extra memory. 1 <= nums.length <= 3*10^4.",
+    "starterCode": {
+      "javascript": "function singleNumber(nums) {\n  \n}",
+      "python": "def single_number(nums):\n    pass",
+      "java": "class Solution {\n    public int singleNumber(int[] nums) {\n        \n    }\n}",
+      "cpp": "int singleNumber(vector<int>& nums) {\n    \n}"
+    },
+    "testCases": [
+      {
+        "input": "nums = [2,2,1]",
+        "expectedOutput": "1"
+      },
+      {
+        "input": "nums = [4,1,2,1,2]",
+        "expectedOutput": "4"
+      }
+    ],
+    "sampleOutput": "1\n\nAll 2 test cases passed.",
+    "hint": "XOR every number together; identical numbers cancel each other out to zero.",
+    "explanation": "XOR-ing all numbers together cancels out every value that appears twice (since x^x=0) leaving only the unique value, giving O(n) time and O(1) space.",
+    "tags": [
+      "bit-manipulation",
+      "array"
+    ],
+    "estimatedTime": 600
+  },
+  {
+    "kind": "coding",
+    "id": "code-032",
+    "category": "coding",
+    "topic": "bit-manipulation",
+    "difficulty": "medium",
+    "title": "Counting Bits",
+    "question": "Given an integer n, return an array ans of length n+1 where ans[i] is the number of 1's in the binary representation of i, for every 0 <= i <= n, computed in O(n) total time.",
+    "starterCode": {
+      "javascript": "function countBits(n) {\n  \n}",
+      "python": "def count_bits(n):\n    pass",
+      "java": "class Solution {\n    public int[] countBits(int n) {\n        \n    }\n}",
+      "cpp": "vector<int> countBits(int n) {\n    \n}"
+    },
+    "testCases": [
+      {
+        "input": "n = 2",
+        "expectedOutput": "[0,1,1]"
+      },
+      {
+        "input": "n = 5",
+        "expectedOutput": "[0,1,1,2,1,2]"
+      }
+    ],
+    "sampleOutput": "[0,1,1]\n\nAll 2 test cases passed.",
+    "hint": "Use the relation that the bit count of i equals the bit count of i shifted right by one, plus i's lowest bit.",
+    "explanation": "Build the answer with dp[i] = dp[i >> 1] + (i & 1), reusing previously computed results so that each new value is derived in O(1), giving overall O(n) time.",
+    "tags": [
+      "bit-manipulation",
+      "dp",
+      "nvidia"
+    ],
+    "estimatedTime": 1200
+  },
+  {
+    "kind": "coding",
+    "id": "code-033",
+    "category": "coding",
+    "topic": "math",
+    "difficulty": "easy",
+    "title": "Fizz Buzz",
+    "question": "Given an integer n, return a string array answer of length n where answer[i] is \"FizzBuzz\" if (i+1) is divisible by 3 and 5, \"Fizz\" if divisible by 3 only, \"Buzz\" if divisible by 5 only, and the string of the number otherwise. 1 <= n <= 10^4.",
+    "starterCode": {
+      "javascript": "function fizzBuzz(n) {\n  \n}",
+      "python": "def fizz_buzz(n):\n    pass",
+      "java": "class Solution {\n    public List<String> fizzBuzz(int n) {\n        \n    }\n}",
+      "cpp": "vector<string> fizzBuzz(int n) {\n    \n}"
+    },
+    "testCases": [
+      {
+        "input": "n = 3",
+        "expectedOutput": "[\"1\",\"2\",\"Fizz\"]"
+      },
+      {
+        "input": "n = 5",
+        "expectedOutput": "[\"1\",\"2\",\"Fizz\",\"4\",\"Buzz\"]"
+      }
+    ],
+    "sampleOutput": "[\"1\",\"2\",\"Fizz\"]\n\nAll 2 test cases passed.",
+    "hint": "Check divisibility by 15 first, then by 3, then by 5, before falling back to the number itself.",
+    "explanation": "Loop from 1 to n and use modulo checks against 15, 3, and 5 in that order to build each string, giving O(n) time.",
+    "tags": [
+      "math",
+      "string"
+    ],
+    "estimatedTime": 600
+  },
+  {
+    "kind": "coding",
+    "id": "code-034",
+    "category": "coding",
+    "topic": "math",
+    "difficulty": "medium",
+    "title": "Reverse Integer",
+    "question": "Given a signed 32-bit integer x, return x with its digits reversed. If reversing causes the value to go outside the signed 32-bit integer range [-2^31, 2^31 - 1], return 0. -2^31 <= x <= 2^31 - 1.",
+    "starterCode": {
+      "javascript": "function reverse(x) {\n  \n}",
+      "python": "def reverse(x):\n    pass",
+      "java": "class Solution {\n    public int reverse(int x) {\n        \n    }\n}",
+      "cpp": "int reverse(int x) {\n    \n}"
+    },
+    "testCases": [
+      {
+        "input": "x = 123",
+        "expectedOutput": "321"
+      },
+      {
+        "input": "x = -123",
+        "expectedOutput": "-321"
+      },
+      {
+        "input": "x = 1534236469",
+        "expectedOutput": "0"
+      }
+    ],
+    "sampleOutput": "321\n\nAll 3 test cases passed.",
+    "hint": "Pop the last digit off x repeatedly and push it onto the result, checking for overflow before each push.",
+    "explanation": "Repeatedly extract the last digit with x % 10 and rebuild the reversed number digit by digit, checking before each multiply-add whether the result would overflow the 32-bit signed range, giving O(log x) time.",
+    "tags": [
+      "math"
+    ],
+    "estimatedTime": 1200
+  },
+  {
+    "kind": "coding",
+    "id": "code-035",
+    "category": "coding",
+    "topic": "recursion",
+    "difficulty": "easy",
+    "title": "Fibonacci Number",
+    "question": "The Fibonacci numbers form a sequence where F(0) = 0, F(1) = 1, and F(n) = F(n-1) + F(n-2) for n > 1. Given n, return F(n). 0 <= n <= 30.",
+    "starterCode": {
+      "javascript": "function fib(n) {\n  \n}",
+      "python": "def fib(n):\n    pass",
+      "java": "class Solution {\n    public int fib(int n) {\n        \n    }\n}",
+      "cpp": "int fib(int n) {\n    \n}"
+    },
+    "testCases": [
+      {
+        "input": "n = 2",
+        "expectedOutput": "1"
+      },
+      {
+        "input": "n = 4",
+        "expectedOutput": "3"
+      }
+    ],
+    "sampleOutput": "1\n\nAll 2 test cases passed.",
+    "hint": "Use memoization or an iterative bottom-up approach to avoid the exponential blow-up of naive recursion.",
+    "explanation": "Naive recursion recomputes the same subproblems exponentially; memoizing results or building the sequence iteratively bottom-up brings the time down to O(n).",
+    "tags": [
+      "recursion",
+      "dp"
+    ],
+    "estimatedTime": 600
+  },
+  {
+    "kind": "coding",
+    "id": "code-036",
+    "category": "coding",
+    "topic": "recursion",
+    "difficulty": "medium",
+    "title": "Generate Parentheses",
+    "question": "Given n pairs of parentheses, write a function to generate all combinations of well-formed parentheses. 1 <= n <= 8.",
+    "starterCode": {
+      "javascript": "function generateParenthesis(n) {\n  \n}",
+      "python": "def generate_parenthesis(n):\n    pass",
+      "java": "class Solution {\n    public List<String> generateParenthesis(int n) {\n        \n    }\n}",
+      "cpp": "vector<string> generateParenthesis(int n) {\n    \n}"
+    },
+    "testCases": [
+      {
+        "input": "n = 3",
+        "expectedOutput": "[\"((()))\",\"(()())\",\"(())()\",\"()(())\",\"()()()\"]"
+      },
+      {
+        "input": "n = 1",
+        "expectedOutput": "[\"()\"]"
+      }
+    ],
+    "sampleOutput": "[\"((()))\",\"(()())\",\"(())()\",\"()(())\",\"()()()\"]\n\nAll 2 test cases passed.",
+    "hint": "Recursively add an open parenthesis whenever you haven't used n yet, and a close parenthesis whenever it wouldn't outnumber opens.",
+    "explanation": "Recurse while tracking the count of open and close parentheses used so far, only adding '(' if open < n and only adding ')' if close < open, producing every valid combination in O(4^n / sqrt(n)) time (Catalan number bound).",
+    "tags": [
+      "recursion",
+      "backtracking",
+      "microsoft"
+    ],
+    "estimatedTime": 1200
+  },
+  {
+    "kind": "coding",
+    "id": "code-037",
+    "category": "coding",
+    "topic": "sorting",
+    "difficulty": "medium",
+    "title": "Sort Colors",
+    "question": "Given an array nums with n objects colored red, white, or blue represented by integers 0, 1, and 2, sort them in place so that objects of the same color are adjacent, in the order red, white, blue, without using a library sort. 1 <= nums.length <= 300.",
+    "starterCode": {
+      "javascript": "function sortColors(nums) {\n  \n}",
+      "python": "def sort_colors(nums):\n    pass",
+      "java": "class Solution {\n    public void sortColors(int[] nums) {\n        \n    }\n}",
+      "cpp": "void sortColors(vector<int>& nums) {\n    \n}"
+    },
+    "testCases": [
+      {
+        "input": "nums = [2,0,2,1,1,0]",
+        "expectedOutput": "[0,0,1,1,2,2]"
+      },
+      {
+        "input": "nums = [2,0,1]",
+        "expectedOutput": "[0,1,2]"
+      }
+    ],
+    "sampleOutput": "[0,0,1,1,2,2]\n\nAll 2 test cases passed.",
+    "hint": "Use the Dutch national flag algorithm with three pointers: low, mid, and high.",
+    "explanation": "The Dutch national flag algorithm uses three pointers low, mid, high; swap 0s to the front, 2s to the back, and advance mid over 1s, sorting the array in a single O(n) pass with O(1) space.",
+    "tags": [
+      "sorting",
+      "two-pointer"
+    ],
+    "estimatedTime": 1200
+  },
+  {
+    "kind": "coding",
+    "id": "code-038",
+    "category": "coding",
+    "topic": "sorting",
+    "difficulty": "medium",
+    "title": "Merge Intervals",
+    "question": "Given an array of intervals where intervals[i] = [starti, endi], merge all overlapping intervals and return an array of the non-overlapping intervals that cover all the intervals in the input. 1 <= intervals.length <= 10^4.",
+    "starterCode": {
+      "javascript": "function merge(intervals) {\n  \n}",
+      "python": "def merge(intervals):\n    pass",
+      "java": "class Solution {\n    public int[][] merge(int[][] intervals) {\n        \n    }\n}",
+      "cpp": "vector<vector<int>> merge(vector<vector<int>>& intervals) {\n    \n}"
+    },
+    "testCases": [
+      {
+        "input": "intervals = [[1,3],[2,6],[8,10],[15,18]]",
+        "expectedOutput": "[[1,6],[8,10],[15,18]]"
+      },
+      {
+        "input": "intervals = [[1,4],[4,5]]",
+        "expectedOutput": "[[1,5]]"
+      }
+    ],
+    "sampleOutput": "[[1,6],[8,10],[15,18]]\n\nAll 2 test cases passed.",
+    "hint": "Sort the intervals by start time first, then sweep through and merge whenever the current interval overlaps the previous one.",
+    "explanation": "Sort intervals by start value, then iterate while keeping a running merged interval, extending its end whenever the next interval's start is less than or equal to it, giving O(n log n) time dominated by the sort.",
+    "tags": [
+      "sorting",
+      "array"
+    ],
+    "estimatedTime": 1200
+  },
+  {
+    "kind": "coding",
+    "id": "code-039",
+    "category": "coding",
+    "topic": "searching",
+    "difficulty": "easy",
+    "title": "Search Insert Position",
+    "question": "Given a sorted array of distinct integers nums and a target value, return the index if the target is found, or the index where it would be inserted in order to keep the array sorted, in O(log n) time. 1 <= nums.length <= 10^4.",
+    "starterCode": {
+      "javascript": "function searchInsert(nums, target) {\n  \n}",
+      "python": "def search_insert(nums, target):\n    pass",
+      "java": "class Solution {\n    public int searchInsert(int[] nums, int target) {\n        \n    }\n}",
+      "cpp": "int searchInsert(vector<int>& nums, int target) {\n    \n}"
+    },
+    "testCases": [
+      {
+        "input": "nums = [1,3,5,6], target = 5",
+        "expectedOutput": "2"
+      },
+      {
+        "input": "nums = [1,3,5,6], target = 2",
+        "expectedOutput": "1"
+      },
+      {
+        "input": "nums = [1,3,5,6], target = 7",
+        "expectedOutput": "4"
+      }
+    ],
+    "sampleOutput": "2\n\nAll 3 test cases passed.",
+    "hint": "Binary search for the target, and return the low pointer when the loop ends without finding it.",
+    "explanation": "Standard binary search narrows low and high; when the loop terminates without a match, low is exactly the correct insertion index, giving O(log n) time.",
+    "tags": [
+      "binary-search",
+      "array"
+    ],
+    "estimatedTime": 600
+  },
+  {
+    "kind": "coding",
+    "id": "code-040",
+    "category": "coding",
+    "topic": "searching",
+    "difficulty": "medium",
+    "title": "Find Minimum in Rotated Sorted Array",
+    "question": "Given a rotated sorted array of unique elements with no duplicates, find the minimum element. The array was originally sorted in ascending order and rotated between 1 and n times. Solve it in O(log n) time.",
+    "starterCode": {
+      "javascript": "function findMin(nums) {\n  \n}",
+      "python": "def find_min(nums):\n    pass",
+      "java": "class Solution {\n    public int findMin(int[] nums) {\n        \n    }\n}",
+      "cpp": "int findMin(vector<int>& nums) {\n    \n}"
+    },
+    "testCases": [
+      {
+        "input": "nums = [3,4,5,1,2]",
+        "expectedOutput": "1"
+      },
+      {
+        "input": "nums = [4,5,6,7,0,1,2]",
+        "expectedOutput": "0"
+      },
+      {
+        "input": "nums = [11,13,15,17]",
+        "expectedOutput": "11"
+      }
+    ],
+    "sampleOutput": "1\n\nAll 3 test cases passed.",
+    "hint": "Compare the middle element to the rightmost element to decide which half contains the rotation point.",
+    "explanation": "Binary search comparing nums[mid] to nums[high]: if nums[mid] > nums[high] the minimum is in the right half, otherwise it's in the left half including mid, giving O(log n) time.",
+    "tags": [
+      "binary-search",
+      "array",
+      "flipkart"
+    ],
+    "estimatedTime": 1200
+  },
+  {
+    "kind": "coding",
+    "id": "code-041",
+    "category": "coding",
+    "topic": "binary-tree",
+    "difficulty": "medium",
+    "title": "Binary Tree Level Order Traversal",
+    "question": "Given the root of a binary tree, return the level order traversal of its nodes' values, meaning grouped from left to right, level by level. The tree has 0 to 2000 nodes.",
+    "starterCode": {
+      "javascript": "function levelOrder(root) {\n  \n}",
+      "python": "def level_order(root):\n    pass",
+      "java": "class Solution {\n    public List<List<Integer>> levelOrder(TreeNode root) {\n        \n    }\n}",
+      "cpp": "vector<vector<int>> levelOrder(TreeNode* root) {\n    \n}"
+    },
+    "testCases": [
+      {
+        "input": "root = [3,9,20,null,null,15,7]",
+        "expectedOutput": "[[3],[9,20],[15,7]]"
+      },
+      {
+        "input": "root = [1]",
+        "expectedOutput": "[[1]]"
+      }
+    ],
+    "sampleOutput": "[[3],[9,20],[15,7]]\n\nAll 2 test cases passed.",
+    "hint": "Use a queue-based breadth-first search, processing one full level at a time.",
+    "explanation": "BFS with a queue, processing the queue's current size worth of nodes as one level before enqueuing their children, giving O(n) time as every node is visited exactly once.",
+    "tags": [
+      "binary-tree",
+      "bfs",
+      "queue"
+    ],
+    "estimatedTime": 1200
+  },
+  {
+    "kind": "coding",
+    "id": "code-042",
+    "category": "coding",
+    "topic": "binary-tree",
+    "difficulty": "medium",
+    "title": "Validate Binary Search Tree",
+    "question": "Given the root of a binary tree, determine if it is a valid binary search tree (BST), meaning every node's left subtree contains only values less than the node, and the right subtree contains only values greater. 1 to 10^4 nodes.",
+    "starterCode": {
+      "javascript": "function isValidBST(root) {\n  \n}",
+      "python": "def is_valid_bst(root):\n    pass",
+      "java": "class Solution {\n    public boolean isValidBST(TreeNode root) {\n        \n    }\n}",
+      "cpp": "bool isValidBST(TreeNode* root) {\n    \n}"
+    },
+    "testCases": [
+      {
+        "input": "root = [2,1,3]",
+        "expectedOutput": "true"
+      },
+      {
+        "input": "root = [5,1,4,null,null,3,6]",
+        "expectedOutput": "false"
+      }
+    ],
+    "sampleOutput": "true\n\nAll 2 test cases passed.",
+    "hint": "Recursively pass down a valid (low, high) range for each node instead of only comparing with immediate children.",
+    "explanation": "Recurse while carrying a valid (low, high) bound for each node, tightening the bound for children (right child gets a new low, left child gets a new high); violating the bound at any node means it's not a BST, giving O(n) time.",
+    "tags": [
+      "binary-tree",
+      "recursion"
+    ],
+    "estimatedTime": 1200
+  },
+  {
+    "kind": "coding",
+    "id": "code-043",
+    "category": "coding",
+    "topic": "trie",
+    "difficulty": "medium",
+    "title": "Implement Trie (Prefix Tree)",
+    "question": "Implement a Trie class with insert(word), search(word), and startsWith(prefix) methods. insert adds a string, search returns true only for exact matches, and startsWith returns true if any inserted word begins with the given prefix.",
+    "starterCode": {
+      "javascript": "class Trie {\n  constructor() {\n    \n  }\n  insert(word) {\n    \n  }\n  search(word) {\n    \n  }\n  startsWith(prefix) {\n    \n  }\n}",
+      "python": "class Trie:\n    def __init__(self):\n        pass\n    def insert(self, word):\n        pass\n    def search(self, word):\n        pass\n    def starts_with(self, prefix):\n        pass",
+      "java": "class Trie {\n    public Trie() {\n        \n    }\n    public void insert(String word) {\n        \n    }\n    public boolean search(String word) {\n        return false;\n    }\n    public boolean startsWith(String prefix) {\n        return false;\n    }\n}",
+      "cpp": "class Trie {\npublic:\n    Trie() {\n        \n    }\n    void insert(string word) {\n        \n    }\n    bool search(string word) {\n        return false;\n    }\n    bool startsWith(string prefix) {\n        return false;\n    }\n};"
+    },
+    "testCases": [
+      {
+        "input": "insert(\"apple\"), search(\"apple\")",
+        "expectedOutput": "true"
+      },
+      {
+        "input": "search(\"app\"), startsWith(\"app\")",
+        "expectedOutput": "false, true"
+      }
+    ],
+    "sampleOutput": "true\n\nAll 2 test cases passed.",
+    "hint": "Each trie node holds a map of children characters plus a flag marking whether a word ends there.",
+    "explanation": "Each node stores a map/array of 26 child pointers and an end-of-word flag; insert walks/creates nodes per character, search checks the end flag at the final node, and startsWith just checks the path exists, giving O(L) time per operation for word length L.",
+    "tags": [
+      "trie",
+      "design"
+    ],
+    "estimatedTime": 1200
+  },
+  {
+    "kind": "coding",
+    "id": "code-044",
+    "category": "coding",
+    "topic": "trie",
+    "difficulty": "hard",
+    "title": "Design Add and Search Words Data Structure",
+    "question": "Design a data structure that supports adding new words and searching for a word, where the search word may contain the '.' wildcard character that can match any single letter. Implement addWord(word) and search(word).",
+    "starterCode": {
+      "javascript": "class WordDictionary {\n  constructor() {\n    \n  }\n  addWord(word) {\n    \n  }\n  search(word) {\n    \n  }\n}",
+      "python": "class WordDictionary:\n    def __init__(self):\n        pass\n    def add_word(self, word):\n        pass\n    def search(self, word):\n        pass",
+      "java": "class WordDictionary {\n    public WordDictionary() {\n        \n    }\n    public void addWord(String word) {\n        \n    }\n    public boolean search(String word) {\n        return false;\n    }\n}",
+      "cpp": "class WordDictionary {\npublic:\n    WordDictionary() {\n        \n    }\n    void addWord(string word) {\n        \n    }\n    bool search(string word) {\n        return false;\n    }\n};"
+    },
+    "testCases": [
+      {
+        "input": "addWord(\"bad\"), addWord(\"dad\"), addWord(\"mad\"), search(\"pad\")",
+        "expectedOutput": "false"
+      },
+      {
+        "input": "search(\".ad\")",
+        "expectedOutput": "true"
+      }
+    ],
+    "sampleOutput": "false\n\nAll 2 test cases passed.",
+    "hint": "Store words in a trie, and when a '.' is encountered during search, recursively try every possible child at that node.",
+    "explanation": "Insert words into a standard trie; search performs a DFS over the trie where a literal character follows a single child pointer but a '.' branches into trying all 26 children recursively, giving worst-case O(26^m) time for m wildcard characters.",
+    "tags": [
+      "trie",
+      "backtracking",
+      "adobe"
+    ],
+    "estimatedTime": 1800
+  },
+  {
+    "kind": "coding",
+    "id": "code-045",
+    "category": "coding",
+    "topic": "segment-tree",
+    "difficulty": "medium",
+    "title": "Range Sum Query - Mutable",
+    "question": "Given an integer array nums, implement a NumArray class supporting update(index, val) which updates the value at index, and sumRange(left, right) which returns the sum of elements between indices left and right inclusive, both in O(log n) time using a segment tree.",
+    "starterCode": {
+      "javascript": "class NumArray {\n  constructor(nums) {\n    \n  }\n  update(index, val) {\n    \n  }\n  sumRange(left, right) {\n    \n  }\n}",
+      "python": "class NumArray:\n    def __init__(self, nums):\n        pass\n    def update(self, index, val):\n        pass\n    def sum_range(self, left, right):\n        pass",
+      "java": "class NumArray {\n    public NumArray(int[] nums) {\n        \n    }\n    public void update(int index, int val) {\n        \n    }\n    public int sumRange(int left, int right) {\n        return 0;\n    }\n}",
+      "cpp": "class NumArray {\npublic:\n    NumArray(vector<int>& nums) {\n        \n    }\n    void update(int index, int val) {\n        \n    }\n    int sumRange(int left, int right) {\n        return 0;\n    }\n};"
+    },
+    "testCases": [
+      {
+        "input": "nums = [1,3,5], sumRange(0,2)",
+        "expectedOutput": "9"
+      },
+      {
+        "input": "update(1,2), sumRange(0,2)",
+        "expectedOutput": "8"
+      }
+    ],
+    "sampleOutput": "9\n\nAll 2 test cases passed.",
+    "hint": "Build a segment tree where each internal node stores the sum of its range, so updates and queries only touch O(log n) nodes.",
+    "explanation": "A segment tree stores range sums in a binary tree over the array indices; update walks from a leaf up to the root fixing O(log n) ancestor sums, and sumRange combines at most O(log n) disjoint segments, both faster than the O(n) naive rebuild-or-scan approach.",
+    "tags": [
+      "segment-tree",
+      "array"
+    ],
+    "estimatedTime": 1200
+  },
+  {
+    "kind": "coding",
+    "id": "code-046",
+    "category": "coding",
+    "topic": "segment-tree",
+    "difficulty": "hard",
+    "title": "Range Minimum Query",
+    "question": "Given an integer array nums, build a data structure that can answer multiple queries for the minimum value in a given range [left, right] efficiently, and also support point updates, each in O(log n) time using a segment tree.",
+    "starterCode": {
+      "javascript": "class SegmentTree {\n  constructor(nums) {\n    \n  }\n  update(index, val) {\n    \n  }\n  queryMin(left, right) {\n    \n  }\n}",
+      "python": "class SegmentTree:\n    def __init__(self, nums):\n        pass\n    def update(self, index, val):\n        pass\n    def query_min(self, left, right):\n        pass",
+      "java": "class SegmentTree {\n    public SegmentTree(int[] nums) {\n        \n    }\n    public void update(int index, int val) {\n        \n    }\n    public int queryMin(int left, int right) {\n        return 0;\n    }\n}",
+      "cpp": "class SegmentTree {\npublic:\n    SegmentTree(vector<int>& nums) {\n        \n    }\n    void update(int index, int val) {\n        \n    }\n    int queryMin(int left, int right) {\n        return 0;\n    }\n};"
+    },
+    "testCases": [
+      {
+        "input": "nums = [2,1,5,3,4], queryMin(1,3)",
+        "expectedOutput": "1"
+      },
+      {
+        "input": "update(1,6), queryMin(1,3)",
+        "expectedOutput": "3"
+      }
+    ],
+    "sampleOutput": "1\n\nAll 2 test cases passed.",
+    "hint": "Each segment tree node stores the minimum of its range; combine child minimums to answer a query by splitting it into O(log n) covered segments.",
+    "explanation": "Build a segment tree bottom-up where each node holds the min of its range; queryMin recursively combines the minimum of at most O(log n) nodes that fully cover the requested range, and update recomputes O(log n) ancestors, both in O(log n) time.",
+    "tags": [
+      "segment-tree",
+      "array",
+      "nvidia"
+    ],
+    "estimatedTime": 1800
+  },
+  {
+    "kind": "coding",
+    "id": "code-047",
+    "category": "coding",
+    "topic": "disjoint-set",
+    "difficulty": "medium",
+    "title": "Number of Provinces",
+    "question": "There are n cities where isConnected[i][j] = 1 if city i and city j are directly connected, given as an n x n matrix. A province is a group of directly or indirectly connected cities. Return the total number of provinces. 1 <= n <= 200.",
+    "starterCode": {
+      "javascript": "function findCircleNum(isConnected) {\n  \n}",
+      "python": "def find_circle_num(is_connected):\n    pass",
+      "java": "class Solution {\n    public int findCircleNum(int[][] isConnected) {\n        \n    }\n}",
+      "cpp": "int findCircleNum(vector<vector<int>>& isConnected) {\n    \n}"
+    },
+    "testCases": [
+      {
+        "input": "isConnected = [[1,1,0],[1,1,0],[0,0,1]]",
+        "expectedOutput": "2"
+      },
+      {
+        "input": "isConnected = [[1,0,0],[0,1,0],[0,0,1]]",
+        "expectedOutput": "3"
+      }
+    ],
+    "sampleOutput": "2\n\nAll 2 test cases passed.",
+    "hint": "Union every pair of directly connected cities and count the number of distinct roots left afterward.",
+    "explanation": "Use a disjoint-set (union-find) with path compression and union by rank; union every pair marked connected in the matrix, then count the number of distinct root parents, giving nearly O(n^2 * alpha(n)) time.",
+    "tags": [
+      "disjoint-set",
+      "graph"
+    ],
+    "estimatedTime": 1200
+  },
+  {
+    "kind": "coding",
+    "id": "code-048",
+    "category": "coding",
+    "topic": "disjoint-set",
+    "difficulty": "medium",
+    "title": "Redundant Connection",
+    "question": "You are given a graph that started as a tree with n nodes labeled 1 to n, with one additional edge added creating exactly one cycle. Return the edge that, if removed, would make the graph a tree again. If multiple answers exist, return the one that appears last in the input.",
+    "starterCode": {
+      "javascript": "function findRedundantConnection(edges) {\n  \n}",
+      "python": "def find_redundant_connection(edges):\n    pass",
+      "java": "class Solution {\n    public int[] findRedundantConnection(int[][] edges) {\n        \n    }\n}",
+      "cpp": "vector<int> findRedundantConnection(vector<vector<int>>& edges) {\n    \n}"
+    },
+    "testCases": [
+      {
+        "input": "edges = [[1,2],[1,3],[2,3]]",
+        "expectedOutput": "[2,3]"
+      },
+      {
+        "input": "edges = [[1,2],[2,3],[3,4],[1,4],[1,5]]",
+        "expectedOutput": "[1,4]"
+      }
+    ],
+    "sampleOutput": "[2,3]\n\nAll 2 test cases passed.",
+    "hint": "Process edges in order and use union-find; the first edge that connects two nodes already in the same set is the redundant one.",
+    "explanation": "Iterate edges in order, and for each try to union its two endpoints in a disjoint-set structure; the first edge whose endpoints already share a root is the extra edge causing the cycle, giving near O(n * alpha(n)) time.",
+    "tags": [
+      "disjoint-set",
+      "graph",
+      "uber"
+    ],
+    "estimatedTime": 1200
+  },
+  {
+    "kind": "coding",
+    "id": "code-049",
+    "category": "coding",
+    "topic": "sql",
+    "difficulty": "easy",
+    "title": "Employees Earning More Than Their Managers",
+    "question": "Given a table Employee with columns id, name, salary, and managerId (nullable, referencing another employee's id), write a query to find the names of employees who earn more than their direct manager. Sample table: (1, 'Joe', 70000, 3), (2, 'Henry', 80000, 4), (3, 'Sam', 60000, null), (4, 'Max', 90000, null). Joe earns more than his manager Sam, so Joe qualifies; Henry earns less than his manager Max, so Henry does not.",
+    "starterCode": {
+      "javascript": "// SQL problem — write the query as a string.\nfunction solve() {\n  const query = `SELECT ...`;\n  return query;\n}",
+      "python": "# Write the SQL query as a string\nquery = \"\"\"\nSELECT ...\n\"\"\"",
+      "java": "String query = \"SELECT ...\";",
+      "cpp": "string query = \"SELECT ...\";"
+    },
+    "testCases": [
+      {
+        "input": "Employee(1,'Joe',70000,3), (3,'Sam',60000,null)",
+        "expectedOutput": "\"Joe\""
+      },
+      {
+        "input": "Employee(2,'Henry',80000,4), (4,'Max',90000,null)",
+        "expectedOutput": "(no rows)"
+      }
+    ],
+    "sampleOutput": "Employee\n--------\nJoe\n\nAll 2 test cases passed.",
+    "hint": "Self-join the Employee table to its manager row using managerId = id, then compare salaries.",
+    "explanation": "Self-join Employee as e joined to Employee as m on e.managerId = m.id, then filter rows where e.salary > m.salary and select e.name.",
+    "tags": [
+      "sql",
+      "joins"
+    ],
+    "estimatedTime": 600
+  },
+  {
+    "kind": "coding",
+    "id": "code-050",
+    "category": "coding",
+    "topic": "sql",
+    "difficulty": "medium",
+    "title": "Second Highest Salary",
+    "question": "Given a table Employee with columns id and salary, write a query to return the second highest distinct salary. Return null if there is no second highest salary. Sample table: (1, 100), (2, 200), (3, 300). The second highest distinct salary here is 200.",
+    "starterCode": {
+      "javascript": "// SQL problem — write the query as a string.\nfunction solve() {\n  const query = `SELECT ...`;\n  return query;\n}",
+      "python": "# Write the SQL query as a string\nquery = \"\"\"\nSELECT ...\n\"\"\"",
+      "java": "String query = \"SELECT ...\";",
+      "cpp": "string query = \"SELECT ...\";"
+    },
+    "testCases": [
+      {
+        "input": "Employee(1,100), (2,200), (3,300)",
+        "expectedOutput": "200"
+      },
+      {
+        "input": "Employee(1,100)",
+        "expectedOutput": "null"
+      }
+    ],
+    "sampleOutput": "SecondHighestSalary\n-------------------\n200\n\nAll 2 test cases passed.",
+    "hint": "Select the distinct salary values ordered descending, skip the first one, and limit to one result, so a missing row returns null.",
+    "explanation": "Use SELECT MAX(salary) AS SecondHighestSalary FROM Employee WHERE salary < (SELECT MAX(salary) FROM Employee), which naturally returns null when no second value exists since MAX over an empty result set is null.",
+    "tags": [
+      "sql",
+      "aggregation"
+    ],
+    "estimatedTime": 1200
+  },
+  {
+    "kind": "coding",
+    "id": "code-051",
+    "category": "coding",
+    "topic": "system-design-basics",
+    "difficulty": "medium",
+    "title": "LRU Cache",
+    "question": "Design a Least Recently Used (LRU) cache with a fixed capacity that supports get(key) returning the value or -1 if not present, and put(key, value) inserting or updating a value, evicting the least recently used item when the capacity is exceeded. Both operations must run in O(1) average time.",
+    "starterCode": {
+      "javascript": "class LRUCache {\n  constructor(capacity) {\n    \n  }\n  get(key) {\n    \n  }\n  put(key, value) {\n    \n  }\n}",
+      "python": "class LRUCache:\n    def __init__(self, capacity):\n        pass\n    def get(self, key):\n        pass\n    def put(self, key, value):\n        pass",
+      "java": "class LRUCache {\n    public LRUCache(int capacity) {\n        \n    }\n    public int get(int key) {\n        return -1;\n    }\n    public void put(int key, int value) {\n        \n    }\n}",
+      "cpp": "class LRUCache {\npublic:\n    LRUCache(int capacity) {\n        \n    }\n    int get(int key) {\n        return -1;\n    }\n    void put(int key, int value) {\n        \n    }\n};"
+    },
+    "testCases": [
+      {
+        "input": "LRUCache(2), put(1,1), put(2,2), get(1)",
+        "expectedOutput": "1"
+      },
+      {
+        "input": "put(3,3) evicts key 2, get(2)",
+        "expectedOutput": "-1"
+      }
+    ],
+    "sampleOutput": "1\n\nAll 2 test cases passed.",
+    "hint": "Combine a hash map for O(1) lookup with a doubly linked list that keeps items ordered from most to least recently used.",
+    "explanation": "Pair a hash map from key to list node with a doubly linked list ordered by recency; get moves the accessed node to the front, and put evicts the tail node when over capacity, giving O(1) time for both operations.",
+    "tags": [
+      "system-design-basics",
+      "design",
+      "hashing",
+      "amazon"
+    ],
+    "estimatedTime": 1200
+  },
+  {
+    "kind": "coding",
+    "id": "code-052",
+    "category": "coding",
+    "topic": "system-design-basics",
+    "difficulty": "medium",
+    "title": "Design a Hit Counter",
+    "question": "Design a hit counter that counts the number of hits received in the past 5 minutes (300 seconds). Implement hit(timestamp) which records a hit at the given timestamp, and getHits(timestamp) which returns the number of hits in the last 300 seconds up to and including the given timestamp. Timestamps arrive in non-decreasing order.",
+    "starterCode": {
+      "javascript": "class HitCounter {\n  constructor() {\n    \n  }\n  hit(timestamp) {\n    \n  }\n  getHits(timestamp) {\n    \n  }\n}",
+      "python": "class HitCounter:\n    def __init__(self):\n        pass\n    def hit(self, timestamp):\n        pass\n    def get_hits(self, timestamp):\n        pass",
+      "java": "class HitCounter {\n    public HitCounter() {\n        \n    }\n    public void hit(int timestamp) {\n        \n    }\n    public int getHits(int timestamp) {\n        return 0;\n    }\n}",
+      "cpp": "class HitCounter {\npublic:\n    HitCounter() {\n        \n    }\n    void hit(int timestamp) {\n        \n    }\n    int getHits(int timestamp) {\n        return 0;\n    }\n};"
+    },
+    "testCases": [
+      {
+        "input": "hit(1), hit(2), hit(3), getHits(4)",
+        "expectedOutput": "3"
+      },
+      {
+        "input": "hit(300), getHits(300)",
+        "expectedOutput": "4"
+      },
+      {
+        "input": "getHits(301)",
+        "expectedOutput": "3"
+      }
+    ],
+    "sampleOutput": "3\n\nAll 3 test cases passed.",
+    "hint": "Keep timestamps in a queue and pop from the front any that are older than 300 seconds before returning the queue size.",
+    "explanation": "Store hit timestamps in a queue in arrival order; on each call, pop timestamps from the front that fall outside the trailing 300-second window before reporting the queue's size, giving amortized O(1) time per call.",
+    "tags": [
+      "system-design-basics",
+      "design",
+      "queue",
+      "google"
+    ],
+    "estimatedTime": 1200
+  }
+]

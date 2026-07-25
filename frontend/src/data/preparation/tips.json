@@ -1,0 +1,77 @@
+[
+  {
+    "id": "tip-001",
+    "group": "placement",
+    "text": "Apply within 48 hours of a job posting going live — most ATS systems rank early applicants higher."
+  },
+  {
+    "id": "tip-002",
+    "group": "placement",
+    "text": "Tailor your resume keywords to match the job description exactly — ATS filters reject near-matches."
+  },
+  {
+    "id": "tip-003",
+    "group": "placement",
+    "text": "Track every application in a spreadsheet with dates and follow-up reminders — silence after 10 days means it's time to nudge."
+  },
+  {
+    "id": "tip-004",
+    "group": "placement",
+    "text": "Target companies that posted the same role multiple times in 90 days — it signals high hiring volume and less competition per opening."
+  },
+  {
+    "id": "tip-005",
+    "group": "placement",
+    "text": "Referrals get interviewed 5-10x more often than cold applications — spend as much time networking as applying."
+  },
+  {
+    "id": "tip-006",
+    "group": "resume",
+    "text": "Quantify every bullet point with a number — impact, scale, or percentage improvement."
+  },
+  {
+    "id": "tip-007",
+    "group": "resume",
+    "text": "Lead each bullet with a strong action verb, not 'responsible for' or 'worked on'."
+  },
+  {
+    "id": "tip-008",
+    "group": "resume",
+    "text": "Keep it to one page unless you have 8+ years of experience — recruiters spend under 10 seconds on a first pass."
+  },
+  {
+    "id": "tip-009",
+    "group": "resume",
+    "text": "Cut objective statements entirely — replace with a 2-line summary that states your niche and biggest win."
+  },
+  {
+    "id": "tip-010",
+    "group": "resume",
+    "text": "List projects with a live link or repo — recruiters trust what they can click through more than what they read."
+  },
+  {
+    "id": "tip-011",
+    "group": "interview",
+    "text": "Prepare 3 STAR stories that can flex to answer 'leadership', 'conflict', and 'failure' questions interchangeably."
+  },
+  {
+    "id": "tip-012",
+    "group": "interview",
+    "text": "Ask about the team's current biggest challenge — it shows genuine interest and gives you real signal on the role."
+  },
+  {
+    "id": "tip-013",
+    "group": "interview",
+    "text": "Practice explaining your resume projects out loud in under 90 seconds each — rambling is the top reason strong candidates lose momentum."
+  },
+  {
+    "id": "tip-014",
+    "group": "interview",
+    "text": "Research the interviewer on LinkedIn beforehand — a shared background gives you an easy, genuine icebreaker."
+  },
+  {
+    "id": "tip-015",
+    "group": "interview",
+    "text": "Never give a number first in salary negotiation — ask for the budgeted range before revealing your expectation."
+  }
+]

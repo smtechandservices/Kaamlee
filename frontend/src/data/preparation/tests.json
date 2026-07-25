@@ -1,0 +1,90 @@
+[
+  {
+    "id": "test-001",
+    "slug": "quant-mock-test",
+    "title": "Quant Mock Test",
+    "category": "quant",
+    "durationMins": 30,
+    "questionCount": 20,
+    "difficulty": "medium",
+    "passingPercent": 60,
+    "topicPool": [
+      "percentage",
+      "profit-and-loss",
+      "time-and-work",
+      "ratio",
+      "average",
+      "simple-interest",
+      "compound-interest",
+      "data-interpretation"
+    ]
+  },
+  {
+    "id": "test-002",
+    "slug": "reasoning-mock-test",
+    "title": "Reasoning Mock Test",
+    "category": "reasoning",
+    "durationMins": 25,
+    "questionCount": 20,
+    "difficulty": "medium",
+    "passingPercent": 60,
+    "topicPool": [
+      "puzzles",
+      "seating-arrangement",
+      "syllogism",
+      "coding-decoding",
+      "direction",
+      "ranking"
+    ]
+  },
+  {
+    "id": "test-003",
+    "slug": "verbal-mock-test",
+    "title": "Verbal Mock Test",
+    "category": "verbal",
+    "durationMins": 20,
+    "questionCount": 20,
+    "difficulty": "easy",
+    "passingPercent": 60,
+    "topicPool": [
+      "grammar",
+      "vocabulary",
+      "sentence-correction",
+      "reading-comprehension",
+      "synonyms",
+      "antonyms"
+    ]
+  },
+  {
+    "id": "test-004",
+    "slug": "coding-contest",
+    "title": "Coding Contest",
+    "category": "coding",
+    "durationMins": 60,
+    "questionCount": 4,
+    "difficulty": "hard",
+    "passingPercent": 50,
+    "topicPool": [
+      "arrays",
+      "strings",
+      "dp",
+      "graphs"
+    ]
+  },
+  {
+    "id": "test-005",
+    "slug": "mixed-placement-test",
+    "title": "Mixed Placement Test",
+    "category": "mixed",
+    "durationMins": 45,
+    "questionCount": 40,
+    "difficulty": "medium",
+    "passingPercent": 55,
+    "topicPool": [
+      "aptitude",
+      "reasoning",
+      "verbal",
+      "coding"
+    ]
+  }
+]
