@@ -6,6 +6,7 @@ import Sidebar from '@/components/Sidebar';
 import PageHeader from '@/components/PageHeader';
 import { useAuth } from '@/context/AuthContext';
 import { useSubscriptionGate } from '@/hooks/useSubscriptionGate';
+import PricingModal from '@/components/PricingModal';
 
 interface Job {
   id: number;
@@ -43,17 +44,18 @@ function groupByStatus(applications: Application[]) {
 
 export default function ApplicationsPage() {
   const { token, logout } = useAuth();
-  const { isReady, isSubscribed } = useSubscriptionGate();
+  const { isReady, isSubscribed } = useSubscriptionGate({ allowUnsubscribed: true });
 
   const [columns, setColumns] = useState<Record<string, Application[]>>(() => groupByStatus([]));
   const [isFetching, setIsFetching] = useState(true);
   const [draggingFrom, setDraggingFrom] = useState<string | null>(null);
   const [draggingId, setDraggingId] = useState<number | null>(null);
   const [dragOverColumn, setDragOverColumn] = useState<string | null>(null);
+  const [isPricingOpen, setIsPricingOpen] = useState(false);
 
   useEffect(() => {
     const fetchApplications = async () => {
-      if (!token || !isSubscribed) return;
+      if (!token) return;
       setIsFetching(true);
       try {
         const res = await fetch(`${process.env.NEXT_PUBLIC_API_URL}/api/applications/`, {
@@ -70,7 +72,7 @@ export default function ApplicationsPage() {
       }
     };
     fetchApplications();
-  }, [token, isSubscribed]);
+  }, [token]);
 
   const moveCard = useCallback((jobId: number, fromStatus: string, toStatus: string) => {
     setColumns(prev => {
@@ -141,6 +143,32 @@ export default function ApplicationsPage() {
     setDraggingFrom(null);
   };
 
+  const handleDragStart = (e: React.DragEvent, jobId: number, fromStatus: string) => {
+    if (!isSubscribed) {
+      e.preventDefault();
+      setIsPricingOpen(true);
+      return;
+    }
+    setDraggingId(jobId);
+    setDraggingFrom(fromStatus);
+  };
+
+  const handleStatusSelect = (jobId: number, fromStatus: string, toStatus: string) => {
+    if (!isSubscribed) {
+      setIsPricingOpen(true);
+      return;
+    }
+    updateStatus(jobId, fromStatus, toStatus);
+  };
+
+  const handleRemove = (jobId: number, fromStatus: string) => {
+    if (!isSubscribed) {
+      setIsPricingOpen(true);
+      return;
+    }
+    removeCard(jobId, fromStatus);
+  };
+
   const totalCount = COLUMNS.reduce((sum, col) => sum + (columns[col.key]?.length || 0), 0);
 
   if (!isReady) {
@@ -163,6 +191,20 @@ export default function ApplicationsPage() {
             <span className="text-[10px] sm:text-xs text-[#555] font-semibold shrink-0">{totalCount} tracked</span>
           )}
         />
+
+        {!isSubscribed && (
+          <div className="flex items-center justify-between gap-3 px-4 sm:px-6 py-2 bg-green-500/10 border-b border-green-500/20 shrink-0">
+            <span className="text-[10px] sm:text-[11px] text-green-400 font-semibold">
+              View only — subscribe to drag cards, change status, or stop tracking a job.
+            </span>
+            <button
+              onClick={() => setIsPricingOpen(true)}
+              className="cursor-pointer shrink-0 px-3 py-1 rounded-lg text-[10px] sm:text-[11px] font-bold bg-[#22c55e] text-white hover:bg-[#1ea34e] transition-colors"
+            >
+              Unlock
+            </button>
+          </div>
+        )}
 
         <div className="flex-1 overflow-x-auto overflow-y-hidden custom-scrollbar">
           <div className="h-full flex gap-4 p-4 sm:p-6 min-w-max">
@@ -201,11 +243,11 @@ export default function ApplicationsPage() {
                         <div
                           key={app.job.id}
                           draggable
-                          onDragStart={() => { setDraggingId(app.job.id); setDraggingFrom(col.key); }}
+                          onDragStart={(e) => handleDragStart(e, app.job.id, col.key)}
                           onDragEnd={() => { setDraggingId(null); setDraggingFrom(null); setDragOverColumn(null); }}
-                          className={`group p-3 rounded-xl border border-[#222] bg-[#141414] hover:border-[#333] transition-all cursor-grab active:cursor-grabbing ${
-                            draggingId === app.job.id ? 'opacity-40' : ''
-                          }`}
+                          className={`group p-3 rounded-xl border border-[#222] bg-[#141414] hover:border-[#333] transition-all ${
+                            isSubscribed ? 'cursor-grab active:cursor-grabbing' : 'cursor-pointer'
+                          } ${draggingId === app.job.id ? 'opacity-40' : ''}`}
                         >
                           <div className="flex items-start gap-2">
                             <GripVertical size={13} className="text-[#333] mt-0.5 shrink-0" />
@@ -221,7 +263,7 @@ export default function ApplicationsPage() {
                               <div className="flex items-center justify-between mt-2.5">
                                 <select
                                   value={col.key}
-                                  onChange={(e) => updateStatus(app.job.id, col.key, e.target.value)}
+                                  onChange={(e) => handleStatusSelect(app.job.id, col.key, e.target.value)}
                                   onClick={(e) => e.stopPropagation()}
                                   className="text-[10px] bg-[#1a1a1a] border border-[#262626] rounded-lg px-1.5 py-1 text-[#888] cursor-pointer focus:outline-none focus:border-[#333]"
                                 >
@@ -240,7 +282,7 @@ export default function ApplicationsPage() {
                                     <ExternalLink size={12} />
                                   </a>
                                   <button
-                                    onClick={(e) => { e.stopPropagation(); removeCard(app.job.id, col.key); }}
+                                    onClick={(e) => { e.stopPropagation(); handleRemove(app.job.id, col.key); }}
                                     className="cursor-pointer text-[#444] hover:text-red-400 transition-colors p-1"
                                     title="Stop tracking"
                                   >
@@ -277,6 +319,8 @@ export default function ApplicationsPage() {
           background: #333;
         }
       `}</style>
+
+      <PricingModal isOpen={isPricingOpen} onClose={() => setIsPricingOpen(false)} />
     </main>
   );
 }

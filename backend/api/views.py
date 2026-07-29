@@ -1,7 +1,7 @@
 from rest_framework import viewsets, views, generics, permissions
 from rest_framework.pagination import PageNumberPagination
 from rest_framework.throttling import ScopedRateThrottle
-from .permissions import IsSubscribed
+from .permissions import IsSubscribed, is_user_subscribed
 
 from rest_framework.decorators import action
 from rest_framework.authtoken.views import ObtainAuthToken
@@ -198,6 +198,7 @@ class JobPagination(PageNumberPagination):
     max_page_size = 100
 
 _JOBS_CACHE_TTL = 120  # 2 minutes — matches the frontend's own client-side cache TTL
+FREE_PREVIEW_LIMIT = 200  # non-subscribers get a capped, most-recent-first taste of the map/list
 
 def _jobs_cache_version(user_id):
     """A per-user counter, bumped on bookmark changes, folded into cache keys below
@@ -216,6 +217,10 @@ class JobViewSet(viewsets.ModelViewSet):
         # Jobs are populated by the scraper; only admins may create/edit/delete them.
         if self.action in ('create', 'update', 'partial_update', 'destroy', 'bulk_delete'):
             return [permissions.IsAdminUser()]
+        # list/map_pins are open to any authenticated user — non-subscribers get a
+        # capped, recent-jobs preview instead of a 403 (see get_queryset/map_pins).
+        if self.action in ('list', 'map_pins'):
+            return [permissions.IsAuthenticated()]
         return super().get_permissions()
 
     @action(detail=False, methods=['post'], url_path='bulk-delete')
@@ -287,6 +292,10 @@ class JobViewSet(viewsets.ModelViewSet):
         if bookmarked_only == 'true':
             queryset = queryset.filter(is_bookmarked=True)
 
+        if not is_user_subscribed(user):
+            # Free preview: most-recent jobs only, no shuffle/pagination depth.
+            return queryset.order_by('-created_at')[:FREE_PREVIEW_LIMIT]
+
         return self._shuffle(queryset)
 
     def _shuffle(self, queryset):
@@ -346,7 +355,11 @@ class JobViewSet(viewsets.ModelViewSet):
         Uses .values() instead of the serializer so a large result set doesn't do
         one extra query per row."""
         bookmarked_only = request.query_params.get('bookmarked_only') == 'true'
-        cache_key = self._cache_key(request, 'api_map_pins', scoped_to_user=bookmarked_only)
+        subscribed = is_user_subscribed(request.user)
+        # Tier goes in the prefix so a free-preview response never leaks into a
+        # subscriber's cache entry (or vice versa) for the same filter params.
+        cache_prefix = 'api_map_pins' if subscribed else 'api_map_pins_free'
+        cache_key = self._cache_key(request, cache_prefix, scoped_to_user=bookmarked_only)
         pins = cache.get(cache_key)
         if pins is not None:
             return Response(pins)
@@ -356,6 +369,11 @@ class JobViewSet(viewsets.ModelViewSet):
 
         if bookmarked_only:
             queryset = queryset.filter(bookmarked_by__user=request.user)
+
+        if not subscribed:
+            # Free preview: most-recent jobs only, so non-subscribers still see
+            # activity on the map without giving away the full unlimited set.
+            queryset = queryset.order_by('-created_at')[:FREE_PREVIEW_LIMIT]
 
         rows = queryset.values(
             'id', 'title', 'company', 'location_name', 'job_type', 'job_url',
@@ -387,8 +405,10 @@ class JobViewSet(viewsets.ModelViewSet):
 
 class ApplicationsView(views.APIView):
     """Every job the user has bookmarked/tracked, for the application-tracker
-    Kanban board — grouped client-side by `status`."""
-    permission_classes = [permissions.IsAuthenticated, IsSubscribed]
+    Kanban board — grouped client-side by `status`. Open to any authenticated
+    user (read-only view); actually changing a card's status or bookmarking a
+    job still requires a subscription via JobViewSet's IsSubscribed actions."""
+    permission_classes = [permissions.IsAuthenticated]
 
     def get(self, request):
         bookmarks = Bookmark.objects.filter(user=request.user).select_related('job').order_by('-status_updated_at')
@@ -909,13 +929,27 @@ class PublicPortfolioView(views.APIView):
 
 
 class MyPortfolioView(generics.RetrieveUpdateAPIView):
-    """GET/PATCH /api/portfolio/me/ — authenticated user managing their own portfolio."""
+    """GET/PATCH /api/portfolio/me/ — authenticated user managing their own portfolio.
+    Open to any authenticated user so free users can build/preview a portfolio;
+    going public requires an active subscription (see update())."""
     serializer_class = PortfolioSettingsSerializer
-    permission_classes = [permissions.IsAuthenticated, IsSubscribed]
+    permission_classes = [permissions.IsAuthenticated]
 
     def get_object(self):
         portfolio, _ = Portfolio.objects.get_or_create(user=self.request.user)
         return portfolio
+
+    def update(self, request, *args, **kwargs):
+        if not is_user_subscribed(request.user):
+            portfolio = self.get_object()
+            # Only block the false->true transition — saving other settings on an
+            # already-public portfolio (e.g. after a subscription lapses) still works.
+            if request.data.get('is_public') and not portfolio.is_public:
+                return Response({'error': 'Subscribe to make your portfolio public.'}, status=403)
+            for field in ('template', 'theme'):
+                if field in request.data and request.data[field] != getattr(portfolio, field):
+                    return Response({'error': 'Subscribe to change your portfolio template or theme.'}, status=403)
+        return super().update(request, *args, **kwargs)
 
 
 class PortfolioAnalyticsView(views.APIView):
@@ -1009,7 +1043,7 @@ class PortfolioAnalyticsView(views.APIView):
 
 class MyPortfolioContentView(views.APIView):
     """GET/PATCH /api/portfolio/content/ — read and update the parsed resume data."""
-    permission_classes = [permissions.IsAuthenticated, IsSubscribed]
+    permission_classes = [permissions.IsAuthenticated]
 
     def get(self, request):
         profile = request.user.profile
@@ -1025,10 +1059,14 @@ class MyPortfolioContentView(views.APIView):
         return Response({'resume_parsed': profile.resume_parsed})
 
 
+CUSTOM_CV_FREE_LIMIT = 1  # non-subscribers may keep at most one custom CV; more requires a subscription
+
 class CustomCVListCreateView(generics.ListCreateAPIView):
-    """GET/POST /api/custom-cv/ — list or create the user's custom CVs."""
+    """GET/POST /api/custom-cv/ — list or create the user's custom CVs.
+    Open to any authenticated user so free users can build one CV; creating
+    beyond CUSTOM_CV_FREE_LIMIT requires an active subscription."""
     serializer_class = CustomCVSerializer
-    permission_classes = [permissions.IsAuthenticated, IsSubscribed]
+    permission_classes = [permissions.IsAuthenticated]
 
     def get_queryset(self):
         return CustomCV.objects.filter(user=self.request.user)
@@ -1037,6 +1075,8 @@ class CustomCVListCreateView(generics.ListCreateAPIView):
         profile = getattr(request.user, 'profile', None)
         if not profile or not profile.resume_text:
             return Response({'error': 'Upload a resume before creating a custom CV.'}, status=400)
+        if not is_user_subscribed(request.user) and CustomCV.objects.filter(user=request.user).count() >= CUSTOM_CV_FREE_LIMIT:
+            return Response({'error': 'Free plan allows 1 custom CV. Subscribe to create more.'}, status=403)
         serializer = CustomCVCreateSerializer(data=request.data, context={'request': request})
         serializer.is_valid(raise_exception=True)
         cv = serializer.save()
@@ -1048,16 +1088,17 @@ class AtsKeywordsView(views.APIView):
     the same terms score_cv() checks target_role content against. Powers the
     "ATS mapping terms" panel on the custom CV list page.
     """
-    permission_classes = [permissions.IsAuthenticated, IsSubscribed]
+    permission_classes = [permissions.IsAuthenticated]
 
     def get(self, request):
         return Response(get_all_profession_keywords())
 
 
 class CustomCVDetailView(generics.RetrieveUpdateDestroyAPIView):
-    """GET/PATCH/DELETE /api/custom-cv/<id>/"""
+    """GET/PATCH/DELETE /api/custom-cv/<id>/ — scoped to the caller's own CVs,
+    so a free user can still fully use their one allotted CV."""
     serializer_class = CustomCVSerializer
-    permission_classes = [permissions.IsAuthenticated, IsSubscribed]
+    permission_classes = [permissions.IsAuthenticated]
 
     def get_queryset(self):
         return CustomCV.objects.filter(user=self.request.user)
@@ -1065,7 +1106,7 @@ class CustomCVDetailView(generics.RetrieveUpdateDestroyAPIView):
 
 class CustomCVTailorView(views.APIView):
     """POST /api/custom-cv/<id>/tailor/ — rewrite content for a new target role."""
-    permission_classes = [permissions.IsAuthenticated, IsSubscribed]
+    permission_classes = [permissions.IsAuthenticated]
 
     def post(self, request, pk):
         try:
@@ -1091,7 +1132,7 @@ class CustomCVTailorView(views.APIView):
 
 class CustomCVExportView(views.APIView):
     """GET /api/custom-cv/<id>/export/?type=pdf|docx"""
-    permission_classes = [permissions.IsAuthenticated, IsSubscribed]
+    permission_classes = [permissions.IsAuthenticated]
 
     def get(self, request, pk):
         try:

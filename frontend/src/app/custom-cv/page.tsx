@@ -24,7 +24,7 @@ function scoreColor(score: number) {
 
 export default function CustomCVListPage() {
   const { user, token } = useAuth();
-  const { isReady, isSubscribed } = useSubscriptionGate();
+  const { isReady, isSubscribed } = useSubscriptionGate({ allowUnsubscribed: true });
   const router = useRouter();
 
   const [cvs, setCvs] = useState<CustomCV[]>([]);
@@ -40,7 +40,7 @@ export default function CustomCVListPage() {
   const [suggestionError, setSuggestionError] = useState('');
 
   useEffect(() => {
-    if (!token || !isSubscribed) return;
+    if (!token) return;
     fetch(`${process.env.NEXT_PUBLIC_API_URL}/api/custom-cv/`, {
       headers: { Authorization: `Token ${token}` },
     })
@@ -55,7 +55,10 @@ export default function CustomCVListPage() {
       .then((r) => r.json())
       .then((d) => setKeywords(d && typeof d === 'object' ? d : {}))
       .catch(() => {});
-  }, [token, isSubscribed]);
+  }, [token]);
+
+  // Free plan allows one custom CV total; further creation requires a subscription.
+  const atFreeLimit = !isSubscribed && cvs.length >= 1;
 
   // Failed ATS checks across every CV, deduped by check name — the generic
   // "Keyword coverage for X" check is excluded here since it gets its own
@@ -204,7 +207,7 @@ export default function CustomCVListPage() {
               <FileText className="w-5 h-5 text-green-500" />
               <h2 className="text-sm font-black uppercase tracking-widest text-white">Custom CVs</h2>
             </div>
-            {hasResume && (
+            {hasResume && !atFreeLimit && (
               <button
                 type="button"
                 onClick={() => setShowNewForm((s) => !s)}
@@ -222,6 +225,20 @@ export default function CustomCVListPage() {
             </div>
           ) : (
             <>
+              {atFreeLimit && (
+                <div className="flex items-center justify-between gap-3 bg-green-500/10 border border-green-500/20 rounded-2xl p-4 mb-6">
+                  <p className="text-[11px] text-green-400 font-semibold">
+                    Free plan includes 1 custom CV. Subscribe to create more.
+                  </p>
+                  <button
+                    type="button"
+                    onClick={() => router.push('/pricing')}
+                    className="cursor-pointer shrink-0 px-3 py-1 rounded-lg text-[10px] font-bold bg-[#22c55e] text-white hover:bg-[#1ea34e] transition-colors"
+                  >
+                    Unlock
+                  </button>
+                </div>
+              )}
               {showNewForm && (
                 <motion.form
                   initial={{ opacity: 0, height: 0 }}
@@ -363,12 +380,12 @@ export default function CustomCVListPage() {
                   </div>
                   <button
                     type="button"
-                    onClick={() => handleAddSuggested(s.role)}
+                    onClick={() => (atFreeLimit ? router.push('/pricing') : handleAddSuggested(s.role))}
                     disabled={addingRole === s.role}
                     className="cursor-pointer shrink-0 flex items-center gap-1.5 text-[10px] font-bold uppercase tracking-widest text-green-400 hover:text-green-300 border border-green-500/30 hover:border-green-500/50 bg-green-500/10 rounded-full px-3 py-1.5 disabled:opacity-50 transition-all"
                   >
                     {addingRole === s.role ? <Loader2 className="w-3.5 h-3.5 animate-spin" /> : <Plus className="w-3.5 h-3.5" />}
-                    Add
+                    {atFreeLimit ? 'Unlock' : 'Add'}
                   </button>
                 </div>
               ))}
