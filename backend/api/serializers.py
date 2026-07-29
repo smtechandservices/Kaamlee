@@ -6,6 +6,7 @@ import PyPDF2
 from groq import Groq
 from rest_framework import serializers
 from .models import Job, ScrapeSession, ScrapeLog, Bookmark, Feedback, Portfolio, PortfolioView, CustomCV, JobApplicationKit, Company, EmailOTP
+from .permissions import is_user_subscribed
 from django.contrib.auth.models import User
 from django.contrib.auth.password_validation import validate_password
 from django.utils import timezone
@@ -604,13 +605,23 @@ class PortfolioViewSerializer(serializers.ModelSerializer):
 
 
 class CustomCVSerializer(serializers.ModelSerializer):
+    is_locked = serializers.SerializerMethodField()
+
     class Meta:
         model = CustomCV
         fields = [
             'id', 'label', 'target_role', 'template', 'content',
-            'ats_score', 'ats_breakdown', 'created_at', 'updated_at',
+            'ats_score', 'ats_breakdown', 'created_at', 'updated_at', 'is_locked',
         ]
-        read_only_fields = ['id', 'ats_score', 'ats_breakdown', 'created_at', 'updated_at']
+        read_only_fields = ['id', 'ats_score', 'ats_breakdown', 'created_at', 'updated_at', 'is_locked']
+
+    def get_is_locked(self, obj):
+        # Non-subscribers keep only their oldest CV usable — the rest lock
+        # (view-only) if a subscription lapses with several CVs on the account.
+        if is_user_subscribed(obj.user):
+            return False
+        free_cv = CustomCV.objects.filter(user=obj.user).order_by('created_at', 'id').first()
+        return free_cv is not None and obj.id != free_cv.id
 
     def update(self, instance, validated_data):
         instance = super().update(instance, validated_data)

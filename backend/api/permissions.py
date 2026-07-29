@@ -22,6 +22,12 @@ def is_user_subscribed(user):
                 # Auto-reset status if expired during the check
                 profile.is_subscribed = False
                 profile.save()
+                # A public portfolio is a paid perk — once the subscription that
+                # unlocked it lapses, take it back private automatically.
+                portfolio = getattr(user, 'portfolio', None)
+                if portfolio and portfolio.is_public:
+                    portfolio.is_public = False
+                    portfolio.save(update_fields=['is_public'])
                 return False
         return True  # Legacy support for profiles with is_subscribed=True but no expiry set
 

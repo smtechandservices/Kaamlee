@@ -3,12 +3,13 @@
 import React, { useState, useEffect } from 'react';
 import { useRouter } from 'next/navigation';
 import { motion } from 'framer-motion';
-import { Loader2, Plus, FileText, Trash2, Briefcase, Lightbulb, Target, CheckCircle2, Sparkles } from 'lucide-react';
+import { Loader2, Plus, FileText, Trash2, Briefcase, Lightbulb, Target, CheckCircle2, Sparkles, Lock } from 'lucide-react';
 import { useAuth } from '@/context/AuthContext';
 import { useSubscriptionGate } from '@/hooks/useSubscriptionGate';
 import type { CustomCV, CVTemplate, ProfessionKeywords } from '@/components/customcv/types';
 import Sidebar from '@/components/Sidebar';
 import PageHeader from '@/components/PageHeader';
+import PricingModal from '@/components/PricingModal';
 
 const TEMPLATE_LABELS: Record<CVTemplate, string> = {
   modern: 'Modern',
@@ -38,6 +39,15 @@ export default function CustomCVListPage() {
   const [error, setError] = useState('');
   const [addingRole, setAddingRole] = useState<string | null>(null);
   const [suggestionError, setSuggestionError] = useState('');
+  const [isPricingOpen, setIsPricingOpen] = useState(false);
+
+  const handleOpenCV = (cv: CustomCV) => {
+    if (cv.is_locked) {
+      setIsPricingOpen(true);
+      return;
+    }
+    router.push(`/custom-cv/${cv.id}`);
+  };
 
   useEffect(() => {
     if (!token) return;
@@ -315,17 +325,21 @@ export default function CustomCVListPage() {
                       key={cv.id}
                       initial={{ opacity: 0, y: 8 }}
                       animate={{ opacity: 1, y: 0 }}
-                      className="bg-[#0a0a0a] border border-[#222] rounded-2xl p-4 flex items-center justify-between gap-3 hover:border-[#333] transition-all"
+                      className={`bg-[#0a0a0a] border border-[#222] rounded-2xl p-4 flex items-center justify-between gap-3 hover:border-[#333] transition-all ${cv.is_locked ? 'opacity-60' : ''}`}
                     >
                       <button
                         type="button"
-                        onClick={() => router.push(`/custom-cv/${cv.id}`)}
+                        onClick={() => handleOpenCV(cv)}
                         className="cursor-pointer flex-1 text-left"
                       >
-                        <p className="text-xs font-black text-white">{cv.label || 'Untitled CV'}</p>
+                        <p className="text-xs font-black text-white flex items-center gap-1.5">
+                          {cv.label || 'Untitled CV'}
+                          {cv.is_locked && <Lock className="w-3 h-3 text-[#555]" />}
+                        </p>
                         <p className="text-[10px] text-[#555] mt-0.5">
                           {TEMPLATE_LABELS[cv.template]}
                           {cv.target_role && ` · ${cv.target_role}`}
+                          {cv.is_locked && ' · Subscribe to open'}
                         </p>
                       </button>
                       <span className={`text-[10px] font-bold px-2.5 py-1 rounded-full border ${scoreColor(cv.ats_score)}`}>
@@ -474,6 +488,8 @@ export default function CustomCVListPage() {
       </div>
         </div>
       </div>
+
+      <PricingModal isOpen={isPricingOpen} onClose={() => setIsPricingOpen(false)} />
     </main>
   );
 }

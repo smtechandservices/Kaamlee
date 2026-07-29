@@ -904,6 +904,11 @@ class PublicPortfolioView(views.APIView):
         if not portfolio:
             return Response({'error': 'Portfolio not found.'}, status=404)
 
+        # Touching subscription status here (not just on the owner's own requests)
+        # means a lapsed-but-still-public portfolio gets flipped private the moment
+        # anyone loads the link, not only the next time the owner is active.
+        is_user_subscribed(user)
+
         # Allow owner to view their own private portfolio
         is_owner = request.user.is_authenticated and request.user == user
         if not portfolio.is_public and not is_owner:
@@ -1061,6 +1066,17 @@ class MyPortfolioContentView(views.APIView):
 
 CUSTOM_CV_FREE_LIMIT = 1  # non-subscribers may keep at most one custom CV; more requires a subscription
 
+def _free_cv_id(user):
+    """Which of a user's CVs stays usable without a subscription — the oldest
+    one (e.g. built while subscribed, or the original free CV). Used both to
+    cap new creation and to lock the rest if a subscription lapses with
+    multiple CVs already on the account."""
+    first = CustomCV.objects.filter(user=user).order_by('created_at', 'id').first()
+    return first.id if first else None
+
+def _is_cv_locked(user, cv):
+    return not is_user_subscribed(user) and cv.id != _free_cv_id(user)
+
 class CustomCVListCreateView(generics.ListCreateAPIView):
     """GET/POST /api/custom-cv/ — list or create the user's custom CVs.
     Open to any authenticated user so free users can build one CV; creating
@@ -1096,16 +1112,31 @@ class AtsKeywordsView(views.APIView):
 
 class CustomCVDetailView(generics.RetrieveUpdateDestroyAPIView):
     """GET/PATCH/DELETE /api/custom-cv/<id>/ — scoped to the caller's own CVs,
-    so a free user can still fully use their one allotted CV."""
+    so a free user can still fully use their one allotted CV. If a subscription
+    lapses while multiple CVs exist, only _free_cv_id stays usable at all — the
+    rest are fully locked (not even viewable) until re-subscribing, though they
+    can still be deleted to free up the slot."""
     serializer_class = CustomCVSerializer
     permission_classes = [permissions.IsAuthenticated]
 
     def get_queryset(self):
         return CustomCV.objects.filter(user=self.request.user)
 
+    def retrieve(self, request, *args, **kwargs):
+        if _is_cv_locked(request.user, self.get_object()):
+            return Response({'error': 'Subscribe to open this CV.'}, status=403)
+        return super().retrieve(request, *args, **kwargs)
+
+    def update(self, request, *args, **kwargs):
+        if _is_cv_locked(request.user, self.get_object()):
+            return Response({'error': 'Subscribe to edit this CV.'}, status=403)
+        return super().update(request, *args, **kwargs)
+
 
 class CustomCVTailorView(views.APIView):
-    """POST /api/custom-cv/<id>/tailor/ — rewrite content for a new target role."""
+    """POST /api/custom-cv/<id>/tailor/ — rewrite content for a new target role.
+    AI retargeting is a premium feature outright — unlike editing/exporting,
+    it's gated by subscription status alone, even on the one free CV."""
     permission_classes = [permissions.IsAuthenticated]
 
     def post(self, request, pk):
@@ -1113,6 +1144,9 @@ class CustomCVTailorView(views.APIView):
             cv = CustomCV.objects.get(pk=pk, user=request.user)
         except CustomCV.DoesNotExist:
             return Response({'error': 'Not found.'}, status=404)
+
+        if not is_user_subscribed(request.user):
+            return Response({'error': 'Subscribe to retarget a CV for a new role.'}, status=403)
 
         target_role = (request.data.get('target_role') or '').strip()
         if not target_role:
@@ -1139,6 +1173,9 @@ class CustomCVExportView(views.APIView):
             cv = CustomCV.objects.get(pk=pk, user=request.user)
         except CustomCV.DoesNotExist:
             return Response({'error': 'Not found.'}, status=404)
+
+        if _is_cv_locked(request.user, cv):
+            return Response({'error': 'Subscribe to export this CV.'}, status=403)
 
         fmt = request.query_params.get('type', 'pdf')
         name = (cv.content.get('name') or request.user.get_full_name() or request.user.username or 'resume').strip()
