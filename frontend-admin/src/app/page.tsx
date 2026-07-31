@@ -1,26 +1,25 @@
 'use client';
 
-import React, { useState, useEffect } from 'react';
-import { motion, AnimatePresence } from 'framer-motion';
+import React, { useState, useEffect, useRef } from 'react';
 import {
-  LayoutDashboard,
   Building2,
-  Play,
   RefreshCcw,
   Briefcase,
-  CheckCircle2,
+  Users as UsersIcon,
   AlertCircle,
   Loader2,
-  Terminal,
-  X,
-  AlertTriangle,
-  LogOut,
   Globe,
   Mail,
   MapPin,
   ExternalLink,
   ChevronLeft,
-  ChevronRight
+  ChevronRight,
+  Download,
+  Play,
+  X,
+  Clock,
+  Activity,
+  StopCircle,
 } from 'lucide-react';
 import { useRouter } from 'next/navigation';
 import Link from 'next/link';
@@ -29,25 +28,51 @@ import { getCached, setCache, invalidatePrefix } from '@/lib/cache';
 const API_BASE = `${process.env.NEXT_PUBLIC_API_URL}/api`;
 const COMPANIES_PAGE_SIZE = 20;
 
-interface ScrapeSession {
-  id: number;
-  start_time: string;
-  end_time: string | null;
-  status: string;
-  jobs_found: number;
-  jobs_deleted: number;
-  current_location: string | null;
-  error_message: string | null;
-  stop_requested: boolean;
-  search_term: string;
-  results_limit: number;
+const SCRIPT_OPTIONS = [
+  { value: 'ashbyhq', label: 'Ashby (jobs.ashbyhq.com)' },
+  { value: 'greenhouse', label: 'Greenhouse (boards.greenhouse.io)' },
+  { value: 'recruitee', label: 'Recruitee (*.recruitee.com)' },
+  { value: 'lever', label: 'Lever (jobs.lever.co)' },
+  { value: 'workable', label: 'Workable (apply.workable.com)' },
+];
+// Which career_url substring identifies a company as belonging to each
+// script — so the company picker only offers boards that script can
+// actually fetch, instead of letting you pick e.g. a Greenhouse company
+// while "Ashby" is selected.
+const SCRIPT_URL_MATCH: Record<string, string> = {
+  ashbyhq: 'ashbyhq.com',
+  greenhouse: 'greenhouse.io',
+  recruitee: 'recruitee.com',
+  lever: 'lever.co',
+  workable: 'workable.com',
+};
+const MAX_SCRIPT_COMPANIES = 3;
+// Cache key (not React state) for the last run's logs/results — a plain
+// useState resets to empty on every mount, so switching to another page and
+// back was wiping out the results the moment you left. The shared in-memory
+// cache module survives client-side navigation, so stash it there instead.
+const SCRIPT_RUN_CACHE_KEY = 'script-run:last';
+
+interface ScriptRunState {
+  results: ScriptRunResult[];
+  logs: string[];
 }
 
+interface ScriptRunResult {
+  board: string;
+  ok: boolean;
+  error?: string;
+  fetched?: number;
+  created?: number;
+  updated?: number;
+  skipped?: number;
+  geocoded?: number;
+  borrowed?: number;
+  removed?: number;
+}
 
 interface Stats {
   total_jobs: number;
-  last_scrape_session: (ScrapeSession & { search_term: string; results_limit: number }) | null;
-  jobs_by_site: { site: string; count: number }[];
 }
 
 interface CompanyJob {
@@ -86,22 +111,193 @@ interface Company {
   jobs: CompanyJob[];
 }
 
+interface CompanyOption {
+  id: number;
+  name: string;
+  career_url: string;
+  logo_url: string;
+  last_scraped_at: string | null;
+}
+
+function formatScrapedAt(value: string) {
+  return new Date(value).toLocaleString('en-IN', {
+    day: '2-digit', month: 'short', hour: '2-digit', minute: '2-digit',
+  });
+}
+
+function formatRelativeScrapedAt(value: string | null) {
+  if (!value) return 'never scraped';
+  const diffMs = Date.now() - new Date(value).getTime();
+  const minutes = Math.round(diffMs / 60_000);
+  if (minutes < 1) return 'scraped just now';
+  if (minutes < 60) return `scraped ${minutes} min ago`;
+  const hours = Math.round(minutes / 60);
+  if (hours < 24) return `scraped ${hours} hr${hours !== 1 ? 's' : ''} ago`;
+  const days = Math.round(hours / 24);
+  return `scraped ${days} day${days !== 1 ? 's' : ''} ago`;
+}
+
+interface BoardProgress {
+  stage: string;
+  current?: number;
+  total?: number;
+  geocodeStartedAt?: number;
+}
+
+// Scripts only emit granular counters during the geocode pass (every 25
+// locations) — everything else is a one-shot line — so progress/ETA is
+// only ever computable for that phase; other stages just show a label.
+function parseBoardProgress(message: string, prev: BoardProgress | undefined): BoardProgress {
+  const locationMatch = message.match(/^(\d+)\/(\d+) location\(s\) checked/);
+  if (locationMatch) {
+    return {
+      stage: 'Geocoding locations',
+      current: Number(locationMatch[1]),
+      total: Number(locationMatch[2]),
+      geocodeStartedAt: prev?.geocodeStartedAt ?? Date.now(),
+    };
+  }
+  if (message.startsWith('Fetching ')) return { stage: 'Fetching postings' };
+  if (/posting\(s\) received$/.test(message)) return { stage: 'Saving to database' };
+  if (/created, \d+ updated/.test(message)) return { stage: 'Preparing to geocode' };
+  if (message === 'Geocoding locations...') return { stage: 'Geocoding locations', geocodeStartedAt: Date.now() };
+  if (/^Stopped by admin request/.test(message)) return { ...prev, stage: 'Stopping...' };
+  if (/rate-limiting/.test(message)) return { ...prev, stage: 'Rate-limited by Nominatim, waiting to retry' };
+  if (/geocoded, \d+ borrowed/.test(message)) return { stage: 'Cleaning up' };
+  if (/^Removed \d+/.test(message)) return { stage: 'Finishing up' };
+  return prev ?? { stage: message };
+}
+
+function formatEta(progress: BoardProgress): string | null {
+  const { current, total, geocodeStartedAt } = progress;
+  if (current == null || total == null || !geocodeStartedAt || current <= 0) return null;
+  const elapsedSeconds = (Date.now() - geocodeStartedAt) / 1000;
+  const rate = current / elapsedSeconds; // items/sec
+  if (rate <= 0) return null;
+  const remainingSeconds = Math.round((total - current) / rate);
+  if (remainingSeconds <= 0) return 'almost done';
+  if (remainingSeconds < 60) return `~${remainingSeconds}s left`;
+  const minutes = Math.round(remainingSeconds / 60);
+  return `~${minutes} min left`;
+}
+
+interface ActiveRun {
+  board: string;
+  script: string;
+  started_at: number; // unix seconds
+}
+
+function formatElapsed(startedAt: number): string {
+  const seconds = Math.max(0, Math.round(Date.now() / 1000 - startedAt));
+  if (seconds < 60) return `${seconds}s`;
+  const minutes = Math.floor(seconds / 60);
+  const remSeconds = seconds % 60;
+  return `${minutes}m ${remSeconds}s`;
+}
+
 export default function AdminDashboard() {
   const [stats, setStats] = useState<Stats | null>(null);
   const [companies, setCompanies] = useState<Company[]>([]);
   const [companiesCount, setCompaniesCount] = useState(0);
   const [companiesPage, setCompaniesPage] = useState(1);
-  const [pickerCompanies, setPickerCompanies] = useState<Company[]>([]);
+  const [usersCount, setUsersCount] = useState<number | null>(null);
   const [recentJobs, setRecentJobs] = useState<RecentJob[]>([]);
-  const [activeSessions, setActiveSessions] = useState<ScrapeSession[]>([]);
   const [loading, setLoading] = useState(true);
-  const [triggeringCompany, setTriggeringCompany] = useState(false);
-  const [triggeringCompanyName, setTriggeringCompanyName] = useState<string | null>(null);
-  const [isLogsModalOpen, setIsLogsModalOpen] = useState(false);
-  const [isCompanyPickerOpen, setIsCompanyPickerOpen] = useState(false);
+  const [scriptChoice, setScriptChoice] = useState(SCRIPT_OPTIONS[0].value);
+  const [companyOptions, setCompanyOptions] = useState<CompanyOption[]>([]);
+  const [scriptCompanies, setScriptCompanies] = useState<string[]>([]);
+  const [runningScript, setRunningScript] = useState(false);
+  const [scriptResults, setScriptResults] = useState<ScriptRunResult[] | null>(null);
+  const [scriptLogs, setScriptLogs] = useState<string[]>([]);
+  const [boardProgress, setBoardProgress] = useState<Record<string, BoardProgress>>({});
+  const [activeRuns, setActiveRuns] = useState<ActiveRun[]>([]);
+  const [stoppingBoards, setStoppingBoards] = useState<Set<string>>(new Set());
+  const [, forceTick] = useState(0); // re-render periodically so elapsed-time text keeps counting up
+  const [scriptError, setScriptError] = useState<string | null>(null);
+  const logsContainerRef = useRef<HTMLDivElement>(null);
   const router = useRouter();
-  // Tracks whether a scrape is active, so we know when one just finished
-  const isScrapingRef = React.useRef(false);
+
+  useEffect(() => {
+    const cached = getCached<ScriptRunState>(SCRIPT_RUN_CACHE_KEY);
+    if (cached) {
+      setScriptResults(cached.results);
+      setScriptLogs(cached.logs);
+    }
+  }, []);
+
+  useEffect(() => {
+    if (logsContainerRef.current) {
+      logsContainerRef.current.scrollTop = logsContainerRef.current.scrollHeight;
+    }
+  }, [scriptLogs]);
+
+  // Active Runs card: polls independently of the local "Run" button/stream
+  // state, since a sync can be triggered from another admin tab/session too
+  // — this is the only way to see (and stop) those.
+  useEffect(() => {
+    const token = localStorage.getItem('admin_token');
+    if (!token) return;
+    let cancelled = false;
+
+    const poll = () => {
+      fetch(`${API_BASE}/admin/run-script/running/`, { headers: { Authorization: `Token ${token}` } })
+        .then(res => (res.ok ? res.json() : []))
+        .then((data: ActiveRun[]) => {
+          if (cancelled) return;
+          setActiveRuns(data);
+          // A "stopping" board only really leaves once its worker notices
+          // the flag and finishes (which can take a while) — drop it from
+          // this set once the registry confirms it's actually gone, rather
+          // than assuming a stop request's 200 OK means it's done.
+          setStoppingBoards(prev => new Set([...prev].filter(b => data.some(r => r.board === b))));
+        })
+        .catch(() => {});
+    };
+
+    poll();
+    const interval = setInterval(poll, 3000);
+    const tickInterval = setInterval(() => forceTick(t => t + 1), 1000);
+    return () => { cancelled = true; clearInterval(interval); clearInterval(tickInterval); };
+  }, []);
+
+  // A board isn't actually gone the instant /stop/ returns 200 — that just
+  // flips a flag the worker thread checks cooperatively, and finishing can
+  // take a while (up to a Nominatim retry backoff mid-geocode). So
+  // stoppingBoards stays set (showing "Stopping...") until the next poll
+  // confirms the board has left the registry for real, rather than
+  // optimistically hiding the row and having it flicker back.
+  const stopRun = async (board: string) => {
+    const token = localStorage.getItem('admin_token');
+    setStoppingBoards(prev => new Set(prev).add(board));
+    try {
+      const res = await fetch(`${API_BASE}/admin/run-script/stop/`, {
+        method: 'POST',
+        headers: { Authorization: `Token ${token}`, 'Content-Type': 'application/json' },
+        body: JSON.stringify({ board }),
+      });
+      if (!res.ok) {
+        setStoppingBoards(prev => { const next = new Set(prev); next.delete(board); return next; });
+      }
+    } catch (error) {
+      setStoppingBoards(prev => { const next = new Set(prev); next.delete(board); return next; });
+    }
+  };
+
+  const stopAllRuns = async () => {
+    const token = localStorage.getItem('admin_token');
+    const boards = activeRuns.map(r => r.board);
+    setStoppingBoards(new Set(boards));
+    try {
+      const res = await fetch(`${API_BASE}/admin/run-script/stop/`, {
+        method: 'POST',
+        headers: { Authorization: `Token ${token}`, 'Content-Type': 'application/json' },
+        body: JSON.stringify({ all: true }),
+      });
+      if (!res.ok) setStoppingBoards(new Set());
+    } catch (error) {
+      setStoppingBoards(new Set());
+    }
+  };
 
   const companiesTotalPages = Math.max(1, Math.ceil(companiesCount / COMPANIES_PAGE_SIZE));
 
@@ -130,34 +326,35 @@ export default function AdminDashboard() {
     }
   };
 
-  // Unpaginated, only for the "Scrape by Company" picker — it needs every
-  // company to choose from, not just the current dashboard page.
-  const fetchPickerCompanies = async (force = false) => {
-    const token = localStorage.getItem('admin_token');
-    if (!token) return;
-    const cacheKey = 'company-data:dashboard:picker';
-    if (!force) {
-      const cached = getCached<Company[]>(cacheKey);
-      if (cached) {
-        setPickerCompanies(cached);
-        return;
-      }
-    }
-    try {
-      const res = await fetch(`${API_BASE}/companies/?page_size=2000&light=true`, { headers: { 'Authorization': `Token ${token}` } });
-      if (res.ok) {
-        const results = (await res.json()).results;
-        setPickerCompanies(results);
-        setCache(cacheKey, results);
-      }
-    } catch (error) {
-      console.error('Failed to fetch picker companies:', error);
-    }
-  };
-
   useEffect(() => {
     fetchCompanies(companiesPage);
   }, [companiesPage]);
+
+  const fetchCompanyOptions = (force = false) => {
+    const token = localStorage.getItem('admin_token');
+    if (!token) return;
+    const cacheKey = 'company-data:dropdown';
+    if (!force) {
+      const cached = getCached<CompanyOption[]>(cacheKey);
+      if (cached) {
+        setCompanyOptions(cached);
+        return;
+      }
+    }
+    fetch(`${API_BASE}/admin/companies/?page_size=500`, { headers: { Authorization: `Token ${token}` } })
+      .then(res => (res.ok ? res.json() : { results: [] }))
+      .then((data: { results: CompanyOption[] }) => {
+        const sorted = data.results.sort((a, b) => a.name.localeCompare(b.name));
+        setCompanyOptions(sorted);
+        setCache(cacheKey, sorted);
+      })
+      .catch(() => {});
+  };
+
+  useEffect(() => {
+    fetchCompanyOptions();
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, []);
 
   const fetchData = async (force = false) => {
     const token = localStorage.getItem('admin_token');
@@ -189,10 +386,18 @@ export default function AdminDashboard() {
       }
       setStats(statsData);
 
-      // Fetch companies (career-page scrape targets + their scraped jobs)
-      await Promise.all([fetchCompanies(companiesPage, force), fetchPickerCompanies(force)]);
+      await fetchCompanies(companiesPage, force);
 
-      // Fetch recent jobs for the marquee
+      let usersCountData = force ? null : getCached<number>('job-data:dashboard:users-count');
+      if (usersCountData == null) {
+        const usersRes = await fetch(`${API_BASE}/users/`, { headers: { 'Authorization': `Token ${token}` } });
+        if (usersRes.ok) {
+          usersCountData = (await usersRes.json()).length;
+          setCache('job-data:dashboard:users-count', usersCountData);
+        }
+      }
+      if (usersCountData != null) setUsersCount(usersCountData);
+
       let recentJobsData = force ? null : getCached<RecentJob[]>('job-data:dashboard:recent');
       if (!recentJobsData) {
         const recentJobsRes = await fetch(`${API_BASE}/recent-jobs/?limit=15`);
@@ -202,21 +407,93 @@ export default function AdminDashboard() {
         }
       }
       if (recentJobsData) setRecentJobs(recentJobsData);
-
-      // Active sessions are intentionally never cached — this is what powers
-      // live scrape-status polling, so it must always reflect the current state.
-      const logsRes = await fetch(`${API_BASE}/logs/`, { headers: { 'Authorization': `Token ${token}` } });
-      if (logsRes.ok) {
-        const logsData = await logsRes.json();
-        setActiveSessions(logsData.active_sessions ?? []);
-        isScrapingRef.current = (logsData.active_sessions?.length ?? 0) > 0;
-      } else {
-        isScrapingRef.current = statsData?.last_scrape_session?.status === 'running';
-      }
     } catch (error) {
       console.error("Failed to fetch data:", error);
     } finally {
       setLoading(false);
+    }
+  };
+
+  const addScriptCompany = (name: string) => {
+    if (!name || scriptCompanies.length >= MAX_SCRIPT_COMPANIES || scriptCompanies.includes(name)) return;
+    setScriptCompanies(prev => [...prev, name]);
+  };
+
+  const removeScriptCompany = (name: string) => {
+    setScriptCompanies(prev => prev.filter(c => c !== name));
+  };
+
+  const runScript = async () => {
+    if (scriptCompanies.length === 0 || runningScript) return;
+    const token = localStorage.getItem('admin_token');
+    setRunningScript(true);
+    setScriptError(null);
+    setScriptResults(null);
+    setScriptLogs([]);
+    setBoardProgress({});
+
+    const results: ScriptRunResult[] = [];
+    const logs: string[] = [];
+    const progressByBoard: Record<string, BoardProgress> = {};
+    const persist = () => setCache(SCRIPT_RUN_CACHE_KEY, { results: [...results], logs: [...logs] });
+
+    try {
+      const res = await fetch(`${API_BASE}/admin/run-script/`, {
+        method: 'POST',
+        headers: { Authorization: `Token ${token}`, 'Content-Type': 'application/json' },
+        body: JSON.stringify({ script: scriptChoice, companies: scriptCompanies }),
+      });
+
+      if (!res.ok) {
+        const data = await res.json().catch(() => ({}));
+        setScriptError(data.error || 'Failed to run script.');
+        return;
+      }
+
+      const reader = res.body?.getReader();
+      if (!reader) {
+        setScriptError('Streaming is not supported by this browser.');
+        return;
+      }
+
+      setScriptResults(results);
+      const decoder = new TextDecoder();
+      let buffer = '';
+
+      while (true) {
+        const { done, value } = await reader.read();
+        if (done) break;
+        buffer += decoder.decode(value, { stream: true });
+        const lines = buffer.split('\n');
+        buffer = lines.pop() ?? '';
+        for (const line of lines) {
+          if (!line.trim()) continue;
+          const event = JSON.parse(line);
+          if (event.type === 'log') {
+            logs.push(`[${event.board}] ${event.message}`);
+            setScriptLogs([...logs]);
+            progressByBoard[event.board] = parseBoardProgress(event.message, progressByBoard[event.board]);
+            setBoardProgress({ ...progressByBoard });
+          } else if (event.type === 'result') {
+            const { type: _type, ...result } = event;
+            results.push(result as ScriptRunResult);
+            setScriptResults([...results]);
+            delete progressByBoard[event.board]; // finished — stop showing it as in-progress
+            setBoardProgress({ ...progressByBoard });
+          }
+          persist();
+        }
+      }
+
+      invalidatePrefix('job-data:');
+      invalidatePrefix('company-data:');
+      fetchData(true);
+      fetchCompanyOptions(true);
+    } catch (error) {
+      setScriptError('Failed to reach the server.');
+    } finally {
+      setRunningScript(false);
+      persist();
     }
   };
 
@@ -228,123 +505,8 @@ export default function AdminDashboard() {
     }
 
     fetchData();
-
-    // Always checks /logs/ (cheap) so we also notice scrapes kicked off elsewhere
-    // (e.g. the auto-scrape cron) — not just ones triggered from this tab — and
-    // refresh companies/stats the moment any of them finishes.
-    const pollStats = async () => {
-      const t = localStorage.getItem('admin_token');
-      if (!t) return;
-      try {
-        const logsRes = await fetch(`${API_BASE}/logs/`, { headers: { 'Authorization': `Token ${t}` } });
-        if (logsRes.ok) {
-          const logsData = await logsRes.json();
-          const sessions: ScrapeSession[] = logsData.active_sessions ?? [];
-          setActiveSessions(sessions);
-          const wasScraping = isScrapingRef.current;
-          isScrapingRef.current = sessions.length > 0;
-          if (wasScraping && sessions.length === 0) {
-            // A scrape just finished — job/company counts changed everywhere,
-            // so bust the cross-page cache instead of only refreshing this page.
-            invalidatePrefix('company-data:');
-            invalidatePrefix('job-data:');
-            fetchData(true);
-          }
-        }
-      } catch {
-        // silently ignore poll errors
-      }
-    };
-
-    const interval = setInterval(pollStats, 10000);
-    return () => clearInterval(interval);
+    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []);
-
-  const handleLogout = () => {
-    localStorage.removeItem('admin_token');
-    localStorage.removeItem('admin_user');
-    router.push('/login');
-  };
-
-  const triggerCompanyScrape = async (names: string[]) => {
-    const token = localStorage.getItem('admin_token');
-    setTriggeringCompany(true);
-    try {
-      const res = await fetch(`${API_BASE}/trigger-company-scrape/`, {
-        method: 'POST',
-        headers: { 'Authorization': `Token ${token}`, 'Content-Type': 'application/json' },
-        body: JSON.stringify({ companies: names })
-      });
-
-      if (!res.ok) {
-        const errorData = await res.json();
-        alert(errorData.status || errorData.error || "Failed to trigger company scrape");
-        return;
-      }
-
-      setIsCompanyPickerOpen(false);
-      isScrapingRef.current = true;
-      setTimeout(() => fetchData(true), 800);
-    } catch (error) {
-      alert("Failed to trigger company scrape");
-    } finally {
-      setTriggeringCompany(false);
-    }
-  };
-
-  const triggerCompanyScrapeOne = async (name: string) => {
-    const token = localStorage.getItem('admin_token');
-    setTriggeringCompanyName(name);
-    try {
-      const res = await fetch(`${API_BASE}/trigger-company-scrape/`, {
-        method: 'POST',
-        headers: { 'Authorization': `Token ${token}`, 'Content-Type': 'application/json' },
-        body: JSON.stringify({ companies: [name] })
-      });
-
-      if (!res.ok) {
-        const errorData = await res.json();
-        alert(errorData.status || errorData.error || `Failed to trigger scrape for ${name}`);
-        return;
-      }
-
-      isScrapingRef.current = true;
-      setTimeout(() => fetchData(true), 800);
-    } catch (error) {
-      alert(`Failed to trigger scrape for ${name}`);
-    } finally {
-      setTriggeringCompanyName(null);
-    }
-  };
-
-  const stopScrape = async () => {
-    const token = localStorage.getItem('admin_token');
-    try {
-      await fetch(`${API_BASE}/stop-scrape/`, { 
-        method: 'POST',
-        headers: { 'Authorization': `Token ${token}` }
-      });
-      alert("Stop request sent. Scraper will stop after current city.");
-      fetchData(true);
-    } catch (error) {
-      alert("Failed to stop scrape");
-    }
-  };
-
-  const forceStopScrape = async () => {
-    const token = localStorage.getItem('admin_token');
-    try {
-      await fetch(`${API_BASE}/force-reset/`, { 
-        method: 'POST',
-        headers: { 'Authorization': `Token ${token}` }
-      });
-      alert("Force stopped all running sessions.");
-      fetchData(true);
-    } catch (error) {
-      alert("Failed to force stop scrape");
-    }
-  };
-
 
   if (loading && !stats) {
     return (
@@ -373,87 +535,248 @@ export default function AdminDashboard() {
     );
   }
 
-
   return (
     <div className="min-h-screen bg-[#0a0a0a] text-white p-8 font-sans">
       <div className="mx-auto">
         {/* Header */}
         <header className="flex flex-col md:flex-row md:items-center justify-between gap-6 mb-12">
-          <div className="flex items-center gap-4">
-            {/* <img src="/logo.png" alt="Kaamlee Logo" className="h-10 w-auto" /> */}
-            <div>
-              <h1 className="text-3xl font-bold tracking-tight mb-2">Scraper Admin</h1>
-              <p className="text-[#888] flex items-center gap-2">
+          <div>
+            <h1 className="text-3xl font-bold tracking-tight mb-2">Dashboard</h1>
+            <p className="text-[#888]">Overview of jobs, companies, and users.</p>
+          </div>
 
-              <LayoutDashboard size={16} />
-              System Status:
-              <span className={activeSessions.length > 0 ? 'text-blue-400' : 'text-green-400'}>
-                {activeSessions.length > 0
-                  ? `${activeSessions.length} session${activeSessions.length > 1 ? 's' : ''} running`
-                  : 'Idle'}
-              </span>
-              </p>
+          <button
+            onClick={() => fetchData(true)}
+            className="cursor-pointer p-3 rounded-xl bg-[#111] border border-[#222] hover:bg-[#161616] transition-all self-start md:self-auto"
+            title="Refresh Data"
+          >
+            <RefreshCcw size={20} className={loading ? 'animate-spin' : ''} />
+          </button>
+        </header>
+
+        {activeRuns.length > 0 && (
+          <div className="bg-[#111] border border-[#222] rounded-3xl p-6 mb-12">
+            <div className="flex items-center justify-between mb-4">
+              <h2 className="text-lg font-bold flex items-center gap-2">
+                <Activity size={18} className="text-blue-500 animate-pulse" /> Active Runs
+                <span className="text-xs font-normal text-[#555]">({activeRuns.length})</span>
+              </h2>
+              {activeRuns.length > 1 && (
+                <button
+                  onClick={stopAllRuns}
+                  disabled={stoppingBoards.size > 0}
+                  className="cursor-pointer flex items-center gap-1.5 text-xs font-semibold text-red-400 hover:text-red-300 disabled:opacity-40 disabled:cursor-not-allowed transition-colors"
+                >
+                  <StopCircle size={14} /> Stop All
+                </button>
+              )}
+            </div>
+            <div className="flex flex-col gap-2">
+              {activeRuns.map(run => (
+                <div
+                  key={run.board}
+                  className="flex items-center justify-between gap-3 px-3.5 py-2.5 rounded-xl bg-[#0a0a0a] border border-[#1a1a1a]"
+                >
+                  <div className="flex items-center gap-3 min-w-0">
+                    <Loader2 size={14} className="animate-spin text-blue-500 shrink-0" />
+                    <span className="text-sm font-semibold truncate">{run.board}</span>
+                    <span className="text-[10px] font-bold uppercase tracking-wider px-1.5 py-0.5 rounded bg-[#1a1a1a] text-[#666] shrink-0">
+                      {run.script}
+                    </span>
+                    <span className="text-xs text-[#555] shrink-0">{formatElapsed(run.started_at)}</span>
+                  </div>
+                  <button
+                    onClick={() => stopRun(run.board)}
+                    disabled={stoppingBoards.has(run.board)}
+                    className="cursor-pointer flex items-center gap-1 text-xs font-semibold text-[#888] hover:text-red-400 disabled:opacity-40 disabled:cursor-not-allowed transition-colors shrink-0"
+                  >
+                    <StopCircle size={13} /> {stoppingBoards.has(run.board) ? 'Stopping...' : 'Stop'}
+                  </button>
+                </div>
+              ))}
             </div>
           </div>
+        )}
 
-
-          <div className="flex items-center gap-4">
-            <button
-              onClick={() => fetchData(true)}
-              className="cursor-pointer p-3 rounded-xl bg-[#111] border border-[#222] hover:bg-[#161616] transition-all"
-              title="Refresh Data"
-            >
-              <RefreshCcw size={20} className={loading ? 'animate-spin' : ''} />
-            </button>
-            <button
-              onClick={() => setIsLogsModalOpen(true)}
-              className="cursor-pointer p-3 rounded-xl bg-[#111] border border-[#222] hover:bg-[#161616] transition-all text-[#888] hover:text-white"
-              title="Scrape Session Status"
-            >
-              <Terminal size={20} />
-            </button>
-
-            {activeSessions.length > 0 ? (
-              activeSessions.some(s => s.stop_requested) ? (
-                <button
-                  onClick={forceStopScrape}
-                  className="cursor-pointer bg-red-800 hover:bg-red-700 text-white px-6 py-3 rounded-xl font-semibold flex items-center gap-2 transition-all shadow-lg shadow-red-900/50"
-                  title="Force stop the stuck session"
-                >
-                  <AlertTriangle size={18} />
-                  Force Stop
-                </button>
-              ) : (
-                <button
-                  onClick={stopScrape}
-                  className="cursor-pointer bg-red-600 hover:bg-red-500 text-white px-6 py-3 rounded-xl font-semibold flex items-center gap-2 transition-all shadow-lg shadow-red-500/20"
-                >
-                  <div className="w-2 h-2 rounded-full bg-white animate-pulse" />
-                  Stop All
-                </button>
-              )
-            ) : (
-              <button
-                onClick={() => setIsCompanyPickerOpen(true)}
-                disabled={triggeringCompany}
-                className="cursor-pointer bg-purple-600 hover:bg-purple-500 disabled:opacity-50 disabled:cursor-not-allowed text-white px-6 py-3 rounded-xl font-semibold flex items-center gap-2 transition-all shadow-lg shadow-purple-500/20"
-                title="Scrape jobs from company career pages (scripts/companies.json)"
-              >
-                {triggeringCompany ? <Loader2 size={18} className="animate-spin" /> : <Building2 size={18} />}
-                Scrape by Company
-              </button>
-            )}
-
-            <button
-              onClick={handleLogout}
-              className="cursor-pointer p-3 rounded-xl bg-[#111] border border-[#222] hover:bg-red-500/10 hover:border-red-500/50 hover:text-red-500 transition-all text-[#888]"
-              title="Logout"
-            >
-              <LogOut size={20} />
-            </button>
-
+        {/* Import Jobs + Recently Scraped */}
+        <div className="grid grid-cols-1 lg:grid-cols-3 gap-6 mb-12">
+          <div className="bg-[#111] border border-[#222] rounded-3xl p-6 lg:col-span-2">
+          <div className="flex items-center justify-between mb-4">
+            <h2 className="text-lg font-bold flex items-center gap-2">
+              <Download size={18} className="text-blue-500" /> Import Jobs
+            </h2>
+            <span className="text-xs text-[#555]">Up to {MAX_SCRIPT_COMPANIES} companies per run</span>
           </div>
-        </header>
+
+          <div className="flex flex-col gap-4">
+            <div>
+              <label className="block text-[10px] font-black uppercase tracking-[0.2em] text-[#555] mb-1.5">Script</label>
+              <select
+                value={scriptChoice}
+                onChange={(e) => { setScriptChoice(e.target.value); setScriptCompanies([]); }}
+                className="w-full bg-[#0a0a0a] border border-[#222] rounded-xl py-2.5 px-3 text-sm focus:outline-none focus:border-blue-500 transition-all cursor-pointer"
+              >
+                {SCRIPT_OPTIONS.map(o => (
+                  <option key={o.value} value={o.value}>{o.label}</option>
+                ))}
+              </select>
+            </div>
+
+            <div>
+              <label className="block text-[10px] font-black uppercase tracking-[0.2em] text-[#555] mb-1.5">
+                Companies ({scriptCompanies.length}/{MAX_SCRIPT_COMPANIES})
+              </label>
+              <div className="flex flex-wrap items-center gap-2 bg-[#0a0a0a] border border-[#222] rounded-xl px-3 py-2 min-h-[42px]">
+                {scriptCompanies.map(name => (
+                  <span key={name} className="flex items-center gap-1.5 bg-[#1a1a1a] text-xs font-semibold px-2.5 py-1 rounded-lg">
+                    {name}
+                    <button
+                      onClick={() => removeScriptCompany(name)}
+                      className="cursor-pointer text-[#666] hover:text-red-400 transition-colors"
+                    >
+                      <X size={12} />
+                    </button>
+                  </span>
+                ))}
+                {scriptCompanies.length < MAX_SCRIPT_COMPANIES && (() => {
+                  const urlMatch = SCRIPT_URL_MATCH[scriptChoice];
+                  const availableForScript = companyOptions
+                    .filter(c => !urlMatch || c.career_url?.includes(urlMatch))
+                    .filter(c => !scriptCompanies.includes(c.name));
+                  return (
+                    <select
+                      value=""
+                      onChange={(e) => addScriptCompany(e.target.value)}
+                      className="flex-1 min-w-[140px] bg-transparent text-sm focus:outline-none cursor-pointer"
+                    >
+                      <option value="" disabled>
+                        {availableForScript.length === 0
+                          ? `No ${SCRIPT_OPTIONS.find(o => o.value === scriptChoice)?.label ?? ''} companies found`
+                          : 'Select a company...'}
+                      </option>
+                      {availableForScript.map(c => (
+                        <option key={c.id} value={c.name}>
+                          {c.name}{c.career_url ? ` — ${c.career_url}` : ''} — {formatRelativeScrapedAt(c.last_scraped_at)}
+                        </option>
+                      ))}
+                    </select>
+                  );
+                })()}
+              </div>
+            </div>
+
+            <button
+              onClick={runScript}
+              disabled={runningScript || scriptCompanies.length === 0}
+              className="cursor-pointer bg-blue-600 hover:bg-blue-500 disabled:opacity-40 disabled:cursor-not-allowed px-5 py-2.5 rounded-xl text-sm font-semibold flex items-center justify-center gap-2 transition-all w-full"
+            >
+              {runningScript ? <Loader2 size={16} className="animate-spin" /> : <Play size={16} />}
+              Run
+            </button>
+          </div>
+
+          {scriptError && <p className="mt-3 text-sm text-red-400">{scriptError}</p>}
+
+          {runningScript && Object.keys(boardProgress).length > 0 && (
+            <div className="mt-4 flex flex-col gap-2.5">
+              {Object.entries(boardProgress).map(([board, progress]) => {
+                const pct = progress.current != null && progress.total
+                  ? Math.min(100, Math.round((progress.current / progress.total) * 100))
+                  : null;
+                const eta = formatEta(progress);
+                return (
+                  <div key={board} className="rounded-xl border border-[#222] bg-[#0a0a0a] px-3.5 py-2.5">
+                    <div className="flex items-center justify-between gap-3 text-xs mb-1.5">
+                      <span className="font-bold text-white">{board}</span>
+                      <span className="text-[#666] truncate">
+                        {progress.stage}
+                        {pct != null && ` — ${progress.current}/${progress.total}`}
+                        {eta && ` · ${eta}`}
+                      </span>
+                    </div>
+                    <div className="h-1.5 rounded-full bg-[#1a1a1a] overflow-hidden">
+                      <div
+                        className={`h-full rounded-full transition-all duration-500 ${pct == null ? 'w-1/3 bg-blue-500/50 animate-pulse' : 'bg-blue-500'}`}
+                        style={pct != null ? { width: `${pct}%` } : undefined}
+                      />
+                    </div>
+                  </div>
+                );
+              })}
+            </div>
+          )}
+
+          {runningScript && (
+            <div
+              ref={logsContainerRef}
+              className="mt-4 h-56 overflow-y-auto rounded-xl border border-[#222] bg-[#0a0a0a] p-4 font-mono text-xs text-[#888] space-y-1"
+            >
+              {scriptLogs.length === 0 ? (
+                <span className="text-[#444]">Starting...</span>
+              ) : (
+                scriptLogs.map((line, i) => <div key={i}>{line}</div>)
+              )}
+            </div>
+          )}
+
+          {!runningScript && scriptResults && scriptResults.length > 0 && (
+            <div className="mt-4 grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-3">
+              {scriptResults.map(r => (
+                <div
+                  key={r.board}
+                  className={`rounded-xl border p-3 text-xs ${r.ok ? 'border-[#222] bg-[#0a0a0a]' : 'border-red-500/30 bg-red-500/5'}`}
+                >
+                  <div className="font-bold text-sm mb-1">{r.board}</div>
+                  {r.ok ? (
+                    <div className="text-[#888] space-y-0.5">
+                      <div>{r.fetched} fetched · {r.created} created · {r.updated} updated</div>
+                      <div>{r.geocoded} geocoded · {r.borrowed} borrowed · {r.removed} removed (no coords)</div>
+                    </div>
+                  ) : (
+                    <div className="text-red-400">{r.error}</div>
+                  )}
+                </div>
+              ))}
+            </div>
+          )}
+        </div>
+
+        <div className="bg-[#111] border border-[#222] rounded-3xl p-6 flex flex-col">
+          <h2 className="text-lg font-bold flex items-center gap-2 mb-4">
+            <Clock size={18} className="text-green-500" /> Recently Scraped
+          </h2>
+          {(() => {
+            const recentlyScraped = companyOptions
+              .filter((c): c is CompanyOption & { last_scraped_at: string } => !!c.last_scraped_at)
+              .sort((a, b) => new Date(b.last_scraped_at).getTime() - new Date(a.last_scraped_at).getTime())
+              .slice(0, 8);
+
+            if (recentlyScraped.length === 0) {
+              return <p className="text-xs text-[#444] text-center py-8">No companies scraped yet.</p>;
+            }
+
+            return (
+              <div className="flex flex-col gap-2 overflow-y-auto flex-1 min-h-0 pr-1 [mask-image:linear-gradient(to_bottom,black_92%,transparent)]">
+                {recentlyScraped.map(c => (
+                  <div key={c.id} className="flex items-center gap-3 p-2.5 rounded-xl bg-[#0a0a0a] border border-[#1a1a1a]">
+                    {c.logo_url ? (
+                      <img src={c.logo_url} alt="" className="w-7 h-7 rounded-lg object-contain bg-white shrink-0" />
+                    ) : (
+                      <div className="w-7 h-7 rounded-lg bg-[#1a1a1a] flex items-center justify-center text-[10px] font-bold text-[#555] shrink-0">
+                        {c.name.slice(0, 1).toUpperCase()}
+                      </div>
+                    )}
+                    <div className="min-w-0 flex-1">
+                      <div className="text-sm font-semibold truncate">{c.name}</div>
+                      <div className="text-[10px] text-[#555]">{formatScrapedAt(c.last_scraped_at)}</div>
+                    </div>
+                  </div>
+                ))}
+              </div>
+            );
+          })()}
+        </div>
+        </div>
 
         {/* Stats Grid */}
         <div className="grid grid-cols-1 md:grid-cols-3 gap-6 mb-12">
@@ -463,14 +786,14 @@ export default function AdminDashboard() {
             value={stats?.total_jobs.toLocaleString() || '0'}
           />
           <StatCard
-            icon={<CheckCircle2 className="text-green-500" />}
-            label="Last Success"
-            value={stats?.last_scrape_session?.jobs_found ? `+ ${stats.last_scrape_session.jobs_found} jobs` : 'no jobs found'}
+            icon={<Building2 className="text-purple-500" />}
+            label="Total Companies"
+            value={companiesCount.toLocaleString()}
           />
           <StatCard
-            icon={<AlertCircle className="text-orange-500" />}
-            label="Last Run"
-            value={stats?.last_scrape_session?.start_time ? new Date(stats.last_scrape_session.start_time).toLocaleString('en-IN', { timeZone: 'Asia/Kolkata', day: '2-digit', month: 'short', hour: '2-digit', minute: '2-digit' }) + ' IST' : 'Never'}
+            icon={<UsersIcon className="text-green-500" />}
+            label="Total Users"
+            value={usersCount != null ? usersCount.toLocaleString() : '—'}
           />
         </div>
 
@@ -502,12 +825,7 @@ export default function AdminDashboard() {
         </div>
         <div className="grid grid-cols-1 md:grid-cols-2 xl:grid-cols-3 gap-6">
           {companies.map(company => (
-            <CompanyCard
-              key={company.id}
-              company={company}
-              scraping={triggeringCompanyName === company.name}
-              onScrape={() => triggerCompanyScrapeOne(company.name)}
-            />
+            <CompanyCard key={company.id} company={company} />
           ))}
         </div>
 
@@ -543,18 +861,6 @@ export default function AdminDashboard() {
         )}
       </div>
 
-      <AnimatePresence>
-        {isLogsModalOpen && <LogsModal onClose={() => setIsLogsModalOpen(false)} stats={stats} activeSessions={activeSessions} />}
-        {isCompanyPickerOpen && (
-          <CompanyPickerModal
-            onClose={() => setIsCompanyPickerOpen(false)}
-            onStart={triggerCompanyScrape}
-            loading={triggeringCompany}
-            companies={pickerCompanies}
-          />
-        )}
-      </AnimatePresence>
-
       <style jsx global>{`
         @keyframes marquee {
           from { transform: translateX(0); }
@@ -571,7 +877,6 @@ export default function AdminDashboard() {
   );
 }
 
-
 function StatCard({ icon, label, value }: { icon: React.ReactNode, label: string, value: string | number }) {
   return (
     <div className="bg-[#111] border border-[#222] p-6 rounded-3xl hover:border-[#333] transition-all">
@@ -584,7 +889,7 @@ function StatCard({ icon, label, value }: { icon: React.ReactNode, label: string
   );
 }
 
-function CompanyCard({ company, scraping, onScrape }: { company: Company, scraping: boolean, onScrape: () => void }) {
+function CompanyCard({ company }: { company: Company }) {
   return (
     <div className="bg-[#111] border border-[#222] rounded-3xl p-6 hover:border-purple-500/40 transition-all flex flex-col gap-4">
       <div className="flex items-start justify-between gap-3">
@@ -604,21 +909,15 @@ function CompanyCard({ company, scraping, onScrape }: { company: Company, scrapi
               )}
             </div>
             {company.domain && <p className="text-xs text-[#555] font-medium truncate">{company.domain}</p>}
+            <div className="flex items-center gap-1 text-[11px] text-[#555] mt-0.5">
+              <Clock size={11} className="shrink-0" />
+              <span className="truncate">{formatRelativeScrapedAt(company.last_scraped_at)}</span>
+            </div>
           </div>
         </div>
-        <div className="flex items-center gap-2 shrink-0">
-          <div className="text-center px-3 py-1.5 rounded-xl bg-[#1a1a1a]">
-            <div className="text-lg font-black leading-none">{company.job_count}</div>
-            <div className="text-[9px] uppercase tracking-widest text-[#555] font-bold">Jobs</div>
-          </div>
-          <button
-            onClick={onScrape}
-            disabled={scraping}
-            title={`Scrape ${company.name}'s career page`}
-            className="cursor-pointer p-2.5 rounded-xl bg-purple-600/15 border border-purple-500/30 text-purple-400 hover:bg-purple-600/25 disabled:opacity-50 disabled:cursor-not-allowed transition-all"
-          >
-            {scraping ? <Loader2 size={16} className="animate-spin" /> : <Play size={16} />}
-          </button>
+        <div className="text-center px-3 py-1.5 rounded-xl bg-[#1a1a1a] shrink-0">
+          <div className="text-lg font-black leading-none">{company.job_count}</div>
+          <div className="text-[9px] uppercase tracking-widest text-[#555] font-bold">Jobs</div>
         </div>
       </div>
 
@@ -652,7 +951,7 @@ function CompanyCard({ company, scraping, onScrape }: { company: Company, scrapi
 
       <div className="pt-4 border-t border-[#222] flex-1 min-h-0">
         {company.jobs.length === 0 ? (
-          <p className="text-xs text-[#444] text-center py-4">No jobs scraped yet.</p>
+          <p className="text-xs text-[#444] text-center py-4">No jobs yet.</p>
         ) : (
           <div className="flex flex-col gap-2 max-h-64 overflow-y-auto pr-1">
             {company.jobs.map(job => (
@@ -679,275 +978,3 @@ function CompanyCard({ company, scraping, onScrape }: { company: Company, scrapi
     </div>
   );
 }
-
-// search_term encodes the full requested company list as "company_career_pages:Name1,Name2" —
-// parse it out so the UI can show all of them, not just the single current_location field.
-function parseCompanyList(searchTerm: string | undefined | null): string[] | null {
-  if (!searchTerm || !searchTerm.startsWith('company_career_pages:')) return null;
-  const rest = searchTerm.slice('company_career_pages:'.length);
-  if (!rest || rest === 'auto') return null;
-  return rest.split(',').map(s => s.trim()).filter(Boolean);
-}
-
-function LogsModal({ onClose, stats, activeSessions }: { onClose: () => void, stats: Stats | null, activeSessions: ScrapeSession[] }) {
-  const session = stats?.last_scrape_session ?? null;
-
-  const isRunning = activeSessions.length > 0;
-
-  const duration = React.useMemo(() => {
-    if (!session?.start_time) return null;
-    const start = new Date(session.start_time).getTime();
-    const end = session.end_time ? new Date(session.end_time).getTime() : Date.now();
-    const secs = Math.floor((end - start) / 1000);
-    if (secs < 60) return `${secs}s`;
-    const mins = Math.floor(secs / 60);
-    const rem = secs % 60;
-    return rem > 0 ? `${mins}m ${rem}s` : `${mins}m`;
-  }, [session?.start_time, session?.end_time]);
-
-  const statusColor: Record<string, string> = {
-    running: 'text-blue-400',
-    completed: 'text-green-400',
-    failed: 'text-red-400',
-    stopped: 'text-orange-400',
-  };
-
-  return (
-    <motion.div
-      initial={{ opacity: 0 }}
-      animate={{ opacity: 1 }}
-      exit={{ opacity: 0 }}
-      className="fixed inset-0 bg-black/80 backdrop-blur-sm z-50 flex items-center justify-center p-4"
-      onClick={onClose}
-    >
-      <motion.div
-        initial={{ scale: 0.95, opacity: 0 }}
-        animate={{ scale: 1, opacity: 1 }}
-        exit={{ scale: 0.95, opacity: 0 }}
-        onClick={(e) => e.stopPropagation()}
-        className="bg-[#111] border border-[#333] rounded-2xl w-full max-w-lg shadow-2xl overflow-hidden"
-      >
-        {/* Header */}
-        <div className="flex items-center justify-between p-4 border-b border-[#333] bg-[#1a1a1a]">
-          <h2 className="text-xl font-bold flex items-center gap-2">
-            <Terminal size={20} className="text-blue-500" />
-            Last Scrape Session
-          </h2>
-          <button onClick={onClose} className="cursor-pointer p-2 hover:bg-[#333] rounded-lg transition-colors text-[#888] hover:text-white">
-            <X size={20} />
-          </button>
-        </div>
-
-        {isRunning ? (
-          <div className="p-6 flex flex-col gap-3">
-            <p className="text-[10px] font-mono tracking-[0.2em] uppercase text-[#555] mb-1">{activeSessions.length} parallel sessions</p>
-            {activeSessions.map(s => {
-              const companyList = parseCompanyList(s.search_term);
-              return (
-                <div key={s.id} className="bg-black border border-[#222] rounded-xl p-4 flex flex-col gap-2 font-mono text-sm">
-                  <div className="flex justify-between items-center">
-                    <span className="text-white font-semibold">
-                      {companyList
-                        ? `Scraping ${companyList.length} compan${companyList.length > 1 ? 'ies' : 'y'}`
-                        : s.search_term?.includes(':auto') ? 'Auto-scrape (random selection)' : s.search_term}
-                    </span>
-                    <span className="text-blue-400 flex items-center gap-1.5 text-xs">
-                      <Loader2 size={11} className="animate-spin" /> running
-                    </span>
-                  </div>
-                  {companyList && (
-                    <div className="flex flex-wrap gap-1.5">
-                      {companyList.map(name => (
-                        <span
-                          key={name}
-                          className={`text-[10px] font-bold px-2 py-0.5 rounded ${
-                            name === s.current_location ? 'bg-blue-500/20 text-blue-300' : 'bg-[#1a1a1a] text-[#666]'
-                          }`}
-                        >
-                          {name}
-                        </span>
-                      ))}
-                    </div>
-                  )}
-                  {s.current_location && (
-                    <div className="flex justify-between text-xs">
-                      <span className="text-[#555]">Currently scraping</span>
-                      <span className="text-blue-300">{s.current_location}</span>
-                    </div>
-                  )}
-                  <div className="flex justify-between text-xs">
-                    <span className="text-[#555]">Jobs found</span>
-                    <span className="text-green-400 font-bold">{s.jobs_found}</span>
-                  </div>
-                </div>
-              );
-            })}
-          </div>
-        ) : !session ? (
-          <div className="p-12 text-center text-[#555] font-mono text-sm">
-            No scrape sessions yet.
-          </div>
-        ) : (
-          <div className="p-6 flex flex-col gap-6">
-            <div>
-              <p className="text-[10px] font-mono tracking-[0.2em] uppercase text-[#555] mb-3">Last Session</p>
-              <div className="bg-black border border-[#222] rounded-xl p-4 flex flex-col gap-2 font-mono text-sm">
-                {(() => {
-                  const companyList = parseCompanyList(session.search_term);
-                  return (
-                    <div className="flex justify-between gap-4">
-                      <span className="text-[#555] shrink-0">{companyList ? 'Companies' : 'Search term'}</span>
-                      <span className="text-white font-semibold text-right">
-                        {companyList
-                          ? companyList.join(', ')
-                          : session.search_term?.includes(':auto') ? 'Auto-scrape (random selection)' : (session.search_term ?? '—')}
-                      </span>
-                    </div>
-                  );
-                })()}
-                <div className="flex justify-between items-center">
-                  <span className="text-[#555]">Status</span>
-                  <span className={`font-bold uppercase tracking-widest ${statusColor[session.status] ?? 'text-[#aaa]'}`}>
-                    {session.status}
-                  </span>
-                </div>
-                <div className="flex justify-between">
-                  <span className="text-[#555]">Jobs found</span>
-                  <span className="text-green-400 font-bold">{session.jobs_found}</span>
-                </div>
-                <div className="flex justify-between">
-                  <span className="text-[#555]">Jobs deleted</span>
-                  <span className="text-red-400 font-bold">{session.jobs_deleted}</span>
-                </div>
-                {duration && (
-                  <div className="flex justify-between">
-                    <span className="text-[#555]">Duration</span>
-                    <span className="text-[#aaa]">{duration}</span>
-                  </div>
-                )}
-                {session.error_message && (
-                  <div className="mt-2 p-3 bg-red-950/30 border border-red-900/40 rounded-lg text-red-400 text-xs break-words">
-                    {session.error_message}
-                  </div>
-                )}
-              </div>
-            </div>
-          </div>
-        )}
-      </motion.div>
-    </motion.div>
-  );
-}
-
-function CompanyPickerModal({ onClose, onStart, loading, companies }: {
-  onClose: () => void;
-  onStart: (names: string[]) => void;
-  loading: boolean;
-  companies: Company[];
-}) {
-  const [selected, setSelected] = useState<Set<string>>(new Set());
-  const [search, setSearch] = useState('');
-
-  const MAX = 10;
-
-  const toggle = (name: string) => {
-    setSelected(prev => {
-      const next = new Set(prev);
-      if (next.has(name)) next.delete(name);
-      else if (next.size < MAX) next.add(name);
-      return next;
-    });
-  };
-
-  const filteredCompanies = search
-    ? companies.filter(c => c.name.toLowerCase().includes(search.toLowerCase()))
-    : companies;
-
-  return (
-    <motion.div
-      initial={{ opacity: 0 }}
-      animate={{ opacity: 1 }}
-      exit={{ opacity: 0 }}
-      className="fixed inset-0 bg-black/80 backdrop-blur-sm z-50 flex items-center justify-center p-4"
-      onClick={onClose}
-    >
-      <motion.div
-        initial={{ scale: 0.95, opacity: 0 }}
-        animate={{ scale: 1, opacity: 1 }}
-        exit={{ scale: 0.95, opacity: 0 }}
-        onClick={(e) => e.stopPropagation()}
-        className="bg-[#111] border border-[#333] rounded-3xl w-full max-w-lg shadow-2xl flex flex-col max-h-[90vh]"
-      >
-        <div className="p-6 border-b border-[#333] bg-[#1a1a1a] rounded-t-3xl shrink-0">
-          <h2 className="text-xl font-bold flex items-center gap-2">
-            <Building2 size={20} className="text-purple-500" />
-            Select Companies to Scrape
-          </h2>
-          <p className="text-sm text-[#555] mt-1">
-            {selected.size === 0 ? 'Pick up to 10 companies to scrape their career pages.' : `${selected.size} / ${MAX} selected`}
-          </p>
-        </div>
-
-        <div className="px-6 pt-4 shrink-0">
-          <input
-            type="text"
-            value={search}
-            onChange={(e) => setSearch(e.target.value)}
-            placeholder={`Search ${companies.length} companies...`}
-            className="w-full bg-[#0a0a0a] border border-[#222] rounded-xl px-4 py-2.5 text-sm text-white placeholder-[#444] focus:border-purple-500 outline-none transition-all"
-          />
-        </div>
-
-        <div className="p-6 overflow-y-auto flex-1">
-          <div className="flex flex-wrap gap-2">
-            {filteredCompanies.map(company => {
-              const active = selected.has(company.name);
-              const maxed = !active && selected.size >= MAX;
-              return (
-                <button
-                  key={company.name}
-                  onClick={() => toggle(company.name)}
-                  disabled={maxed}
-                  className={`cursor-pointer px-3 py-1.5 rounded-lg text-xs font-medium transition-all border flex items-center gap-1.5 ${
-                    active
-                      ? 'bg-purple-600/15 border-purple-500/50 text-purple-400'
-                      : maxed
-                      ? 'bg-[#0a0a0a] border-[#1a1a1a] text-[#2a2a2a] cursor-not-allowed'
-                      : 'bg-[#0a0a0a] border-[#222] text-[#555] hover:border-[#333] hover:text-[#888]'
-                  }`}
-                >
-                  {company.name}
-                  <span className={`text-[10px] font-bold ${active ? 'text-purple-300' : maxed ? 'text-[#2a2a2a]' : 'text-[#444]'}`}>
-                    {company.job_count}
-                  </span>
-                </button>
-              );
-            })}
-          </div>
-
-          {companies.length === 0 && (
-            <p className="text-xs text-[#555] text-center py-6">No companies configured yet.</p>
-          )}
-          {companies.length > 0 && filteredCompanies.length === 0 && (
-            <p className="text-xs text-[#555] text-center py-6">No companies match &quot;{search}&quot;.</p>
-          )}
-        </div>
-
-        <div className="p-6 bg-[#1a1a1a] border-t border-[#333] flex gap-3 shrink-0 rounded-b-3xl">
-          <button onClick={onClose} className="cursor-pointer flex-1 py-3 rounded-xl bg-[#222] hover:bg-[#2a2a2a] font-bold transition-all">
-            Cancel
-          </button>
-          <button
-            disabled={loading || selected.size === 0}
-            onClick={() => onStart(Array.from(selected))}
-            className="cursor-pointer flex-1 py-3 rounded-xl bg-purple-600 hover:bg-purple-500 disabled:opacity-40 disabled:cursor-not-allowed font-bold transition-all flex items-center justify-center gap-2"
-          >
-            {loading ? <Loader2 size={18} className="animate-spin" /> : <Play size={18} />}
-            Scrape {selected.size > 0 ? `${selected.size} compan${selected.size > 1 ? 'ies' : 'y'}` : ''}
-          </button>
-        </div>
-      </motion.div>
-    </motion.div>
-  );
-}
-

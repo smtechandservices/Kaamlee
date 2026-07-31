@@ -29,7 +29,7 @@ BASE_DIR = Path(__file__).resolve().parent.parent
 SECRET_KEY = os.getenv('SECRET_KEY', 'django-insecure-fallback-key-change-this-in-env')
 
 # SECURITY WARNING: don't run with debug turned on in production!
-DEBUG = os.getenv('DEBUG', 'False') == 'True'
+DEBUG = os.getenv('DEBUG', 'True') == 'True'
 
 ALLOWED_HOSTS = os.getenv('ALLOWED_HOSTS', '*').split(',')
 
@@ -48,7 +48,6 @@ INSTALLED_APPS = [
     'corsheaders',
     'api',
     'payments',
-    'django_apscheduler',
 ]
 
 REST_FRAMEWORK = {
@@ -70,6 +69,7 @@ REST_FRAMEWORK = {
 
 MIDDLEWARE = [
     'django.middleware.security.SecurityMiddleware',
+    'core.middleware.DisableGzipForStreamingMiddleware',
     'django.middleware.gzip.GZipMiddleware',
     'corsheaders.middleware.CorsMiddleware',
     'core.middleware.RequestLogMiddleware',
@@ -112,12 +112,29 @@ DATABASES = {
     )
 }
 
-# SQLite allows only one writer at a time. The auto-scrape cron (APScheduler,
-# in-process) writes in the background alongside request-handling threads, so
-# without a generous busy-timeout a concurrent write elsewhere raises
-# "database is locked" instead of just waiting briefly for the lock to clear.
+# SQLite allows only one writer at a time, so without a generous busy-timeout
+# a concurrent write raises "database is locked" instead of just waiting
+# briefly for the lock to clear.
 if DATABASES['default']['ENGINE'] == 'django.db.backends.sqlite3':
     DATABASES['default'].setdefault('OPTIONS', {})['timeout'] = 30
+
+    # Rollback-journal mode (sqlite's default) takes a lock that blocks
+    # readers too, so `manage.py runserver` and a standalone scrape script
+    # (scripts/jobs/*.py) touching db.sqlite3 at the same time trip
+    # "database is locked" even with the busy-timeout above. WAL mode lets
+    # readers proceed alongside a writer, which is the actual fix; the
+    # PRAGMA busy_timeout is set here too since it's what sqlite itself
+    # consults, rather than relying on it being derived correctly from the
+    # OPTIONS timeout on every connection path (e.g. standalone scripts).
+    from django.db.backends.signals import connection_created
+
+    def _set_sqlite_pragmas(sender, connection, **kwargs):
+        if connection.vendor == 'sqlite':
+            cursor = connection.cursor()
+            cursor.execute('PRAGMA journal_mode=WAL;')
+            cursor.execute('PRAGMA busy_timeout=30000;')
+
+    connection_created.connect(_set_sqlite_pragmas)
 
 
 # Password validation
@@ -176,9 +193,6 @@ CACHES = {
     }
 }
 
-APSCHEDULER_DATETIME_FORMAT = "N j, Y, f:s a"
-APSCHEDULER_RUN_NOW_TIMEOUT = 25  # Seconds
-
 # Razorpay Settings
 RAZORPAY_KEY_ID = os.getenv('RAZORPAY_KEY_ID')
 RAZORPAY_KEY_SECRET = os.getenv('RAZORPAY_KEY_SECRET')
@@ -188,8 +202,8 @@ RAZORPAY_KEY_SECRET = os.getenv('RAZORPAY_KEY_SECRET')
 GOOGLE_CLIENT_ID = os.getenv('GOOGLE_CLIENT_ID', '')
 
 # Shared secret the frontend server presents (as `Authorization: Bearer <secret>`) when
-# requesting a raw OTP code to email out — same pattern as CRON_SECRET uses for the
-# scraper cron. Must match OTP_INTERNAL_SECRET in the frontend's server-only env.
+# requesting a raw OTP code to email out. Must match OTP_INTERNAL_SECRET in the
+# frontend's server-only env.
 OTP_INTERNAL_SECRET = os.getenv('OTP_INTERNAL_SECRET', '')
 
 # Request Logging — 5 MB per file, keep last 5 files (25 MB max on disk)

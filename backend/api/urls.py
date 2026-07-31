@@ -2,13 +2,15 @@ from django.urls import path, include
 from rest_framework.routers import DefaultRouter
 from rest_framework.authtoken.views import obtain_auth_token
 from .views import (
-    JobViewSet, StatsView, TriggerCompanyScrapeView, CompaniesView, CompanyViewSet,
-    StopScrapeView, ForceResetView, LogsView, SignupView, GoogleAuthView, UserView, RecentJobsView,
+    JobViewSet, StatsView, CompaniesView, CompanyViewSet,
+    SignupView, GoogleAuthView, UserView, RecentJobsView,
     CheckExistenceView, AdminLoginView, AdminUserViewSet, CategoriesView, CountriesView,
     FeedbackView, AdminFeedbackView, PublicPortfolioView, MyPortfolioView, MyPortfolioContentView, PortfolioAnalyticsView,
     RequestLogsView, CustomCVListCreateView, CustomCVDetailView, CustomCVTailorView, CustomCVExportView,
     JobApplicationKitView, AtsKeywordsView, ApplicationsView, AdminJobsView, ChangePasswordView,
-    RequestEmailOtpView, VerifyEmailOtpView, ConfirmEmailOtpView,
+    RequestEmailOtpView, VerifyEmailOtpView, ConfirmEmailOtpView, RunScraperScriptView, RunGeocodeView,
+    RunningScriptsView, StopScriptView,
+    JobsMissingCoordinatesView,
 )
 
 router = DefaultRouter()
@@ -73,14 +75,15 @@ urlpatterns = [
     path('applications/', ApplicationsView.as_view(), name='applications'),
 
     # ==========================================
-    # SCRAPER & ADMIN
+    # ADMIN
     # ==========================================
     path('stats/', StatsView.as_view(), name='stats'),
-    path('logs/', LogsView.as_view(), name='logs'),
-    path('admin/request-logs/', RequestLogsView.as_view(), name='admin-request-logs'),
-    path('trigger-company-scrape/', TriggerCompanyScrapeView.as_view(), name='trigger-company-scrape'),
     path('companies/', CompaniesView.as_view(), name='companies'),
     path('admin/jobs/', AdminJobsView.as_view(), name='admin-jobs'),
-    path('stop-scrape/', StopScrapeView.as_view(), name='stop-scrape'),
-    path('force-reset/', ForceResetView.as_view(), name='force-reset'),
+    path('admin/run-script/', RunScraperScriptView.as_view(), name='admin-run-script'),
+    path('admin/run-script/running/', RunningScriptsView.as_view(), name='admin-run-script-running'),
+    path('admin/run-script/stop/', StopScriptView.as_view(), name='admin-run-script-stop'),
+    path('admin/run-geocode/', RunGeocodeView.as_view(), name='admin-run-geocode'),
+    path('admin/jobs/missing-coordinates/', JobsMissingCoordinatesView.as_view(), name='admin-jobs-missing-coordinates'),
+    path('admin/request-logs/', RequestLogsView.as_view(), name='admin-request-logs'),
 ]

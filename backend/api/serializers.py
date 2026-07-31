@@ -5,7 +5,7 @@ import logging
 import PyPDF2
 from groq import Groq
 from rest_framework import serializers
-from .models import Job, ScrapeSession, ScrapeLog, Bookmark, Feedback, Portfolio, PortfolioView, CustomCV, JobApplicationKit, Company, EmailOTP
+from .models import Job, Bookmark, Feedback, Portfolio, PortfolioView, CustomCV, JobApplicationKit, Company, EmailOTP
 from .permissions import is_user_subscribed
 from django.contrib.auth.models import User
 from django.contrib.auth.password_validation import validate_password
@@ -501,16 +501,18 @@ class RecentJobSerializer(JobSerializer):
 class AdminJobSerializer(serializers.ModelSerializer):
     """Read-only, per-user-agnostic job listing for the admin dashboard —
     unlike JobSerializer, this carries no match_score/is_bookmarked so it
-    doesn't need a resume or bookmark lookup per row."""
+    doesn't need a resume or bookmark lookup per row. Exposes every Job
+    field (including id_from_site and the full description) so the admin
+    detail view can show exactly what's stored."""
     location_name = serializers.SerializerMethodField()
 
     class Meta:
         model = Job
         fields = [
-            'id', 'title', 'company', 'location_name', 'city', 'state', 'country',
+            'id', 'id_from_site', 'title', 'company', 'location_name', 'city', 'state', 'country',
             'is_remote', 'job_type', 'job_url', 'site', 'company_logo',
             'date_posted', 'created_at', 'category', 'experience_required', 'salary',
-            'latitude', 'longitude',
+            'latitude', 'longitude', 'description',
         ]
 
     def get_location_name(self, obj):
@@ -549,17 +551,6 @@ class FeedbackSerializer(serializers.ModelSerializer):
         if not (1 <= value <= 5):
             raise serializers.ValidationError("Rating must be between 1 and 5.")
         return value
-
-class ScrapeSessionSerializer(serializers.ModelSerializer):
-    class Meta:
-        model = ScrapeSession
-        fields = '__all__'
-
-class ScrapeLogSerializer(serializers.ModelSerializer):
-    class Meta:
-        model = ScrapeLog
-        fields = '__all__'
-
 
 class PortfolioSettingsSerializer(serializers.ModelSerializer):
     """For authenticated user to GET/PATCH their own portfolio settings."""

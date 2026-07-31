@@ -15,7 +15,7 @@ const geistMono = Geist_Mono({
 
 export const metadata: Metadata = {
   title: "Kaamlee | Admin Control Center",
-  description: "Global job scraping management and real-time system monitoring dashboard.",
+  description: "Admin dashboard for managing companies, jobs, users, and finances.",
   icons: {
     icon: "/logo.png",
     apple: "/logo.png",

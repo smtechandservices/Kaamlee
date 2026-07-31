@@ -64,7 +64,7 @@ class Job(models.Model):
     id_from_site = models.CharField(max_length=255, unique=True)
     title = models.CharField(max_length=255)
     company = models.CharField(max_length=255)
-    location_name = models.CharField(max_length=255) # The string returned by scraper
+    location_name = models.CharField(max_length=255)
     city = models.CharField(max_length=100, blank=True)
     state = models.CharField(max_length=100, blank=True, null=True)
     country = models.CharField(max_length=100, blank=True, db_index=True)
@@ -84,33 +84,6 @@ class Job(models.Model):
 
     def __str__(self):
         return f"{self.title} at {self.company}"
-
-class ScrapeSession(models.Model):
-    start_time = models.DateTimeField(auto_now_add=True)
-    end_time = models.DateTimeField(null=True, blank=True)
-    status = models.CharField(max_length=50, default='running')
-    jobs_found = models.IntegerField(default=0)
-    jobs_deleted = models.IntegerField(default=0)
-    current_location = models.CharField(max_length=255, null=True, blank=True)
-    search_term = models.CharField(max_length=255, default='frontend developer')
-    results_limit = models.IntegerField(default=5)
-    stop_requested = models.BooleanField(default=False)
-    error_message = models.TextField(null=True, blank=True)
-
-    def __str__(self):
-        return f"Session {self.id} - {self.status}"
-
-class ScrapeLog(models.Model):
-    session = models.ForeignKey(ScrapeSession, null=True, blank=True, on_delete=models.SET_NULL, related_name='logs')
-    message = models.TextField()
-    level = models.CharField(max_length=20, default='info') # info, warning, error, success
-    timestamp = models.DateTimeField(auto_now_add=True)
-
-    class Meta:
-        ordering = ['timestamp']
-
-    def __str__(self):
-        return f"[{self.timestamp.strftime('%H:%M:%S')}] {self.message}"
 
 APPLICATION_STATUS_CHOICES = [
     ('saved', 'Saved'),

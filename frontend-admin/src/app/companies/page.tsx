@@ -19,10 +19,12 @@ import {
   AlertTriangle,
   ChevronLeft,
   ChevronRight,
+  Clock,
 } from 'lucide-react';
 import Link from 'next/link';
 import { useRouter } from 'next/navigation';
 import { getCached, setCache, invalidatePrefix } from '@/lib/cache';
+import Checkbox from '@/components/Checkbox';
 
 const API_BASE = `${process.env.NEXT_PUBLIC_API_URL}/api`;
 const PAGE_SIZE = 20;
@@ -279,7 +281,7 @@ export default function CompaniesPage() {
   };
 
   const handleDelete = async (company: Company) => {
-    if (!window.confirm(`Delete ${company.name}? This won't delete its already-scraped jobs.`)) return;
+    if (!window.confirm(`Delete ${company.name}? This won't delete its jobs.`)) return;
     const token = localStorage.getItem('admin_token');
     try {
       const res = await fetch(`${API_BASE}/admin/companies/${company.id}/`, {
@@ -308,7 +310,7 @@ export default function CompaniesPage() {
 
   const handleBulkDelete = async () => {
     if (selectedIds.size === 0) return;
-    if (!window.confirm(`Delete ${selectedIds.size} compan${selectedIds.size !== 1 ? 'ies' : 'y'}? This won't delete their already-scraped jobs.`)) return;
+    if (!window.confirm(`Delete ${selectedIds.size} compan${selectedIds.size !== 1 ? 'ies' : 'y'}? This won't delete their jobs.`)) return;
     const token = localStorage.getItem('admin_token');
     setBulkDeleting(true);
     try {
@@ -390,15 +392,22 @@ export default function CompaniesPage() {
         ) : (
           <>
             {companies.length > 0 && (
-              <div className="flex items-center justify-between mb-4 px-1">
-                <label className="flex items-center gap-2 text-sm text-[#888] cursor-pointer select-none">
-                  <input
-                    type="checkbox"
-                    checked={selectedIds.size > 0 && companies.every(c => selectedIds.has(c.id))}
-                    onChange={(e) => setSelectedIds(e.target.checked ? new Set(companies.map(c => c.id)) : new Set())}
-                    className="cursor-pointer w-4 h-4 accent-purple-600"
+              <div
+                className={`flex items-center justify-between mb-4 px-4 py-2.5 rounded-2xl border transition-colors duration-200 ${
+                  selectedIds.size > 0 ? 'bg-purple-500/10 border-purple-500/20' : 'border-transparent'
+                }`}
+              >
+                <label className="flex items-center gap-2.5 text-sm cursor-pointer select-none">
+                  <Checkbox
+                    checked={companies.every(c => selectedIds.has(c.id))}
+                    indeterminate={selectedIds.size > 0 && !companies.every(c => selectedIds.has(c.id))}
+                    onChange={(checked) => setSelectedIds(checked ? new Set(companies.map(c => c.id)) : new Set())}
+                    accent="purple"
+                    title={selectedIds.size > 0 ? 'Deselect all' : 'Select all'}
                   />
-                  {selectedIds.size > 0 ? `${selectedIds.size} selected` : 'Select all'}
+                  <span className={`font-medium transition-colors ${selectedIds.size > 0 ? 'text-purple-300' : 'text-[#888]'}`}>
+                    {selectedIds.size > 0 ? `${selectedIds.size} selected` : 'Select all'}
+                  </span>
                 </label>
                 {selectedIds.size > 0 && (
                   <button
@@ -424,11 +433,11 @@ export default function CompaniesPage() {
                   >
                     <div className="flex items-start justify-between gap-3">
                       <div className="flex items-center gap-3 min-w-0">
-                        <input
-                          type="checkbox"
+                        <Checkbox
                           checked={selectedIds.has(company.id)}
                           onChange={() => toggleSelect(company.id)}
-                          className="cursor-pointer w-4 h-4 accent-purple-600 shrink-0"
+                          accent="purple"
+                          title={selectedIds.has(company.id) ? 'Deselect' : 'Select'}
                         />
                         {company.logo_url ? (
                           <img src={company.logo_url} alt="" className="w-10 h-10 rounded-xl object-contain bg-white shrink-0" />
@@ -450,7 +459,7 @@ export default function CompaniesPage() {
                       <button
                         onClick={() => toggleActive(company)}
                         className={`cursor-pointer relative w-11 h-6 rounded-full transition-all shrink-0 ${company.is_active ? 'bg-purple-600' : 'bg-[#333]'}`}
-                        title={company.is_active ? 'Active — eligible for scraping' : 'Inactive — excluded from scraping'}
+                        title={company.is_active ? 'Active' : 'Inactive'}
                       >
                         <span className={`absolute top-0.5 w-5 h-5 rounded-full bg-white transition-all ${company.is_active ? 'left-5' : 'left-0.5'}`} />
                       </button>
@@ -462,10 +471,13 @@ export default function CompaniesPage() {
                           <ExternalLink size={13} className="shrink-0" /> <span className="truncate">{company.career_url}</span>
                         </a>
                       )}
-                      <div className="text-[#555]">
-                        Last scraped: {company.last_scraped_at
-                          ? new Date(company.last_scraped_at).toLocaleDateString('en-IN', { day: '2-digit', month: 'short', hour: '2-digit', minute: '2-digit' })
-                          : 'Never'}
+                      <div className="flex items-center gap-2 text-[#666]" title={company.last_scraped_at ? new Date(company.last_scraped_at).toLocaleString() : undefined}>
+                        <Clock size={13} className="shrink-0" />
+                        <span className="truncate">
+                          Last scraped: {company.last_scraped_at
+                            ? new Date(company.last_scraped_at).toLocaleDateString('en-IN', { day: '2-digit', month: 'short', year: 'numeric' })
+                            : 'Never'}
+                        </span>
                       </div>
                     </div>
 
@@ -793,7 +805,7 @@ function CompanyFormModal({ company, onClose, onSave, saving }: {
             >
               <span className={`absolute top-0.5 w-5 h-5 rounded-full bg-white transition-all ${form.is_active ? 'left-5' : 'left-0.5'}`} />
             </button>
-            <span className="text-sm text-[#888]">Active (eligible for scraping)</span>
+            <span className="text-sm text-[#888]">Active</span>
           </label>
         </div>
 

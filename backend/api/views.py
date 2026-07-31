@@ -7,10 +7,10 @@ from rest_framework.decorators import action
 from rest_framework.authtoken.views import ObtainAuthToken
 from rest_framework.response import Response
 from rest_framework.authtoken.models import Token
-from .models import Job, ScrapeSession, ScrapeLog, Bookmark, Feedback, Portfolio, PortfolioView, Profile, CustomCV, JobApplicationKit, Company
+from .models import Job, Bookmark, Feedback, Portfolio, PortfolioView, Profile, CustomCV, JobApplicationKit, Company
 from .serializers import (
-    JobSerializer, JobMapPinSerializer, ScrapeSessionSerializer,
-    ScrapeLogSerializer, UserSerializer, RegisterSerializer, RecentJobSerializer,
+    JobSerializer, JobMapPinSerializer,
+    UserSerializer, RegisterSerializer, RecentJobSerializer,
     FeedbackSerializer, PortfolioSettingsSerializer, PublicPortfolioSerializer,
     PortfolioViewSerializer, CustomCVSerializer, CustomCVCreateSerializer, tailor_resume_with_groq,
     JobApplicationKitSerializer, generate_application_kit_with_groq, CompanySerializer,
@@ -22,7 +22,7 @@ from django.core.validators import validate_email
 from django.core.exceptions import ValidationError as DjangoValidationError
 from scripts.ats_scoring import score_cv, get_profession_keywords, get_all_profession_keywords
 from scripts.cv_export import render_cv_pdf, render_cv_docx
-from django.http import HttpResponse
+from django.http import HttpResponse, StreamingHttpResponse
 from django.db import models
 from django.db.models import Exists, OuterRef, Q, Count
 from django.db.models.functions import TruncMonth
@@ -31,14 +31,75 @@ from django.contrib.auth.models import User
 from django.utils import timezone
 from datetime import timedelta
 import ipaddress
+import json
 import logging
-import os
 import random
 import requests
+import threading
 import time
 from django.conf import settings
 
 logger = logging.getLogger(__name__)
+
+class _RunRegistry:
+    """Tracks in-flight scraper syncs (RunScraperScriptView) so the admin
+    dashboard can list what's currently running and request a cooperative
+    stop — a plain Python thread can't be killed from outside, so `stop`
+    just flips a threading.Event that sync_board() and the geocoder check
+    between steps and exit early on.
+
+    Also doubles as the guard against running the same board twice at once
+    (a double-click or a second admin tab), which can exceed SQLite's write
+    lock busy-timeout on large boards.
+    """
+    def __init__(self):
+        self._lock = threading.Lock()
+        self._runs = {}  # normalized board name -> run info dict
+
+    def start(self, board, script):
+        """Reserves `board`, returning its stop_event, or None if it's
+        already running."""
+        key = board.strip().lower()
+        with self._lock:
+            if key in self._runs:
+                return None
+            stop_event = threading.Event()
+            self._runs[key] = {
+                'board': board, 'script': script, 'started_at': time.time(), 'stop_event': stop_event,
+            }
+            return stop_event
+
+    def finish(self, board):
+        with self._lock:
+            self._runs.pop(board.strip().lower(), None)
+
+    def is_running(self, board):
+        with self._lock:
+            return board.strip().lower() in self._runs
+
+    def list(self):
+        with self._lock:
+            return [
+                {'board': r['board'], 'script': r['script'], 'started_at': r['started_at']}
+                for r in self._runs.values()
+            ]
+
+    def stop(self, board):
+        with self._lock:
+            run = self._runs.get(board.strip().lower())
+        if not run:
+            return False
+        run['stop_event'].set()
+        return True
+
+    def stop_all(self):
+        with self._lock:
+            runs = list(self._runs.values())
+        for run in runs:
+            run['stop_event'].set()
+        return [r['board'] for r in runs]
+
+_run_registry = _RunRegistry()
 from user_agents import parse as parse_user_agent
 
 class SignupView(generics.CreateAPIView):
@@ -80,8 +141,7 @@ class GoogleAuthView(views.APIView):
 class RequestEmailOtpView(views.APIView):
     """Issues a one-time code for the given email and hands the raw code back
     to the caller so it can be emailed. Only callable by the frontend server
-    (which owns SMTP delivery), authenticated via a shared secret — mirrors
-    the CRON_SECRET bearer-token check used by TriggerCompanyScrapeView.
+    (which owns SMTP delivery), authenticated via a shared secret bearer token.
     """
     permission_classes = [permissions.AllowAny]
     throttle_scope = 'email-otp-request'
@@ -199,6 +259,7 @@ class JobPagination(PageNumberPagination):
 
 _JOBS_CACHE_TTL = 120  # 2 minutes — matches the frontend's own client-side cache TTL
 FREE_PREVIEW_LIMIT = 200  # non-subscribers get a capped, most-recent-first taste of the map/list
+_SHUFFLE_PRIME = 2147483647  # 2**31 - 1, a Mersenne prime — see _shuffle()
 
 def _jobs_cache_version(user_id):
     """A per-user counter, bumped on bookmark changes, folded into cache keys below
@@ -214,7 +275,7 @@ class JobViewSet(viewsets.ModelViewSet):
     pagination_class = JobPagination
 
     def get_permissions(self):
-        # Jobs are populated by the scraper; only admins may create/edit/delete them.
+        # Only admins may create/edit/delete jobs.
         if self.action in ('create', 'update', 'partial_update', 'destroy', 'bulk_delete'):
             return [permissions.IsAdminUser()]
         # list/map_pins are open to any authenticated user — non-subscribers get a
@@ -301,14 +362,30 @@ class JobViewSet(viewsets.ModelViewSet):
     def _shuffle(self, queryset):
         """Random order for browsing variety, but stable within one cache window
         so paginating doesn't repeat or skip jobs — it reshuffles only once the
-        cached page results are due to go stale anyway."""
-        ids = list(queryset.values_list('id', flat=True))
-        if not ids:
-            return queryset
+        cached page results are due to go stale anyway.
+
+        Used to materialize every matching id into Python and order by a
+        Case/When with one WHEN per row — which meant one bound SQL parameter
+        per row, and broke outright ("too many SQL variables") once the Job
+        table passed SQLite's ~32k bound-parameter ceiling. Instead, scramble
+        each row's id with a per-window linear hash computed in SQL:
+        (id * multiplier + offset) mod P. P is prime, so any nonzero
+        multiplier mod P is automatically coprime with it, which makes the
+        map a bijection over 0..P-1 — i.e. a real permutation, not just a
+        handful of collisions. multiplier and offset are re-rolled from the
+        same time-bucketed seed as before, so the permutation itself changes
+        each window rather than just rotating the previous one. Cost is two
+        bound parameters no matter how large the table gets.
+        """
         seed = int(timezone.now().timestamp() // _JOBS_CACHE_TTL)
-        random.Random(seed).shuffle(ids)
-        order = models.Case(*[models.When(pk=pk, then=pos) for pos, pk in enumerate(ids)])
-        return queryset.order_by(order)
+        rng = random.Random(seed)
+        multiplier = rng.randrange(1, _SHUFFLE_PRIME)
+        offset = rng.randrange(0, _SHUFFLE_PRIME)
+        shuffle_key = models.ExpressionWrapper(
+            (models.F('id') * multiplier + offset) % _SHUFFLE_PRIME,
+            output_field=models.BigIntegerField(),
+        )
+        return queryset.annotate(_shuffle_key=shuffle_key).order_by('_shuffle_key')
 
     def list(self, request, *args, **kwargs):
         # Every job carries an is_bookmarked flag for this user, so the cache is
@@ -496,75 +573,16 @@ class StatsView(views.APIView):
         data = cache.get(_STATS_CACHE_KEY)
         if data is None:
             total_jobs = Job.objects.count()
-            active_sessions = ScrapeSession.objects.filter(status='running').count()
-            last_session = ScrapeSession.objects.order_by('-start_time').first()
             data = {
                 'total_jobs': total_jobs,
-                'active_sessions': active_sessions,
-                'last_scrape_session': ScrapeSessionSerializer(last_session).data if last_session else None,
             }
             cache.set(_STATS_CACHE_KEY, data, _STATS_CACHE_TTL)
         return Response(data)
 
-class TriggerCompanyScrapeView(views.APIView):
-    permission_classes = [permissions.AllowAny]
-    MAX_COMPANIES = 10
-
-    def post(self, request):
-        cron_secret = os.environ.get('CRON_SECRET')
-        auth_header = request.headers.get('Authorization', '')
-
-        is_cron_authorized = bool(cron_secret) and auth_header == f"Bearer {cron_secret}"
-        if not is_cron_authorized:
-            if not (request.user and request.user.is_authenticated and request.user.is_superuser):
-                return Response({'error': 'Authentication credentials were not provided or invalid.'}, status=401)
-
-        companies = request.data.get('companies')
-        if not companies or not isinstance(companies, list):
-            return Response({'error': 'companies must be a non-empty list of company names.'}, status=400)
-        if len(companies) > self.MAX_COMPANIES:
-            return Response({'error': f'Pick at most {self.MAX_COMPANIES} companies.'}, status=400)
-
-        if ScrapeSession.objects.filter(status='running').exists():
-            return Response({'status': 'Scraper already running'}, status=400)
-
-        import threading
-        from scripts.job_scraper import scrape_companies_by_names, log_to_db
-
-        session = ScrapeSession.objects.create(
-            status='running', search_term=f"company_career_pages:{','.join(companies)}", results_limit=0,
-        )
-
-        def _run():
-            log_to_db(session, f"Starting career-page scrape for {', '.join(companies)}", "success")
-            try:
-                scrape_companies_by_names(companies, session=session)
-                session.status = 'completed'
-            except Exception as e:
-                session.status = 'failed'
-                session.error_message = str(e)
-            session.current_location = None
-            session.end_time = timezone.now()
-            try:
-                session.save()
-            except Exception:
-                # A stuck 'running' session blocks every future scrape attempt
-                # (see the running-session check above), so retry once after a
-                # beat rather than leaving it wedged on a transient DB lock.
-                time.sleep(2)
-                session.save()
-            cache.delete(_STATS_CACHE_KEY)
-            cache.delete(_COUNTRIES_CACHE_KEY)
-
-        thread = threading.Thread(target=_run, daemon=True)
-        thread.start()
-        cache.delete(_STATS_CACHE_KEY)
-        return Response({'status': 'Company career-page scrape triggered', 'session_id': session.id})
-
 class CompaniesPagination(PageNumberPagination):
     page_size = 20
     page_size_query_param = 'page_size'
-    max_page_size = 2000  # lets callers like the "Scrape by Company" picker pull the full list in one request
+    max_page_size = 2000
 
 class CompanyViewSet(viewsets.ModelViewSet):
     """Full CRUD for managing configured companies (add/edit/delete/activate)."""
@@ -573,9 +591,7 @@ class CompanyViewSet(viewsets.ModelViewSet):
     pagination_class = CompaniesPagination
 
     def get_queryset(self):
-        queryset = Company.objects.all().order_by(
-            models.F('last_scraped_at').desc(nulls_last=True), '-created_at',
-        )
+        queryset = Company.objects.all().order_by('-created_at')
         search = self.request.query_params.get('search')
         if search:
             queryset = queryset.filter(models.Q(name__icontains=search) | models.Q(domain__icontains=search))
@@ -628,7 +644,9 @@ class CompaniesView(views.APIView):
     def get(self, request):
         companies_qs = (
             Company.objects.all()
-            .order_by(models.F('last_scraped_at').desc(nulls_last=True), '-created_at')
+            # Most recently scraped first; never-scraped companies (null)
+            # sort to the end rather than the default (nulls-first on desc).
+            .order_by(models.F('last_scraped_at').desc(nulls_last=True))
             .values(
                 'id', 'name', 'domain', 'career_url', 'contact_url', 'contact_email',
                 'address', 'linkedin_url', 'logo_url', 'is_active', 'last_scraped_at',
@@ -639,8 +657,8 @@ class CompaniesView(views.APIView):
         page = paginator.paginate_queryset(list(companies_qs), request, view=self)
 
         # light=true skips the recent-jobs fetch below (2 queries per company —
-        # painfully slow once there are hundreds of companies) for callers like
-        # the "Scrape by Company" picker that only need name + job_count.
+        # painfully slow once there are hundreds of companies) for callers that
+        # only need name + job_count.
         if request.query_params.get('light') == 'true':
             names = [c['name'] for c in page]
             counts = dict(
@@ -675,15 +693,49 @@ class CompaniesView(views.APIView):
 
         return paginator.get_paginated_response(result)
 
+class JobsMissingCoordinatesView(views.APIView):
+    """Companies that have at least one job with no coordinates, most-affected
+    first — feeds the Jobs page's "Run Geocode" picker so an admin can jump
+    straight to the boards that actually need it instead of hunting through
+    the full company filter dropdown."""
+    permission_classes = [permissions.IsAdminUser]
+
+    def get(self, request):
+        rows = (
+            Job.objects.filter(latitude__isnull=True)
+            .values('company')
+            .annotate(missing=Count('id'))
+            .order_by('-missing')
+        )
+        companies = [r['company'] for r in rows]
+        totals = dict(
+            Job.objects.filter(company__in=companies)
+            .values('company')
+            .annotate(total=Count('id'))
+            .values_list('company', 'total')
+        )
+        return Response([
+            {'company': r['company'], 'missing': r['missing'], 'total': totals.get(r['company'], r['missing'])}
+            for r in rows
+        ])
+
 class AdminJobsView(generics.ListAPIView):
-    """Paginated, filterable job listing for the admin dashboard's Jobs page.
-    Read-only — jobs themselves are managed via the scraper, not hand-edited here."""
+    """Paginated, filterable job listing for the admin dashboard's Jobs page."""
     serializer_class = AdminJobSerializer
     permission_classes = [permissions.IsAdminUser]
     pagination_class = JobPagination
 
     def get_queryset(self):
-        queryset = Job.objects.order_by('-created_at')
+        # Jobs missing coordinates first (they're the ones needing admin
+        # attention — see the Jobs page's "Run Geocode" picker), most
+        # recent first within each of those two groups.
+        queryset = Job.objects.annotate(
+            missing_coords=models.Case(
+                models.When(latitude__isnull=True, then=models.Value(0)),
+                default=models.Value(1),
+                output_field=models.IntegerField(),
+            )
+        ).order_by('missing_coords', '-created_at')
 
         company = self.request.query_params.get('company')
         if company:
@@ -697,46 +749,179 @@ class AdminJobsView(generics.ListAPIView):
 
         return queryset
 
-class StopScrapeView(views.APIView):
-    permission_classes = [permissions.IsAdminUser]
-
-    def post(self, request):
-        session = ScrapeSession.objects.filter(status='running').order_by('-start_time').first()
-        if session:
-            session.stop_requested = True
-            session.save()
-            cache.delete(_STATS_CACHE_KEY)
-            cache.delete(_COUNTRIES_CACHE_KEY)
-            return Response({'status': 'Stop request sent'})
-        return Response({'status': 'No active session found'}, status=404)
-
-class ForceResetView(views.APIView):
-    permission_classes = [permissions.IsAdminUser]
-
-    def post(self, request):
-        ScrapeSession.objects.filter(status='running').update(
-            status='stopped',
-            end_time=timezone.now(),
-            error_message='Force reset by admin'
+    def list(self, request, *args, **kwargs):
+        response = super().list(request, *args, **kwargs)
+        # Stats reflect the current filter set (company/search), not just the
+        # current page, so switching filters updates the summary card too.
+        aggregates = self.get_queryset().aggregate(
+            with_coordinates=Count('id', filter=Q(latitude__isnull=False, longitude__isnull=False)),
+            most_recent_posted=models.Max('date_posted'),
+            oldest_posted=models.Min('date_posted'),
         )
-        cache.delete(_STATS_CACHE_KEY)
-        cache.delete(_COUNTRIES_CACHE_KEY)
-        return Response({'status': 'All sessions reset'})
+        response.data['stats'] = aggregates
+        return response
 
-class LogsView(generics.ListAPIView):
-    serializer_class = ScrapeLogSerializer
+class RunScraperScriptView(views.APIView):
+    """Lets an admin trigger a job-import script for up to 3 companies at a
+    time from the dashboard, instead of running e.g. scripts/jobs/ashbyhq.py
+    by hand from a terminal.
+
+    The companies run concurrently (scripts.jobs.*.run_many spins up one
+    thread per board), so a 3-company run takes roughly as long as the
+    slowest board instead of the sum of all three. Progress lines from
+    whichever boards are currently running are interleaved live as they
+    happen — not grouped one board at a time — streamed as
+    newline-delimited JSON so the frontend can show it instead of a single
+    blocking spinner for what can be a minute-plus request:
+      {"type": "log", "board": "...", "message": "..."}   — progress line
+      {"type": "result", "board": "...", "ok": true, ...stats}
+      {"type": "result", "board": "...", "ok": false, "error": "..."}
+      {"type": "done"}                                     — always last
+    """
     permission_classes = [permissions.IsAdminUser]
 
+    # script key -> display name. Each key must match a scripts/jobs/{key}.py
+    # module exposing a sync_board(board_name) generator (see ashbyhq.py).
+    SCRIPTS = {'ashbyhq': 'Ashby', 'greenhouse': 'Greenhouse', 'recruitee': 'Recruitee', 'lever': 'Lever', 'workable': 'Workable'}
+
+    def post(self, request):
+        script = request.data.get('script')
+        if script not in self.SCRIPTS:
+            return Response({'error': f"Unknown script '{script}'. Choose one of: {', '.join(self.SCRIPTS)}"}, status=400)
+
+        companies = request.data.get('companies')
+        if not isinstance(companies, list) or not (1 <= len(companies) <= 3):
+            return Response({'error': 'Provide 1 to 3 company names.'}, status=400)
+        requested = [c.strip() for c in companies if (c or '').strip()]
+        if not requested:
+            return Response({'error': 'Provide 1 to 3 company names.'}, status=400)
+
+        # Two concurrent syncs writing thousands of rows each for the same
+        # (or even different) companies can exceed SQLite's busy-timeout and
+        # fail with "database is locked" — reject a board that's already
+        # mid-run rather than let a double-click or a second admin tab
+        # trigger that. Reserve them all in one pass so two overlapping
+        # requests can't both pass the check for different boards, then
+        # partially collide.
+        stop_events = {}
+        reserved = []
+        for board in requested:
+            stop_event = _run_registry.start(board, script)
+            if stop_event is None:
+                for r in reserved:
+                    _run_registry.finish(r)
+                return Response(
+                    {'error': f"Already running: {board}. Wait for that run to finish first."}, status=409,
+                )
+            reserved.append(board)
+            stop_events[board.strip().lower()] = stop_event
+
+        # Imported lazily (and dynamically, by validated script key) so a
+        # module's own django.setup() call never runs during Django's own
+        # app loading.
+        import importlib
+        run_many = importlib.import_module(f'scripts.jobs.{script}').run_many
+
+        def event_stream():
+            import queue
+            import threading as _threading
+
+            events = queue.Queue()
+            DONE = object()
+
+            def on_log(board_name, message):
+                events.put({'type': 'log', 'board': board_name, 'message': message})
+
+            def on_result(board_name, result):
+                events.put({'type': 'result', 'board': board_name, **result})
+                _run_registry.finish(board_name)
+
+            def runner():
+                try:
+                    run_many(requested, on_log=on_log, on_result=on_result, stop_events=stop_events)
+                finally:
+                    # Belt-and-suspenders: on_result already releases each
+                    # board as it finishes, but this covers a run_many
+                    # failure that never gets that far for some board.
+                    for board in requested:
+                        _run_registry.finish(board)
+                    events.put(DONE)
+
+            _threading.Thread(target=runner, daemon=True).start()
+
+            while True:
+                event = events.get()
+                if event is DONE:
+                    break
+                yield json.dumps(event) + '\n'
+            yield json.dumps({'type': 'done'}) + '\n'
+
+        return StreamingHttpResponse(event_stream(), content_type='application/x-ndjson')
+
+class RunningScriptsView(views.APIView):
+    """Lists scraper syncs currently in flight (started via
+    RunScraperScriptView, from any admin session), for the dashboard's
+    "Active Runs" card."""
+    permission_classes = [permissions.IsAdminUser]
 
     def get(self, request):
-        logs = ScrapeLog.objects.all().order_by('-timestamp')[:100]
-        last_session = ScrapeSession.objects.all().order_by('-start_time').first()
-        active_sessions = ScrapeSession.objects.filter(status='running').order_by('-start_time')
-        return Response({
-            'logs': ScrapeLogSerializer(logs, many=True).data,
-            'session': ScrapeSessionSerializer(last_session).data if last_session else None,
-            'active_sessions': ScrapeSessionSerializer(active_sessions, many=True).data,
-        })
+        return Response(_run_registry.list())
+
+class StopScriptView(views.APIView):
+    """Requests a cooperative stop for one running board (`{"board": "X"}`)
+    or all of them (`{"all": true}`). The board's own sync loop checks a
+    shared flag between steps and exits early on its own — a real OS
+    thread can't be killed from outside — so stopping isn't instant and
+    whatever's already been fetched/geocoded up to that point stays saved."""
+    permission_classes = [permissions.IsAdminUser]
+
+    def post(self, request):
+        if request.data.get('all'):
+            stopped = _run_registry.stop_all()
+            return Response({'stopped': stopped})
+
+        board = (request.data.get('board') or '').strip()
+        if not board:
+            return Response({'error': 'Provide a board name or {"all": true}.'}, status=400)
+        if not _run_registry.stop(board):
+            return Response({'error': f"'{board}' isn't currently running."}, status=404)
+        return Response({'stopped': [board]})
+
+class RunGeocodeView(views.APIView):
+    """Lets an admin trigger the coordinate backfill (scripts/geocode_jobs.py)
+    for one company or the whole table from the Jobs page, instead of running
+    it by hand from a terminal.
+
+    Streams newline-delimited JSON as it runs, same shape as
+    RunScraperScriptView:
+      {"type": "log", "message": "..."}                  — progress line
+      {"type": "result", "ok": true, ...stats}
+      {"type": "result", "ok": false, "error": "..."}
+      {"type": "done"}                                     — always last
+    """
+    permission_classes = [permissions.IsAdminUser]
+
+    def post(self, request):
+        company = (request.data.get('company') or '').strip() or None
+
+        # Imported lazily so its django.setup() call never runs during
+        # Django's own app loading.
+        from scripts.geocode_jobs import run_streaming
+
+        def event_stream():
+            try:
+                stats = None
+                for item in run_streaming(company=company):
+                    if isinstance(item, dict):
+                        stats = item
+                    else:
+                        yield json.dumps({'type': 'log', 'message': item}) + '\n'
+                yield json.dumps({'type': 'result', 'ok': True, **stats}) + '\n'
+            except Exception as e:
+                yield json.dumps({'type': 'result', 'ok': False, 'error': str(e)}) + '\n'
+            yield json.dumps({'type': 'done'}) + '\n'
+
+        return StreamingHttpResponse(event_stream(), content_type='application/x-ndjson')
 
 class AdminLoginView(ObtainAuthToken):
     def post(self, request, *args, **kwargs):
