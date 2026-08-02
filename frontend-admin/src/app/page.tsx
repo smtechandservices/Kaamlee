@@ -436,12 +436,13 @@ export default function AdminDashboard() {
     const logs: string[] = [];
     const progressByBoard: Record<string, BoardProgress> = {};
     const persist = () => setCache(SCRIPT_RUN_CACHE_KEY, { results: [...results], logs: [...logs] });
+    const requested = [...scriptCompanies];
 
     try {
       const res = await fetch(`${API_BASE}/admin/run-script/`, {
         method: 'POST',
         headers: { Authorization: `Token ${token}`, 'Content-Type': 'application/json' },
-        body: JSON.stringify({ script: scriptChoice, companies: scriptCompanies }),
+        body: JSON.stringify({ script: scriptChoice, companies: requested }),
       });
 
       if (!res.ok) {
@@ -450,39 +451,44 @@ export default function AdminDashboard() {
         return;
       }
 
-      const reader = res.body?.getReader();
-      if (!reader) {
-        setScriptError('Streaming is not supported by this browser.');
-        return;
-      }
-
       setScriptResults(results);
-      const decoder = new TextDecoder();
-      let buffer = '';
 
-      while (true) {
-        const { done, value } = await reader.read();
-        if (done) break;
-        buffer += decoder.decode(value, { stream: true });
-        const lines = buffer.split('\n');
-        buffer = lines.pop() ?? '';
-        for (const line of lines) {
-          if (!line.trim()) continue;
-          const event = JSON.parse(line);
-          if (event.type === 'log') {
-            logs.push(`[${event.board}] ${event.message}`);
-            setScriptLogs([...logs]);
-            progressByBoard[event.board] = parseBoardProgress(event.message, progressByBoard[event.board]);
-            setBoardProgress({ ...progressByBoard });
-          } else if (event.type === 'result') {
-            const { type: _type, ...result } = event;
-            results.push(result as ScriptRunResult);
-            setScriptResults([...results]);
-            delete progressByBoard[event.board]; // finished — stop showing it as in-progress
-            setBoardProgress({ ...progressByBoard });
+      // Poll for progress instead of holding one HTTP connection open for
+      // the run's whole duration — a geocode-heavy sync can take minutes
+      // (Nominatim is rate-limited to ~1 request/2s), long enough for a
+      // browser/proxy timeout to kill a streamed connection well before the
+      // run itself finishes server-side. Polling means a dropped poll is
+      // just retried, not mistaken for the run having failed.
+      const pending = new Set(requested);
+      while (pending.size > 0) {
+        await new Promise(resolve => setTimeout(resolve, 1500));
+        const statusRes = await fetch(
+          `${API_BASE}/admin/run-script/status/?boards=${encodeURIComponent([...pending].join(','))}`,
+          { headers: { Authorization: `Token ${token}` } },
+        );
+        if (!statusRes.ok) continue; // transient — retry on the next tick
+        const statusByBoard: Record<string, { logs: string[]; done: boolean; result: ScriptRunResult | null } | null> =
+          await statusRes.json();
+
+        for (const board of pending) {
+          const status = statusByBoard[board];
+          if (!status) continue; // not reserved yet — can race the very first poll
+          for (const message of status.logs) {
+            logs.push(`[${board}] ${message}`);
+            progressByBoard[board] = parseBoardProgress(message, progressByBoard[board]);
           }
-          persist();
+          if (status.done) {
+            if (status.result) {
+              results.push(status.result);
+              setScriptResults([...results]);
+            }
+            delete progressByBoard[board]; // finished — stop showing it as in-progress
+            pending.delete(board);
+          }
         }
+        setScriptLogs([...logs]);
+        setBoardProgress({ ...progressByBoard });
+        persist();
       }
 
       invalidatePrefix('job-data:');

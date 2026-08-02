@@ -9,7 +9,7 @@ from .views import (
     RequestLogsView, CustomCVListCreateView, CustomCVDetailView, CustomCVTailorView, CustomCVExportView,
     JobApplicationKitView, AtsKeywordsView, ApplicationsView, AdminJobsView, ChangePasswordView,
     RequestEmailOtpView, VerifyEmailOtpView, ConfirmEmailOtpView, RunScraperScriptView, RunGeocodeView,
-    RunningScriptsView, StopScriptView,
+    RunningScriptsView, StopScriptView, RunScriptStatusView,
     JobsMissingCoordinatesView,
 )
 
@@ -81,6 +81,7 @@ urlpatterns = [
     path('companies/', CompaniesView.as_view(), name='companies'),
     path('admin/jobs/', AdminJobsView.as_view(), name='admin-jobs'),
     path('admin/run-script/', RunScraperScriptView.as_view(), name='admin-run-script'),
+    path('admin/run-script/status/', RunScriptStatusView.as_view(), name='admin-run-script-status'),
     path('admin/run-script/running/', RunningScriptsView.as_view(), name='admin-run-script-running'),
     path('admin/run-script/stop/', StopScriptView.as_view(), name='admin-run-script-stop'),
     path('admin/run-geocode/', RunGeocodeView.as_view(), name='admin-run-geocode'),

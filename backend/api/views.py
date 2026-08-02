@@ -23,6 +23,7 @@ from django.core.exceptions import ValidationError as DjangoValidationError
 from scripts.ats_scoring import score_cv, get_profession_keywords, get_all_profession_keywords
 from scripts.cv_export import render_cv_pdf, render_cv_docx
 from django.http import HttpResponse, StreamingHttpResponse
+from django.shortcuts import get_object_or_404
 from django.db import models
 from django.db.models import Exists, OuterRef, Q, Count
 from django.db.models.functions import TruncMonth
@@ -42,11 +43,20 @@ from django.conf import settings
 logger = logging.getLogger(__name__)
 
 class _RunRegistry:
-    """Tracks in-flight scraper syncs (RunScraperScriptView) so the admin
-    dashboard can list what's currently running and request a cooperative
-    stop — a plain Python thread can't be killed from outside, so `stop`
-    just flips a threading.Event that sync_board() and the geocoder check
-    between steps and exit early on.
+    """Tracks in-flight (and just-finished) scraper syncs (RunScraperScriptView)
+    so the admin dashboard can list what's running, request a cooperative
+    stop, and poll for each board's logs/result.
+
+    RunScraperScriptView used to stream progress back over the same HTTP
+    connection that kicked the run off, but a sync that's geocode-heavy can
+    run for minutes (Nominatim caps out around one request per 2s — see
+    scripts/geocode_jobs.py) — long enough for a browser/proxy/host timeout
+    to kill that connection well before the run itself finishes server-side,
+    which showed up to the admin as a false "failed" even though the sync
+    completed fine in its background thread. Decoupling the run from the
+    request means the registry itself has to hold each board's logs/result
+    until the dashboard's poll picks them up, instead of just tracking that
+    a board is busy.
 
     Also doubles as the guard against running the same board twice at once
     (a double-click or a second admin tab), which can exceed SQLite's write
@@ -58,31 +68,69 @@ class _RunRegistry:
 
     def start(self, board, script):
         """Reserves `board`, returning its stop_event, or None if it's
-        already running."""
+        already running (a previous run that finished is fair game to
+        reserve again — its stale logs/result get overwritten here)."""
         key = board.strip().lower()
         with self._lock:
-            if key in self._runs:
+            existing = self._runs.get(key)
+            if existing and not existing['done']:
                 return None
             stop_event = threading.Event()
             self._runs[key] = {
-                'board': board, 'script': script, 'started_at': time.time(), 'stop_event': stop_event,
+                'board': board, 'script': script, 'started_at': time.time(),
+                'stop_event': stop_event, 'done': False, 'logs': [], 'result': None,
             }
             return stop_event
 
-    def finish(self, board):
+    def cancel(self, board):
+        """Pops a reservation that never actually started running — used to
+        roll back a batch when a later board in the same request turns out
+        to already be running. (Distinct from `finish`, which marks a real
+        run's completion and keeps its result around for polling.)"""
         with self._lock:
             self._runs.pop(board.strip().lower(), None)
 
+    def log(self, board, message):
+        with self._lock:
+            run = self._runs.get(board.strip().lower())
+            if run:
+                run['logs'].append(message)
+
+    def finish(self, board, result=None):
+        with self._lock:
+            run = self._runs.get(board.strip().lower())
+            if run:
+                run['done'] = True
+                if result is not None:
+                    run['result'] = result
+
     def is_running(self, board):
         with self._lock:
-            return board.strip().lower() in self._runs
+            run = self._runs.get(board.strip().lower())
+            return bool(run and not run['done'])
 
     def list(self):
         with self._lock:
             return [
                 {'board': r['board'], 'script': r['script'], 'started_at': r['started_at']}
-                for r in self._runs.values()
+                for r in self._runs.values() if not r['done']
             ]
+
+    def status(self, boards):
+        """Returns {requested board name: {logs, done, result} | None} —
+        None for a board that was never reserved (or a very first poll that
+        raced the reservation). Delivered logs are drained so a board that's
+        still running doesn't get the same lines re-sent on the next poll."""
+        with self._lock:
+            out = {}
+            for board in boards:
+                run = self._runs.get(board.strip().lower())
+                if not run:
+                    out[board] = None
+                    continue
+                logs, run['logs'] = run['logs'], []
+                out[board] = {'logs': logs, 'done': run['done'], 'result': run['result']}
+            return out
 
     def stop(self, board):
         with self._lock:
@@ -94,7 +142,7 @@ class _RunRegistry:
 
     def stop_all(self):
         with self._lock:
-            runs = list(self._runs.values())
+            runs = [r for r in self._runs.values() if not r['done']]
         for run in runs:
             run['stop_event'].set()
         return [r['board'] for r in runs]
@@ -359,6 +407,22 @@ class JobViewSet(viewsets.ModelViewSet):
             return queryset.order_by('-created_at')[:FREE_PREVIEW_LIMIT]
 
         return self._shuffle(queryset)
+
+    def get_object(self):
+        # Detail actions (toggle_bookmark, update_status, retrieve/update/destroy)
+        # look a job up by its exact pk, so the free-preview cap in get_queryset()
+        # — which caps non-subscribers' *list*/map_pins browsing to the most
+        # recent FREE_PREVIEW_LIMIT jobs — doesn't belong here. Without this
+        # override, DRF's default get_object() reuses that same sliced
+        # queryset, so a non-subscriber toggling a bookmark on any job outside
+        # that recent slice got a spurious 404, even though bookmarking is
+        # meant to be free regardless of subscription (see get_permissions).
+        queryset = Job.objects.annotate(
+            is_bookmarked=Exists(Bookmark.objects.filter(user=self.request.user, job_id=OuterRef('pk')))
+        )
+        obj = get_object_or_404(queryset, pk=self.kwargs['pk'])
+        self.check_object_permissions(self.request, obj)
+        return obj
 
     def _shuffle(self, queryset):
         """Random order for browsing variety, but stable within one cache window
@@ -769,15 +833,16 @@ class RunScraperScriptView(views.APIView):
 
     The companies run concurrently (scripts.jobs.*.run_many spins up one
     thread per board), so a 3-company run takes roughly as long as the
-    slowest board instead of the sum of all three. Progress lines from
-    whichever boards are currently running are interleaved live as they
-    happen — not grouped one board at a time — streamed as
-    newline-delimited JSON so the frontend can show it instead of a single
-    blocking spinner for what can be a minute-plus request:
-      {"type": "log", "board": "...", "message": "..."}   — progress line
-      {"type": "result", "board": "...", "ok": true, ...stats}
-      {"type": "result", "board": "...", "ok": false, "error": "..."}
-      {"type": "done"}                                     — always last
+    slowest board instead of the sum of all three.
+
+    This kicks the run off in a background thread and returns immediately —
+    it used to stream progress back over the same HTTP connection that
+    triggered it, but a geocode-heavy sync can run for minutes (see
+    _RunRegistry's docstring), long enough for a browser/proxy/host timeout
+    to kill that connection well before the run itself finished, which
+    looked to the admin like a failure even though the sync completed fine.
+    The frontend instead polls RunScriptStatusView for each board's
+    logs/result, which _run_registry now holds onto until read.
     """
     permission_classes = [permissions.IsAdminUser]
 
@@ -810,7 +875,7 @@ class RunScraperScriptView(views.APIView):
             stop_event = _run_registry.start(board, script)
             if stop_event is None:
                 for r in reserved:
-                    _run_registry.finish(r)
+                    _run_registry.cancel(r)
                 return Response(
                     {'error': f"Already running: {board}. Wait for that run to finish first."}, status=409,
                 )
@@ -823,41 +888,41 @@ class RunScraperScriptView(views.APIView):
         import importlib
         run_many = importlib.import_module(f'scripts.jobs.{script}').run_many
 
-        def event_stream():
-            import queue
-            import threading as _threading
+        def on_log(board_name, message):
+            _run_registry.log(board_name, message)
 
-            events = queue.Queue()
-            DONE = object()
+        def on_result(board_name, result):
+            _run_registry.finish(board_name, result)
 
-            def on_log(board_name, message):
-                events.put({'type': 'log', 'board': board_name, 'message': message})
+        def runner():
+            try:
+                run_many(requested, on_log=on_log, on_result=on_result, stop_events=stop_events)
+            finally:
+                # Belt-and-suspenders: on_result already marks each board
+                # done as it finishes, but this covers a run_many failure
+                # that never gets that far for some board.
+                for board in requested:
+                    _run_registry.finish(board)
 
-            def on_result(board_name, result):
-                events.put({'type': 'result', 'board': board_name, **result})
-                _run_registry.finish(board_name)
+        threading.Thread(target=runner, daemon=True).start()
+        return Response({'started': requested}, status=202)
 
-            def runner():
-                try:
-                    run_many(requested, on_log=on_log, on_result=on_result, stop_events=stop_events)
-                finally:
-                    # Belt-and-suspenders: on_result already releases each
-                    # board as it finishes, but this covers a run_many
-                    # failure that never gets that far for some board.
-                    for board in requested:
-                        _run_registry.finish(board)
-                    events.put(DONE)
+class RunScriptStatusView(views.APIView):
+    """Polled by the dashboard while a run kicked off via RunScraperScriptView
+    is in flight: `?boards=Board1,Board2` returns each board's log lines
+    collected since the last poll plus its result once done, e.g.
+      {"Board1": {"logs": ["Fetching ..."], "done": false, "result": null},
+       "Board2": {"logs": [], "done": true, "result": {"ok": true, ...}}}
+    A board missing from the registry entirely (never reserved, or a poll
+    that raced the very first reservation) comes back as `null`.
+    """
+    permission_classes = [permissions.IsAdminUser]
 
-            _threading.Thread(target=runner, daemon=True).start()
-
-            while True:
-                event = events.get()
-                if event is DONE:
-                    break
-                yield json.dumps(event) + '\n'
-            yield json.dumps({'type': 'done'}) + '\n'
-
-        return StreamingHttpResponse(event_stream(), content_type='application/x-ndjson')
+    def get(self, request):
+        boards = [b for b in (request.query_params.get('boards') or '').split(',') if b.strip()]
+        if not boards:
+            return Response({'error': 'Provide boards as a comma-separated ?boards= query param.'}, status=400)
+        return Response(_run_registry.status(boards))
 
 class RunningScriptsView(views.APIView):
     """Lists scraper syncs currently in flight (started via
