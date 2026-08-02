@@ -280,7 +280,8 @@ class JobViewSet(viewsets.ModelViewSet):
             return [permissions.IsAdminUser()]
         # list/map_pins are open to any authenticated user — non-subscribers get a
         # capped, recent-jobs preview instead of a 403 (see get_queryset/map_pins).
-        if self.action in ('list', 'map_pins'):
+        # toggle_bookmark is a free feature — bookmarking shouldn't require a subscription.
+        if self.action in ('list', 'map_pins', 'toggle_bookmark'):
             return [permissions.IsAuthenticated()]
         return super().get_permissions()
 

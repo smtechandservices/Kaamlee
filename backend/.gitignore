@@ -43,5 +43,3 @@ ENV/
 # IDEs
 .vscode/
 .idea/
-
-migrations/
