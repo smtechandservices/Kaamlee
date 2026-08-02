@@ -24,6 +24,7 @@ import {
 import { useRouter } from 'next/navigation';
 import Link from 'next/link';
 import { getCached, setCache, invalidatePrefix } from '@/lib/cache';
+import { getSession, setSession, clearSession } from '@/lib/runSession';
 
 const API_BASE = `${process.env.NEXT_PUBLIC_API_URL}/api`;
 const COMPANIES_PAGE_SIZE = 20;
@@ -47,15 +48,18 @@ const SCRIPT_URL_MATCH: Record<string, string> = {
   workable: 'workable.com',
 };
 const MAX_SCRIPT_COMPANIES = 3;
-// Cache key (not React state) for the last run's logs/results — a plain
-// useState resets to empty on every mount, so switching to another page and
-// back was wiping out the results the moment you left. The shared in-memory
-// cache module survives client-side navigation, so stash it there instead.
-const SCRIPT_RUN_CACHE_KEY = 'script-run:last';
+// sessionStorage key for the in-progress run's logs/results/progress — see
+// lib/runSession.ts for why this survives a nav-away-and-back or reload
+// instead of just living in React state (which resets on every mount) or
+// the shared in-memory cache module (which resets on a full reload).
+const SCRIPT_RUN_SESSION_KEY = 'script-run:session';
 
 interface ScriptRunState {
+  pending: string[];
   results: ScriptRunResult[];
   logs: string[];
+  boardProgress: Record<string, BoardProgress>;
+  missCounts: Record<string, number>;
 }
 
 interface ScriptRunResult {
@@ -206,7 +210,8 @@ export default function AdminDashboard() {
   const [scriptChoice, setScriptChoice] = useState(SCRIPT_OPTIONS[0].value);
   const [companyOptions, setCompanyOptions] = useState<CompanyOption[]>([]);
   const [scriptCompanies, setScriptCompanies] = useState<string[]>([]);
-  const [runningScript, setRunningScript] = useState(false);
+  const [pendingBoards, setPendingBoards] = useState<string[]>([]);
+  const runningScript = pendingBoards.length > 0;
   const [scriptResults, setScriptResults] = useState<ScriptRunResult[] | null>(null);
   const [scriptLogs, setScriptLogs] = useState<string[]>([]);
   const [boardProgress, setBoardProgress] = useState<Record<string, BoardProgress>>({});
@@ -215,15 +220,11 @@ export default function AdminDashboard() {
   const [, forceTick] = useState(0); // re-render periodically so elapsed-time text keeps counting up
   const [scriptError, setScriptError] = useState<string | null>(null);
   const logsContainerRef = useRef<HTMLDivElement>(null);
+  // Flips true on unmount so an in-flight poll loop (see pollBoards) stops
+  // itself instead of running on as a "zombie" that fights a resumed poll
+  // from whatever remounts next (e.g. navigating back to this page).
+  const cancelledRef = useRef(false);
   const router = useRouter();
-
-  useEffect(() => {
-    const cached = getCached<ScriptRunState>(SCRIPT_RUN_CACHE_KEY);
-    if (cached) {
-      setScriptResults(cached.results);
-      setScriptLogs(cached.logs);
-    }
-  }, []);
 
   useEffect(() => {
     if (logsContainerRef.current) {
@@ -423,19 +424,111 @@ export default function AdminDashboard() {
     setScriptCompanies(prev => prev.filter(c => c !== name));
   };
 
+  // The actual polling loop for a run in progress — pulled out of the click
+  // handler so it can be resumed on mount (from a persisted session) just as
+  // easily as started fresh (from runScript below). Every tick updates both
+  // React state (for this render) and sessionStorage (so a later nav-away
+  // and back, or reload, can pick up exactly where this left off).
+  const pollBoards = async (
+    initialPending: string[],
+    initialResults: ScriptRunResult[],
+    initialLogs: string[],
+    initialProgress: Record<string, BoardProgress>,
+    initialMissCounts: Record<string, number>,
+  ) => {
+    const pending = new Set(initialPending);
+    const results = [...initialResults];
+    const logs = [...initialLogs];
+    const progressByBoard: Record<string, BoardProgress> = { ...initialProgress };
+    const missCounts: Record<string, number> = { ...initialMissCounts };
+    const token = localStorage.getItem('admin_token');
+
+    const persist = () => setSession(SCRIPT_RUN_SESSION_KEY, {
+      pending: [...pending], results: [...results], logs: [...logs],
+      boardProgress: { ...progressByBoard }, missCounts: { ...missCounts },
+    });
+
+    // A board the server has lost track of (e.g. it restarted mid-run, so
+    // the in-memory registry that used to know about it is gone) would
+    // otherwise poll as "not reserved yet" forever — after this many
+    // consecutive misses (~7.5s at the 1.5s interval below) give up on it
+    // rather than spin indefinitely.
+    const MAX_MISSES = 5;
+
+    while (pending.size > 0) {
+      if (cancelledRef.current) return;
+      await new Promise(resolve => setTimeout(resolve, 1500));
+      if (cancelledRef.current) return;
+
+      const statusRes = await fetch(
+        `${API_BASE}/admin/run-script/status/?boards=${encodeURIComponent([...pending].join(','))}`,
+        { headers: { Authorization: `Token ${token}` } },
+      ).catch(() => null);
+      if (!statusRes || !statusRes.ok) continue; // transient — retry on the next tick
+      const statusByBoard: Record<string, { logs: string[]; done: boolean; result: ScriptRunResult | null } | null> =
+        await statusRes.json();
+
+      for (const board of pending) {
+        const status = statusByBoard[board];
+        if (!status) {
+          missCounts[board] = (missCounts[board] || 0) + 1;
+          if (missCounts[board] >= MAX_MISSES) {
+            results.push({ board, ok: false, error: 'Lost track of this run — the server may have restarted mid-run.' });
+            delete progressByBoard[board];
+            pending.delete(board);
+          }
+          continue;
+        }
+        missCounts[board] = 0;
+        for (const message of status.logs) {
+          logs.push(`[${board}] ${message}`);
+          progressByBoard[board] = parseBoardProgress(message, progressByBoard[board]);
+        }
+        if (status.done) {
+          if (status.result) results.push(status.result);
+          delete progressByBoard[board];
+          pending.delete(board);
+        }
+      }
+
+      setScriptResults([...results]);
+      setScriptLogs([...logs]);
+      setBoardProgress({ ...progressByBoard });
+      setPendingBoards([...pending]);
+      persist();
+    }
+
+    if (cancelledRef.current) return;
+    clearSession(SCRIPT_RUN_SESSION_KEY);
+    invalidatePrefix('job-data:');
+    invalidatePrefix('company-data:');
+    fetchData(true);
+    fetchCompanyOptions(true);
+  };
+
+  useEffect(() => {
+    const saved = getSession<ScriptRunState>(SCRIPT_RUN_SESSION_KEY);
+    if (saved) {
+      setScriptResults(saved.results);
+      setScriptLogs(saved.logs);
+      setBoardProgress(saved.boardProgress);
+      setPendingBoards(saved.pending);
+      if (saved.pending.length > 0) {
+        pollBoards(saved.pending, saved.results, saved.logs, saved.boardProgress, saved.missCounts);
+      }
+    }
+    return () => { cancelledRef.current = true; };
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, []);
+
   const runScript = async () => {
     if (scriptCompanies.length === 0 || runningScript) return;
     const token = localStorage.getItem('admin_token');
-    setRunningScript(true);
     setScriptError(null);
-    setScriptResults(null);
+    setScriptResults([]);
     setScriptLogs([]);
     setBoardProgress({});
 
-    const results: ScriptRunResult[] = [];
-    const logs: string[] = [];
-    const progressByBoard: Record<string, BoardProgress> = {};
-    const persist = () => setCache(SCRIPT_RUN_CACHE_KEY, { results: [...results], logs: [...logs] });
     const requested = [...scriptCompanies];
 
     try {
@@ -451,55 +544,16 @@ export default function AdminDashboard() {
         return;
       }
 
-      setScriptResults(results);
-
-      // Poll for progress instead of holding one HTTP connection open for
-      // the run's whole duration — a geocode-heavy sync can take minutes
-      // (Nominatim is rate-limited to ~1 request/2s), long enough for a
-      // browser/proxy timeout to kill a streamed connection well before the
-      // run itself finishes server-side. Polling means a dropped poll is
+      // Polling (via pollBoards, below) instead of holding one HTTP
+      // connection open for the run's whole duration — a geocode-heavy sync
+      // can take minutes (Nominatim is rate-limited to ~1 request/2s), long
+      // enough for a browser/proxy timeout to kill a streamed connection
+      // well before the run itself finishes server-side. A dropped poll is
       // just retried, not mistaken for the run having failed.
-      const pending = new Set(requested);
-      while (pending.size > 0) {
-        await new Promise(resolve => setTimeout(resolve, 1500));
-        const statusRes = await fetch(
-          `${API_BASE}/admin/run-script/status/?boards=${encodeURIComponent([...pending].join(','))}`,
-          { headers: { Authorization: `Token ${token}` } },
-        );
-        if (!statusRes.ok) continue; // transient — retry on the next tick
-        const statusByBoard: Record<string, { logs: string[]; done: boolean; result: ScriptRunResult | null } | null> =
-          await statusRes.json();
-
-        for (const board of pending) {
-          const status = statusByBoard[board];
-          if (!status) continue; // not reserved yet — can race the very first poll
-          for (const message of status.logs) {
-            logs.push(`[${board}] ${message}`);
-            progressByBoard[board] = parseBoardProgress(message, progressByBoard[board]);
-          }
-          if (status.done) {
-            if (status.result) {
-              results.push(status.result);
-              setScriptResults([...results]);
-            }
-            delete progressByBoard[board]; // finished — stop showing it as in-progress
-            pending.delete(board);
-          }
-        }
-        setScriptLogs([...logs]);
-        setBoardProgress({ ...progressByBoard });
-        persist();
-      }
-
-      invalidatePrefix('job-data:');
-      invalidatePrefix('company-data:');
-      fetchData(true);
-      fetchCompanyOptions(true);
+      setPendingBoards(requested);
+      await pollBoards(requested, [], [], {}, {});
     } catch (error) {
       setScriptError('Failed to reach the server.');
-    } finally {
-      setRunningScript(false);
-      persist();
     }
   };
 

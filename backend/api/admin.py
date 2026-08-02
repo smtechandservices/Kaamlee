@@ -1,7 +1,7 @@
 from django.contrib import admin
 from django.contrib.auth.admin import UserAdmin as BaseUserAdmin
 from django.contrib.auth.models import User
-from .models import Job, Profile, Company, Portfolio, PortfolioView
+from .models import Job, Profile, Company, Portfolio, PortfolioView, ScraperRun
 
 @admin.register(Company)
 class CompanyAdmin(admin.ModelAdmin):
@@ -53,3 +53,13 @@ class PortfolioViewAdmin(admin.ModelAdmin):
     list_filter = ('country', 'device', 'browser', 'operating_system')
     search_fields = ('portfolio__user__username', 'ip_address')
     readonly_fields = ('viewed_at',)
+
+@admin.register(ScraperRun)
+class ScraperRunAdmin(admin.ModelAdmin):
+    list_display = (
+        'board', 'script', 'status', 'triggered_by', 'started_at', 'finished_at',
+        'fetched', 'created', 'updated', 'geocoded', 'borrowed', 'removed',
+    )
+    list_filter = ('status', 'script', 'triggered_by')
+    search_fields = ('board', 'company_name')
+    readonly_fields = ('started_at',)

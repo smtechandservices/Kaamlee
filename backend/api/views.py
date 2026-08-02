@@ -7,7 +7,7 @@ from rest_framework.decorators import action
 from rest_framework.authtoken.views import ObtainAuthToken
 from rest_framework.response import Response
 from rest_framework.authtoken.models import Token
-from .models import Job, Bookmark, Feedback, Portfolio, PortfolioView, Profile, CustomCV, JobApplicationKit, Company
+from .models import Job, Bookmark, Feedback, Portfolio, PortfolioView, Profile, CustomCV, JobApplicationKit, Company, ScraperRun
 from .serializers import (
     JobSerializer, JobMapPinSerializer,
     UserSerializer, RegisterSerializer, RecentJobSerializer,
@@ -870,6 +870,7 @@ class RunScraperScriptView(views.APIView):
         # requests can't both pass the check for different boards, then
         # partially collide.
         stop_events = {}
+        runs = {}
         reserved = []
         for board in requested:
             stop_event = _run_registry.start(board, script)
@@ -881,6 +882,7 @@ class RunScraperScriptView(views.APIView):
                 )
             reserved.append(board)
             stop_events[board.strip().lower()] = stop_event
+            runs[board.strip().lower()] = ScraperRun.objects.create(script=script, board=board)
 
         # Imported lazily (and dynamically, by validated script key) so a
         # module's own django.setup() call never runs during Django's own
@@ -893,6 +895,15 @@ class RunScraperScriptView(views.APIView):
 
         def on_result(board_name, result):
             _run_registry.finish(board_name, result)
+            run = runs.get(board_name.strip().lower())
+            if run is None:
+                return
+            run.status = 'stopped' if result.get('stopped') else ('success' if result.get('ok') else 'failed')
+            run.finished_at = timezone.now()
+            for field in ('fetched', 'created', 'updated', 'geocoded', 'borrowed', 'removed'):
+                setattr(run, field, result.get(field) or 0)
+            run.error = result.get('error') or ''
+            run.save()
 
         def runner():
             try:
@@ -903,6 +914,12 @@ class RunScraperScriptView(views.APIView):
                 # that never gets that far for some board.
                 for board in requested:
                     _run_registry.finish(board)
+                for run in runs.values():
+                    if run.status == 'running':
+                        run.status = 'failed'
+                        run.finished_at = timezone.now()
+                        run.error = run.error or 'Run ended unexpectedly without reporting a result.'
+                        run.save()
 
         threading.Thread(target=runner, daemon=True).start()
         return Response({'started': requested}, status=202)
@@ -927,11 +944,16 @@ class RunScriptStatusView(views.APIView):
 class RunningScriptsView(views.APIView):
     """Lists scraper syncs currently in flight (started via
     RunScraperScriptView, from any admin session), for the dashboard's
-    "Active Runs" card."""
+    "Active Runs" card. Backed by ScraperRun rather than _run_registry so
+    it reflects the database (survives a dashboard reload/deploy) instead
+    of just this process's in-memory state."""
     permission_classes = [permissions.IsAdminUser]
 
     def get(self, request):
-        return Response(_run_registry.list())
+        return Response([
+            {'board': r['board'], 'script': r['script'], 'started_at': r['started_at'].timestamp()}
+            for r in ScraperRun.objects.filter(status='running').values('board', 'script', 'started_at')
+        ])
 
 class StopScriptView(views.APIView):
     """Requests a cooperative stop for one running board (`{"board": "X"}`)

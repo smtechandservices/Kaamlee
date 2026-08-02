@@ -192,6 +192,41 @@ class CustomCV(models.Model):
         return f"CustomCV({self.label or self.target_role or self.id}) for {self.user.username}"
 
 
+SCRAPER_RUN_STATUS_CHOICES = [
+    ('running', 'Running'),
+    ('success', 'Success'),
+    ('failed', 'Failed'),
+    ('stopped', 'Stopped'),
+]
+
+SCRAPER_RUN_TRIGGERED_BY_CHOICES = [
+    ('admin', 'Admin'),
+    ('scheduler', 'Scheduler'),
+]
+
+class ScraperRun(models.Model):
+    script = models.CharField(max_length=50)
+    board = models.CharField(max_length=255)
+    company_name = models.CharField(max_length=255, blank=True)
+    status = models.CharField(max_length=10, choices=SCRAPER_RUN_STATUS_CHOICES, default='running', db_index=True)
+    triggered_by = models.CharField(max_length=10, choices=SCRAPER_RUN_TRIGGERED_BY_CHOICES, default='admin')
+    started_at = models.DateTimeField(auto_now_add=True)
+    finished_at = models.DateTimeField(null=True, blank=True)
+    fetched = models.IntegerField(default=0)
+    created = models.IntegerField(default=0)
+    updated = models.IntegerField(default=0)
+    geocoded = models.IntegerField(default=0)
+    borrowed = models.IntegerField(default=0)
+    removed = models.IntegerField(default=0)
+    error = models.TextField(blank=True)
+
+    class Meta:
+        ordering = ['-started_at']
+
+    def __str__(self):
+        return f"{self.board} ({self.script}) - {self.status}"
+
+
 class JobApplicationKit(models.Model):
     user = models.ForeignKey(User, on_delete=models.CASCADE, related_name='application_kits')
     job = models.ForeignKey(Job, on_delete=models.CASCADE, related_name='application_kits')
