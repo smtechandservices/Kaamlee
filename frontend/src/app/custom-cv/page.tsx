@@ -3,12 +3,13 @@
 import React, { useState, useEffect } from 'react';
 import { useRouter } from 'next/navigation';
 import { motion } from 'framer-motion';
-import { Loader2, Plus, FileText, Trash2, Briefcase, Lightbulb, Target, CheckCircle2, Sparkles } from 'lucide-react';
+import { Loader2, Plus, FileText, Trash2, Briefcase, Lightbulb, Target, CheckCircle2, Sparkles, Lock } from 'lucide-react';
 import { useAuth } from '@/context/AuthContext';
 import { useSubscriptionGate } from '@/hooks/useSubscriptionGate';
 import type { CustomCV, CVTemplate, ProfessionKeywords } from '@/components/customcv/types';
 import Sidebar from '@/components/Sidebar';
 import PageHeader from '@/components/PageHeader';
+import PricingModal from '@/components/PricingModal';
 
 const TEMPLATE_LABELS: Record<CVTemplate, string> = {
   modern: 'Modern',
@@ -24,7 +25,7 @@ function scoreColor(score: number) {
 
 export default function CustomCVListPage() {
   const { user, token } = useAuth();
-  const { isReady, isSubscribed } = useSubscriptionGate();
+  const { isReady, isSubscribed } = useSubscriptionGate({ allowUnsubscribed: true });
   const router = useRouter();
 
   const [cvs, setCvs] = useState<CustomCV[]>([]);
@@ -38,9 +39,18 @@ export default function CustomCVListPage() {
   const [error, setError] = useState('');
   const [addingRole, setAddingRole] = useState<string | null>(null);
   const [suggestionError, setSuggestionError] = useState('');
+  const [isPricingOpen, setIsPricingOpen] = useState(false);
+
+  const handleOpenCV = (cv: CustomCV) => {
+    if (cv.is_locked) {
+      setIsPricingOpen(true);
+      return;
+    }
+    router.push(`/custom-cv/${cv.id}`);
+  };
 
   useEffect(() => {
-    if (!token || !isSubscribed) return;
+    if (!token) return;
     fetch(`${process.env.NEXT_PUBLIC_API_URL}/api/custom-cv/`, {
       headers: { Authorization: `Token ${token}` },
     })
@@ -55,7 +65,10 @@ export default function CustomCVListPage() {
       .then((r) => r.json())
       .then((d) => setKeywords(d && typeof d === 'object' ? d : {}))
       .catch(() => {});
-  }, [token, isSubscribed]);
+  }, [token]);
+
+  // Free plan allows one custom CV total; further creation requires a subscription.
+  const atFreeLimit = !isSubscribed && cvs.length >= 1;
 
   // Failed ATS checks across every CV, deduped by check name — the generic
   // "Keyword coverage for X" check is excluded here since it gets its own
@@ -204,7 +217,7 @@ export default function CustomCVListPage() {
               <FileText className="w-5 h-5 text-green-500" />
               <h2 className="text-sm font-black uppercase tracking-widest text-white">Custom CVs</h2>
             </div>
-            {hasResume && (
+            {hasResume && !atFreeLimit && (
               <button
                 type="button"
                 onClick={() => setShowNewForm((s) => !s)}
@@ -222,6 +235,20 @@ export default function CustomCVListPage() {
             </div>
           ) : (
             <>
+              {atFreeLimit && (
+                <div className="flex items-center justify-between gap-3 bg-green-500/10 border border-green-500/20 rounded-2xl p-4 mb-6">
+                  <p className="text-[11px] text-green-400 font-semibold">
+                    Free plan includes 1 custom CV. Subscribe to create more.
+                  </p>
+                  <button
+                    type="button"
+                    onClick={() => router.push('/pricing')}
+                    className="cursor-pointer shrink-0 px-3 py-1 rounded-lg text-[10px] font-bold bg-[#22c55e] text-white hover:bg-[#1ea34e] transition-colors"
+                  >
+                    Unlock
+                  </button>
+                </div>
+              )}
               {showNewForm && (
                 <motion.form
                   initial={{ opacity: 0, height: 0 }}
@@ -298,17 +325,21 @@ export default function CustomCVListPage() {
                       key={cv.id}
                       initial={{ opacity: 0, y: 8 }}
                       animate={{ opacity: 1, y: 0 }}
-                      className="bg-[#0a0a0a] border border-[#222] rounded-2xl p-4 flex items-center justify-between gap-3 hover:border-[#333] transition-all"
+                      className={`bg-[#0a0a0a] border border-[#222] rounded-2xl p-4 flex items-center justify-between gap-3 hover:border-[#333] transition-all ${cv.is_locked ? 'opacity-60' : ''}`}
                     >
                       <button
                         type="button"
-                        onClick={() => router.push(`/custom-cv/${cv.id}`)}
+                        onClick={() => handleOpenCV(cv)}
                         className="cursor-pointer flex-1 text-left"
                       >
-                        <p className="text-xs font-black text-white">{cv.label || 'Untitled CV'}</p>
+                        <p className="text-xs font-black text-white flex items-center gap-1.5">
+                          {cv.label || 'Untitled CV'}
+                          {cv.is_locked && <Lock className="w-3 h-3 text-[#555]" />}
+                        </p>
                         <p className="text-[10px] text-[#555] mt-0.5">
                           {TEMPLATE_LABELS[cv.template]}
                           {cv.target_role && ` · ${cv.target_role}`}
+                          {cv.is_locked && ' · Subscribe to open'}
                         </p>
                       </button>
                       <span className={`text-[10px] font-bold px-2.5 py-1 rounded-full border ${scoreColor(cv.ats_score)}`}>
@@ -363,12 +394,12 @@ export default function CustomCVListPage() {
                   </div>
                   <button
                     type="button"
-                    onClick={() => handleAddSuggested(s.role)}
+                    onClick={() => (atFreeLimit ? router.push('/pricing') : handleAddSuggested(s.role))}
                     disabled={addingRole === s.role}
                     className="cursor-pointer shrink-0 flex items-center gap-1.5 text-[10px] font-bold uppercase tracking-widest text-green-400 hover:text-green-300 border border-green-500/30 hover:border-green-500/50 bg-green-500/10 rounded-full px-3 py-1.5 disabled:opacity-50 transition-all"
                   >
                     {addingRole === s.role ? <Loader2 className="w-3.5 h-3.5 animate-spin" /> : <Plus className="w-3.5 h-3.5" />}
-                    Add
+                    {atFreeLimit ? 'Unlock' : 'Add'}
                   </button>
                 </div>
               ))}
@@ -457,6 +488,8 @@ export default function CustomCVListPage() {
       </div>
         </div>
       </div>
+
+      <PricingModal isOpen={isPricingOpen} onClose={() => setIsPricingOpen(false)} />
     </main>
   );
 }

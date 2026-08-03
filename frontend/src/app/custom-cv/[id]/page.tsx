@@ -4,14 +4,16 @@ import React, { useState, useEffect, useCallback } from 'react';
 import { useParams, useRouter } from 'next/navigation';
 import { motion } from 'framer-motion';
 import {
-  ArrowLeft, Loader2, Save, CheckCircle2, Download, Sparkles, Plus, Trash2,
+  ArrowLeft, Loader2, Save, CheckCircle2, Download, Sparkles, Plus, Trash2, Lock,
 } from 'lucide-react';
 import { useAuth } from '@/context/AuthContext';
+import { isSubscriptionActive } from '@/lib/subscription';
 import type { CustomCV, CVTemplate } from '@/components/customcv/types';
 import type { ResumeParsed, ExpEntry, Project, EduEntry, SkillGroup } from '@/components/portfolio/types';
 import { CV_TEMPLATE_COMPONENTS } from '@/components/customcv/templates';
 import Sidebar from '@/components/Sidebar';
 import PageHeader from '@/components/PageHeader';
+import PricingModal from '@/components/PricingModal';
 
 const TEMPLATE_LABELS: Record<CVTemplate, string> = {
   modern: 'Modern',
@@ -31,7 +33,8 @@ const emptyEdu: EduEntry = { institution: '', degree: '', period: '', location: 
 const emptySkillGroup: SkillGroup = { category: '', items: [] };
 
 export default function CustomCVEditorPage() {
-  const { token, isLoading: isAuthLoading } = useAuth();
+  const { user, token, isLoading: isAuthLoading } = useAuth();
+  const isSubscribed = isSubscriptionActive(user);
   const router = useRouter();
   const params = useParams();
   const id = params?.id as string;
@@ -47,6 +50,8 @@ export default function CustomCVEditorPage() {
   const [saveSuccess, setSaveSuccess] = useState(false);
   const [targetRole, setTargetRole] = useState('');
   const [error, setError] = useState('');
+  const [isPricingOpen, setIsPricingOpen] = useState(false);
+  const [isLockedOut, setIsLockedOut] = useState(false);
 
   useEffect(() => {
     if (!isAuthLoading && !token) router.push('/login');
@@ -58,10 +63,15 @@ export default function CustomCVEditorPage() {
       headers: { Authorization: `Token ${token}` },
     })
       .then((r) => {
+        if (r.status === 403) {
+          setIsLockedOut(true);
+          return null;
+        }
         if (!r.ok) throw new Error('not found');
         return r.json();
       })
-      .then((d: CustomCV) => {
+      .then((d: CustomCV | null) => {
+        if (!d) return;
         setCv(d);
         setContent(d.content);
         setTemplate(d.template);
@@ -74,6 +84,10 @@ export default function CustomCVEditorPage() {
 
   const handleSave = useCallback(async () => {
     if (!content) return;
+    if (cv?.is_locked) {
+      setIsPricingOpen(true);
+      return;
+    }
     setIsSaving(true);
     setError('');
     try {
@@ -95,10 +109,14 @@ export default function CustomCVEditorPage() {
     } finally {
       setIsSaving(false);
     }
-  }, [content, template, label, id, token]);
+  }, [content, template, label, id, token, cv?.is_locked]);
 
   const handleTailor = async () => {
     if (!targetRole.trim()) return;
+    if (!isSubscribed) {
+      setIsPricingOpen(true);
+      return;
+    }
     setIsTailoring(true);
     setError('');
     try {
@@ -122,6 +140,10 @@ export default function CustomCVEditorPage() {
   };
 
   const handleDownload = async (type: 'pdf' | 'docx') => {
+    if (cv?.is_locked) {
+      setIsPricingOpen(true);
+      return;
+    }
     setIsDownloading(type);
     try {
       const res = await fetch(`${process.env.NEXT_PUBLIC_API_URL}/api/custom-cv/${id}/export/?type=${type}`, {
@@ -142,7 +164,42 @@ export default function CustomCVEditorPage() {
     }
   };
 
-  if (isAuthLoading || !token || isLoading || !content || !cv) {
+  if (isAuthLoading || !token || isLoading) {
+    return (
+      <div className="h-screen bg-[#0a0a0a] flex items-center justify-center">
+        <Loader2 className="w-8 h-8 text-green-500 animate-spin" />
+      </div>
+    );
+  }
+
+  if (isLockedOut) {
+    return (
+      <div className="h-screen bg-[#0a0a0a] flex flex-col items-center justify-center gap-4 text-center px-6">
+        <Lock className="w-10 h-10 text-[#444]" />
+        <p className="text-sm text-white font-bold">This CV is locked</p>
+        <p className="text-xs text-[#555] max-w-xs">
+          Subscribe to open this CV, or manage your custom CVs from the list.
+        </p>
+        <div className="flex items-center gap-3 mt-2">
+          <button
+            onClick={() => router.push('/custom-cv')}
+            className="cursor-pointer px-4 py-2 rounded-xl text-xs font-bold bg-[#161616] text-[#888] border border-[#222] hover:text-white hover:border-[#333] transition-all"
+          >
+            Back to Custom CVs
+          </button>
+          <button
+            onClick={() => setIsPricingOpen(true)}
+            className="cursor-pointer px-4 py-2 rounded-xl text-xs font-bold bg-[#22c55e] text-white hover:bg-[#1ea34e] transition-all"
+          >
+            Unlock
+          </button>
+        </div>
+        <PricingModal isOpen={isPricingOpen} onClose={() => setIsPricingOpen(false)} />
+      </div>
+    );
+  }
+
+  if (!content || !cv) {
     return (
       <div className="h-screen bg-[#0a0a0a] flex items-center justify-center">
         <Loader2 className="w-8 h-8 text-green-500 animate-spin" />
@@ -158,6 +215,20 @@ export default function CustomCVEditorPage() {
 
       <div className="flex-1 flex flex-col overflow-hidden">
         <PageHeader backHref="/custom-cv" title="Custom CV" wordmark />
+
+        {cv.is_locked && (
+          <div className="flex items-center justify-between gap-3 px-4 sm:px-6 py-2 bg-green-500/10 border-b border-green-500/20 shrink-0">
+            <span className="text-[10px] sm:text-[11px] text-green-400 font-semibold flex items-center gap-1.5">
+              <Lock className="w-3 h-3" /> This CV is locked — subscribe to edit, retarget, or export it.
+            </span>
+            <button
+              onClick={() => setIsPricingOpen(true)}
+              className="cursor-pointer shrink-0 px-3 py-1 rounded-lg text-[10px] sm:text-[11px] font-bold bg-[#22c55e] text-white hover:bg-[#1ea34e] transition-colors"
+            >
+              Unlock
+            </button>
+          </div>
+        )}
 
         <div className="flex-1 overflow-y-auto p-6 relative">
       <div className="mx-auto">
@@ -220,14 +291,16 @@ export default function CustomCVEditorPage() {
               )}
             </div>
 
-            {/* Retarget for role */}
+            {/* Retarget for role — premium: gated by subscription alone, even on an unlocked CV */}
             <div className="bg-[#111] border border-[#222] rounded-2xl p-5 space-y-3">
               <div className="flex items-center gap-2">
                 <Sparkles className="w-4 h-4 text-green-500" />
                 <h3 className="text-xs font-black uppercase tracking-widest">Retarget for a Role</h3>
+                {!isSubscribed && <Lock className="w-3 h-3 text-[#555] ml-auto" />}
               </div>
               <p className="text-[10px] text-[#555]">
                 Rewrite this CV to emphasize skills relevant to a different profession, using your existing experience.
+                {!isSubscribed && ' Subscribe to unlock AI retargeting.'}
               </p>
               <input
                 type="text"
@@ -238,12 +311,12 @@ export default function CustomCVEditorPage() {
               />
               <button
                 type="button"
-                onClick={handleTailor}
-                disabled={isTailoring || !targetRole.trim()}
+                onClick={() => (isSubscribed ? handleTailor() : setIsPricingOpen(true))}
+                disabled={isTailoring || (isSubscribed && !targetRole.trim())}
                 className="cursor-pointer w-full bg-green-500 text-black font-black uppercase tracking-widest py-3 rounded-xl hover:bg-green-400 active:scale-[0.98] transition-all flex items-center justify-center gap-2 disabled:opacity-50 text-xs"
               >
-                {isTailoring ? <Loader2 className="animate-spin w-4 h-4" /> : <Sparkles className="w-4 h-4" />}
-                Retarget CV
+                {isTailoring ? <Loader2 className="animate-spin w-4 h-4" /> : isSubscribed ? <Sparkles className="w-4 h-4" /> : <Lock className="w-4 h-4" />}
+                {isSubscribed ? 'Retarget CV' : 'Unlock Retargeting'}
               </button>
             </div>
 
@@ -298,6 +371,8 @@ export default function CustomCVEditorPage() {
       </div>
         </div>
       </div>
+
+      <PricingModal isOpen={isPricingOpen} onClose={() => setIsPricingOpen(false)} />
     </main>
   );
 }

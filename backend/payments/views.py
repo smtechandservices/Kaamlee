@@ -13,7 +13,7 @@ from django.contrib.auth.models import User
 from django.conf import settings
 from api.models import Profile
 from django.db.models import Sum
-from .constants import SUBSCRIPTION_PRICE_PAISE, SUBSCRIPTION_PRICE_INR
+from .constants import PLANS, DEFAULT_PLAN
 
 logger = logging.getLogger(__name__)
 
@@ -21,9 +21,13 @@ class CreateOrderView(views.APIView):
     permission_classes = [permissions.IsAuthenticated]
 
     def post(self, request):
-        # amount = request.data.get('amount') # in paise
-        # amount = SUBSCRIPTION_PRICE_PAISE # Production price: 99 INR (9900 paise), see payments/constants.py
-        amount = 100 # testing price: 1 INR (100 paise)
+        # The plan (and its price) is looked up server-side from PLANS — never
+        # trust a client-supplied amount for what to charge.
+        plan_id = request.data.get('plan', DEFAULT_PLAN)
+        plan = PLANS.get(plan_id)
+        if not plan:
+            return Response({"error": "Invalid plan."}, status=400)
+        amount = plan['amount_paise']
 
         key_id = getattr(settings, 'RAZORPAY_KEY_ID', None)
         key_secret = getattr(settings, 'RAZORPAY_KEY_SECRET', None)
@@ -41,17 +45,19 @@ class CreateOrderView(views.APIView):
                 'currency': 'INR',
                 'receipt': f'receipt_{request.user.id}_{int(timezone.now().timestamp())}',
                 'notes': {
-                    'portal': f'kaamlee | {request.user.username}'
+                    'portal': f'kaamlee | {request.user.username}',
+                    'plan': plan_id,
                 },
                 'payment_capture': 1
             }
             order = client.order.create(data=order_data)
-            
+
             # Save pending transaction
             Transaction.objects.create(
                 user=request.user,
                 razorpay_order_id=order['id'],
                 amount=amount,
+                plan=plan_id,
                 status='pending'
             )
             
@@ -117,11 +123,12 @@ class VerifyPaymentView(views.APIView):
             try:
                 profile = Profile.objects.select_for_update().get(user=request.user)
                 now = timezone.now()
+                duration_days = PLANS.get(transaction.plan, PLANS[DEFAULT_PLAN])['duration_days']
 
                 if profile.subscription_expires_at and profile.subscription_expires_at > now:
-                    profile.subscription_expires_at += timedelta(days=30)
+                    profile.subscription_expires_at += timedelta(days=duration_days)
                 else:
-                    profile.subscription_expires_at = now + timedelta(days=30)
+                    profile.subscription_expires_at = now + timedelta(days=duration_days)
 
                 profile.is_subscribed = True
                 profile.save()
@@ -194,10 +201,11 @@ class CheckPaymentStatusView(views.APIView):
 
                         profile = Profile.objects.select_for_update().get(user=transaction.user)
                         now = timezone.now()
+                        duration_days = PLANS.get(transaction.plan, PLANS[DEFAULT_PLAN])['duration_days']
                         if profile.subscription_expires_at and profile.subscription_expires_at > now:
-                            profile.subscription_expires_at += timedelta(days=30)
+                            profile.subscription_expires_at += timedelta(days=duration_days)
                         else:
-                            profile.subscription_expires_at = now + timedelta(days=30)
+                            profile.subscription_expires_at = now + timedelta(days=duration_days)
                         profile.is_subscribed = True
                         profile.save()
 

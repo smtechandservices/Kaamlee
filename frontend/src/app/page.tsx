@@ -205,7 +205,7 @@ export default function LandingPage() {
                 onClick={() => setIsPricingOpen(true)}
                 className="cursor-pointer border border-[#222] text-white px-8 sm:px-10 py-4 sm:py-5 rounded-sm font-black uppercase tracking-widest text-xs sm:text-sm flex items-center justify-center gap-2 hover:border-white transition-all"
               >
-                ₹99/mo · Beta
+From ₹49 · Beta
               </button>
             </div>
           </motion.div>
@@ -752,12 +752,12 @@ export default function LandingPage() {
               },
               {
                 q: "Is Kaamlee in beta? Will the price change later?",
-                a: "Yes — we're in early beta. Right now, early access is priced at ₹99/mo so you can get in and give us feedback while the product is still being shaped. As we roll out premium features (advanced filters, alerts, Auto apply, and more), future plans will start from ₹299/mo. Early access users who join now lock in the beta rate."
+                a: "Yes — we're in early beta. Right now, early access is priced at ₹49/mo or ₹99 for 3 months so you can get in and give us feedback while the product is still being shaped. As we roll out premium features (advanced filters, alerts, Auto apply, and more), future plans will start from ₹299/mo. Early access users who join now lock in the beta rate."
               },
               // { q: "Can I cancel my subscription easily?", a: "Yes. One click in your dashboard. No 'call us to cancel' loops. No hidden retention tricks. We're here to help you get a job, not hold you hostage." },
               {
                 q: "How does full access work during beta?",
-                a: "During the beta period, all features are unlocked for every user at ₹99/mo. As we roll out premium features (AI matching, Auto-apply, Resume builder, and more), we'll introduce plans starting from ₹299/mo — but we'll give you plenty of notice before anything changes."
+                a: "During the beta period, all features are unlocked for every user on either the ₹49/mo or ₹99/3mo plan. As we roll out premium features (AI matching, Auto-apply, Resume builder, and more), we'll introduce plans starting from ₹299/mo — but we'll give you plenty of notice before anything changes."
               },
               {
                 q: "How does the AI Resume Matching work?",

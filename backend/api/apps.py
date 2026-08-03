@@ -26,5 +26,3 @@ class ApiConfig(AppConfig):
         from . import scheduler
         scheduler.start()
 
-
-

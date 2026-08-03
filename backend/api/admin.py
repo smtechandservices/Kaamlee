@@ -1,14 +1,14 @@
 from django.contrib import admin
 from django.contrib.auth.admin import UserAdmin as BaseUserAdmin
 from django.contrib.auth.models import User
-from .models import Job, ScrapeSession, Profile, ScrapeLog, Company, Portfolio, PortfolioView
+from .models import Job, Profile, Company, Portfolio, PortfolioView, ScraperRun
 
 @admin.register(Company)
 class CompanyAdmin(admin.ModelAdmin):
     list_display = ('name', 'domain', 'is_active', 'last_scraped_at', 'created_at')
     search_fields = ('name', 'domain')
     list_filter = ('is_active',)
-    readonly_fields = ('created_at',)
+    readonly_fields = ('last_scraped_at', 'created_at')
 
 @admin.register(Job)
 class JobAdmin(admin.ModelAdmin):
@@ -16,18 +16,6 @@ class JobAdmin(admin.ModelAdmin):
     search_fields = ('title', 'company', 'city')
     list_filter = ('site', 'is_remote', 'date_posted')
     readonly_fields = ('created_at',)
-
-@admin.register(ScrapeSession)
-class ScrapeSessionAdmin(admin.ModelAdmin):
-    list_display = ('id', 'status', 'start_time', 'end_time', 'jobs_found', 'current_location', 'stop_requested')
-    list_filter = ('status', 'stop_requested')
-    readonly_fields = ('start_time', 'end_time')
-
-@admin.register(ScrapeLog)
-class ScrapeLogAdmin(admin.ModelAdmin):
-    list_display = ('timestamp', 'session', 'level', 'message')
-    list_filter = ('level', 'session')
-    readonly_fields = ('timestamp',)
 
 class ProfileInline(admin.StackedInline):
     model = Profile
@@ -65,3 +53,13 @@ class PortfolioViewAdmin(admin.ModelAdmin):
     list_filter = ('country', 'device', 'browser', 'operating_system')
     search_fields = ('portfolio__user__username', 'ip_address')
     readonly_fields = ('viewed_at',)
+
+@admin.register(ScraperRun)
+class ScraperRunAdmin(admin.ModelAdmin):
+    list_display = (
+        'board', 'script', 'status', 'triggered_by', 'started_at', 'finished_at',
+        'fetched', 'created', 'updated', 'geocoded', 'borrowed', 'removed',
+    )
+    list_filter = ('status', 'script', 'triggered_by')
+    search_fields = ('board', 'company_name')
+    readonly_fields = ('started_at',)

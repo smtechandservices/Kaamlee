@@ -6,7 +6,7 @@ import { ArrowRight, RotateCcw, ArrowLeft, Check, Clock, CreditCard, Loader2, Sh
 import Link from 'next/link';
 import { useAuth } from '@/context/AuthContext';
 import { useRouter } from 'next/navigation';
-import { PRICING } from '@/lib/constants';
+import { PLANS, DEFAULT_PLAN, PlanId } from '@/lib/constants';
 import { loadRazorpayScript } from '@/lib/razorpay';
 
 interface PricingModalProps {
@@ -20,6 +20,8 @@ export default function PricingModal({ isOpen, onClose, showCloseButton = true }
   const router = useRouter();
   const [isProcessing, setIsProcessing] = useState(false);
   const [paymentError, setPaymentError] = useState<string | null>(null);
+  const [selectedPlan, setSelectedPlan] = useState<PlanId>(DEFAULT_PLAN);
+  const plan = PLANS.find((p) => p.id === selectedPlan) ?? PLANS[0];
 
   const handlePayment = async () => {
     if (!token) return;
@@ -32,6 +34,7 @@ export default function PricingModal({ isOpen, onClose, showCloseButton = true }
           'Authorization': `Token ${token}`,
           'Content-Type': 'application/json',
         },
+        body: JSON.stringify({ plan: selectedPlan }),
       });
       if (!orderRes.ok) throw new Error('Could not start payment. Please try again.');
       const order = await orderRes.json();
@@ -46,7 +49,7 @@ export default function PricingModal({ isOpen, onClose, showCloseButton = true }
         amount: order.amount,
         currency: order.currency,
         name: 'Kaamlee',
-        description: 'Kaamlee Subscription',
+        description: `Kaamlee Subscription — ${plan.label}`,
         order_id: order.order_id,
         prefill: {
           name: [user?.first_name, user?.last_name].filter(Boolean).join(' ') || undefined,
@@ -118,11 +121,11 @@ export default function PricingModal({ isOpen, onClose, showCloseButton = true }
             <div className="absolute top-6 right-6 sm:top-8 sm:right-8 z-50 flex items-center gap-4 sm:gap-6">
               {!showCloseButton && (
                 <Link
-                  href="/"
+                  href="/explore"
                   className="cursor-pointer flex items-center gap-2 text-[#444] hover:text-white transition-colors text-[10px] font-bold uppercase tracking-[0.2em] group/home"
                 >
                   <ArrowLeft size={14} className="group/home:-translate-x-1 transition-transform" />
-                  Home
+                  Explore
                 </Link>
               )}
 
@@ -153,17 +156,39 @@ export default function PricingModal({ isOpen, onClose, showCloseButton = true }
                 <h2 className="text-3xl sm:text-4xl md:text-5xl font-black tracking-tighter mb-6 sm:mb-8 leading-[1.1]">
                   One Portal.<br />
                   <span className="text-serif font-normal italic lowercase text-green-500">unlimited</span> Jobs.<br />
-                  One Flat Price.
+                  Pick Your Plan.
                 </h2>
 
-                <div className="flex items-baseline gap-2 sm:gap-3 mb-3 sm:mb-4">
-                  <span className="text-xl sm:text-2xl font-mono text-green-500/50">₹</span>
-                  <span className="text-6xl sm:text-7xl md:text-8xl font-black tracking-tighter text-white">99</span>
-                  <span className="font-mono text-base sm:text-lg text-[#444] uppercase tracking-widest">/ mo</span>
+                {/* Plan picker */}
+                <div className="w-full grid grid-cols-2 gap-3 mb-6 sm:mb-8">
+                  {PLANS.map((p) => (
+                    <button
+                      key={p.id}
+                      type="button"
+                      onClick={() => setSelectedPlan(p.id)}
+                      className={`cursor-pointer relative rounded-sm p-4 sm:p-5 text-left border transition-all ${
+                        selectedPlan === p.id
+                          ? 'border-green-500 bg-green-500/10'
+                          : 'border-[#222] bg-[#0a0a0a] hover:border-[#333]'
+                      }`}
+                    >
+                      {p.badge && (
+                        <span className="absolute -top-2.5 right-3 text-[8px] font-mono uppercase tracking-[0.15em] text-black bg-green-500 px-2 py-0.5 rounded-full">
+                          {p.badge}
+                        </span>
+                      )}
+                      <p className="text-[10px] font-bold uppercase tracking-widest text-[#888] mb-2">{p.label}</p>
+                      <div className="flex items-baseline gap-1">
+                        <span className="text-sm font-mono text-green-500/60">₹</span>
+                        <span className="text-3xl sm:text-4xl font-black tracking-tighter text-white">{p.amount_inr}</span>
+                        <span className="font-mono text-[10px] text-[#555] uppercase tracking-widest">{p.durationLabel}</span>
+                      </div>
+                    </button>
+                  ))}
                 </div>
 
                 <p className="text-[10px] sm:text-xs text-green-500/60 font-mono uppercase tracking-widest mb-6 sm:mb-8">
-                  Beta pricing · Lock in ₹99/mo before plans start from ₹299
+                  Beta pricing · Lock in today&apos;s rate before plans start from ₹299
                 </p>
 
                 {/* Feature comparison — stacked on mobile, side-by-side on lg+ */}
@@ -171,7 +196,7 @@ export default function PricingModal({ isOpen, onClose, showCloseButton = true }
                   <div className="border border-green-500/20 rounded-sm p-4 sm:p-5 bg-[#060a06] shadow-[0_0_40px_-10px_rgba(34,197,94,0.1)]">
                     <div className="flex items-center justify-between mb-4">
                       <span className="text-[9px] font-mono uppercase tracking-[0.25em] text-green-500/70">All Users · Beta</span>
-                      <span className="text-[8px] font-mono uppercase tracking-[0.15em] text-green-500 bg-green-500/10 border border-green-500/20 px-2 py-0.5">₹99/mo</span>
+                      <span className="text-[8px] font-mono uppercase tracking-[0.15em] text-green-500 bg-green-500/10 border border-green-500/20 px-2 py-0.5">₹{plan.amount_inr}{plan.durationLabel}</span>
                     </div>
                     <div className="space-y-2.5">
                       {[
@@ -227,7 +252,7 @@ export default function PricingModal({ isOpen, onClose, showCloseButton = true }
                     ) : (
                       <>
                         <CreditCard size={18} />
-                        <span>Pay ₹{PRICING.amount_inr} with Razorpay</span>
+                        <span>Pay ₹{plan.amount_inr} with Razorpay</span>
                       </>
                     )}
                   </button>

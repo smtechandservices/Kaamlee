@@ -19,6 +19,7 @@ export interface CustomCV {
   ats_breakdown: AtsCheck[];
   created_at: string;
   updated_at: string;
+  is_locked: boolean;
 }
 
 // Profession -> ATS keyword list, from GET /api/custom-cv/keywords/ — the

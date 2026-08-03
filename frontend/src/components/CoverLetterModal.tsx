@@ -3,8 +3,9 @@
 import React from 'react';
 import { createPortal } from 'react-dom';
 import { motion, AnimatePresence } from 'framer-motion';
-import { RotateCcw, Sparkles, Copy, Check, Loader2, RefreshCw, Download } from 'lucide-react';
+import { RotateCcw, Sparkles, Copy, Check, Loader2, RefreshCw, Download, Lock } from 'lucide-react';
 import { useAuth } from '@/context/AuthContext';
+import PricingModal from '@/components/PricingModal';
 
 interface QAPair {
   question: string;
@@ -35,6 +36,8 @@ export default function CoverLetterModal({ isOpen, onClose, job }: CoverLetterMo
   const [isLoading, setIsLoading] = React.useState(true);
   const [isGenerating, setIsGenerating] = React.useState(false);
   const [error, setError] = React.useState('');
+  const [isLockedOut, setIsLockedOut] = React.useState(false);
+  const [isPricingOpen, setIsPricingOpen] = React.useState(false);
   const [copiedCoverLetter, setCopiedCoverLetter] = React.useState(false);
   const [copiedQaIndex, setCopiedQaIndex] = React.useState<number | null>(null);
 
@@ -46,10 +49,15 @@ export default function CoverLetterModal({ isOpen, onClose, job }: CoverLetterMo
     if (!isOpen || !token) return;
     setIsLoading(true);
     setError('');
+    setIsLockedOut(false);
     fetch(`${process.env.NEXT_PUBLIC_API_URL}/api/jobs/${job.id}/application-kit/`, {
       headers: { Authorization: `Token ${token}` },
     })
       .then(async (r) => {
+        if (r.status === 403) {
+          setIsLockedOut(true);
+          return;
+        }
         if (r.status === 404) {
           setKit(null);
           return;
@@ -66,6 +74,7 @@ export default function CoverLetterModal({ isOpen, onClose, job }: CoverLetterMo
       const timer = setTimeout(() => {
         setKit(null);
         setError('');
+        setIsLockedOut(false);
         setCopiedCoverLetter(false);
         setCopiedQaIndex(null);
       }, 400);
@@ -81,6 +90,10 @@ export default function CoverLetterModal({ isOpen, onClose, job }: CoverLetterMo
         method: 'POST',
         headers: { Authorization: `Token ${token}` },
       });
+      if (res.status === 403) {
+        setIsLockedOut(true);
+        return;
+      }
       const data = await res.json();
       if (!res.ok) {
         setError(data.error || 'Failed to generate. Please try again.');
@@ -160,6 +173,30 @@ export default function CoverLetterModal({ isOpen, onClose, job }: CoverLetterMo
               {isLoading ? (
                 <div className="flex items-center justify-center py-10">
                   <Loader2 className="w-5 h-5 text-green-500 animate-spin" />
+                </div>
+              ) : isLockedOut ? (
+                <div className="text-center py-6">
+                  <div className="w-12 h-12 mx-auto mb-4 bg-green-600/10 rounded-full flex items-center justify-center border border-green-500/20">
+                    <Lock size={18} className="text-green-500" />
+                  </div>
+                  <p className="text-sm text-white font-bold mb-1.5">Premium feature</p>
+                  <p className="text-[#888] text-xs mb-5 max-w-[320px] mx-auto leading-relaxed">
+                    Subscribe to generate a personalized cover letter and application prep for this job.
+                  </p>
+                  <div className="flex items-center justify-center gap-3">
+                    <button
+                      onClick={onClose}
+                      className="cursor-pointer px-5 py-2.5 border border-white/10 text-[#888] text-xs font-black uppercase tracking-[0.2em] hover:text-white hover:bg-white/5 transition-all rounded-sm"
+                    >
+                      Close
+                    </button>
+                    <button
+                      onClick={() => setIsPricingOpen(true)}
+                      className="cursor-pointer px-5 py-2.5 bg-white text-black text-xs font-black uppercase tracking-[0.2em] hover:bg-[#ededed] transition-all rounded-sm"
+                    >
+                      Unlock
+                    </button>
+                  </div>
                 </div>
               ) : !kit ? (
                 <div className="text-center py-6">
@@ -248,6 +285,8 @@ export default function CoverLetterModal({ isOpen, onClose, job }: CoverLetterMo
               )}
             </div>
           </motion.div>
+
+          <PricingModal isOpen={isPricingOpen} onClose={() => setIsPricingOpen(false)} />
         </div>
       )}
     </AnimatePresence>,

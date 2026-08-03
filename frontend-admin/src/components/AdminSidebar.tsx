@@ -5,6 +5,7 @@ import { usePathname, useRouter } from 'next/navigation';
 import { LayoutDashboard, Building2, CreditCard, Users, MessageSquare, ScrollText, LogOut, Briefcase } from 'lucide-react';
 
 const NAV_ITEMS = [
+  { href: '/', label: 'Dashboard', icon: LayoutDashboard },
   { href: '/companies', label: 'Companies', icon: Building2 },
   { href: '/jobs', label: 'Jobs', icon: Briefcase },
   { href: '/revenue', label: 'Finance', icon: CreditCard },
@@ -32,19 +33,7 @@ export default function AdminSidebar() {
         <span className="text-sm font-black tracking-tight">Admin</span>
       </Link>
 
-      <Link
-        href="/"
-        className={`flex items-center gap-3 mx-3 mt-4 px-3 py-2.5 rounded-xl text-sm font-semibold transition-all ${
-          pathname === '/'
-            ? 'bg-blue-600/15 text-blue-400 border border-blue-500/30'
-            : 'text-[#888] border border-transparent hover:bg-[#111] hover:text-white'
-        }`}
-      >
-        <LayoutDashboard size={18} />
-        Dashboard
-      </Link>
-
-      <nav className="flex flex-col gap-1 mx-3 mt-2">
+      <nav className="flex flex-col gap-1 mx-3 mt-4">
         {NAV_ITEMS.map(({ href, label, icon: Icon }) => {
           const active = pathname === href;
           return (

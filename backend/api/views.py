@@ -1,16 +1,16 @@
 from rest_framework import viewsets, views, generics, permissions
 from rest_framework.pagination import PageNumberPagination
 from rest_framework.throttling import ScopedRateThrottle
-from .permissions import IsSubscribed
+from .permissions import IsSubscribed, is_user_subscribed
 
 from rest_framework.decorators import action
 from rest_framework.authtoken.views import ObtainAuthToken
 from rest_framework.response import Response
 from rest_framework.authtoken.models import Token
-from .models import Job, ScrapeSession, ScrapeLog, Bookmark, Feedback, Portfolio, PortfolioView, Profile, CustomCV, JobApplicationKit, Company
+from .models import Job, Bookmark, Feedback, Portfolio, PortfolioView, Profile, CustomCV, JobApplicationKit, Company, ScraperRun
 from .serializers import (
-    JobSerializer, JobMapPinSerializer, ScrapeSessionSerializer,
-    ScrapeLogSerializer, UserSerializer, RegisterSerializer, RecentJobSerializer,
+    JobSerializer, JobMapPinSerializer,
+    UserSerializer, RegisterSerializer, RecentJobSerializer,
     FeedbackSerializer, PortfolioSettingsSerializer, PublicPortfolioSerializer,
     PortfolioViewSerializer, CustomCVSerializer, CustomCVCreateSerializer, tailor_resume_with_groq,
     JobApplicationKitSerializer, generate_application_kit_with_groq, CompanySerializer,
@@ -22,7 +22,8 @@ from django.core.validators import validate_email
 from django.core.exceptions import ValidationError as DjangoValidationError
 from scripts.ats_scoring import score_cv, get_profession_keywords, get_all_profession_keywords
 from scripts.cv_export import render_cv_pdf, render_cv_docx
-from django.http import HttpResponse
+from django.http import HttpResponse, StreamingHttpResponse
+from django.shortcuts import get_object_or_404
 from django.db import models
 from django.db.models import Exists, OuterRef, Q, Count
 from django.db.models.functions import TruncMonth
@@ -31,14 +32,122 @@ from django.contrib.auth.models import User
 from django.utils import timezone
 from datetime import timedelta
 import ipaddress
+import json
 import logging
-import os
 import random
 import requests
+import threading
 import time
 from django.conf import settings
 
 logger = logging.getLogger(__name__)
+
+class _RunRegistry:
+    """Tracks in-flight (and just-finished) scraper syncs (RunScraperScriptView)
+    so the admin dashboard can list what's running, request a cooperative
+    stop, and poll for each board's logs/result.
+
+    RunScraperScriptView used to stream progress back over the same HTTP
+    connection that kicked the run off, but a sync that's geocode-heavy can
+    run for minutes (Nominatim caps out around one request per 2s — see
+    scripts/geocode_jobs.py) — long enough for a browser/proxy/host timeout
+    to kill that connection well before the run itself finishes server-side,
+    which showed up to the admin as a false "failed" even though the sync
+    completed fine in its background thread. Decoupling the run from the
+    request means the registry itself has to hold each board's logs/result
+    until the dashboard's poll picks them up, instead of just tracking that
+    a board is busy.
+
+    Also doubles as the guard against running the same board twice at once
+    (a double-click or a second admin tab), which can exceed SQLite's write
+    lock busy-timeout on large boards.
+    """
+    def __init__(self):
+        self._lock = threading.Lock()
+        self._runs = {}  # normalized board name -> run info dict
+
+    def start(self, board, script):
+        """Reserves `board`, returning its stop_event, or None if it's
+        already running (a previous run that finished is fair game to
+        reserve again — its stale logs/result get overwritten here)."""
+        key = board.strip().lower()
+        with self._lock:
+            existing = self._runs.get(key)
+            if existing and not existing['done']:
+                return None
+            stop_event = threading.Event()
+            self._runs[key] = {
+                'board': board, 'script': script, 'started_at': time.time(),
+                'stop_event': stop_event, 'done': False, 'logs': [], 'result': None,
+            }
+            return stop_event
+
+    def cancel(self, board):
+        """Pops a reservation that never actually started running — used to
+        roll back a batch when a later board in the same request turns out
+        to already be running. (Distinct from `finish`, which marks a real
+        run's completion and keeps its result around for polling.)"""
+        with self._lock:
+            self._runs.pop(board.strip().lower(), None)
+
+    def log(self, board, message):
+        with self._lock:
+            run = self._runs.get(board.strip().lower())
+            if run:
+                run['logs'].append(message)
+
+    def finish(self, board, result=None):
+        with self._lock:
+            run = self._runs.get(board.strip().lower())
+            if run:
+                run['done'] = True
+                if result is not None:
+                    run['result'] = result
+
+    def is_running(self, board):
+        with self._lock:
+            run = self._runs.get(board.strip().lower())
+            return bool(run and not run['done'])
+
+    def list(self):
+        with self._lock:
+            return [
+                {'board': r['board'], 'script': r['script'], 'started_at': r['started_at']}
+                for r in self._runs.values() if not r['done']
+            ]
+
+    def status(self, boards):
+        """Returns {requested board name: {logs, done, result} | None} —
+        None for a board that was never reserved (or a very first poll that
+        raced the reservation). Delivered logs are drained so a board that's
+        still running doesn't get the same lines re-sent on the next poll."""
+        with self._lock:
+            out = {}
+            for board in boards:
+                run = self._runs.get(board.strip().lower())
+                if not run:
+                    out[board] = None
+                    continue
+                logs, run['logs'] = run['logs'], []
+                out[board] = {'logs': logs, 'done': run['done'], 'result': run['result']}
+            return out
+
+    def stop(self, board):
+        with self._lock:
+            run = self._runs.get(board.strip().lower())
+        if not run:
+            return False
+        run['stop_event'].set()
+        return True
+
+    def stop_all(self):
+        with self._lock:
+            runs = [r for r in self._runs.values() if not r['done']]
+        for run in runs:
+            run['stop_event'].set()
+        return [r['board'] for r in runs]
+
+_run_registry = _RunRegistry()
 from user_agents import parse as parse_user_agent
 
 class SignupView(generics.CreateAPIView):
@@ -80,8 +189,7 @@ class GoogleAuthView(views.APIView):
 class RequestEmailOtpView(views.APIView):
     """Issues a one-time code for the given email and hands the raw code back
     to the caller so it can be emailed. Only callable by the frontend server
-    (which owns SMTP delivery), authenticated via a shared secret — mirrors
-    the CRON_SECRET bearer-token check used by TriggerCompanyScrapeView.
+    (which owns SMTP delivery), authenticated via a shared secret bearer token.
     """
     permission_classes = [permissions.AllowAny]
     throttle_scope = 'email-otp-request'
@@ -198,6 +306,8 @@ class JobPagination(PageNumberPagination):
     max_page_size = 100
 
 _JOBS_CACHE_TTL = 120  # 2 minutes — matches the frontend's own client-side cache TTL
+FREE_PREVIEW_LIMIT = 200  # non-subscribers get a capped, most-recent-first taste of the map/list
+_SHUFFLE_PRIME = 2147483647  # 2**31 - 1, a Mersenne prime — see _shuffle()
 
 def _jobs_cache_version(user_id):
     """A per-user counter, bumped on bookmark changes, folded into cache keys below
@@ -213,9 +323,14 @@ class JobViewSet(viewsets.ModelViewSet):
     pagination_class = JobPagination
 
     def get_permissions(self):
-        # Jobs are populated by the scraper; only admins may create/edit/delete them.
+        # Only admins may create/edit/delete jobs.
         if self.action in ('create', 'update', 'partial_update', 'destroy', 'bulk_delete'):
             return [permissions.IsAdminUser()]
+        # list/map_pins are open to any authenticated user — non-subscribers get a
+        # capped, recent-jobs preview instead of a 403 (see get_queryset/map_pins).
+        # toggle_bookmark is a free feature — bookmarking shouldn't require a subscription.
+        if self.action in ('list', 'map_pins', 'toggle_bookmark'):
+            return [permissions.IsAuthenticated()]
         return super().get_permissions()
 
     @action(detail=False, methods=['post'], url_path='bulk-delete')
@@ -287,19 +402,55 @@ class JobViewSet(viewsets.ModelViewSet):
         if bookmarked_only == 'true':
             queryset = queryset.filter(is_bookmarked=True)
 
+        if not is_user_subscribed(user):
+            # Free preview: most-recent jobs only, no shuffle/pagination depth.
+            return queryset.order_by('-created_at')[:FREE_PREVIEW_LIMIT]
+
         return self._shuffle(queryset)
+
+    def get_object(self):
+        # Detail actions (toggle_bookmark, update_status, retrieve/update/destroy)
+        # look a job up by its exact pk, so the free-preview cap in get_queryset()
+        # — which caps non-subscribers' *list*/map_pins browsing to the most
+        # recent FREE_PREVIEW_LIMIT jobs — doesn't belong here. Without this
+        # override, DRF's default get_object() reuses that same sliced
+        # queryset, so a non-subscriber toggling a bookmark on any job outside
+        # that recent slice got a spurious 404, even though bookmarking is
+        # meant to be free regardless of subscription (see get_permissions).
+        queryset = Job.objects.annotate(
+            is_bookmarked=Exists(Bookmark.objects.filter(user=self.request.user, job_id=OuterRef('pk')))
+        )
+        obj = get_object_or_404(queryset, pk=self.kwargs['pk'])
+        self.check_object_permissions(self.request, obj)
+        return obj
 
     def _shuffle(self, queryset):
         """Random order for browsing variety, but stable within one cache window
         so paginating doesn't repeat or skip jobs — it reshuffles only once the
-        cached page results are due to go stale anyway."""
-        ids = list(queryset.values_list('id', flat=True))
-        if not ids:
-            return queryset
+        cached page results are due to go stale anyway.
+
+        Used to materialize every matching id into Python and order by a
+        Case/When with one WHEN per row — which meant one bound SQL parameter
+        per row, and broke outright ("too many SQL variables") once the Job
+        table passed SQLite's ~32k bound-parameter ceiling. Instead, scramble
+        each row's id with a per-window linear hash computed in SQL:
+        (id * multiplier + offset) mod P. P is prime, so any nonzero
+        multiplier mod P is automatically coprime with it, which makes the
+        map a bijection over 0..P-1 — i.e. a real permutation, not just a
+        handful of collisions. multiplier and offset are re-rolled from the
+        same time-bucketed seed as before, so the permutation itself changes
+        each window rather than just rotating the previous one. Cost is two
+        bound parameters no matter how large the table gets.
+        """
         seed = int(timezone.now().timestamp() // _JOBS_CACHE_TTL)
-        random.Random(seed).shuffle(ids)
-        order = models.Case(*[models.When(pk=pk, then=pos) for pos, pk in enumerate(ids)])
-        return queryset.order_by(order)
+        rng = random.Random(seed)
+        multiplier = rng.randrange(1, _SHUFFLE_PRIME)
+        offset = rng.randrange(0, _SHUFFLE_PRIME)
+        shuffle_key = models.ExpressionWrapper(
+            (models.F('id') * multiplier + offset) % _SHUFFLE_PRIME,
+            output_field=models.BigIntegerField(),
+        )
+        return queryset.annotate(_shuffle_key=shuffle_key).order_by('_shuffle_key')
 
     def list(self, request, *args, **kwargs):
         # Every job carries an is_bookmarked flag for this user, so the cache is
@@ -346,7 +497,11 @@ class JobViewSet(viewsets.ModelViewSet):
         Uses .values() instead of the serializer so a large result set doesn't do
         one extra query per row."""
         bookmarked_only = request.query_params.get('bookmarked_only') == 'true'
-        cache_key = self._cache_key(request, 'api_map_pins', scoped_to_user=bookmarked_only)
+        subscribed = is_user_subscribed(request.user)
+        # Tier goes in the prefix so a free-preview response never leaks into a
+        # subscriber's cache entry (or vice versa) for the same filter params.
+        cache_prefix = 'api_map_pins' if subscribed else 'api_map_pins_free'
+        cache_key = self._cache_key(request, cache_prefix, scoped_to_user=bookmarked_only)
         pins = cache.get(cache_key)
         if pins is not None:
             return Response(pins)
@@ -356,6 +511,11 @@ class JobViewSet(viewsets.ModelViewSet):
 
         if bookmarked_only:
             queryset = queryset.filter(bookmarked_by__user=request.user)
+
+        if not subscribed:
+            # Free preview: most-recent jobs only, so non-subscribers still see
+            # activity on the map without giving away the full unlimited set.
+            queryset = queryset.order_by('-created_at')[:FREE_PREVIEW_LIMIT]
 
         rows = queryset.values(
             'id', 'title', 'company', 'location_name', 'job_type', 'job_url',
@@ -387,8 +547,10 @@ class JobViewSet(viewsets.ModelViewSet):
 
 class ApplicationsView(views.APIView):
     """Every job the user has bookmarked/tracked, for the application-tracker
-    Kanban board — grouped client-side by `status`."""
-    permission_classes = [permissions.IsAuthenticated, IsSubscribed]
+    Kanban board — grouped client-side by `status`. Open to any authenticated
+    user (read-only view); actually changing a card's status or bookmarking a
+    job still requires a subscription via JobViewSet's IsSubscribed actions."""
+    permission_classes = [permissions.IsAuthenticated]
 
     def get(self, request):
         bookmarks = Bookmark.objects.filter(user=request.user).select_related('job').order_by('-status_updated_at')
@@ -476,75 +638,16 @@ class StatsView(views.APIView):
         data = cache.get(_STATS_CACHE_KEY)
         if data is None:
             total_jobs = Job.objects.count()
-            active_sessions = ScrapeSession.objects.filter(status='running').count()
-            last_session = ScrapeSession.objects.order_by('-start_time').first()
             data = {
                 'total_jobs': total_jobs,
-                'active_sessions': active_sessions,
-                'last_scrape_session': ScrapeSessionSerializer(last_session).data if last_session else None,
             }
             cache.set(_STATS_CACHE_KEY, data, _STATS_CACHE_TTL)
         return Response(data)
 
-class TriggerCompanyScrapeView(views.APIView):
-    permission_classes = [permissions.AllowAny]
-    MAX_COMPANIES = 10
-
-    def post(self, request):
-        cron_secret = os.environ.get('CRON_SECRET')
-        auth_header = request.headers.get('Authorization', '')
-
-        is_cron_authorized = bool(cron_secret) and auth_header == f"Bearer {cron_secret}"
-        if not is_cron_authorized:
-            if not (request.user and request.user.is_authenticated and request.user.is_superuser):
-                return Response({'error': 'Authentication credentials were not provided or invalid.'}, status=401)
-
-        companies = request.data.get('companies')
-        if not companies or not isinstance(companies, list):
-            return Response({'error': 'companies must be a non-empty list of company names.'}, status=400)
-        if len(companies) > self.MAX_COMPANIES:
-            return Response({'error': f'Pick at most {self.MAX_COMPANIES} companies.'}, status=400)
-
-        if ScrapeSession.objects.filter(status='running').exists():
-            return Response({'status': 'Scraper already running'}, status=400)
-
-        import threading
-        from scripts.job_scraper import scrape_companies_by_names, log_to_db
-
-        session = ScrapeSession.objects.create(
-            status='running', search_term=f"company_career_pages:{','.join(companies)}", results_limit=0,
-        )
-
-        def _run():
-            log_to_db(session, f"Starting career-page scrape for {', '.join(companies)}", "success")
-            try:
-                scrape_companies_by_names(companies, session=session)
-                session.status = 'completed'
-            except Exception as e:
-                session.status = 'failed'
-                session.error_message = str(e)
-            session.current_location = None
-            session.end_time = timezone.now()
-            try:
-                session.save()
-            except Exception:
-                # A stuck 'running' session blocks every future scrape attempt
-                # (see the running-session check above), so retry once after a
-                # beat rather than leaving it wedged on a transient DB lock.
-                time.sleep(2)
-                session.save()
-            cache.delete(_STATS_CACHE_KEY)
-            cache.delete(_COUNTRIES_CACHE_KEY)
-
-        thread = threading.Thread(target=_run, daemon=True)
-        thread.start()
-        cache.delete(_STATS_CACHE_KEY)
-        return Response({'status': 'Company career-page scrape triggered', 'session_id': session.id})
-
 class CompaniesPagination(PageNumberPagination):
     page_size = 20
     page_size_query_param = 'page_size'
-    max_page_size = 2000  # lets callers like the "Scrape by Company" picker pull the full list in one request
+    max_page_size = 2000
 
 class CompanyViewSet(viewsets.ModelViewSet):
     """Full CRUD for managing configured companies (add/edit/delete/activate)."""
@@ -553,9 +656,7 @@ class CompanyViewSet(viewsets.ModelViewSet):
     pagination_class = CompaniesPagination
 
     def get_queryset(self):
-        queryset = Company.objects.all().order_by(
-            models.F('last_scraped_at').desc(nulls_last=True), '-created_at',
-        )
+        queryset = Company.objects.all().order_by('-created_at')
         search = self.request.query_params.get('search')
         if search:
             queryset = queryset.filter(models.Q(name__icontains=search) | models.Q(domain__icontains=search))
@@ -608,7 +709,9 @@ class CompaniesView(views.APIView):
     def get(self, request):
         companies_qs = (
             Company.objects.all()
-            .order_by(models.F('last_scraped_at').desc(nulls_last=True), '-created_at')
+            # Most recently scraped first; never-scraped companies (null)
+            # sort to the end rather than the default (nulls-first on desc).
+            .order_by(models.F('last_scraped_at').desc(nulls_last=True))
             .values(
                 'id', 'name', 'domain', 'career_url', 'contact_url', 'contact_email',
                 'address', 'linkedin_url', 'logo_url', 'is_active', 'last_scraped_at',
@@ -619,8 +722,8 @@ class CompaniesView(views.APIView):
         page = paginator.paginate_queryset(list(companies_qs), request, view=self)
 
         # light=true skips the recent-jobs fetch below (2 queries per company —
-        # painfully slow once there are hundreds of companies) for callers like
-        # the "Scrape by Company" picker that only need name + job_count.
+        # painfully slow once there are hundreds of companies) for callers that
+        # only need name + job_count.
         if request.query_params.get('light') == 'true':
             names = [c['name'] for c in page]
             counts = dict(
@@ -655,15 +758,49 @@ class CompaniesView(views.APIView):
 
         return paginator.get_paginated_response(result)
 
+class JobsMissingCoordinatesView(views.APIView):
+    """Companies that have at least one job with no coordinates, most-affected
+    first — feeds the Jobs page's "Run Geocode" picker so an admin can jump
+    straight to the boards that actually need it instead of hunting through
+    the full company filter dropdown."""
+    permission_classes = [permissions.IsAdminUser]
+
+    def get(self, request):
+        rows = (
+            Job.objects.filter(latitude__isnull=True)
+            .values('company')
+            .annotate(missing=Count('id'))
+            .order_by('-missing')
+        )
+        companies = [r['company'] for r in rows]
+        totals = dict(
+            Job.objects.filter(company__in=companies)
+            .values('company')
+            .annotate(total=Count('id'))
+            .values_list('company', 'total')
+        )
+        return Response([
+            {'company': r['company'], 'missing': r['missing'], 'total': totals.get(r['company'], r['missing'])}
+            for r in rows
+        ])
+
 class AdminJobsView(generics.ListAPIView):
-    """Paginated, filterable job listing for the admin dashboard's Jobs page.
-    Read-only — jobs themselves are managed via the scraper, not hand-edited here."""
+    """Paginated, filterable job listing for the admin dashboard's Jobs page."""
     serializer_class = AdminJobSerializer
     permission_classes = [permissions.IsAdminUser]
     pagination_class = JobPagination
 
     def get_queryset(self):
-        queryset = Job.objects.order_by('-created_at')
+        # Jobs missing coordinates first (they're the ones needing admin
+        # attention — see the Jobs page's "Run Geocode" picker), most
+        # recent first within each of those two groups.
+        queryset = Job.objects.annotate(
+            missing_coords=models.Case(
+                models.When(latitude__isnull=True, then=models.Value(0)),
+                default=models.Value(1),
+                output_field=models.IntegerField(),
+            )
+        ).order_by('missing_coords', '-created_at')
 
         company = self.request.query_params.get('company')
         if company:
@@ -677,46 +814,202 @@ class AdminJobsView(generics.ListAPIView):
 
         return queryset
 
-class StopScrapeView(views.APIView):
-    permission_classes = [permissions.IsAdminUser]
-
-    def post(self, request):
-        session = ScrapeSession.objects.filter(status='running').order_by('-start_time').first()
-        if session:
-            session.stop_requested = True
-            session.save()
-            cache.delete(_STATS_CACHE_KEY)
-            cache.delete(_COUNTRIES_CACHE_KEY)
-            return Response({'status': 'Stop request sent'})
-        return Response({'status': 'No active session found'}, status=404)
-
-class ForceResetView(views.APIView):
-    permission_classes = [permissions.IsAdminUser]
-
-    def post(self, request):
-        ScrapeSession.objects.filter(status='running').update(
-            status='stopped',
-            end_time=timezone.now(),
-            error_message='Force reset by admin'
+    def list(self, request, *args, **kwargs):
+        response = super().list(request, *args, **kwargs)
+        # Stats reflect the current filter set (company/search), not just the
+        # current page, so switching filters updates the summary card too.
+        aggregates = self.get_queryset().aggregate(
+            with_coordinates=Count('id', filter=Q(latitude__isnull=False, longitude__isnull=False)),
+            most_recent_posted=models.Max('date_posted'),
+            oldest_posted=models.Min('date_posted'),
         )
-        cache.delete(_STATS_CACHE_KEY)
-        cache.delete(_COUNTRIES_CACHE_KEY)
-        return Response({'status': 'All sessions reset'})
+        response.data['stats'] = aggregates
+        return response
 
-class LogsView(generics.ListAPIView):
-    serializer_class = ScrapeLogSerializer
+class RunScraperScriptView(views.APIView):
+    """Lets an admin trigger a job-import script for up to 3 companies at a
+    time from the dashboard, instead of running e.g. scripts/jobs/ashbyhq.py
+    by hand from a terminal.
+
+    The companies run concurrently (scripts.jobs.*.run_many spins up one
+    thread per board), so a 3-company run takes roughly as long as the
+    slowest board instead of the sum of all three.
+
+    This kicks the run off in a background thread and returns immediately —
+    it used to stream progress back over the same HTTP connection that
+    triggered it, but a geocode-heavy sync can run for minutes (see
+    _RunRegistry's docstring), long enough for a browser/proxy/host timeout
+    to kill that connection well before the run itself finished, which
+    looked to the admin like a failure even though the sync completed fine.
+    The frontend instead polls RunScriptStatusView for each board's
+    logs/result, which _run_registry now holds onto until read.
+    """
     permission_classes = [permissions.IsAdminUser]
 
+    # script key -> display name. Each key must match a scripts/jobs/{key}.py
+    # module exposing a sync_board(board_name) generator (see ashbyhq.py).
+    SCRIPTS = {'ashbyhq': 'Ashby', 'greenhouse': 'Greenhouse', 'recruitee': 'Recruitee', 'lever': 'Lever', 'workable': 'Workable'}
+
+    def post(self, request):
+        script = request.data.get('script')
+        if script not in self.SCRIPTS:
+            return Response({'error': f"Unknown script '{script}'. Choose one of: {', '.join(self.SCRIPTS)}"}, status=400)
+
+        companies = request.data.get('companies')
+        if not isinstance(companies, list) or not (1 <= len(companies) <= 3):
+            return Response({'error': 'Provide 1 to 3 company names.'}, status=400)
+        requested = [c.strip() for c in companies if (c or '').strip()]
+        if not requested:
+            return Response({'error': 'Provide 1 to 3 company names.'}, status=400)
+
+        # Two concurrent syncs writing thousands of rows each for the same
+        # (or even different) companies can exceed SQLite's busy-timeout and
+        # fail with "database is locked" — reject a board that's already
+        # mid-run rather than let a double-click or a second admin tab
+        # trigger that. Reserve them all in one pass so two overlapping
+        # requests can't both pass the check for different boards, then
+        # partially collide.
+        stop_events = {}
+        runs = {}
+        reserved = []
+        for board in requested:
+            stop_event = _run_registry.start(board, script)
+            if stop_event is None:
+                for r in reserved:
+                    _run_registry.cancel(r)
+                return Response(
+                    {'error': f"Already running: {board}. Wait for that run to finish first."}, status=409,
+                )
+            reserved.append(board)
+            stop_events[board.strip().lower()] = stop_event
+            runs[board.strip().lower()] = ScraperRun.objects.create(script=script, board=board)
+
+        # Imported lazily (and dynamically, by validated script key) so a
+        # module's own django.setup() call never runs during Django's own
+        # app loading.
+        import importlib
+        run_many = importlib.import_module(f'scripts.jobs.{script}').run_many
+
+        def on_log(board_name, message):
+            _run_registry.log(board_name, message)
+
+        def on_result(board_name, result):
+            _run_registry.finish(board_name, result)
+            run = runs.get(board_name.strip().lower())
+            if run is None:
+                return
+            run.status = 'stopped' if result.get('stopped') else ('success' if result.get('ok') else 'failed')
+            run.finished_at = timezone.now()
+            for field in ('fetched', 'created', 'updated', 'geocoded', 'borrowed', 'removed'):
+                setattr(run, field, result.get(field) or 0)
+            run.error = result.get('error') or ''
+            run.save()
+
+        def runner():
+            try:
+                run_many(requested, on_log=on_log, on_result=on_result, stop_events=stop_events)
+            finally:
+                # Belt-and-suspenders: on_result already marks each board
+                # done as it finishes, but this covers a run_many failure
+                # that never gets that far for some board.
+                for board in requested:
+                    _run_registry.finish(board)
+                for run in runs.values():
+                    if run.status == 'running':
+                        run.status = 'failed'
+                        run.finished_at = timezone.now()
+                        run.error = run.error or 'Run ended unexpectedly without reporting a result.'
+                        run.save()
+
+        threading.Thread(target=runner, daemon=True).start()
+        return Response({'started': requested}, status=202)
+
+class RunScriptStatusView(views.APIView):
+    """Polled by the dashboard while a run kicked off via RunScraperScriptView
+    is in flight: `?boards=Board1,Board2` returns each board's log lines
+    collected since the last poll plus its result once done, e.g.
+      {"Board1": {"logs": ["Fetching ..."], "done": false, "result": null},
+       "Board2": {"logs": [], "done": true, "result": {"ok": true, ...}}}
+    A board missing from the registry entirely (never reserved, or a poll
+    that raced the very first reservation) comes back as `null`.
+    """
+    permission_classes = [permissions.IsAdminUser]
 
     def get(self, request):
-        logs = ScrapeLog.objects.all().order_by('-timestamp')[:100]
-        last_session = ScrapeSession.objects.all().order_by('-start_time').first()
-        active_sessions = ScrapeSession.objects.filter(status='running').order_by('-start_time')
-        return Response({
-            'logs': ScrapeLogSerializer(logs, many=True).data,
-            'session': ScrapeSessionSerializer(last_session).data if last_session else None,
-            'active_sessions': ScrapeSessionSerializer(active_sessions, many=True).data,
-        })
+        boards = [b for b in (request.query_params.get('boards') or '').split(',') if b.strip()]
+        if not boards:
+            return Response({'error': 'Provide boards as a comma-separated ?boards= query param.'}, status=400)
+        return Response(_run_registry.status(boards))
+
+class RunningScriptsView(views.APIView):
+    """Lists scraper syncs currently in flight (started via
+    RunScraperScriptView, from any admin session), for the dashboard's
+    "Active Runs" card. Backed by ScraperRun rather than _run_registry so
+    it reflects the database (survives a dashboard reload/deploy) instead
+    of just this process's in-memory state."""
+    permission_classes = [permissions.IsAdminUser]
+
+    def get(self, request):
+        return Response([
+            {'board': r['board'], 'script': r['script'], 'started_at': r['started_at'].timestamp()}
+            for r in ScraperRun.objects.filter(status='running').values('board', 'script', 'started_at')
+        ])
+
+class StopScriptView(views.APIView):
+    """Requests a cooperative stop for one running board (`{"board": "X"}`)
+    or all of them (`{"all": true}`). The board's own sync loop checks a
+    shared flag between steps and exits early on its own — a real OS
+    thread can't be killed from outside — so stopping isn't instant and
+    whatever's already been fetched/geocoded up to that point stays saved."""
+    permission_classes = [permissions.IsAdminUser]
+
+    def post(self, request):
+        if request.data.get('all'):
+            stopped = _run_registry.stop_all()
+            return Response({'stopped': stopped})
+
+        board = (request.data.get('board') or '').strip()
+        if not board:
+            return Response({'error': 'Provide a board name or {"all": true}.'}, status=400)
+        if not _run_registry.stop(board):
+            return Response({'error': f"'{board}' isn't currently running."}, status=404)
+        return Response({'stopped': [board]})
+
+class RunGeocodeView(views.APIView):
+    """Lets an admin trigger the coordinate backfill (scripts/geocode_jobs.py)
+    for one company or the whole table from the Jobs page, instead of running
+    it by hand from a terminal.
+
+    Streams newline-delimited JSON as it runs, same shape as
+    RunScraperScriptView:
+      {"type": "log", "message": "..."}                  — progress line
+      {"type": "result", "ok": true, ...stats}
+      {"type": "result", "ok": false, "error": "..."}
+      {"type": "done"}                                     — always last
+    """
+    permission_classes = [permissions.IsAdminUser]
+
+    def post(self, request):
+        company = (request.data.get('company') or '').strip() or None
+
+        # Imported lazily so its django.setup() call never runs during
+        # Django's own app loading.
+        from scripts.geocode_jobs import run_streaming
+
+        def event_stream():
+            try:
+                stats = None
+                for item in run_streaming(company=company):
+                    if isinstance(item, dict):
+                        stats = item
+                    else:
+                        yield json.dumps({'type': 'log', 'message': item}) + '\n'
+                yield json.dumps({'type': 'result', 'ok': True, **stats}) + '\n'
+            except Exception as e:
+                yield json.dumps({'type': 'result', 'ok': False, 'error': str(e)}) + '\n'
+            yield json.dumps({'type': 'done'}) + '\n'
+
+        return StreamingHttpResponse(event_stream(), content_type='application/x-ndjson')
 
 class AdminLoginView(ObtainAuthToken):
     def post(self, request, *args, **kwargs):
@@ -884,6 +1177,11 @@ class PublicPortfolioView(views.APIView):
         if not portfolio:
             return Response({'error': 'Portfolio not found.'}, status=404)
 
+        # Touching subscription status here (not just on the owner's own requests)
+        # means a lapsed-but-still-public portfolio gets flipped private the moment
+        # anyone loads the link, not only the next time the owner is active.
+        is_user_subscribed(user)
+
         # Allow owner to view their own private portfolio
         is_owner = request.user.is_authenticated and request.user == user
         if not portfolio.is_public and not is_owner:
@@ -909,13 +1207,27 @@ class PublicPortfolioView(views.APIView):
 
 
 class MyPortfolioView(generics.RetrieveUpdateAPIView):
-    """GET/PATCH /api/portfolio/me/ — authenticated user managing their own portfolio."""
+    """GET/PATCH /api/portfolio/me/ — authenticated user managing their own portfolio.
+    Open to any authenticated user so free users can build/preview a portfolio;
+    going public requires an active subscription (see update())."""
     serializer_class = PortfolioSettingsSerializer
-    permission_classes = [permissions.IsAuthenticated, IsSubscribed]
+    permission_classes = [permissions.IsAuthenticated]
 
     def get_object(self):
         portfolio, _ = Portfolio.objects.get_or_create(user=self.request.user)
         return portfolio
+
+    def update(self, request, *args, **kwargs):
+        if not is_user_subscribed(request.user):
+            portfolio = self.get_object()
+            # Only block the false->true transition — saving other settings on an
+            # already-public portfolio (e.g. after a subscription lapses) still works.
+            if request.data.get('is_public') and not portfolio.is_public:
+                return Response({'error': 'Subscribe to make your portfolio public.'}, status=403)
+            for field in ('template', 'theme'):
+                if field in request.data and request.data[field] != getattr(portfolio, field):
+                    return Response({'error': 'Subscribe to change your portfolio template or theme.'}, status=403)
+        return super().update(request, *args, **kwargs)
 
 
 class PortfolioAnalyticsView(views.APIView):
@@ -1009,7 +1321,7 @@ class PortfolioAnalyticsView(views.APIView):
 
 class MyPortfolioContentView(views.APIView):
     """GET/PATCH /api/portfolio/content/ — read and update the parsed resume data."""
-    permission_classes = [permissions.IsAuthenticated, IsSubscribed]
+    permission_classes = [permissions.IsAuthenticated]
 
     def get(self, request):
         profile = request.user.profile
@@ -1025,10 +1337,25 @@ class MyPortfolioContentView(views.APIView):
         return Response({'resume_parsed': profile.resume_parsed})
 
 
+CUSTOM_CV_FREE_LIMIT = 1  # non-subscribers may keep at most one custom CV; more requires a subscription
+
+def _free_cv_id(user):
+    """Which of a user's CVs stays usable without a subscription — the oldest
+    one (e.g. built while subscribed, or the original free CV). Used both to
+    cap new creation and to lock the rest if a subscription lapses with
+    multiple CVs already on the account."""
+    first = CustomCV.objects.filter(user=user).order_by('created_at', 'id').first()
+    return first.id if first else None
+
+def _is_cv_locked(user, cv):
+    return not is_user_subscribed(user) and cv.id != _free_cv_id(user)
+
 class CustomCVListCreateView(generics.ListCreateAPIView):
-    """GET/POST /api/custom-cv/ — list or create the user's custom CVs."""
+    """GET/POST /api/custom-cv/ — list or create the user's custom CVs.
+    Open to any authenticated user so free users can build one CV; creating
+    beyond CUSTOM_CV_FREE_LIMIT requires an active subscription."""
     serializer_class = CustomCVSerializer
-    permission_classes = [permissions.IsAuthenticated, IsSubscribed]
+    permission_classes = [permissions.IsAuthenticated]
 
     def get_queryset(self):
         return CustomCV.objects.filter(user=self.request.user)
@@ -1037,6 +1364,8 @@ class CustomCVListCreateView(generics.ListCreateAPIView):
         profile = getattr(request.user, 'profile', None)
         if not profile or not profile.resume_text:
             return Response({'error': 'Upload a resume before creating a custom CV.'}, status=400)
+        if not is_user_subscribed(request.user) and CustomCV.objects.filter(user=request.user).count() >= CUSTOM_CV_FREE_LIMIT:
+            return Response({'error': 'Free plan allows 1 custom CV. Subscribe to create more.'}, status=403)
         serializer = CustomCVCreateSerializer(data=request.data, context={'request': request})
         serializer.is_valid(raise_exception=True)
         cv = serializer.save()
@@ -1048,30 +1377,49 @@ class AtsKeywordsView(views.APIView):
     the same terms score_cv() checks target_role content against. Powers the
     "ATS mapping terms" panel on the custom CV list page.
     """
-    permission_classes = [permissions.IsAuthenticated, IsSubscribed]
+    permission_classes = [permissions.IsAuthenticated]
 
     def get(self, request):
         return Response(get_all_profession_keywords())
 
 
 class CustomCVDetailView(generics.RetrieveUpdateDestroyAPIView):
-    """GET/PATCH/DELETE /api/custom-cv/<id>/"""
+    """GET/PATCH/DELETE /api/custom-cv/<id>/ — scoped to the caller's own CVs,
+    so a free user can still fully use their one allotted CV. If a subscription
+    lapses while multiple CVs exist, only _free_cv_id stays usable at all — the
+    rest are fully locked (not even viewable) until re-subscribing, though they
+    can still be deleted to free up the slot."""
     serializer_class = CustomCVSerializer
-    permission_classes = [permissions.IsAuthenticated, IsSubscribed]
+    permission_classes = [permissions.IsAuthenticated]
 
     def get_queryset(self):
         return CustomCV.objects.filter(user=self.request.user)
 
+    def retrieve(self, request, *args, **kwargs):
+        if _is_cv_locked(request.user, self.get_object()):
+            return Response({'error': 'Subscribe to open this CV.'}, status=403)
+        return super().retrieve(request, *args, **kwargs)
+
+    def update(self, request, *args, **kwargs):
+        if _is_cv_locked(request.user, self.get_object()):
+            return Response({'error': 'Subscribe to edit this CV.'}, status=403)
+        return super().update(request, *args, **kwargs)
+
 
 class CustomCVTailorView(views.APIView):
-    """POST /api/custom-cv/<id>/tailor/ — rewrite content for a new target role."""
-    permission_classes = [permissions.IsAuthenticated, IsSubscribed]
+    """POST /api/custom-cv/<id>/tailor/ — rewrite content for a new target role.
+    AI retargeting is a premium feature outright — unlike editing/exporting,
+    it's gated by subscription status alone, even on the one free CV."""
+    permission_classes = [permissions.IsAuthenticated]
 
     def post(self, request, pk):
         try:
             cv = CustomCV.objects.get(pk=pk, user=request.user)
         except CustomCV.DoesNotExist:
             return Response({'error': 'Not found.'}, status=404)
+
+        if not is_user_subscribed(request.user):
+            return Response({'error': 'Subscribe to retarget a CV for a new role.'}, status=403)
 
         target_role = (request.data.get('target_role') or '').strip()
         if not target_role:
@@ -1091,13 +1439,16 @@ class CustomCVTailorView(views.APIView):
 
 class CustomCVExportView(views.APIView):
     """GET /api/custom-cv/<id>/export/?type=pdf|docx"""
-    permission_classes = [permissions.IsAuthenticated, IsSubscribed]
+    permission_classes = [permissions.IsAuthenticated]
 
     def get(self, request, pk):
         try:
             cv = CustomCV.objects.get(pk=pk, user=request.user)
         except CustomCV.DoesNotExist:
             return Response({'error': 'Not found.'}, status=404)
+
+        if _is_cv_locked(request.user, cv):
+            return Response({'error': 'Subscribe to export this CV.'}, status=403)
 
         fmt = request.query_params.get('type', 'pdf')
         name = (cv.content.get('name') or request.user.get_full_name() or request.user.username or 'resume').strip()

@@ -9,6 +9,9 @@ import { JobCard } from '@/components/JobCard';
 import Map from '@/components/Map';
 import { useAuth } from '@/context/AuthContext';
 import { useSubscriptionGate } from '@/hooks/useSubscriptionGate';
+import PricingModal from '@/components/PricingModal';
+
+const PRICING_MODAL_SEEN_KEY = 'explore_pricing_modal_seen';
 
 const CACHE_TTL = 2 * 60 * 1000;
 const _cache: Record<string, { data: any; ts: number }> = {};
@@ -113,8 +116,22 @@ function useResizablePanel() {
 
 export default function ExplorePage() {
   const { token, logout } = useAuth();
-  const { isReady, isSubscribed } = useSubscriptionGate();
+  const { isReady, isSubscribed } = useSubscriptionGate({ allowUnsubscribed: true });
   const { asideRef, panelWidth, isDesktop, isResizing, startResizing } = useResizablePanel();
+
+  // Non-subscribers get a capped, recent-jobs preview (server-enforced) instead
+  // of being redirected away — but they see the pricing pitch once per browser.
+  const [isPricingOpen, setIsPricingOpen] = useState(false);
+  useEffect(() => {
+    if (!isReady || isSubscribed) return;
+    if (localStorage.getItem(PRICING_MODAL_SEEN_KEY)) return;
+    setIsPricingOpen(true);
+  }, [isReady, isSubscribed]);
+
+  const handleClosePricingModal = () => {
+    localStorage.setItem(PRICING_MODAL_SEEN_KEY, '1');
+    setIsPricingOpen(false);
+  };
 
   const [jobs, setJobs] = useState<any[]>([]);
   const [totalJobs, setTotalJobs] = useState(0);
@@ -197,7 +214,7 @@ export default function ExplorePage() {
   // paginates and filters at the DB level, so only ~20 jobs cross the wire.
   useEffect(() => {
     const fetchJobs = async () => {
-      if (!token || !isSubscribed) return;
+      if (!token) return;
       const params = new URLSearchParams(filterParams);
       params.set('page', String(currentPage));
       const cacheKey = `jobs-${params.toString()}`;
@@ -229,13 +246,13 @@ export default function ExplorePage() {
       }
     };
     fetchJobs();
-  }, [token, isSubscribed, currentPage, filterParams]);
+  }, [token, currentPage, filterParams]);
 
   // Map pins: independent of the list's page — the map needs every matching
   // job's coordinates at once to render, so it hits its own lightweight endpoint.
   useEffect(() => {
     const fetchMapPins = async () => {
-      if (!token || !isSubscribed) return;
+      if (!token) return;
       const cacheKey = `map-pins-${filterParams.toString()}`;
       const cached = getCached(cacheKey);
       if (cached) {
@@ -258,7 +275,7 @@ export default function ExplorePage() {
       }
     };
     fetchMapPins();
-  }, [token, isSubscribed, filterParams]);
+  }, [token, filterParams]);
 
   const countryOptions = React.useMemo(() => ['All', ...Array.from(new Set(countries.map(country => {
     if (country === 'United States') return 'USA';
@@ -417,6 +434,20 @@ export default function ExplorePage() {
         {/* Mobile sidebar toggle - desktop uses the always-visible left sidebar instead */}
         <div className="w-px h-6 bg-[#222] mx-1 sm:mx-2 md:hidden" />
       </PageHeader>
+
+      {isReady && !isSubscribed && (
+        <div className="flex items-center justify-between gap-3 px-4 sm:px-5 py-2 bg-green-500/10 border-b border-green-500/20">
+          <span className="text-[10px] sm:text-[11px] text-green-400 font-semibold">
+            You're viewing a preview of recent jobs. Subscribe to unlock the full map and job list.
+          </span>
+          <button
+            onClick={() => setIsPricingOpen(true)}
+            className="cursor-pointer shrink-0 px-3 py-1 rounded-lg text-[10px] sm:text-[11px] font-bold bg-[#22c55e] text-white hover:bg-[#1ea34e] transition-colors"
+          >
+            Unlock
+          </button>
+        </div>
+      )}
 
       {/* Main Content Area */}
       <div className="flex-1 flex overflow-hidden">
@@ -663,6 +694,8 @@ export default function ExplorePage() {
           background: #333;
         }
       `}</style>
+
+      <PricingModal isOpen={isPricingOpen} onClose={handleClosePricingModal} />
     </main>
   );
 }

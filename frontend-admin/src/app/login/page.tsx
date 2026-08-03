@@ -55,7 +55,7 @@ export default function AdminLogin() {
           <div className="inline-flex items-center justify-center w-16 h-16 rounded-2xl bg-blue-600/10 border border-blue-500/20 mb-4">
             <Lock className="text-blue-500" size={32} />
           </div>
-          <h1 className="text-3xl font-bold text-white tracking-tight">Scraper Admin</h1>
+          <h1 className="text-3xl font-bold text-white tracking-tight">Admin</h1>
           <p className="text-[#555] mt-2 font-medium">Superuser Access Only</p>
         </div>
 

@@ -8,6 +8,7 @@ import PageHeader from '@/components/PageHeader';
 import PortfolioAnalyticsPanel, { PortfolioAnalyticsData } from '@/components/portfolio/PortfolioAnalyticsPanel';
 import { useAuth } from '@/context/AuthContext';
 import { useSubscriptionGate } from '@/hooks/useSubscriptionGate';
+import PricingModal from '@/components/PricingModal';
 import Link from 'next/link';
 
 type Template = 'classic' | 'bento';
@@ -38,7 +39,7 @@ const TEMPLATES: {
 
 export default function PortfolioSettingsPage() {
   const { user, token } = useAuth();
-  const { isReady, isSubscribed } = useSubscriptionGate();
+  const { isReady, isSubscribed } = useSubscriptionGate({ allowUnsubscribed: true });
 
   const [portfolioPublic, setPortfolioPublic] = useState(false);
   const [portfolioTemplate, setPortfolioTemplate] = useState<Template>('classic');
@@ -51,9 +52,10 @@ export default function PortfolioSettingsPage() {
   const [linkCopied, setLinkCopied] = useState(false);
   const [analytics, setAnalytics] = useState<PortfolioAnalyticsData | null>(null);
   const [isFetchingAnalytics, setIsFetchingAnalytics] = useState(true);
+  const [isPricingOpen, setIsPricingOpen] = useState(false);
 
   useEffect(() => {
-    if (!token || !isSubscribed) return;
+    if (!token) return;
     setIsFetching(true);
     fetch(`${process.env.NEXT_PUBLIC_API_URL}/api/portfolio/me/`, {
       headers: { Authorization: `Token ${token}` },
@@ -67,10 +69,14 @@ export default function PortfolioSettingsPage() {
       })
       .catch(() => {})
       .finally(() => setIsFetching(false));
-  }, [token, isSubscribed]);
+  }, [token]);
 
+  // Analytics stay a subscriber-only feature — non-subscribers never fetch them.
   useEffect(() => {
-    if (!token || !isSubscribed) return;
+    if (!token || !isSubscribed) {
+      setIsFetchingAnalytics(false);
+      return;
+    }
     setIsFetchingAnalytics(true);
     fetch(`${process.env.NEXT_PUBLIC_API_URL}/api/portfolio/analytics/`, {
       headers: { Authorization: `Token ${token}` },
@@ -81,8 +87,32 @@ export default function PortfolioSettingsPage() {
       .finally(() => setIsFetchingAnalytics(false));
   }, [token, isSubscribed]);
 
+  const handleSelectTemplate = (tmpl: typeof TEMPLATES[number]) => {
+    if (!isSubscribed && tmpl.id !== portfolioTemplate) {
+      setIsPricingOpen(true);
+      return;
+    }
+    setPortfolioTemplate(tmpl.id);
+    const validThemeIds = tmpl.themes.map((th) => th.id);
+    if (validThemeIds.length && !validThemeIds.includes(portfolioTheme)) {
+      setPortfolioTheme(validThemeIds[0]);
+    }
+  };
+
+  const handleSelectTheme = (themeId: Theme) => {
+    if (!isSubscribed && themeId !== portfolioTheme) {
+      setIsPricingOpen(true);
+      return;
+    }
+    setPortfolioTheme(themeId);
+  };
+
   const handleTogglePublic = async () => {
     const next = !portfolioPublic;
+    if (next && !isSubscribed) {
+      setIsPricingOpen(true);
+      return;
+    }
     setPortfolioPublic(next);
     setIsTogglingPublic(true);
     try {
@@ -131,6 +161,20 @@ export default function PortfolioSettingsPage() {
       <div className="flex-1 flex flex-col overflow-hidden">
         <PageHeader backHref="/explore" title="Portfolio" />
 
+        {!isSubscribed && (
+          <div className="flex items-center justify-between gap-3 px-4 sm:px-6 py-2 bg-green-500/10 border-b border-green-500/20 shrink-0">
+            <span className="text-[10px] sm:text-[11px] text-green-400 font-semibold">
+              Subscribe to unlock analytics and make your portfolio public.
+            </span>
+            <button
+              onClick={() => setIsPricingOpen(true)}
+              className="cursor-pointer shrink-0 px-3 py-1 rounded-lg text-[10px] sm:text-[11px] font-bold bg-[#22c55e] text-white hover:bg-[#1ea34e] transition-colors"
+            >
+              Unlock
+            </button>
+          </div>
+        )}
+
         <div className="flex-1 overflow-y-auto p-6 relative">
           <div className="absolute top-0 left-1/2 -translate-x-1/2 w-[800px] h-[500px] bg-green-500/5 blur-[120px] rounded-full pointer-events-none" />
 
@@ -142,7 +186,21 @@ export default function PortfolioSettingsPage() {
                   <h2 className="text-sm font-black uppercase tracking-widest text-white">Analytics</h2>
                 </div>
 
-                <PortfolioAnalyticsPanel analytics={analytics} isLoading={isFetchingAnalytics} />
+                {isSubscribed ? (
+                  <PortfolioAnalyticsPanel analytics={analytics} isLoading={isFetchingAnalytics} />
+                ) : (
+                  <div className="bg-[#0a0a0a] border border-dashed border-[#333] rounded-2xl p-6 text-center">
+                    <Eye className="w-8 h-8 text-[#444] mx-auto mb-3" />
+                    <p className="text-xs text-[#555] font-medium mb-4">Subscribe to see who's viewing your portfolio.</p>
+                    <button
+                      type="button"
+                      onClick={() => setIsPricingOpen(true)}
+                      className="cursor-pointer inline-flex items-center gap-1 text-[10px] text-green-500 hover:text-green-400 font-bold uppercase tracking-widest"
+                    >
+                      Unlock analytics
+                    </button>
+                  </div>
+                )}
               </div>
             )}
 
@@ -180,7 +238,9 @@ export default function PortfolioSettingsPage() {
                   <div className="flex items-center justify-between">
                     <div>
                       <p className="text-xs font-bold text-white">Make portfolio public</p>
-                      <p className="text-[10px] text-[#555] mt-0.5">Anyone with your link can view it</p>
+                      <p className="text-[10px] text-[#555] mt-0.5">
+                        {!isSubscribed && !portfolioPublic ? 'Subscribe to unlock' : 'Anyone with your link can view it'}
+                      </p>
                     </div>
                     <button type="button" onClick={handleTogglePublic} disabled={isTogglingPublic}
                       className={`relative w-12 h-6 rounded-full transition-colors cursor-pointer disabled:opacity-50 ${portfolioPublic ? 'bg-green-500' : 'bg-[#333]'}`}>
@@ -226,16 +286,10 @@ export default function PortfolioSettingsPage() {
                     <p className="text-[10px] font-bold text-[#555] uppercase tracking-widest">Choose a template</p>
                     <div className="grid grid-cols-2 gap-3">
                       {TEMPLATES.map((tmpl) => (
-                        <button key={tmpl.id} type="button" onClick={() => {
-                            setPortfolioTemplate(tmpl.id);
-                            const validThemeIds = tmpl.themes.map(th => th.id);
-                            if (validThemeIds.length && !validThemeIds.includes(portfolioTheme)) {
-                              setPortfolioTheme(validThemeIds[0]);
-                            }
-                          }}
+                        <button key={tmpl.id} type="button" onClick={() => handleSelectTemplate(tmpl)}
                           className={`cursor-pointer rounded-2xl p-4 text-left transition-all border ${
                             portfolioTemplate === tmpl.id ? 'border-green-500 bg-green-500/5' : 'border-[#222] bg-[#0a0a0a] hover:border-[#333]'
-                          }`}>
+                          } ${!isSubscribed && tmpl.id !== portfolioTemplate ? 'opacity-50' : ''}`}>
                           {/* Mini preview */}
                           {tmpl.id === 'bento' ? (
                             <div className="w-full h-12 rounded-lg mb-3 overflow-hidden"
@@ -273,10 +327,10 @@ export default function PortfolioSettingsPage() {
                         <p className="text-[10px] font-bold text-[#555] uppercase tracking-widest mb-3">Color theme</p>
                         <div className="grid grid-cols-2 gap-3">
                           {(TEMPLATES.find(t => t.id === portfolioTemplate) ?? TEMPLATES[0]).themes.map((th) => (
-                            <button key={th.id} type="button" onClick={() => setPortfolioTheme(th.id)}
+                            <button key={th.id} type="button" onClick={() => handleSelectTheme(th.id)}
                               className={`cursor-pointer rounded-2xl p-4 text-left transition-all border ${
                                 portfolioTheme === th.id ? 'border-green-500 bg-green-500/5' : 'border-[#222] bg-[#0a0a0a] hover:border-[#333]'
-                              }`}>
+                              } ${!isSubscribed && th.id !== portfolioTheme ? 'opacity-50' : ''}`}>
                               <div className="w-full h-8 rounded-lg mb-3 relative overflow-hidden"
                                 style={{ background: th.dark ? '#0a0a0a' : '#f5f5f5', border: `1px solid ${th.dark ? '#222' : '#e0e0e0'}` }}>
                                 <span className="absolute right-1.5 top-1.5 w-3 h-3 rounded-full" style={{ background: th.accent }} />
@@ -300,6 +354,8 @@ export default function PortfolioSettingsPage() {
           </div>
         </div>
       </div>
+
+      <PricingModal isOpen={isPricingOpen} onClose={() => setIsPricingOpen(false)} />
     </main>
   );
 }
