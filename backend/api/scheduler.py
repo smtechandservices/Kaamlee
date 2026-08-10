@@ -14,10 +14,16 @@ Every tick (see auto_scrape_job):
      not just the single stalest one, so one tick makes a dent in that
      ATS's backlog instead of trickling one company at a time.
 
-Wired up once from ApiConfig.ready() (see apps.py) via start().
+Wired up once from ApiConfig.ready() (see apps.py) via start(). Under
+gunicorn, ready() runs independently in every worker process, so start()
+elects a single leader worker (see _become_leader) and only that worker's
+process ever creates a BackgroundScheduler — the other workers' calls to
+start() are no-ops. This is what keeps the auto-scrape tick, and everything
+it launches, confined to one worker instead of firing once per worker.
 """
 import fcntl
 import logging
+import os
 import re
 import threading
 
@@ -25,9 +31,33 @@ from apscheduler.schedulers.background import BackgroundScheduler
 
 logger = logging.getLogger(__name__)
 
-LOCK_FILE = '/tmp/kaamlee_autoscrape.lock'
+LEADER_LOCK_FILE = '/tmp/kaamlee_autoscrape_leader.lock'
 INTERVAL_MINUTES = 30
 BATCH_SIZE = 3
+
+# Held open for the lifetime of the process if this worker wins leadership —
+# closing it (or letting it get garbage-collected) would release the flock.
+_leader_lock_fd = None
+
+
+def _become_leader():
+    """Tries to claim this process as the sole worker allowed to run the
+    auto-scrape scheduler. Returns True at most once per machine at a time:
+    the lock is exclusive, non-blocking, and — unlike a per-tick lock — held
+    for as long as this process lives, not just for a single decide-and-
+    launch moment. Losing workers get False and simply never start a
+    scheduler, so there's nothing for their copy of auto_scrape_job to race
+    against in the first place.
+    """
+    global _leader_lock_fd
+    fd = open(LEADER_LOCK_FILE, 'w')
+    try:
+        fcntl.flock(fd, fcntl.LOCK_EX | fcntl.LOCK_NB)
+    except BlockingIOError:
+        fd.close()
+        return False
+    _leader_lock_fd = fd  # keep alive so the flock isn't released
+    return True
 
 # Maps a Company's career_url to (script, board slug) for one of the
 # scripts/jobs/*.py scrapers — the same five RunScraperScriptView.SCRIPTS
@@ -85,67 +115,54 @@ def auto_scrape_job():
     from .models import Company
     from .views import _run_registry
 
-    # OS-level file lock — guards against multiple worker processes (e.g. a
-    # multi-worker gunicorn deployment) each running their own copy of this
-    # scheduler and firing the same tick concurrently. Held only long enough
-    # to decide-and-launch, not for the run's duration — same as the actual
-    # "is something running" guard below, which is what stays true for as
-    # long as the run itself takes.
-    lock_fd = open(LOCK_FILE, 'w')
-    try:
+    if _run_registry.list():
+        logger.info("[AutoScrape] A scraper script is already running — skipping this tick.")
+        return
+
+    script, batch = _pick_batch(Company)
+    if not batch:
+        logger.info("[AutoScrape] No stale companies with a recognized ATS board — nothing to do.")
+        return
+
+    # Reserve every board before launching anything — mirrors
+    # RunScraperScriptView, and means a board an admin happens to be
+    # running by hand right now is skipped rather than double-run.
+    stop_events = {}
+    reserved = []
+    for slug, company_name in batch:
+        stop_event = _run_registry.start(slug, script)
+        if stop_event is None:
+            continue
+        reserved.append((slug, company_name))
+        stop_events[slug.lower()] = stop_event
+
+    if not reserved:
+        logger.info("[AutoScrape] Every candidate board is already running — skipping this tick.")
+        return
+
+    logger.info(f"[AutoScrape] Running {script} for {[name for _, name in reserved]}")
+    run_many = importlib.import_module(f'scripts.jobs.{script}').run_many
+
+    def _run():
         try:
-            fcntl.flock(lock_fd, fcntl.LOCK_EX | fcntl.LOCK_NB)
-        except BlockingIOError:
-            logger.info("[AutoScrape] Another worker already handling this tick — skipping.")
-            return
+            run_many(
+                reserved, stop_events=stop_events,
+                on_log=lambda board, message: logger.info(f"[AutoScrape][{script}:{board}] {message}"),
+            )
+        except Exception:
+            logger.exception(f"[AutoScrape] {script} run failed")
+        finally:
+            for slug, _ in reserved:
+                _run_registry.finish(slug)
 
-        if _run_registry.list():
-            logger.info("[AutoScrape] A scraper script is already running — skipping this tick.")
-            return
-
-        script, batch = _pick_batch(Company)
-        if not batch:
-            logger.info("[AutoScrape] No stale companies with a recognized ATS board — nothing to do.")
-            return
-
-        # Reserve every board before launching anything — mirrors
-        # RunScraperScriptView, and means a board an admin happens to be
-        # running by hand right now is skipped rather than double-run.
-        stop_events = {}
-        reserved = []
-        for slug, company_name in batch:
-            stop_event = _run_registry.start(slug, script)
-            if stop_event is None:
-                continue
-            reserved.append((slug, company_name))
-            stop_events[slug.lower()] = stop_event
-
-        if not reserved:
-            logger.info("[AutoScrape] Every candidate board is already running — skipping this tick.")
-            return
-
-        logger.info(f"[AutoScrape] Running {script} for {[name for _, name in reserved]}")
-        run_many = importlib.import_module(f'scripts.jobs.{script}').run_many
-
-        def _run():
-            try:
-                run_many(
-                    reserved, stop_events=stop_events,
-                    on_log=lambda board, message: logger.info(f"[AutoScrape][{script}:{board}] {message}"),
-                )
-            except Exception:
-                logger.exception(f"[AutoScrape] {script} run failed")
-            finally:
-                for slug, _ in reserved:
-                    _run_registry.finish(slug)
-
-        threading.Thread(target=_run, daemon=True).start()
-    finally:
-        fcntl.flock(lock_fd, fcntl.LOCK_UN)
-        lock_fd.close()
+    threading.Thread(target=_run, daemon=True).start()
 
 
 def start():
+    if not _become_leader():
+        logger.info("[AutoScrape] Another worker already owns the scheduler — not starting one here.")
+        return
+
     scheduler = BackgroundScheduler()
     scheduler.add_job(
         auto_scrape_job,
@@ -155,4 +172,4 @@ def start():
         replace_existing=True,
     )
     scheduler.start()
-    logger.info(f"[AutoScrape] Scheduler started — fires every {INTERVAL_MINUTES} minutes.")
+    logger.info(f"[AutoScrape] Scheduler started (leader worker, pid={os.getpid()}) — fires every {INTERVAL_MINUTES} minutes.")
