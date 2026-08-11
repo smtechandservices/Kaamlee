@@ -43,6 +43,7 @@ from api.models import Company, Job
 from scripts.job_categorizer import categorize_job
 from scripts.jobs import JOB_UPDATE_FIELDS, bulk_upsert_jobs, checkpoint_sqlite
 from scripts.geocode_jobs import run_streaming as geocode_jobs_streaming
+from scripts.translator import translate_job_fields
 
 REQUEST_TIMEOUT = 15
 
@@ -173,9 +174,10 @@ def sync_board(client_name, company_name=None, stop_event=None):
         location_name, embedded_lat, embedded_lon = _parse_location(raw_location_name)
         department_hint = ((job.get('departments') or [{}])[0]).get('name')
 
+        title, description = translate_job_fields(job.get('title') or '', _plain_description(job.get('content')))
         obj = Job(
             id_from_site=f"greenhouse:{client_key}:{job['id']}",
-            title=job.get('title') or '',
+            title=title,
             company=company_name,
             location_name=location_name,
             # Greenhouse gives no structured city/state/country split —
@@ -188,12 +190,12 @@ def sync_board(client_name, company_name=None, stop_event=None):
             is_remote=_is_remote(location_name),
             job_type=None,
             job_url=job.get('absolute_url') or f"{board_url}#{job['id']}",
-            description=_plain_description(job.get('content')),
+            description=description,
             site=board_url,
             company_logo=company_logo or None,
             date_posted=_date_posted(job),
             salary=None,
-            category=categorize_job(job.get('title'), department_hint=department_hint),
+            category=categorize_job(title, department_hint=department_hint),
         )
         # Some boards (e.g. BAYADA) embed real coordinates in the location
         # string — use them as-is and skip geocoding this job entirely. Kept

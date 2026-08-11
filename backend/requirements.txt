@@ -15,3 +15,5 @@ google-auth==2.35.0
 groq
 xhtml2pdf
 python-docx
+deep-translator
+langdetect

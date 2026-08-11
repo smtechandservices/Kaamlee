@@ -44,6 +44,7 @@ from api.models import Company, Job
 from scripts.job_categorizer import categorize_job
 from scripts.geocode_jobs import run_streaming as geocode_jobs_streaming
 from scripts.jobs import bulk_upsert_jobs, checkpoint_sqlite
+from scripts.translator import translate_job_fields
 
 REQUEST_TIMEOUT = 30
 _CURRENCY_SYMBOLS = {'USD': '$', 'EUR': '€', 'GBP': '£'}
@@ -164,9 +165,10 @@ def sync_board(client_name, company_name=None, stop_event=None):
         categories = job.get('categories') or {}
         location_name = (categories.get('location') or '').strip()
 
+        title, description = translate_job_fields(job.get('text') or '', job.get('descriptionPlain') or None)
         job_objs.append(Job(
             id_from_site=f"lever:{client_key}:{job['id']}",
-            title=job.get('text') or '',
+            title=title,
             company=company_name,
             location_name=location_name,
             # Lever gives no structured city/state/country split — only
@@ -179,12 +181,12 @@ def sync_board(client_name, company_name=None, stop_event=None):
             is_remote=_is_remote(job, location_name),
             job_type=categories.get('commitment'),
             job_url=job.get('hostedUrl') or f"{board_url}#{job['id']}",
-            description=job.get('descriptionPlain') or None,
+            description=description,
             site=board_url,
             company_logo=company_logo or None,
             date_posted=_date_posted(job),
             salary=_salary(job),
-            category=categorize_job(job.get('text'), department_hint=categories.get('team')),
+            category=categorize_job(title, department_hint=categories.get('team')),
         ))
 
     created, updated = bulk_upsert_jobs(job_objs)

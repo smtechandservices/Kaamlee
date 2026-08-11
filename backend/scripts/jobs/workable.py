@@ -54,6 +54,7 @@ from api.models import Company, Job
 from scripts.job_categorizer import categorize_job
 from scripts.geocode_jobs import run_streaming as geocode_jobs_streaming
 from scripts.jobs import bulk_upsert_jobs, checkpoint_sqlite
+from scripts.translator import translate_text
 
 REQUEST_TIMEOUT = 30
 
@@ -148,9 +149,10 @@ def sync_board(client_name, company_name=None, stop_event=None):
         country = job.get('country') or ''
         is_remote = bool(job.get('telecommuting'))
 
+        title = translate_text(job.get('title') or '')
         job_objs.append(Job(
             id_from_site=f"workable:{client_key}:{job['shortcode']}:{city}|{state or ''}|{country}",
-            title=job.get('title') or '',
+            title=title,
             company=company_name,
             location_name=_location_name(city, state, country, is_remote),
             city=city,
@@ -164,7 +166,7 @@ def sync_board(client_name, company_name=None, stop_event=None):
             company_logo=company_logo or None,
             date_posted=_date_posted(job),
             salary=None,
-            category=categorize_job(job.get('title'), department_hint=job.get('department')),
+            category=categorize_job(title, department_hint=job.get('department')),
         ))
 
     created, updated = bulk_upsert_jobs(job_objs)
