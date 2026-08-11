@@ -32,7 +32,7 @@ from apscheduler.schedulers.background import BackgroundScheduler
 logger = logging.getLogger(__name__)
 
 LEADER_LOCK_FILE = '/tmp/kaamlee_autoscrape_leader.lock'
-INTERVAL_MINUTES = 30
+INTERVAL_MINUTES = 5
 BATCH_SIZE = 3
 
 # Held open for the lifetime of the process if this worker wins leadership —
