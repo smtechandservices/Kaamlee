@@ -172,8 +172,11 @@ def sync_board(client_name, company_name=None, stop_event=None):
             # Lever gives no structured city/state/country split — only
             # this free-text string — so it goes straight into `city`
             # and geocode_jobs.py resolves (or fails and borrows from a
-            # sibling) exactly like it does for messy ATS text.
-            city=location_name,
+            # sibling) exactly like it does for messy ATS text. Truncated
+            # to fit Job.city's 100-char limit — see greenhouse.py's
+            # identical fix for why (Postgres rejects the whole
+            # bulk_create batch over one oversized row).
+            city=location_name[:100],
             state=None,
             country='',
             is_remote=_is_remote(job, location_name),

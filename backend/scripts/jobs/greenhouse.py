@@ -182,7 +182,14 @@ def sync_board(client_name, company_name=None, stop_event=None):
             # only this free-text string — so it goes straight into
             # `city` and geocode_jobs.py resolves (or fails and borrows
             # from a sibling) exactly like it does for messy ATS text.
-            city=location_name,
+            # Truncated to fit — Job.city is a 100-char CharField, and a
+            # multi-region posting's combined location string (e.g. six
+            # Indian cities joined with ";") can run past that. Postgres
+            # enforces the column length strictly and rejects the whole
+            # bulk_create batch over one oversized row, unlike SQLite,
+            # which silently accepts it — this is what was silently
+            # failing every board with a long-location posting, every tick.
+            city=location_name[:100],
             state=None,
             country='',
             is_remote=_is_remote(location_name),
