@@ -129,6 +129,16 @@ class DisableGzipForStreamingMiddleware:
 
 
 class RequestLogMiddleware:
+    # Hit every 1.5-3s by the admin dashboard's polling (Active Runs card,
+    # in-flight run status) — logging every one of these, even tersely,
+    # drowns out everything else in the request log within minutes. Successful
+    # polls are skipped entirely; a failure still gets the full dump so it's
+    # not silently lost.
+    QUIET_PATHS = {
+        '/api/admin/run-script/running/',
+        '/api/admin/run-script/status/',
+    }
+
     def __init__(self, get_response):
         self.get_response = get_response
 
@@ -136,6 +146,9 @@ class RequestLogMiddleware:
         start = time.monotonic()
         response = self.get_response(request)
         duration_ms = int((time.monotonic() - start) * 1000)
+
+        if request.path in self.QUIET_PATHS and response.status_code < 400:
+            return response
 
         ip = get_client_ip(request)
         user = request.user.username if hasattr(request, 'user') and request.user.is_authenticated else 'unknown'
