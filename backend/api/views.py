@@ -942,11 +942,12 @@ class RunScriptStatusView(views.APIView):
         return Response(_run_registry.status(boards))
 
 class RunningScriptsView(views.APIView):
-    """Lists scraper syncs currently in flight (started via
-    RunScraperScriptView, from any admin session), for the dashboard's
-    "Active Runs" card. Backed by ScraperRun rather than _run_registry so
-    it reflects the database (survives a dashboard reload/deploy) instead
-    of just this process's in-memory state."""
+    """Lists scraper syncs currently in flight — started via
+    RunScraperScriptView from any admin session, or by the background
+    auto-scrape scheduler (see api.scheduler) — for the dashboard's "Active
+    Runs" card. Backed by ScraperRun rather than _run_registry so it
+    reflects the database (survives a dashboard reload/deploy) instead of
+    just this process's in-memory state."""
     permission_classes = [permissions.IsAdminUser]
 
     def get(self, request):

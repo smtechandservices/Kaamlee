@@ -112,7 +112,9 @@ def _pick_batch(Company):
 def auto_scrape_job():
     import importlib
 
-    from .models import Company
+    from django.utils import timezone
+
+    from .models import Company, ScraperRun
     from .views import _run_registry
 
     if _run_registry.list():
@@ -126,15 +128,22 @@ def auto_scrape_job():
 
     # Reserve every board before launching anything — mirrors
     # RunScraperScriptView, and means a board an admin happens to be
-    # running by hand right now is skipped rather than double-run.
+    # running by hand right now is skipped rather than double-run. Each
+    # reservation also gets a ScraperRun row (triggered_by='scheduler') so
+    # these ticks show up in the dashboard's Active Runs card and leave a
+    # history behind, same as an admin-triggered run.
     stop_events = {}
     reserved = []
+    runs = {}
     for slug, company_name in batch:
         stop_event = _run_registry.start(slug, script)
         if stop_event is None:
             continue
         reserved.append((slug, company_name))
         stop_events[slug.lower()] = stop_event
+        runs[slug.lower()] = ScraperRun.objects.create(
+            script=script, board=slug, company_name=company_name, triggered_by='scheduler',
+        )
 
     if not reserved:
         logger.info("[AutoScrape] Every candidate board is already running — skipping this tick.")
@@ -143,10 +152,21 @@ def auto_scrape_job():
     logger.info(f"[AutoScrape] Running {script} for {[name for _, name in reserved]}")
     run_many = importlib.import_module(f'scripts.jobs.{script}').run_many
 
+    def on_result(board, result):
+        run = runs.get(board.strip().lower())
+        if run is None:
+            return
+        run.status = 'stopped' if result.get('stopped') else ('success' if result.get('ok') else 'failed')
+        run.finished_at = timezone.now()
+        for field in ('fetched', 'created', 'updated', 'geocoded', 'borrowed', 'removed'):
+            setattr(run, field, result.get(field) or 0)
+        run.error = result.get('error') or ''
+        run.save()
+
     def _run():
         try:
             run_many(
-                reserved, stop_events=stop_events,
+                reserved, stop_events=stop_events, on_result=on_result,
                 on_log=lambda board, message: logger.info(f"[AutoScrape][{script}:{board}] {message}"),
             )
         except Exception:
@@ -154,6 +174,14 @@ def auto_scrape_job():
         finally:
             for slug, _ in reserved:
                 _run_registry.finish(slug)
+            # Belt-and-suspenders, matching RunScraperScriptView: covers a
+            # run_many failure that never reached on_result for some board.
+            for run in runs.values():
+                if run.status == 'running':
+                    run.status = 'failed'
+                    run.finished_at = timezone.now()
+                    run.error = run.error or 'Run ended unexpectedly without reporting a result.'
+                    run.save()
 
     threading.Thread(target=_run, daemon=True).start()
 
