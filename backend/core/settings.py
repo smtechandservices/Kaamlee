@@ -219,6 +219,11 @@ LOGGING = {
             'style': '{',
             'datefmt': '%Y-%m-%d %H:%M:%S',
         },
+        'simple': {
+            'format': '[{asctime}] {levelname} {message}',
+            'style': '{',
+            'datefmt': '%Y-%m-%d %H:%M:%S',
+        },
     },
     'filters': {
         'default_status_code': {
@@ -239,6 +244,17 @@ LOGGING = {
             'formatter': 'request',
             'filters': ['default_status_code'],
         },
+        'scheduler_console': {
+            'class': 'logging.StreamHandler',
+            'formatter': 'simple',
+        },
+        'scheduler_file': {
+            'class': 'logging.handlers.RotatingFileHandler',
+            'filename': LOGS_DIR / 'scheduler.log',
+            'maxBytes': int(2.5 * 1024 * 1024),  # 2.5 MB
+            'backupCount': 1,
+            'formatter': 'simple',
+        },
     },
     'loggers': {
         'django.request': {
@@ -248,6 +264,11 @@ LOGGING = {
         },
         'request_log': {
             'handlers': ['console', 'file'],
+            'level': 'INFO',
+            'propagate': False,
+        },
+        'api.scheduler': {
+            'handlers': ['scheduler_console', 'scheduler_file'],
             'level': 'INFO',
             'propagate': False,
         },
