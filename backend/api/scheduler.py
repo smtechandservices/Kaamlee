@@ -186,10 +186,34 @@ def auto_scrape_job():
     threading.Thread(target=_run, daemon=True).start()
 
 
+def _reconcile_stale_runs():
+    """A ScraperRun still marked 'running' when this process boots can only
+    mean the process that owned it (this worker or a previous one) died —
+    crash, deploy, restart — before its thread ever reached the code that
+    marks it finished. There's no thread anywhere that could still complete
+    it, and a fresh process's _run_registry starts out empty, so the
+    dashboard's Stop button has nothing to act on for it either — left
+    alone, it haunts the Active Runs card forever. Mark it failed so it
+    clears out and the board it was on is free to be picked up again.
+    """
+    from django.utils import timezone
+
+    from .models import ScraperRun
+
+    count = ScraperRun.objects.filter(status='running').update(
+        status='failed', finished_at=timezone.now(),
+        error='Run interrupted — server restarted while this was in progress.',
+    )
+    if count:
+        logger.info(f"[AutoScrape] Marked {count} stale 'running' run(s) from a previous process as failed.")
+
+
 def start():
     if not _become_leader():
         logger.info("[AutoScrape] Another worker already owns the scheduler — not starting one here.")
         return
+
+    _reconcile_stale_runs()
 
     scheduler = BackgroundScheduler()
     scheduler.add_job(
