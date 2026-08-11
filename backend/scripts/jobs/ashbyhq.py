@@ -26,7 +26,6 @@ from api.models import Company, Job
 from scripts.job_categorizer import categorize_job
 from scripts.jobs import bulk_upsert_jobs, checkpoint_sqlite
 from scripts.geocode_jobs import run_streaming as geocode_jobs_streaming
-from scripts.translator import translate_job_fields
 
 REQUEST_TIMEOUT = 15
 
@@ -153,10 +152,9 @@ def sync_board(board_name, company_name=None, stop_event=None):
             continue
 
         city, state, country = _location_fields(job)
-        title, description = translate_job_fields(job.get('title') or '', job.get('descriptionPlain') or None)
         job_objs.append(Job(
             id_from_site=f"ashby:{board_key}:{job['id']}",
-            title=title,
+            title=job.get('title') or '',
             company=company_name,
             location_name=job.get('location') or '',
             city=city,
@@ -165,12 +163,12 @@ def sync_board(board_name, company_name=None, stop_event=None):
             is_remote=_is_remote(job),
             job_type=_EMPLOYMENT_TYPE_LABELS.get(job.get('employmentType'), job.get('employmentType')),
             job_url=job.get('jobUrl') or f"{board_url}/{job['id']}",
-            description=description,  # plain text; frontend renders it unescaped
+            description=job.get('descriptionPlain') or None,  # plain text; frontend renders it unescaped
             site=board_url,
             company_logo=company_logo or None,
             date_posted=_date_posted(job),
             salary=_salary(job),
-            category=categorize_job(title, department_hint=job.get('department') or job.get('team')),
+            category=categorize_job(job.get('title'), department_hint=job.get('department') or job.get('team')),
         ))
 
     created, updated = bulk_upsert_jobs(job_objs)
