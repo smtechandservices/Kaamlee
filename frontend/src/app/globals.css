@@ -8,6 +8,9 @@
   --font-sans: var(--font-inter);
   --font-mono: var(--font-geist-mono);
   --font-heading: var(--font-outfit);
+  --font-display: var(--font-bricolage);
+  --font-body: var(--font-jakarta);
+  --font-code: var(--font-jetbrains);
 }
 
 :root {

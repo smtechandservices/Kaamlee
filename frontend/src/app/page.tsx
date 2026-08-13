@@ -2,6 +2,12 @@
 
 import React, { useEffect, useState } from 'react';
 import Link from 'next/link';
+import { motion } from 'framer-motion';
+import { LogOut, Search, Check, Map as LucideMap, FileCheck, PenLine, Building2, Bell } from 'lucide-react';
+import { useAuth } from '@/context/AuthContext';
+import { useRouter } from 'next/navigation';
+import { Map as Mapcn, MapMarker, MarkerContent } from '@/components/ui/map';
+import PricingModal from '@/components/PricingModal';
 
 const CACHE_TTL = 2 * 60 * 1000;
 const _cache: Record<string, { data: any; ts: number }> = {};
@@ -13,50 +19,36 @@ function getCached(key: string) {
 function setCache(key: string, data: any) {
   _cache[key] = { data, ts: Date.now() };
 }
-import { motion, AnimatePresence } from 'framer-motion';
-import { ArrowRight, Search, Zap, Globe, Shield, LogOut, Briefcase, MapPin, Building2, Plus, Minus, RotateCcw, X, ExternalLink, CreditCard, FileText } from 'lucide-react';
-import { useAuth } from '@/context/AuthContext';
-import { useRouter } from 'next/navigation';
-import { Map as Mapcn, MapMarker, MarkerContent } from "@/components/ui/map";
-import PricingModal from '@/components/PricingModal';
-// import { PRICING } from '@/lib/constants';
 
-function FAQItem({ faq, index, isOpen, onToggle }: { faq: { q: string, a: string }, index: number, isOpen: boolean, onToggle: () => void }) {
-  return (
-    <div className="border-b border-white/5">
-      <div
-        onClick={onToggle}
-        className="cursor-pointer py-10 flex items-center justify-between group outline-none"
-      >
-        <div className="flex items-center gap-12">
-          <span className="font-mono text-[10px] text-[#444] tracking-widest uppercase">Q.0{index + 1}</span>
-          <h4 className={`text-2xl font-bold tracking-tight transition-colors ${isOpen ? 'text-green-500' : 'group-hover:text-green-500'}`}>{faq.q}</h4>
-        </div>
-        <motion.div
-          animate={{ rotate: isOpen ? 45 : 0 }}
-          transition={{ duration: 0.3, ease: "easeInOut" }}
-        >
-          <Plus className={`${isOpen ? 'text-green-500' : 'text-[#333] group-hover:text-green-500'} transition-colors`} size={24} />
-        </motion.div>
-      </div>
+const MAP_MARKERS = [
+  { coords: [77.5946, 12.9716], tag: 'Fullstack Developer' }, // Bangalore
+  { coords: [72.8777, 19.0760], tag: 'Product Lead' }, // Mumbai
+  { coords: [77.2090, 28.6139], tag: 'Backend Engineer' }, // Delhi
+  { coords: [78.4867, 17.3850], tag: 'Data Scientist' }, // Hyderabad
+  { coords: [73.8567, 18.5204], tag: 'DevOps Architect' }, // Pune
+  { coords: [80.2707, 13.0827], tag: 'iOS Engineer' }, // Chennai
+  { coords: [88.3639, 22.5726], tag: 'UX Researcher' }, // Kolkata
+  { coords: [72.5714, 23.0225], tag: 'Growth Manager' }, // Ahmedabad
+  { coords: [77.0266, 28.4595], tag: 'Security Analyst' }, // Gurgaon
+  { coords: [77.3910, 28.5355], tag: 'Cloud Engineer' }, // Noida
+  { coords: [75.7873, 26.9124], tag: 'Frontend Lead' }, // Jaipur
+  { coords: [76.7794, 30.7333], tag: 'AI Researcher' }, // Chandigarh
+  { coords: [55.2708, 25.2048], tag: 'Blockchain Dev' }, // Dubai
+  { coords: [54.3773, 24.4539], tag: 'AI Engineer' }, // Abu Dhabi
+  { coords: [55.4121, 25.3463], tag: 'System Architect' }, // Sharjah
+];
 
-      <AnimatePresence>
-        {isOpen && (
-          <motion.div
-            initial={{ height: 0, opacity: 0 }}
-            animate={{ height: "auto", opacity: 1 }}
-            exit={{ height: 0, opacity: 0 }}
-            transition={{ duration: 0.4, ease: "easeInOut" }}
-            className="overflow-hidden"
-          >
-            <div className="pb-8 sm:pb-10 pl-8 sm:pl-24 max-w-5xl text-[#888] leading-relaxed text-xs sm:text-base">
-              {faq.a}
-            </div>
-          </motion.div>
-        )}
-      </AnimatePresence>
-    </div>
-  );
+const AVATAR_COLORS = [
+  'bg-[#EFF6FF] text-[#1D4ED8]',
+  'bg-[#F5F3FF] text-[#6D28D9]',
+  'bg-[#FEF3C7] text-[#B45309]',
+  'bg-[#F0FDF4] text-[#15803D]',
+];
+
+function initials(text: string) {
+  if (!text) return '··';
+  const parts = text.trim().split(/\s+/);
+  return (parts[0]?.[0] ?? '') + (parts[1]?.[0] ?? parts[0]?.[1] ?? '');
 }
 
 export default function LandingPage() {
@@ -64,18 +56,13 @@ export default function LandingPage() {
   const router = useRouter();
   const [recentJobs, setRecentJobs] = useState<any[]>([]);
   const [stats, setStats] = useState<any>(null);
-  const [openFaqIndex, setOpenFaqIndex] = useState<number | null>(null);
   const [isPricingOpen, setIsPricingOpen] = useState(false);
-  const [isTeamModalOpen, setIsTeamModalOpen] = useState(false);
+  const [featureTab, setFeatureTab] = useState(0);
 
   const handleExploreClick = (e: React.MouseEvent) => {
     e.preventDefault();
     if (isLoading) return;
-    if (!user) {
-      router.push('/login');
-    } else {
-      router.push('/explore');
-    }
+    router.push(user ? '/explore' : '/login');
   };
 
   useEffect(() => {
@@ -90,11 +77,11 @@ export default function LandingPage() {
             setCache('recent-jobs', data);
             setRecentJobs(data);
           } else {
-            console.error("Expected array for recent jobs, got:", data);
+            console.error('Expected array for recent jobs, got:', data);
             setRecentJobs([]);
           }
         })
-        .catch(err => console.error("Error fetching recent jobs:", err));
+        .catch(err => console.error('Error fetching recent jobs:', err));
     }
 
     const cachedStats = getCached('stats');
@@ -108,10 +95,10 @@ export default function LandingPage() {
             setCache('stats', data);
             setStats(data);
           } else {
-            console.error("Invalid stats data:", data);
+            console.error('Invalid stats data:', data);
           }
         })
-        .catch(err => console.error("Error fetching stats:", err));
+        .catch(err => console.error('Error fetching stats:', err));
     }
   }, []);
 
@@ -125,782 +112,808 @@ export default function LandingPage() {
     const diffInDays = Math.floor(diffInMs / (1000 * 60 * 60 * 24));
 
     if (diffInHours < 1) return 'just now';
-    if (diffInHours < 24) return `${diffInHours}h ago`;
+    if (diffInHours < 24) return `${diffInHours} hours ago`;
     if (diffInDays === 1) return 'yesterday';
-    if (diffInDays < 7) return `${diffInDays}d ago`;
-    return `recently`;
+    if (diffInDays < 7) return `${diffInDays} days ago`;
+    return 'recently';
   };
 
+  const featuredJobs = (Array.isArray(recentJobs) ? recentJobs : []).slice(0, 3);
+
   return (
-    <main className="min-h-screen bg-black text-white selection:bg-green-500 selection:text-white font-sans overflow-x-hidden">
-      {/* Grid Background Layer */}
-      <div className="fixed inset-0 bg-grid opacity-20 pointer-events-none z-0" />
+    <main className="min-h-screen bg-white text-[#111827] font-body selection:bg-[#DCFCE7]">
+      {/* Header */}
+      <header className="sticky top-0 z-60 border-b border-[#E5E7EB] bg-white/85 backdrop-blur-xl">
+        <div className="max-w-[1400px] mx-auto px-5 sm:px-8 h-[70px] flex items-center gap-6 lg:gap-10">
+          <Link href="/" className="flex items-center gap-2.5 text-[#111827]">
+            <span className="w-[30px] h-[30px] rounded-[9px] bg-[#16A34A] grid place-items-center text-white font-extrabold text-[15px]">K</span>
+            <span className="text-[19px] font-extrabold tracking-[-0.03em]">Kaamlee</span>
+          </Link>
 
-      {/* Top Border Gradient */}
-      <div className="fixed top-0 left-0 w-full h-[2px] bg-gradient-to-r from-transparent via-green-500/50 to-transparent z-50" />
+          <nav className="hidden lg:flex items-center gap-6 text-[15px] font-medium">
+            <a href="#jobs" className="text-[#374151] hover:text-[#111827] transition-colors">Jobs</a>
+            <a href="#features" className="text-[#374151] hover:text-[#111827] transition-colors">Features</a>
+            <a href="#how" className="text-[#374151] hover:text-[#111827] transition-colors">How it works</a>
+            {/* <button onClick={() => setIsPricingOpen(true)} className="cursor-pointer text-[#374151] hover:text-[#111827] transition-colors">Pricing</button> */}
+            <a href="#stories" className="text-[#374151] hover:text-[#111827] transition-colors">Stories</a>
+          </nav>
 
-      {/* Navbar */}
-      <nav className="fixed top-0 left-0 w-full h-20 px-4 sm:px-8 flex items-center justify-between z-50 border-b border-white/40 bg-black/50 backdrop-blur-xl">
-        <div className="cursor-default flex items-center gap-2 sm:gap-3">
-          <span className="text-lg sm:text-xl font-bold tracking-[0.2em] sm:tracking-[0.3em] uppercase">KAAMLEE</span>
-          <span className="text-[8px] font-mono text-green-500 bg-green-500/10 border border-green-500/30 px-1.5 py-0.5 tracking-widest uppercase">BETA</span>
+          <div className="ml-auto flex items-center gap-2.5">
+            {!user ? (
+              <>
+                <Link href="/login" className="text-[15px] font-semibold text-[#374151] px-3.5 py-2.5 hover:text-[#111827] transition-colors">
+                  Log in
+                </Link>
+                <Link href="/login" className="text-[15px] font-bold text-white bg-[#111827] px-5 py-2.5 rounded-[11px] hover:bg-[#16A34A] transition-colors">
+                  Sign up free
+                </Link>
+              </>
+            ) : (
+              <>
+                <Link href="/profile" className="flex items-center gap-2.5 px-2.5 py-1.5 border border-[#E5E7EB] rounded-full hover:border-[#16A34A] transition-colors group">
+                  <span className="w-7 h-7 rounded-full bg-[#16A34A] text-white grid place-items-center text-[11px] font-extrabold">
+                    {user?.first_name?.[0]}{user?.last_name?.[0]}
+                  </span>
+                  <span className="hidden sm:inline text-[14px] font-semibold text-[#374151] group-hover:text-[#111827] pr-1">{user?.first_name}</span>
+                </Link>
+                <button onClick={logout} className="cursor-pointer p-2.5 text-[#6B7280] hover:text-[#111827] transition-colors" aria-label="Log out">
+                  <LogOut className="w-[18px] h-[18px]" />
+                </button>
+              </>
+            )}
+          </div>
         </div>
+      </header>
 
-        <div className="flex items-center gap-2 sm:gap-4">
-          {!user ? (
-            <Link href="/login" className="cursor-pointer text-xs sm:text-sm font-medium text-[#888] hover:text-white transition-colors">
-              Log in
-            </Link>
-          ) : (
-            <div className="flex items-center gap-2 sm:gap-4">
-              <Link
-                href="/profile"
-                className="flex items-center gap-2 sm:gap-3 px-1.5 sm:px-2 py-1.5 sm:py-2 bg-white/5 border border-white/10 rounded-full hover:border-white/20 transition-all group"
-              >
-                <div className="w-5 h-5 sm:w-6 sm:h-6 rounded-full bg-gradient-to-br from-green-500 to-green-700 flex items-center justify-center text-[8px] sm:text-[10px] font-bold shadow-lg shadow-green-500/10 group-hover:scale-110 transition-transform">
-                  {user?.first_name?.[0]}{user?.last_name?.[0]}
-                </div>
-                <span className="hidden sm:inline text-xs font-medium text-[#888] group-hover:text-white transition-colors">{user?.first_name}</span>
-              </Link>
-              <div onClick={logout} className='flex items-center gap-2 group cursor-pointer hover:text-white transition-colors text-[#888]'>
-                <LogOut className="w-4 h-4 sm:w-4.5 sm:h-4.5" />
-              </div>
-            </div>
-          )}
-        </div>
-      </nav>
-
-      <div className="relative z-10 pt-20">
-        {/* Section 01: Hero */}
-        <section className="px-6 sm:px-8 lg:px-0 lg:ps-8 grid grid-cols-1 lg:grid-cols-2 gap-12 items-center mx-auto py-12 sm:py-0">
-          <motion.div
-            initial={{ opacity: 0, x: -20 }}
-            animate={{ opacity: 1, x: 0 }}
-            transition={{ duration: 0.8 }}
-          >
-            <div className="inline-flex items-center gap-2 sm:gap-3 bg-[#111] border border-[#222] px-3 sm:px-4 py-1 sm:py-1.5 rounded-full mb-6 sm:mb-10">
-              <span className="w-1.5 h-1.5 sm:w-2 sm:h-2 rounded-full bg-green-500 animate-pulse" />
-              <span className="text-[10px] sm:text-md font-black tracking-widest uppercase text-[#888]">
-                <span className='text-sm sm:text-lg text-white'>{stats?.total_jobs?.toLocaleString()?.toLocaleString() || '420'} </span> NEW ROLES IN LAST 7 DAYS
-              </span>
+      {/* Hero */}
+      <section
+        className="relative overflow-hidden"
+        style={{
+          backgroundImage:
+            'radial-gradient(70% 55% at 50% 0%, rgba(22,163,74,.13) 0%, rgba(22,163,74,0) 65%), radial-gradient(#EAEEF3 1px, transparent 1px)',
+          backgroundSize: 'auto, 28px 28px',
+        }}
+      >
+        <div className="max-w-[1000px] mx-auto px-5 sm:px-8 pt-16 sm:pt-[76px] text-center">
+          <motion.div initial={{ opacity: 0, y: 12 }} animate={{ opacity: 1, y: 0 }} transition={{ duration: 0.6 }}>
+            <div className="inline-flex items-center gap-2 pl-3 pr-4 py-1.5 border border-[#E5E7EB] bg-white rounded-full text-[13px] font-semibold text-[#374151] shadow-[0_1px_2px_rgba(17,24,39,.05)]">
+              <span className="w-[7px] h-[7px] rounded-full bg-[#16A34A] shadow-[0_0_0_3px_rgba(22,163,74,.18)]" />
+              {stats?.total_jobs?.toLocaleString() || '420'} new roles added this week
             </div>
 
-            <h1 className="text-5xl sm:text-6xl md:text-7xl font-black tracking-tight leading-[1.1] mb-6 sm:mb-10">
-              Job Applying.<br />
-              is a <span className="text-serif font-normal italic">job.</span>
+            <h1 className="mt-7 text-[44px] sm:text-[60px] lg:text-[76px] leading-[1.02] lg:leading-[0.98] font-bold tracking-[-0.045em] font-display">
+              <span className="text-[#16A34A]">Job Hunt</span> shouldn&apos;t feel<br className="hidden sm:block" />{' '}
+              like a full time job.
             </h1>
 
-            <p className="text-lg sm:text-2xl text-[#888] max-w-2xl mb-8 sm:mb-12 leading-relaxed">
-              Kaamlee aggregates every <span className="text-white font-bold">ambitious </span> role from twelve job boards into one map. No popups. No &quot;8 people are viewing this job&quot;.
+            <p className="mt-6 mx-auto text-[17px] sm:text-[20px] leading-[1.55] text-[#6B7280] max-w-[640px]">
+              One search across 12+ job boards. AI resume matching, ATS scores, and every application tracked — in a single workspace.
             </p>
 
-            <div className="flex flex-col sm:flex-row items-stretch sm:items-center gap-4">
+            <div className="mt-8 flex flex-col sm:flex-row items-stretch sm:items-center justify-center gap-3">
               <button
                 onClick={handleExploreClick}
-                className="cursor-pointer bg-white text-black px-8 sm:px-10 py-4 sm:py-5 rounded-sm font-black uppercase tracking-widest text-xs sm:text-sm flex items-center justify-center gap-2 hover:bg-[#ededed] transition-all group"
+                className="cursor-pointer text-[16px] font-bold text-white bg-[#16A34A] px-7 py-4 rounded-[13px] shadow-[0_14px_30px_-12px_rgba(22,163,74,.6)] hover:bg-[#15803D] hover:-translate-y-px transition-all"
               >
-                Open the map <ArrowRight size={18} className="group-hover:translate-x-1 transition-transform" />
+                Get started free
               </button>
-              <button
-                onClick={() => setIsPricingOpen(true)}
-                className="cursor-pointer border border-[#222] text-white px-8 sm:px-10 py-4 sm:py-5 rounded-sm font-black uppercase tracking-widest text-xs sm:text-sm flex items-center justify-center gap-2 hover:border-white transition-all"
-              >
-From ₹49 · Beta
-              </button>
-            </div>
-          </motion.div>
-
-          {/* Real Mapcn Globe Component */}
-          <motion.div
-            className="relative aspect-square lg:aspect-auto lg:h-[650px] border border-white/5 overflow-hidden bg-black/40 backdrop-blur-sm group"
-            initial={{ opacity: 0, scale: 0.95 }}
-            animate={{ opacity: 1, scale: 1 }}
-            transition={{ duration: 1, delay: 0.2 }}
-          >
-            <div className="absolute inset-0 z-0">
-              <Mapcn
-                center={[75, 20]}
-                zoom={3}
-                theme="dark"
-                className="w-full h-full opacity-75"
-                interactive={false}
-                attributionControl={false}
-              >
-                {/* Scatter markers across the globe */}
-                {[
-                  { coords: [77.5946, 12.9716], tag: "Fullstack Developer" }, // Bangalore
-                  { coords: [72.8777, 19.0760], tag: "Product Lead" }, // Mumbai
-                  { coords: [77.2090, 28.6139], tag: "Backend Engineer" }, // Delhi
-                  { coords: [78.4867, 17.3850], tag: "Data Scientist" }, // Hyderabad
-                  { coords: [73.8567, 18.5204], tag: "DevOps Architect" }, // Pune
-                  { coords: [80.2707, 13.0827], tag: "iOS Engineer" }, // Chennai
-                  { coords: [88.3639, 22.5726], tag: "UX Researcher" }, // Kolkata
-                  { coords: [72.5714, 23.0225], tag: "Growth Manager" }, // Ahmedabad
-                  { coords: [77.0266, 28.4595], tag: "Security Analyst" }, // Gurgaon
-                  { coords: [77.3910, 28.5355], tag: "Cloud Engineer" }, // Noida
-                  { coords: [75.7873, 26.9124], tag: "Frontend Lead" }, // Jaipur
-                  { coords: [76.7794, 30.7333], tag: "AI Researcher" }, // Chandigarh
-                  // UAE Markers
-                  { coords: [55.2708, 25.2048], tag: "Blockchain Dev" }, // Dubai
-                  { coords: [54.3773, 24.4539], tag: "AI Engineer" }, // Abu Dhabi
-                  { coords: [55.4121, 25.3463], tag: "System Architect" }, // Sharjah
-                ].map((marker, i) => (
-                  <MapMarker key={i} longitude={marker.coords[0]} latitude={marker.coords[1]}>
-                    <MarkerContent>
-                      <div className="relative group/marker">
-                        <motion.div
-                          className={`w-1.5 h-1.5 rounded-full ${i % 3 === 0 ? 'bg-white shadow-[0_0_8px_white]' : 'bg-green-500 shadow-[0_0_8px_#22c55e]'}`}
-                          animate={{
-                            opacity: [0.4, 1, 0.4],
-                            scale: [1, 1.3, 1]
-                          }}
-                          transition={{
-                            duration: 2 + Math.random() * 2,
-                            repeat: Infinity,
-                            ease: "easeInOut",
-                            delay: Math.random() * 2
-                          }}
-                        />
-                        <div className="absolute left-full ml-2 top-1/2 -translate-y-1/2 bg-black/80 backdrop-blur-md border border-white/10 px-2 py-0.5 rounded text-[8px] font-mono text-white/70 whitespace-nowrap opacity-0 group-hover/marker:opacity-100 transition-opacity pointer-events-none uppercase tracking-tighter">
-                          {marker.tag}
-                        </div>
-                      </div>
-                    </MarkerContent>
-                  </MapMarker>
-                ))}
-              </Mapcn>
-            </div>
-
-            {/* Map UI Overlay (Preserved from design) */}
-            <div className="absolute inset-0 p-8 flex flex-col justify-end z-10 pointer-events-none">
-
-              <div className="flex items-end justify-between">
-                <div className="flex gap-12 font-mono text-[14px] text-white/30">
-                  <div className="flex flex-col gap-1">
-                    <span className="uppercase tracking-widest">Lat</span>
-                    <span className="text-white/60">-53.46</span>
-                  </div>
-                  <div className="flex flex-col gap-1">
-                    <span className="uppercase tracking-widest">Lon</span>
-                    <span className="text-white/60">186.01</span>
-                  </div>
-                </div>
-              </div>
-            </div>
-          </motion.div>
-        </section>
-
-        {/* Stats Section */}
-        <section className="px-6 md:px-8 py-12 sm:py-16 border-y border-white/40 bg-black/20 backdrop-blur-sm relative overflow-hidden">
-          <div className="mx-auto grid grid-cols-2 md:grid-cols-4 gap-8 sm:gap-12">
-            {[
-              { label: "LIVE_LISTINGS", value: stats?.total_jobs?.toLocaleString() || "40,000 +" },
-              { label: "COMPANIES", value: "50,000 +" },
-              { label: "SOURCES", value: "12 boards" },
-              { label: "ACCURACY", value: "92.99%" }
-            ].map((stat, i) => (
-              <div key={i} className="flex flex-col gap-1 sm:gap-2">
-                <div className="font-mono text-[8px] sm:text-[10px] font-bold text-[#444] tracking-widest uppercase">
-                   {stat.label}
-                </div>
-                <div className="text-2xl sm:text-4xl font-black tracking-tight">{stat.value}</div>
-              </div>
-            ))}
-          </div>
-        </section>
-
-        {/* Job Cards Marquee/Grid */}
-        <section className="py-18 px-6 md:px-8 mx-auto overflow-hidden">
-          <div className="flex items-center gap-4 mb-8">
-            <div className="h-px w-20 bg-green-500" />
-            <span className="font-mono text-xs text-green-500 tracking-widest uppercase">// RECENTS.JSON</span>
-          </div>
-
-          {/* Horizontal Marquee */}
-          <div className="relative flex overflow-hidden">
-            <motion.div
-              className="flex gap-4 sm:gap-6 whitespace-nowrap"
-              animate={{ x: ["0%", "-50%"] }}
-              transition={{
-                duration: 60,
-                repeat: Infinity,
-                ease: "linear"
-              }}
-            >
-              {/* Double the array for seamless looping */}
-              {(Array.isArray(recentJobs) ? [...recentJobs.slice(0, 10), ...recentJobs.slice(0, 10)] : []).map((job, i) => (
-                <Link key={i} href="/explore" className="flex-shrink-0 w-[280px] sm:w-[350px] group p-6 sm:p-8 border border-white/5 bg-[#080808] hover:border-green-500/30 hover:bg-[#0a0a0a] transition-all relative overflow-hidden cursor-pointer block">
-                  <div className="flex items-center justify-between mb-4">
-                    <h4 className="text-xl font-bold tracking-tight text-white mb-4 line-clamp-1 truncate">{job.title}</h4>
-                  </div>
-
-                  <div className="flex items-center justify-between mb-8">
-                    <p className="font-mono text-[10px] text-[#444] uppercase tracking-widest">{timeAgo(job.date_posted)}</p>
-                    <div className="flex items-center gap-4 text-[10px] text-[#444] font-mono tracking-widest uppercase">
-                      <span>◇ {job.location_name.split(',')[0]}</span>
-                      <span>⟡ {job.site}</span>
-                    </div>
-                  </div>
-
-                  <div className="flex items-center justify-end border-t border-white/10 border-dashed pt-6 mt-6">
-                    <div className="font-mono text-[10px] text-[#444] uppercase tracking-widest">{job.is_remote ? 'REMOTE' : 'ON-SITE'}</div>
-                  </div>
-                </Link>
-              ))}
-            </motion.div>
-          </div>
-        </section>
-
-        {/* Sources Grid */}
-        <section className="px-6 sm:px-8 py-16 sm:py-24 mx-auto border-t border-white/40">
-          <div className="grid grid-cols-1 lg:grid-cols-3 gap-12 lg:gap-16">
-            <div className="lg:col-span-1">
-              <div className="flex items-center gap-4 mb-6 sm:mb-8">
-                <div className="h-px w-12 sm:w-20 bg-green-500" />
-                <span className="font-mono text-[10px] sm:text-xs text-green-500 tracking-widest uppercase">// SOURCES.PY</span>
-              </div>
-              <h2 className="text-xl sm:text-2xl font-black tracking-tight leading-tight uppercase max-w-xs">
-                We pull from twelve job boards. These are the busy ones.
-              </h2>
-            </div>
-
-            <div className="lg:col-span-2 grid grid-cols-2 md:grid-cols-3 gap-x-8 sm:gap-x-12 gap-y-8 sm:gap-y-12">
-              {[
-                { name: "LinkedIn", count: "184,392 live" },
-                { name: "Indeed", count: "92,118 live" },
-                { name: "Google", count: "61,540 live" },
-                { name: "Wellfound", count: "21,008 live" },
-                { name: "Zip Recruiter", count: "14,776 live" },
-                { name: "YC", count: "3,201 live" }
-              ].map((source, i) => (
-                <div key={i} className="flex flex-col gap-1 sm:gap-2 group cursor-default">
-                  <div className="text-xl sm:text-2xl font-bold tracking-tight text-white group-hover:text-green-500 transition-colors">{source.name}</div>
-                  <div className="font-mono text-[8px] sm:text-[10px] text-[#444] tracking-widest uppercase">{source.count}</div>
-                </div>
-              ))}
-            </div>
-          </div>
-        </section>
-
-        {/* Feature Spotlight: Portfolio Generation */}
-        <section className="px-6 py-16 sm:py-20 border-t border-white/40 bg-black relative overflow-hidden">
-          <div className="grid grid-cols-1 lg:grid-cols-2 gap-16 lg:gap-24 items-center">
-            <div>
-              <div className="flex items-center gap-4 mb-4">
-                <div className="h-px w-12 sm:w-20 bg-green-500" />
-                <span className="font-mono text-[10px] sm:text-xs text-green-500 tracking-widest uppercase">// PORTFOLIO.GEN</span>
-              </div>
-              <h2 className="text-3xl sm:text-5xl font-black tracking-tight mb-6 sm:mb-8 leading-[1.1]">
-                Your resume, <br />
-                as a <span className="text-serif font-normal italic lowercase text-green-500">website.</span>
-              </h2>
-              <p className="text-lg sm:text-xl text-[#888] leading-relaxed mb-8 sm:mb-10">
-                Kaamlee turns your resume into a <span className="text-white font-bold">public portfolio site</span> — a real link you can put on your LinkedIn, your resume header, or in an email signature. Pick a layout, pick a theme, publish.
-              </p>
-              <ul className="space-y-3 sm:space-y-4 mb-10">
-                {[
-                  "Classic and Bento layout templates",
-                  "Six accent themes, light or dark",
-                  "One-click public link, toggle anytime",
-                  "Built-in view analytics on your profile"
-                ].map((feature, i) => (
-                  <li key={i} className="flex items-center gap-3 text-xs sm:text-sm font-mono text-[#555] uppercase tracking-widest">
-                    <Zap className="text-green-500 w-3 h-3 sm:w-3.5 sm:h-3.5" />
-                    {feature}
-                  </li>
-                ))}
-              </ul>
-              <Link
-                href="/portfolio"
-                className="inline-flex items-center gap-2 bg-white text-black px-8 sm:px-10 py-4 sm:py-5 rounded-sm font-black uppercase tracking-widest text-xs sm:text-sm hover:bg-[#ededed] transition-all group w-fit"
-              >
-                Build my portfolio <ArrowRight size={16} className="group-hover:translate-x-1 transition-transform" />
-              </Link>
-            </div>
-
-            <motion.div
-              initial={{ opacity: 0, scale: 0.9 }}
-              whileInView={{ opacity: 1, scale: 1 }}
-              viewport={{ once: true }}
-              className="relative aspect-video rounded-2xl border border-white/5 bg-[#050505] p-4 sm:p-6 flex flex-col gap-3 sm:gap-4 group shadow-2xl"
-            >
-              <div className="flex items-center justify-between">
-                <div className="flex gap-2">
-                  <div className="w-1.5 sm:w-2 h-1.5 sm:h-2 rounded-full bg-red-500/20" />
-                  <div className="w-1.5 sm:w-2 h-1.5 sm:h-2 rounded-full bg-yellow-500/20" />
-                  <div className="w-1.5 sm:w-2 h-1.5 sm:h-2 rounded-full bg-green-500/20" />
-                </div>
-                <div className="flex-1 mx-4 sm:mx-8 h-5 sm:h-6 rounded-full bg-white/5 border border-white/10 flex items-center px-3 font-mono text-[8px] sm:text-[10px] text-[#666] truncate">
-                  kaamlee.com/p/your-name
-                </div>
-                <div className="px-1.5 sm:px-2 py-0.5 rounded bg-green-500/20 border border-green-500/30 text-[8px] sm:text-[10px] font-black text-green-500 uppercase tracking-widest shrink-0">Live</div>
-              </div>
-
-              <div className="flex-1 grid grid-cols-3 grid-rows-2 gap-2 sm:gap-3">
-                <div className="col-span-2 row-span-2 rounded-lg bg-white/5 border border-white/10 p-3 sm:p-4 flex flex-col justify-between group-hover:border-green-500/30 transition-all">
-                  <div className="w-8 h-8 sm:w-10 sm:h-10 rounded-full bg-gradient-to-br from-green-500 to-green-700" />
-                  <div className="space-y-1.5 sm:space-y-2">
-                    <div className="h-2.5 sm:h-3 w-2/3 bg-white/20 rounded" />
-                    <div className="h-1.5 sm:h-2 w-1/2 bg-white/10 rounded" />
-                  </div>
-                </div>
-                <div className="rounded-lg bg-white/5 border border-white/10 p-2 sm:p-3 flex items-center justify-center">
-                  <div className="h-1.5 sm:h-2 w-full bg-white/10 rounded" />
-                </div>
-                <div className="rounded-lg bg-green-500/10 border border-green-500/20 p-2 sm:p-3 flex items-center justify-center">
-                  <div className="h-1.5 sm:h-2 w-3/4 bg-green-500/30 rounded" />
-                </div>
-              </div>
-
-              <div className="flex gap-2">
-                {["Noir", "Minimal", "Bento"].map((theme, i) => (
-                  <div key={i} className={`px-2 sm:px-3 py-1 rounded-full text-[8px] sm:text-[9px] font-mono uppercase tracking-widest border ${i === 0 ? 'bg-green-500/10 border-green-500/30 text-green-500' : 'border-white/10 text-[#555]'}`}>
-                    {theme}
-                  </div>
-                ))}
-              </div>
-            </motion.div>
-          </div>
-        </section>
-
-        {/* Feature Spotlight: Custom CVs */}
-        <section className="px-6 py-16 sm:py-20 border-t border-white/40 bg-[#050505] relative overflow-hidden">
-          <div className="absolute top-1/2 left-1/2 -translate-x-1/2 -translate-y-1/2 w-[300px] sm:w-[600px] h-[300px] sm:h-[600px] bg-green-500/5 blur-[120px] rounded-full pointer-events-none" />
-
-          <div className="grid grid-cols-1 lg:grid-cols-2 gap-16 lg:gap-24 items-center">
-            <motion.div
-              initial={{ opacity: 0, scale: 0.9 }}
-              whileInView={{ opacity: 1, scale: 1 }}
-              viewport={{ once: true }}
-              className="relative aspect-video rounded-2xl border border-white/5 bg-black p-4 sm:p-6 flex flex-col gap-2 sm:gap-3 group shadow-2xl lg:order-1"
-            >
-              <div className="flex gap-1.5 mb-1 opacity-30 group-hover:opacity-100 transition-opacity">
-                <div className="w-1.5 h-1.5 rounded-full bg-red-500/50" />
-                <div className="w-1.5 h-1.5 rounded-full bg-yellow-500/50" />
-                <div className="w-1.5 h-1.5 rounded-full bg-green-500/50" />
-              </div>
-
-              {[
-                { role: "Senior Backend Engineer", tmpl: "ATS Optimized", score: 92, color: "text-green-400 border-green-500/30 bg-green-500/10" },
-                { role: "Product Manager, Growth", tmpl: "Modern", score: 68, color: "text-yellow-400 border-yellow-500/30 bg-yellow-500/10" },
-                { role: "Data Platform Lead", tmpl: "Classic", score: 41, color: "text-red-400 border-red-500/30 bg-red-500/10" }
-              ].map((cv, i) => (
-                <div key={i} className="flex items-center gap-3 sm:gap-4 p-2.5 sm:p-3 rounded-xl bg-white/5 border border-white/10 group-hover:border-green-500/30 transition-all">
-                  <div className="w-8 h-8 sm:w-10 sm:h-10 rounded-lg bg-green-500/10 flex items-center justify-center shrink-0">
-                    <FileText className="text-green-500 w-4 h-4 sm:w-5 sm:h-5" />
-                  </div>
-                  <div className="flex-1 min-w-0">
-                    <div className="text-[10px] sm:text-xs font-bold text-white truncate">{cv.role}</div>
-                    <div className="text-[8px] sm:text-[10px] font-mono text-[#555] uppercase tracking-widest">{cv.tmpl}</div>
-                  </div>
-                  <div className={`px-1.5 sm:px-2 py-0.5 rounded border text-[8px] sm:text-[10px] font-black uppercase tracking-widest whitespace-nowrap ${cv.color}`}>
-                    {cv.score}% ATS
-                  </div>
-                </div>
-              ))}
-            </motion.div>
-
-            <div className="lg:order-2">
-              <div className="flex items-center gap-4 mb-4">
-                <div className="h-px w-12 sm:w-20 bg-green-500" />
-                <span className="font-mono text-[10px] sm:text-xs text-green-500 tracking-widest uppercase">// CUSTOM_CV.AI</span>
-              </div>
-              <h2 className="text-3xl sm:text-5xl font-black tracking-tight mb-6 sm:mb-8 leading-[1.1]">
-                One resume isn't <span className="text-serif font-normal italic lowercase text-green-500">enough.</span>
-              </h2>
-              <p className="text-lg sm:text-xl text-[#888] leading-relaxed mb-8 sm:mb-10">
-                Generate a <span className="text-white font-bold">tailored CV for every role</span> you target. Each version is scored against the job description so you know exactly how it'll read to an ATS.
-              </p>
-              <ul className="space-y-3 sm:space-y-4 mb-10">
-                {[
-                  "Real-time ATS compatibility score",
-                  "Modern, Classic, or ATS-optimized templates",
-                  "Tailored per target role and keywords",
-                  "Unlimited versions, saved to your account"
-                ].map((feature, i) => (
-                  <li key={i} className="flex items-center gap-3 text-xs sm:text-sm font-mono text-[#555] uppercase tracking-widest">
-                    <Zap className="text-green-500 w-3 h-3 sm:w-3.5 sm:h-3.5" />
-                    {feature}
-                  </li>
-                ))}
-              </ul>
-              <Link
-                href="/custom-cv"
-                className="inline-flex items-center gap-2 bg-white text-black px-8 sm:px-10 py-4 sm:py-5 rounded-sm font-black uppercase tracking-widest text-xs sm:text-sm hover:bg-[#ededed] transition-all group w-fit"
-              >
-                Create a custom CV <ArrowRight size={16} className="group-hover:translate-x-1 transition-transform" />
-              </Link>
-            </div>
-          </div>
-        </section>
-
-        {/* Feature Spotlight: Kanban Tracker */}
-        <section className="px-6 py-16 sm:py-20 border-t border-white/40 bg-black relative overflow-hidden">
-          <div className="grid grid-cols-1 lg:grid-cols-2 gap-16 lg:gap-24 items-center">
-            <div>
-              <div className="flex items-center gap-4 mb-4">
-                <div className="h-px w-12 sm:w-20 bg-green-500" />
-                <span className="font-mono text-[10px] sm:text-xs text-green-500 tracking-widest uppercase">// TRACKER.BOARD</span>
-              </div>
-              <h2 className="text-3xl sm:text-5xl font-black tracking-tight mb-6 sm:mb-8 leading-[1.1]">
-                Your pipeline, <br />
-                on a <span className="text-serif font-normal italic lowercase text-green-500">board.</span>
-              </h2>
-              <p className="text-lg sm:text-xl text-[#888] leading-relaxed mb-8 sm:mb-10">
-                Every job you save or apply to lands on a <span className="text-white font-bold">drag-and-drop Kanban board</span>. Move cards from Saved to Applied to Interviewing to Offered — your whole search, at a glance.
-              </p>
-              <ul className="space-y-3 sm:space-y-4 mb-10">
-                {[
-                  "Saved → Applied → Interviewing → Offered",
-                  "Drag and drop status updates",
-                  "Auto-populated from bookmarked jobs",
-                  "One view for your entire job search"
-                ].map((feature, i) => (
-                  <li key={i} className="flex items-center gap-3 text-xs sm:text-sm font-mono text-[#555] uppercase tracking-widest">
-                    <Zap className="text-green-500 w-3 h-3 sm:w-3.5 sm:h-3.5" />
-                    {feature}
-                  </li>
-                ))}
-              </ul>
-              <Link
-                href="/applications"
-                className="inline-flex items-center gap-2 bg-white text-black px-8 sm:px-10 py-4 sm:py-5 rounded-sm font-black uppercase tracking-widest text-xs sm:text-sm hover:bg-[#ededed] transition-all group w-fit"
-              >
-                Open my board <ArrowRight size={16} className="group-hover:translate-x-1 transition-transform" />
-              </Link>
-            </div>
-
-            <motion.div
-              initial={{ opacity: 0, scale: 0.9 }}
-              whileInView={{ opacity: 1, scale: 1 }}
-              viewport={{ once: true }}
-              className="relative aspect-video rounded-2xl border border-white/5 bg-[#050505] p-4 sm:p-6 shadow-2xl group"
-            >
-              <div className="flex gap-1.5 mb-3 sm:mb-4 opacity-30 group-hover:opacity-100 transition-opacity">
-                <div className="w-1.5 h-1.5 rounded-full bg-red-500/50" />
-                <div className="w-1.5 h-1.5 rounded-full bg-yellow-500/50" />
-                <div className="w-1.5 h-1.5 rounded-full bg-green-500/50" />
-              </div>
-
-              <div className="grid grid-cols-4 gap-2 sm:gap-3 h-[calc(100%-1.5rem)]">
-                {[
-                  { label: "Saved", dot: "bg-[#666]", cards: 1 },
-                  { label: "Applied", dot: "bg-blue-400", cards: 2 },
-                  { label: "Interviewing", dot: "bg-amber-400", cards: 1, tilt: true },
-                  { label: "Offered", dot: "bg-green-400", cards: 1 }
-                ].map((col, i) => (
-                  <div key={i} className="flex flex-col gap-1.5 sm:gap-2 bg-white/[0.02] border border-white/5 rounded-lg p-1.5 sm:p-2">
-                    <div className="flex items-center gap-1 sm:gap-1.5 px-0.5">
-                      <span className={`w-1 h-1 sm:w-1.5 sm:h-1.5 rounded-full ${col.dot}`} />
-                      <span className="text-[6px] sm:text-[8px] font-mono uppercase tracking-widest text-[#555] truncate">{col.label}</span>
-                    </div>
-                    {Array.from({ length: col.cards }).map((_, j) => (
-                      <div
-                        key={j}
-                        className={`rounded-md bg-white/5 border border-white/10 p-1.5 sm:p-2 space-y-1 sm:space-y-1.5 ${col.tilt ? 'border-green-500/30 shadow-lg shadow-green-500/10 -rotate-2' : ''}`}
-                      >
-                        <div className="h-1 sm:h-1.5 w-full bg-white/20 rounded" />
-                        <div className="h-1 sm:h-1.5 w-2/3 bg-white/10 rounded" />
-                      </div>
-                    ))}
-                  </div>
-                ))}
-              </div>
-            </motion.div>
-          </div>
-        </section>
-
-        {/* New Feature Spotlight: AI Match */}
-        <section className="px-6 py-16 sm:py-20 border-t border-white/40 bg-[#050505] relative overflow-hidden">
-          <div className="absolute top-1/2 left-1/2 -translate-x-1/2 -translate-y-1/2 w-[300px] sm:w-[600px] h-[300px] sm:h-[600px] bg-green-500/5 blur-[120px] rounded-full pointer-events-none" />
-
-          <div className="grid grid-cols-1 lg:grid-cols-2 gap-16 lg:gap-24 items-center">
-            <motion.div
-              initial={{ opacity: 0, scale: 0.9 }}
-              whileInView={{ opacity: 1, scale: 1 }}
-              viewport={{ once: true }}
-              className="relative aspect-video rounded-2xl border border-white/5 bg-black p-4 sm:p-8 flex flex-col justify-center gap-4 sm:gap-6 group shadow-2xl"
-            >
-              <div className="absolute top-4 right-4 flex gap-2">
-                <div className="w-1.5 sm:w-2 h-1.5 sm:h-2 rounded-full bg-red-500/20" />
-                <div className="w-1.5 sm:w-2 h-1.5 sm:h-2 rounded-full bg-yellow-500/20" />
-                <div className="w-1.5 sm:w-2 h-1.5 sm:h-2 rounded-full bg-green-500/20" />
-              </div>
-
-              <div className="flex items-center gap-3 sm:gap-4 p-3 sm:p-4 rounded-xl bg-white/5 border border-white/10 group-hover:border-green-500/30 transition-all">
-                <div className="w-10 sm:w-12 h-10 sm:h-12 rounded-lg bg-green-500/10 flex items-center justify-center shrink-0">
-                  <Briefcase className="text-green-500 w-5 h-5 sm:w-6 sm:h-6" />
-                </div>
-                <div className="flex-1 min-w-0">
-                  <div className="flex items-center justify-between mb-1">
-                    <div className="h-3 sm:h-4 w-20 sm:w-32 bg-white/10 rounded animate-pulse" />
-                    <div className="px-1.5 sm:px-2 py-0.5 rounded bg-green-500/20 border border-green-500/30 text-[8px] sm:text-[10px] font-black text-green-500 uppercase tracking-widest whitespace-nowrap">89.4% Match</div>
-                  </div>
-                  <div className="h-2 sm:h-3 w-32 sm:w-48 bg-white/5 rounded animate-pulse" />
-                </div>
-              </div>
-
-              <div className="space-y-2 sm:space-y-3 opacity-50">
-                <div className="h-1.5 sm:h-2 w-full bg-white/5 rounded" />
-                <div className="h-1.5 sm:h-2 w-3/4 bg-white/5 rounded" />
-              </div>
-
-              <div className="absolute -bottom-4 -right-4 sm:-bottom-6 sm:-right-6 p-4 sm:p-6 rounded-2xl bg-green-600 shadow-2xl shadow-green-600/20 max-w-[150px] sm:max-w-[200px]">
-                <p className="text-[8px] sm:text-[10px] font-black uppercase tracking-widest text-white/60 mb-1 sm:mb-2">AI Engine Active</p>
-                <p className="text-[10px] sm:text-xs font-bold leading-relaxed text-white">Your resume was analyzed. We found 12 roles that match your DNA perfectly.</p>
-              </div>
-            </motion.div>
-
-            <div>
-              <div className="flex items-center gap-4 mb-4">
-                <div className="h-px w-12 sm:w-20 bg-green-500" />
-                <span className="font-mono text-[10px] sm:text-xs text-green-500 tracking-widest uppercase">// RESUME_AI.MOD</span>
-              </div>
-              <h2 className="text-3xl sm:text-5xl font-black tracking-tight mb-6 sm:mb-8 leading-[1.1]">
-                Stop guessing.<br />
-                Start <span className="text-serif font-normal italic lowercase text-green-500">matching.</span>
-              </h2>
-              <p className="text-lg sm:text-xl text-[#888] leading-relaxed mb-8 sm:mb-10">
-                Upload your resume once. Our AI parses your experience and calculates a <span className="text-white font-bold">real time match percentage</span> for every single listing on the map.
-              </p>
-              <ul className="space-y-3 sm:space-y-4">
-                {[
-                  "Semantic keyword analysis",
-                  "Job Title weighted matching",
-                  "Automated experience extraction",
-                  "Zero configuration setup"
-                ].map((feature, i) => (
-                  <li key={i} className="flex items-center gap-3 text-xs sm:text-sm font-mono text-[#555] uppercase tracking-widest">
-                    <Zap className="text-green-500 w-3 h-3 sm:w-3.5 sm:h-3.5" />
-                    {feature}
-                  </li>
-                ))}
-              </ul>
-            </div>
-          </div>
-        </section>
-
-        {/* Section 02: How it Works */}
-        <section className="px-6 md:px-8 py-20 border-t border-white/40 mx-auto">
-          <div className="flex items-center justify-between flex-wrap mb-16 gap-2">
-            <div className="flex items-center gap-4">
-              <div className="h-px w-12 bg-green-500" />
-              <span className="font-mono text-xs text-green-500 tracking-widest uppercase text-nowrap">// HOW_IT_WORKS.TS</span>
-            </div>
-            <div className="flex items-center gap-4">
-              <div className="w-2 h-2 rounded-full bg-green-500 animate-pulse" />
-              <span className="font-mono text-[10px] text-[#444] tracking-widest uppercase">THREE STEPS · ABOUT NINETY SECONDS</span>
-            </div>
-          </div>
-
-          <div className="grid grid-cols-1 md:grid-cols-3 gap-16">
-            {[
-              {
-                step: "01",
-                title: "We crawl, <span class='text-serif font-normal italic lowercase'>so you sleep.</span>",
-                desc: "Twelve job boards, polled every fifteen minutes. Listings are de-duped by hash, fingerprinted by company, and stamped the moment they go live.",
-                code: `<span class="text-white/40">$</span> kaamlee crawl --all\n<span class="text-green-500">↳</span> linkedin <span class="text-green-500">[✓]</span> 184,392\n<span class="text-green-500">↳</span> indeed <span class="text-green-500">[✓]</span> 92,118\n<span class="text-green-500">↳</span> google <span class="text-green-500">[✓]</span> 61,540\n<span class="text-green-500">↳</span> wellfound <span class="text-green-500 animate-pulse">[·]</span> crawling...`
-              },
-              {
-                step: "02",
-                title: "Open the <span class='text-serif font-normal italic lowercase'>map.</span>",
-                desc: "No infinite scroll, no fifteen filters. Pan, zoom, see roles plotted where they actually live. A search bar that doesn't talk back.",
-                code: `<span class="text-white/40">//</span> Loading map clusters...\n<span class="text-green-500">✓</span> 1,240 nodes resolved in NYC\n<span class="text-green-500">✓</span> 890 nodes resolved in London\n<span class="text-green-500">✓</span> UI Ready.`
-              },
-              {
-                step: "03",
-                title: "Apply <span class='text-serif font-normal italic lowercase'>before noon.</span>",
-                desc: "One click takes you to the source posting. We don't middleman the application — we just made the haystack smaller.",
-                code: `APPLY <span class="text-white/40">→</span> STRIPE.COM <span class="text-green-500">200 OK</span>\n<span class="text-white/10">--------------------------------------</span>\n<span class="text-green-500">↳</span> resume.pdf          <span class="text-green-500">↳</span> cover_letter.md\n\n<span class="text-green-500 font-bold">Confirmation in inbox.</span> Time elapsed: 11s`
-              }
-            ].map((item, i) => (
-              <div key={i} className="flex flex-col gap-8">
-                <div>
-                  <div className="font-mono text-[10px] text-green-500 font-bold uppercase tracking-widest mb-4">Step {item.step}</div>
-                  <h3 className="text-4xl font-black tracking-tight leading-[1.1] mb-6" dangerouslySetInnerHTML={{ __html: item.title }} />
-                  <p className="text-[#888] leading-relaxed text-sm mb-8">
-                    {item.desc}
-                  </p>
-                </div>
-
-                <div className="bg-[#050505] border border-white/5 p-6 rounded-sm font-mono text-[10px] leading-relaxed text-[#555] h-[180px] relative group">
-                  <div className="flex gap-1.5 mb-4 opacity-30 group-hover:opacity-100 transition-opacity">
-                    <div className="w-1.5 h-1.5 rounded-full bg-red-500/50" />
-                    <div className="w-1.5 h-1.5 rounded-full bg-yellow-500/50" />
-                    <div className="w-1.5 h-1.5 rounded-full bg-green-500/50" />
-                  </div>
-                  <pre className="whitespace-pre-wrap" dangerouslySetInnerHTML={{ __html: item.code }} />
-                </div>
-              </div>
-            ))}
-          </div>
-        </section>
-
-
-        {/* Section 04: FAQ */}
-        <section id="faq" className="px-6 sm:px-8 mx-auto mb-24">
-          <div className="flex items-center gap-4 mb-12">
-            <div className="h-px w-12 sm:w-20 bg-green-500" />
-            <span className="font-mono text-[10px] sm:text-xs text-green-500 tracking-widest uppercase">// FAQ.MD</span>
-          </div>
-
-          <div className="border-t border-white/10">
-            {[
-              {
-                q: "Where do these jobs actually come from?",
-                a: "We crawl twelve major job boards (LinkedIn, Indeed, ZipRecruiter, etc.) and direct company career pages every fifteen minutes. If it's live on the internet, it's on the map."
-              },
-              {
-                q: "Is Kaamlee in beta? Will the price change later?",
-                a: "Yes — we're in early beta. Right now, early access is priced at ₹49/mo or ₹99 for 3 months so you can get in and give us feedback while the product is still being shaped. As we roll out premium features (advanced filters, alerts, Auto apply, and more), future plans will start from ₹299/mo. Early access users who join now lock in the beta rate."
-              },
-              // { q: "Can I cancel my subscription easily?", a: "Yes. One click in your dashboard. No 'call us to cancel' loops. No hidden retention tricks. We're here to help you get a job, not hold you hostage." },
-              {
-                q: "How does full access work during beta?",
-                a: "During the beta period, all features are unlocked for every user on either the ₹49/mo or ₹99/3mo plan. As we roll out premium features (AI matching, Auto-apply, Resume builder, and more), we'll introduce plans starting from ₹299/mo — but we'll give you plenty of notice before anything changes."
-              },
-              {
-                q: "How does the AI Resume Matching work?",
-                a: "Once you upload your resume in your profile, our AI engine parses your technical skills, experience, and career history. It then performs a real-time semantic comparison against every job listing to give you a personalized match percentage, helping you prioritize the roles you're most likely to land."
-              },
-              {
-                q: "How fresh is the data on the map?",
-                a: "Our crawlers operate on a 15-minute refresh cycle. When a job is taken down or filled, it's purged from our system within the hour to ensure you're never applying to ghost listings."
-              },
-              {
-                q: "Can I use Kaamlee on my phone?",
-                a: "Yes. The platform is fully responsive and optimized for mobile browsers. You can scout the map while you're on the go, with all data synced to your desktop account."
-              }
-            ].map((faq, i) => (
-              <FAQItem
-                key={i}
-                faq={faq}
-                index={i}
-                isOpen={openFaqIndex === i}
-                onToggle={() => setOpenFaqIndex(openFaqIndex === i ? null : i)}
-              />
-            ))}
-          </div>
-        </section>
-
-        {/* Footer */}
-        <footer className="p-8 border-t border-white/40 bg-black relative">
-          <div className="mx-auto flex flex-col md:flex-row justify-between items-start md:items-end gap-16">
-            <div className="flex flex-col gap-6">
-              <div className="text-lg font-bold tracking-[0.3em] uppercase">KAAMLEE</div>
-              <p className="text-[#444] text-[10px] font-mono tracking-widest uppercase">
-                © 2026 KAAMLEE
-                {/* <br />
-                PAYMENTS BY RAZORPAY · HANDLED BY COMMHAWK */}
-              </p>
-            </div>
-
-            <div className="flex flex-col items-end gap-2 text-right self-end sm:self-auto">
-              <div className="flex items-center gap-4 mb-2">
-                <Link
-                  href="/terms"
-                  className="text-[10px] font-mono tracking-[0.2em] uppercase text-[#444] hover:text-white transition-colors"
-                >
-                  Terms
-                </Link>
-                <span className="text-[#333]">·</span>
-                <Link
-                  href="/privacy"
-                  className="text-[10px] font-mono tracking-[0.2em] uppercase text-[#444] hover:text-white transition-colors"
-                >
-                  Privacy
-                </Link>
-              </div>
               <a
-                href="https://commhawk.in/"
-                target="_blank"
-                rel="noopener noreferrer"
-                className="text-[10px] font-mono tracking-[0.2em] uppercase text-[#444] hover:text-white transition-colors flex items-center gap-2 group"
+                href="#jobs"
+                className="text-[16px] font-bold text-[#111827] bg-white border border-[#E5E7EB] px-7 py-4 rounded-[13px] shadow-[0_1px_2px_rgba(17,24,39,.05)] hover:bg-[#F8FAFC] transition-colors"
               >
-                with love <span className="text-white underline underline-offset-4">commhawk</span>
+                Explore jobs
               </a>
-              {/* <button
-                onClick={() => setIsTeamModalOpen(true)}
-                className="text-[10px] font-mono tracking-[0.2em] uppercase text-[#444] hover:text-green-500 transition-colors cursor-pointer group text-right"
-              >
-                developed by <span className="text-green-500 font-bold tracking-tighter group-hover:underline underline-offset-4">smtech</span>
-              </button> */}
             </div>
-          </div>
-        </footer>
-      </div>
 
-      <PricingModal isOpen={isPricingOpen} onClose={() => setIsPricingOpen(false)} />
+            <div className="mt-6 flex items-center justify-center gap-3">
+              <div className="flex">
+                <span className="w-[30px] h-[30px] rounded-full bg-[#DCFCE7] text-[#15803D] border-2 border-white grid place-items-center text-[11px] font-extrabold">AR</span>
+                <span className="w-[30px] h-[30px] rounded-full bg-[#E0F2FE] text-[#0369A1] border-2 border-white -ml-2 grid place-items-center text-[11px] font-extrabold">KM</span>
+                <span className="w-[30px] h-[30px] rounded-full bg-[#FEF3C7] text-[#B45309] border-2 border-white -ml-2 grid place-items-center text-[11px] font-extrabold">SD</span>
+                <span className="w-[30px] h-[30px] rounded-full bg-[#111827] text-white border-2 border-white -ml-2 grid place-items-center text-[10px] font-extrabold">+9k</span>
+              </div>
+              <span className="text-[14px] text-[#6B7280] font-medium">12,400 offers landed · free forever plan</span>
+            </div>
+          </motion.div>
+        </div>
 
-      <AnimatePresence>
-        {isTeamModalOpen && (
-          <div className="fixed inset-0 z-[100] flex items-center justify-center px-4">
-            <motion.div
-              initial={{ opacity: 0 }}
-              animate={{ opacity: 1 }}
-              exit={{ opacity: 0 }}
-              onClick={() => setIsTeamModalOpen(false)}
-              className="absolute inset-0 bg-black/80 backdrop-blur-md"
-            />
+        {/* Product shot */}
+        <div className="max-w-[1240px] mx-auto px-5 sm:px-8 mt-12 sm:mt-14 -mb-24 sm:-mb-[120px]">
+          <motion.div
+            initial={{ opacity: 0, scale: 0.98 }}
+            animate={{ opacity: 1, scale: 1 }}
+            transition={{ duration: 0.8, delay: 0.15 }}
+            className="border border-[#E5E7EB] rounded-[18px] bg-white shadow-[0_40px_80px_-40px_rgba(17,24,39,.35),0_2px_6px_rgba(17,24,39,.05)] overflow-hidden"
+          >
+            <div className="h-11 flex items-center gap-3.5 px-4 border-b border-[#E5E7EB] bg-[#F8FAFC]">
+              <div className="flex gap-1.5">
+                <span className="w-2.5 h-2.5 rounded-full bg-[#E5E7EB]" />
+                <span className="w-2.5 h-2.5 rounded-full bg-[#E5E7EB]" />
+                <span className="w-2.5 h-2.5 rounded-full bg-[#E5E7EB]" />
+              </div>
+              <div className="flex-1 max-w-[420px] mx-auto h-[26px] rounded-lg bg-white border border-[#E5E7EB] flex items-center justify-center font-code text-[11px] text-[#6B7280]">
+                kaamlee.com/map
+              </div>
+              <div className="w-16 hidden sm:block" />
+            </div>
 
-            <motion.div
-              initial={{ opacity: 0, scale: 0.9, y: 20 }}
-              animate={{ opacity: 1, scale: 1, y: 0 }}
-              exit={{ opacity: 0, scale: 0.9, y: 20 }}
-              className="relative w-full max-w-2xl bg-[#0a0a0a] border border-white/10 rounded-2xl overflow-hidden shadow-2xl"
-            >
-              <div className="absolute top-4 right-4 z-10">
-                <button
-                  onClick={() => setIsTeamModalOpen(false)}
-                  className="cursor-pointer p-2 hover:bg-white/5 rounded-full text-[#444] hover:text-white transition-all"
+            <div className="grid grid-cols-1 lg:grid-cols-[296px_1fr]">
+              <div className="border-b lg:border-b-0 lg:border-r border-[#E5E7EB] p-4 flex flex-col gap-3 bg-white">
+                <div className="flex items-center gap-2 border border-[#E5E7EB] rounded-[10px] px-3 py-2.5 text-[13px] font-semibold text-[#111827]">
+                  <Search className="w-[15px] h-[15px] text-[#9CA3AF]" />
+                  Frontend engineer · worldwide
+                </div>
+                <div className="flex gap-1.5 flex-wrap">
+                  <span className="text-[11px] font-bold text-[#15803D] bg-[#F0FDF4] border border-[#BBF7D0] px-2.5 py-1 rounded-full">0–2 yrs</span>
+                  <span className="text-[11px] font-bold text-[#374151] bg-[#F8FAFC] border border-[#E5E7EB] px-2.5 py-1 rounded-full">Remote ok</span>
+                  <span className="text-[11px] font-bold text-[#374151] bg-[#F8FAFC] border border-[#E5E7EB] px-2.5 py-1 rounded-full">₹12L+</span>
+                </div>
+                <div className="text-[11px] font-bold tracking-[0.08em] uppercase text-[#9CA3AF] mt-1">
+                  48,600 roles · 32 countries · 312 dupes removed
+                </div>
+
+                {[
+                  { name: 'Rz', color: AVATAR_COLORS[0], title: 'Frontend Engineer', meta: 'Razorpay · Bengaluru', badge: '94%', badgeStyle: 'text-[#15803D] bg-[#F0FDF4] border-[#BBF7D0]' },
+                  { name: 'Sw', color: AVATAR_COLORS[1], title: 'UI Engineer', meta: 'Swiggy · Gurugram', badge: '90%', badgeStyle: 'text-[#15803D] bg-[#F0FDF4] border-[#BBF7D0]' },
+                  { name: 'Zp', color: AVATAR_COLORS[2], title: 'Web Developer', meta: 'Zepto · Remote', badge: '71%', badgeStyle: 'text-[#B45309] bg-[#FFFBEB] border-[#FDE68A]' },
+                ].map((job, i) => (
+                  <div key={i} className="border border-[#E5E7EB] rounded-xl p-3 flex gap-2.5 items-start">
+                    <span className={`shrink-0 w-8 h-8 rounded-[9px] grid place-items-center text-[12px] font-extrabold ${job.color}`}>
+                      {job.name}
+                    </span>
+                    <div className="min-w-0 flex-1">
+                      <div className="text-[13px] font-extrabold tracking-[-0.01em] truncate">{job.title}</div>
+                      <div className="mt-0.5 text-[12px] text-[#6B7280] font-medium truncate">{job.meta}</div>
+                    </div>
+                    <span className={`shrink-0 text-[11px] font-extrabold px-1.5 py-0.5 rounded-full border ${job.badgeStyle}`}>
+                      {job.badge}
+                    </span>
+                  </div>
+                ))}
+
+                <div className="mt-auto pt-2 text-[12px] text-[#9CA3AF] font-semibold">Updated 2 minutes ago</div>
+              </div>
+
+              <div className="bg-[#F8FAFC] relative h-[360px] lg:h-[520px]">
+                <Mapcn
+                  center={[75, 20]}
+                  zoom={3}
+                  theme="light"
+                  className="w-full h-full"
+                  interactive={false}
+                  attributionControl={false}
                 >
-                  <X size={20} />
+                  {MAP_MARKERS.map((marker, i) => (
+                    <MapMarker key={i} longitude={marker.coords[0]} latitude={marker.coords[1]}>
+                      <MarkerContent>
+                        <div className="relative group/marker">
+                          <motion.div
+                            className="w-2 h-2 rounded-full bg-[#16A34A] shadow-[0_0_0_3px_rgba(22,163,74,.18)]"
+                            animate={{ opacity: [0.5, 1, 0.5], scale: [1, 1.25, 1] }}
+                            transition={{ duration: 2 + (i % 4) * 0.4, repeat: Infinity, ease: 'easeInOut', delay: (i % 5) * 0.3 }}
+                          />
+                          <div className="absolute left-full ml-2 top-1/2 -translate-y-1/2 bg-white border border-[#E5E7EB] shadow-sm px-2 py-0.5 rounded text-[10px] font-semibold text-[#374151] whitespace-nowrap opacity-0 group-hover/marker:opacity-100 transition-opacity pointer-events-none">
+                            {marker.tag}
+                          </div>
+                        </div>
+                      </MarkerContent>
+                    </MapMarker>
+                  ))}
+                </Mapcn>
+              </div>
+            </div>
+          </motion.div>
+        </div>
+        <div className="h-28 sm:h-[140px]" />
+      </section>
+
+      {/* Stats */}
+      <section className="bg-[#111827] text-white">
+        <div className="max-w-[1240px] mx-auto px-5 sm:px-8 py-9 grid grid-cols-2 lg:grid-cols-4 gap-y-8">
+          {[
+            { value: stats?.total_jobs?.toLocaleString() || '40,000+', label: 'Live jobs' },
+            { value: '50,000+', label: 'Companies' },
+            { value: '12+', label: 'Boards in one search' },
+            { value: '93%', label: 'Match accuracy', accent: true },
+          ].map((stat, i) => (
+            <div key={i} className={`px-0 lg:px-7 ${i > 0 ? 'lg:border-l lg:border-[#1F2937]' : ''}`}>
+              <div className={`text-[30px] sm:text-[34px] font-bold tracking-[-0.03em] font-display ${stat.accent ? 'text-[#4ADE80]' : ''}`}>
+                {stat.value}
+              </div>
+              <div className="mt-0.5 text-[14px] text-[#9CA3AF] font-medium">{stat.label}</div>
+            </div>
+          ))}
+        </div>
+      </section>
+
+      {/* Trust strip */}
+      <section className="border-b border-[#E5E7EB]">
+        <div className="max-w-[1240px] mx-auto px-5 sm:px-8 py-10 flex items-center justify-center gap-3.5">
+          <span className="w-[7px] h-[7px] rounded-full bg-[#16A34A] shadow-[0_0_0_3px_rgba(22,163,74,.18)]" />
+          <span className="text-[22px] font-bold tracking-[-0.025em] text-[#111827] font-display">Seize the opportunity like many others have already.</span>
+        </div>
+      </section>
+
+      {/* Fresh jobs */}
+      <section id="jobs" className="max-w-[1240px] mx-auto px-5 sm:px-8 py-16 sm:py-[84px]">
+        <div className="flex flex-col sm:flex-row sm:items-end sm:justify-between gap-6">
+          <div>
+            <span className="inline-block border-l-[3px] border-[#16A34A] pl-2.5 text-[13px] font-bold tracking-[0.08em] uppercase text-[#16A34A]">Fresh today</span>
+            <h2 className="mt-4 text-[32px] sm:text-[40px] font-bold tracking-[-0.04em] font-display">Roles posted in the last 24 hours</h2>
+          </div>
+          <button
+            onClick={handleExploreClick}
+            className="cursor-pointer shrink-0 text-[15px] font-bold text-[#111827] border border-[#E5E7EB] px-5 py-3 rounded-xl hover:bg-[#F8FAFC] transition-colors w-fit"
+          >
+            View all jobs →
+          </button>
+        </div>
+
+        <div className="mt-7 flex flex-col gap-2.5">
+          {featuredJobs.length === 0 && (
+            <div className="border border-dashed border-[#E5E7EB] rounded-2xl p-8 text-center text-[15px] text-[#6B7280]">
+              Loading the latest roles…
+            </div>
+          )}
+
+          {featuredJobs.map((job: any, i: number) => (
+            <div
+              key={i}
+              className="flex flex-col sm:flex-row sm:items-center gap-4 sm:gap-5 bg-white border border-[#E5E7EB] rounded-2xl p-5 sm:px-[22px] hover:border-[#16A34A] hover:shadow-[0_18px_36px_-24px_rgba(22,163,74,.6)] hover:-translate-y-0.5 transition-all"
+            >
+              <div className={`shrink-0 w-[50px] h-[50px] rounded-[14px] grid place-items-center font-extrabold text-[17px] ${AVATAR_COLORS[i % AVATAR_COLORS.length]}`}>
+                {initials(job.company_name || job.title || '')}
+              </div>
+
+              <div className="flex-1 min-w-0">
+                <div className="flex items-center gap-2.5 flex-wrap">
+                  <span className="text-[17px] sm:text-[18px] font-extrabold tracking-[-0.02em]">{job.title}</span>
+                  {job.is_remote && (
+                    <span className="text-[12px] font-extrabold text-[#15803D] bg-[#F0FDF4] border border-[#BBF7D0] px-2 py-0.5 rounded-full">Remote</span>
+                  )}
+                </div>
+                <div className="mt-1 text-[15px] text-[#6B7280] font-medium">
+                  {job.company_name ? `${job.company_name} · ` : ''}{job.location_name?.split(',')[0] || 'India'} · via {job.site}
+                </div>
+                <div className="mt-2.5 flex gap-2 flex-wrap">
+                  <span className="text-[13px] font-semibold text-[#374151] bg-[#F8FAFC] border border-[#E5E7EB] px-2.5 py-1 rounded-full">{job.site}</span>
+                  <span className="text-[13px] font-semibold text-[#374151] bg-[#F8FAFC] border border-[#E5E7EB] px-2.5 py-1 rounded-full">
+                    {job.is_remote ? 'Work from anywhere' : 'On-site / hybrid'}
+                  </span>
+                </div>
+              </div>
+
+              <div className="shrink-0 flex sm:flex-col items-center sm:items-end gap-3">
+                <span className="text-[13px] text-[#9CA3AF] font-semibold">{timeAgo(job.date_posted)}</span>
+                <button
+                  onClick={handleExploreClick}
+                  className="cursor-pointer text-[15px] font-bold text-white bg-[#111827] px-5 py-2.5 rounded-[11px] hover:bg-[#16A34A] transition-colors"
+                >
+                  Apply
                 </button>
               </div>
+            </div>
+          ))}
+        </div>
+      </section>
 
-              <div className="p-8 sm:p-12">
-                <div className="my-8 text-center">
-                  <div className="font-mono text-[10px] text-green-500 tracking-[0.3em] uppercase mb-3">// THE_ENGINEERS</div>
-                  <div className="h-px w-20 bg-green-500 mx-auto mt-4" />
+      {/* Features */}
+      <section id="features" className="bg-[#F8FAFC] border-y border-[#E5E7EB]">
+        <div className="max-w-[1240px] mx-auto px-5 sm:px-8 pt-20 sm:pt-24 pb-10">
+          <div className="max-w-[680px]">
+            <span className="inline-block border-l-[3px] border-[#16A34A] pl-2.5 text-[13px] font-bold tracking-[0.08em] uppercase text-[#16A34A]">The workspace</span>
+            <h2 className="mt-4 text-[38px] sm:text-[52px] leading-[1.02] font-bold tracking-[-0.045em] font-display">
+              Everything you need to get hired faster.
+            </h2>
+            <p className="mt-4 text-[18px] sm:text-[19px] leading-[1.6] text-[#6B7280]">
+              Three tools do most of the work — flip through them. Five more fill in the gaps.
+            </p>
+          </div>
+        </div>
+
+        <div className="max-w-[1240px] mx-auto px-5 sm:px-8 pt-2 flex items-center gap-2.5 overflow-x-auto no-scrollbar">
+          {['01 — Resume match', '02 — Tracker', '03 — Portfolio'].map((label, i) => (
+            <button
+              key={i}
+              type="button"
+              onClick={() => setFeatureTab(i)}
+              className={`shrink-0 font-sans text-[13px] font-extrabold tracking-[0.06em] uppercase px-4.5 py-3 rounded-full border transition-all cursor-pointer ${featureTab === i
+                ? 'border-[#16A34A] bg-[#16A34A] text-white'
+                : 'border-[#E5E7EB] bg-white text-[#6B7280] hover:text-[#111827]'
+                }`}
+            >
+              {label}
+            </button>
+          ))}
+          <div className="ml-auto flex gap-2">
+            <button
+              type="button"
+              onClick={() => setFeatureTab((t) => (t + 2) % 3)}
+              aria-label="Previous"
+              className="cursor-pointer w-10 h-10 rounded-[11px] border border-[#E5E7EB] bg-white text-[#111827] text-[16px] font-bold hover:bg-[#F8FAFC] transition-colors"
+            >
+              ←
+            </button>
+            <button
+              type="button"
+              onClick={() => setFeatureTab((t) => (t + 1) % 3)}
+              aria-label="Next"
+              className="cursor-pointer w-10 h-10 rounded-[11px] border border-[#E5E7EB] bg-white text-[#111827] text-[16px] font-bold hover:bg-[#F8FAFC] transition-colors"
+            >
+              →
+            </button>
+          </div>
+        </div>
+
+        {/* 01 Resume match */}
+        {featureTab === 0 && (
+        <div className="max-w-[1240px] mx-auto px-5 sm:px-8 pt-8 pb-10 grid grid-cols-1 lg:grid-cols-[1fr_1.15fr] gap-12 lg:gap-[72px] items-center">
+          <div>
+            <span className="text-[13px] font-bold tracking-[0.08em] uppercase text-[#16A34A]">01 — Resume match</span>
+            <h3 className="mt-3.5 text-[30px] sm:text-[38px] leading-[1.08] font-bold tracking-[-0.035em] font-display">Know your score before you apply.</h3>
+            <p className="mt-3.5 text-[17px] leading-[1.65] text-[#6B7280] max-w-[460px]">
+              Upload your resume once. Every listing gets a match percentage and a plain-English list of what&apos;s missing — so you spend your evenings on the jobs you can actually win.
+            </p>
+            <div className="mt-5 flex flex-col gap-2.5">
+              {['Scored against the real job description', 'Tells you the exact skills to add', 'Works on every job, not just ours'].map((item, i) => (
+                <div key={i} className="flex items-center gap-2.5 text-[15px] font-semibold text-[#374151]">
+                  <Check className="w-4 h-4 text-[#16A34A]" strokeWidth={3} /> {item}
                 </div>
+              ))}
+            </div>
+            <Link href="/profile" className="inline-block mt-6 text-[15px] font-bold text-white bg-[#111827] px-5 py-3 rounded-xl hover:bg-[#16A34A] transition-colors">
+              Check my match →
+            </Link>
+          </div>
 
-                <div className="grid grid-cols-1 md:grid-cols-3 gap-2">
-                  {[
-                    { name: 'Satya', linkedin: 'https://www.linkedin.com/in/satyakant-mishra-958847203/' },
-                    { name: 'Mayank', linkedin: 'https://www.linkedin.com/in/pruthimayank/' },
-                    { name: 'Rajat', linkedin: 'https://www.linkedin.com/in/rajat-kumar-dabas/' }
-                  ].map((member, i) => (
-                    <motion.div
-                      key={i}
-                      initial={{ opacity: 0, y: 10 }}
-                      animate={{ opacity: 1, y: 0 }}
-                      transition={{ delay: i * 0.1 }}
-                      className="group p-6 text-center"
-                    >
-                      <div className="text-lg font-bold text-white mb-1">{member.name}</div>
-                      <a href={member.linkedin} target="_blank" rel="noopener noreferrer" className="text-[10px] font-mono uppercase tracking-widest text-[#444] cursor-pointer hover:text-green-500 hover:underline transition-all">linkedin</a>
-                    </motion.div>
-                  ))}
-                </div>
-
-                <div className="mt-12 pt-8 border-t border-white/5 text-center">
-                  <p className="text-xs text-[#444] leading-relaxed max-w-sm mx-auto">
-                    Wasn't that a lot of work?
-                  </p>
+          <div className="bg-white border border-[#E5E7EB] rounded-[18px] p-6 shadow-[0_30px_60px_-40px_rgba(17,24,39,.4)]">
+            <div className="flex items-center gap-5">
+              <div
+                className="shrink-0 w-28 h-28 rounded-full grid place-items-center"
+                style={{ background: 'conic-gradient(#16A34A 0% 92%, #E5E7EB 92% 100%)' }}
+              >
+                <div className="w-[86px] h-[86px] rounded-full bg-white grid place-items-center text-center">
+                  <div>
+                    <div className="text-[26px] font-extrabold tracking-[-0.03em] font-display">92%</div>
+                    <div className="text-[10px] font-bold tracking-[0.06em] uppercase text-[#9CA3AF]">match</div>
+                  </div>
                 </div>
               </div>
-            </motion.div>
-          </div>
-        )}
-      </AnimatePresence>
+              <div className="min-w-0">
+                <div className="text-[17px] font-extrabold tracking-[-0.02em]">Frontend Engineer, Checkout</div>
+                <div className="mt-1 text-[14px] text-[#6B7280] font-medium">resume-v3.pdf</div>
+                <div className="mt-3 flex gap-1.5 flex-wrap">
+                  <span className="text-[12px] font-bold text-[#15803D] bg-[#F0FDF4] border border-[#BBF7D0] px-2.5 py-1 rounded-full">React ✓</span>
+                  <span className="text-[12px] font-bold text-[#15803D] bg-[#F0FDF4] border border-[#BBF7D0] px-2.5 py-1 rounded-full">TypeScript ✓</span>
+                  <span className="text-[12px] font-bold text-[#B45309] bg-[#FFFBEB] border border-[#FDE68A] px-2.5 py-1 rounded-full">GraphQL — missing</span>
+                </div>
+              </div>
+            </div>
 
-      <style jsx global>{`
-        @import url('https://fonts.googleapis.com/css2?family=Playfair+Display:ital@1&display=swap');
-        
-        .text-serif {
-          font-family: 'Playfair Display', serif;
-        }
-      `}</style>
+            <div className="mt-5 border-t border-[#F1F5F9] pt-4 flex flex-col gap-3.5">
+              {[
+                { label: 'Skills overlap', value: 94, color: '#16A34A', text: 'text-[#16A34A]' },
+                { label: 'Experience fit', value: 88, color: '#16A34A', text: 'text-[#16A34A]' },
+                { label: 'Keyword coverage', value: 64, color: '#F59E0B', text: 'text-[#B45309]' },
+              ].map((bar, i) => (
+                <div key={i}>
+                  <div className="flex justify-between text-[13px] font-bold">
+                    <span>{bar.label}</span>
+                    <span className={bar.text}>{bar.value}%</span>
+                  </div>
+                  <div className="mt-1.5 h-[7px] rounded-full bg-[#F1F5F9]">
+                    <div className="h-full rounded-full" style={{ width: `${bar.value}%`, background: bar.color }} />
+                  </div>
+                </div>
+              ))}
+            </div>
+          </div>
+        </div>
+        )}
+
+        {/* 02 Tracker */}
+        {featureTab === 1 && (
+        <div className="max-w-[1240px] mx-auto px-5 sm:px-8 pt-8 py-10 grid grid-cols-1 lg:grid-cols-[1.15fr_1fr] gap-12 lg:gap-[72px] items-center">
+          <div className="bg-[#111827] rounded-[18px] p-5 shadow-[0_30px_60px_-40px_rgba(17,24,39,.6)] order-2 lg:order-1">
+            <div className="flex items-center justify-between px-1.5 pb-4">
+              <span className="text-[13px] font-bold text-white">My applications</span>
+              <span className="text-[12px] font-semibold text-[#9CA3AF]">18 active</span>
+            </div>
+            <div className="grid grid-cols-4 gap-2.5">
+              {[
+                { label: 'Saved · 6', cards: [['Meesho', 'SDE-1'], ['Cred', 'Frontend']] },
+                { label: 'Applied · 8', cards: [['Razorpay', 'Checkout'], ['Zepto', 'Design intern'], ['Swiggy', 'Analyst']] },
+                { label: 'Interview · 3', cards: [['PhonePe', 'Round 2 · Fri']], highlight: true },
+                { label: 'Offer · 1', cards: [['Groww', '₹22 LPA']], offer: true },
+              ].map((col, i) => (
+                <div key={i} className="bg-[#1F2937] rounded-xl p-2 sm:p-3 flex flex-col gap-2 min-h-[180px]">
+                  <div className="text-[9px] sm:text-[10px] font-extrabold tracking-[0.06em] uppercase text-[#9CA3AF]">{col.label}</div>
+                  {col.cards.map(([name, meta], j) => (
+                    <div
+                      key={j}
+                      className={`rounded-[9px] p-2 border ${col.offer
+                        ? 'bg-[#052E16] border-[#16A34A]'
+                        : col.highlight
+                          ? 'bg-[#111827] border-[#16A34A] shadow-[0_0_0_3px_rgba(22,163,74,.18)]'
+                          : 'bg-[#111827] border-[#374151]'
+                        }`}
+                    >
+                      <div className="text-[10px] sm:text-[11px] font-bold text-white truncate">{name}</div>
+                      <div className={`mt-0.5 text-[9px] sm:text-[10px] truncate ${col.offer || col.highlight ? 'text-[#4ADE80]' : 'text-[#9CA3AF]'}`}>{meta}</div>
+                    </div>
+                  ))}
+                </div>
+              ))}
+            </div>
+          </div>
+
+          <div className="order-1 lg:order-2">
+            <span className="text-[13px] font-bold tracking-[0.08em] uppercase text-[#16A34A]">02 — Tracker</span>
+            <h3 className="mt-3.5 text-[30px] sm:text-[38px] leading-[1.08] font-bold tracking-[-0.035em] font-display">Track every application on one board.</h3>
+            <p className="mt-3.5 text-[17px] leading-[1.65] text-[#6B7280] max-w-[460px]">
+              Saved, applied, interviewing, offered. Cards appear the moment you apply, so you never lose a thread — or forget who owes you a reply.
+            </p>
+            <div className="mt-5 flex flex-col gap-2.5">
+              {['Auto-populated from jobs you apply to', 'Drag cards to update status', 'Interview reminders before the day'].map((item, i) => (
+                <div key={i} className="flex items-center gap-2.5 text-[15px] font-semibold text-[#374151]">
+                  <Check className="w-4 h-4 text-[#16A34A]" strokeWidth={3} /> {item}
+                </div>
+              ))}
+            </div>
+            <Link href="/applications" className="inline-block mt-6 text-[15px] font-bold text-white bg-[#111827] px-5 py-3 rounded-xl hover:bg-[#16A34A] transition-colors">
+              See my board →
+            </Link>
+          </div>
+        </div>
+        )}
+
+        {/* 03 Portfolio */}
+        {featureTab === 2 && (
+        <div className="max-w-[1240px] mx-auto px-5 sm:px-8 pt-8 py-10 pb-20 sm:pb-[88px] grid grid-cols-1 lg:grid-cols-[1fr_1.15fr] gap-12 lg:gap-[72px] items-center">
+          <div>
+            <span className="text-[13px] font-bold tracking-[0.08em] uppercase text-[#16A34A]">03 — Portfolio</span>
+            <h3 className="mt-3.5 text-[30px] sm:text-[38px] leading-[1.08] font-bold tracking-[-0.035em] font-display">Your resume, as a website.</h3>
+            <p className="mt-3.5 text-[17px] leading-[1.65] text-[#6B7280] max-w-[460px]">
+              One click turns your resume into a live personal site with its own link — the thing recruiters actually click from your LinkedIn.
+            </p>
+            <div className="mt-5 flex flex-col gap-2.5">
+              {['kaamlee.com/p/your-name', 'Six themes, light or dark', 'See who viewed it'].map((item, i) => (
+                <div key={i} className="flex items-center gap-2.5 text-[15px] font-semibold text-[#374151]">
+                  <Check className="w-4 h-4 text-[#16A34A]" strokeWidth={3} /> {item}
+                </div>
+              ))}
+            </div>
+            <Link href="/portfolio" className="inline-block mt-6 text-[15px] font-bold text-white bg-[#111827] px-5 py-3 rounded-xl hover:bg-[#16A34A] transition-colors">
+              Build my site →
+            </Link>
+          </div>
+
+          <div className="border border-[#E5E7EB] rounded-[18px] overflow-hidden bg-white shadow-[0_30px_60px_-40px_rgba(17,24,39,.4)]">
+            <div className="h-[38px] flex items-center gap-3 px-3.5 border-b border-[#E5E7EB] bg-[#F8FAFC]">
+              <div className="flex gap-1.5">
+                <span className="w-[9px] h-[9px] rounded-full bg-[#E5E7EB]" />
+                <span className="w-[9px] h-[9px] rounded-full bg-[#E5E7EB]" />
+                <span className="w-[9px] h-[9px] rounded-full bg-[#E5E7EB]" />
+              </div>
+              <div className="flex-1 h-[22px] rounded-[7px] bg-white border border-[#E5E7EB] flex items-center px-2.5 font-code text-[10px] text-[#6B7280] truncate">
+                kaamlee.com/p/ananya
+              </div>
+              <span className="text-[10px] font-extrabold text-[#15803D] bg-[#F0FDF4] border border-[#BBF7D0] px-1.5 py-0.5 rounded">LIVE</span>
+            </div>
+            <div className="p-6">
+              <div className="flex items-center gap-3.5">
+                <span className="w-[52px] h-[52px] rounded-full bg-[#DCFCE7] text-[#15803D] grid place-items-center text-[17px] font-extrabold">AR</span>
+                <div>
+                  <div className="text-[20px] font-extrabold tracking-[-0.025em]">Ananya Rao</div>
+                  <div className="mt-0.5 text-[14px] text-[#6B7280] font-medium">Frontend engineer · Bengaluru</div>
+                </div>
+              </div>
+              <div className="mt-5 grid grid-cols-1 sm:grid-cols-2 gap-2.5">
+                <div className="border border-[#E5E7EB] rounded-xl p-3.5">
+                  <div className="text-[11px] font-extrabold tracking-[0.06em] uppercase text-[#9CA3AF]">Experience</div>
+                  <div className="mt-2 text-[14px] font-bold">Razorpay · SDE Intern</div>
+                  <div className="mt-0.5 text-[13px] text-[#6B7280]">2025 — present</div>
+                </div>
+                <div className="border border-[#E5E7EB] rounded-xl p-3.5">
+                  <div className="text-[11px] font-extrabold tracking-[0.06em] uppercase text-[#9CA3AF]">Projects</div>
+                  <div className="mt-2 text-[14px] font-bold">Campus Ledger</div>
+                  <div className="mt-0.5 text-[13px] text-[#6B7280]">React · Postgres</div>
+                </div>
+                <div className="sm:col-span-2 bg-[#F0FDF4] border border-[#BBF7D0] rounded-xl p-3.5 flex items-center justify-between">
+                  <span className="text-[14px] font-bold text-[#15803D]">Profile views this week</span>
+                  <span className="text-[20px] font-extrabold text-[#16A34A] tracking-[-0.02em]">248</span>
+                </div>
+              </div>
+            </div>
+          </div>
+        </div>
+        )}
+
+        {/* Small features */}
+        <div className="max-w-[1240px] mx-auto px-5 sm:px-8 pb-20 sm:pb-24">
+          <div className="border-t border-[#E5E7EB] pt-11 grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-5 gap-3.5">
+            {[
+              { icon: LucideMap, title: 'Find jobs on a live map', desc: "See who's hiring near you." },
+              { icon: FileCheck, title: 'Beat the Resume Bots', desc: 'ATS checks catch what quietly gets you rejected.' },
+              { icon: PenLine, title: 'Write a resume that fits', desc: 'Tailor a fresh version as the role demands.' },
+              { icon: Building2, title: 'Know the company first', desc: 'Salary, team size and interview rounds up front.' },
+              { icon: Bell, title: "Alerts the minute it's posted", desc: 'Be early, before applications pile up.' },
+            ].map((f, i) => (
+              <div key={i} className="bg-white border border-[#E5E7EB] rounded-2xl p-[22px] flex flex-col gap-2.5 hover:border-[#16A34A] hover:-translate-y-0.5 transition-all">
+                <span className="w-[38px] h-[38px] rounded-[11px] bg-[#F0FDF4] text-[#16A34A] grid place-items-center">
+                  <f.icon className="w-[19px] h-[19px]" strokeWidth={1.75} />
+                </span>
+                <h3 className="text-[16px] font-extrabold tracking-[-0.02em]">{f.title}</h3>
+                <p className="text-[14px] leading-[1.5] text-[#6B7280]">{f.desc}</p>
+              </div>
+            ))}
+          </div>
+        </div>
+      </section>
+
+      {/* How it works */}
+      <section
+        id="how"
+        className="bg-[#0B1220] text-white"
+        style={{ backgroundImage: 'radial-gradient(60% 60% at 20% 0%, rgba(22,163,74,.18) 0%, rgba(22,163,74,0) 60%)' }}
+      >
+        <div className="max-w-[1400px] mx-auto px-5 sm:px-8 py-20 sm:py-24">
+          <div className="flex flex-col sm:flex-row sm:items-end sm:justify-between gap-6">
+            <div className="max-w-[620px]">
+              <span className="inline-block border-l-[3px] border-[#4ADE80] pl-2.5 text-[13px] font-bold tracking-[0.08em] uppercase text-[#4ADE80]">How it works</span>
+              <h2 className="mt-4 text-[38px] sm:text-[52px] leading-[1.02] font-bold tracking-[-0.045em] font-display">Three steps. About ninety seconds.</h2>
+            </div>
+            <span className="shrink-0 font-code text-[12px] text-[#6B7280] tracking-[0.06em]">NO CREDIT CARD</span>
+          </div>
+
+          <div className="mt-12 grid grid-cols-1 lg:grid-cols-3 gap-5">
+            <div className="border border-[#1F2937] rounded-[18px] p-7 bg-white/[0.02]">
+              <div className="flex items-center gap-3">
+                <span className="w-8 h-8 rounded-full bg-[#16A34A] text-white grid place-items-center font-extrabold text-[14px]">1</span>
+                <span className="text-[12px] font-extrabold tracking-[0.08em] uppercase text-[#6B7280]">Search jobs</span>
+              </div>
+              <h3 className="mt-5 text-[26px] font-bold tracking-[-0.03em] font-display">One search, twelve boards.</h3>
+              <p className="mt-3 text-[16px] leading-[1.6] text-[#9CA3AF]">
+                We&apos;ve already crawled LinkedIn, Indeed, Wellfound and nine more — and removed the duplicates.
+              </p>
+              <div className="mt-6 border border-[#1F2937] rounded-xl p-3.5 font-code text-[12px] text-[#6B7280] leading-[1.9]">
+                <div className="text-[#4ADE80]">$ kaamlee search &quot;frontend&quot;</div>
+                <div>1,240 roles · 312 dupes removed</div>
+                <div>12 boards · 15 min freshness</div>
+              </div>
+            </div>
+
+            <div className="border border-[#1F2937] rounded-[18px] p-7 bg-white/[0.02]">
+              <div className="flex items-center gap-3">
+                <span className="w-8 h-8 rounded-full bg-[#16A34A] text-white grid place-items-center font-extrabold text-[14px]">2</span>
+                <span className="text-[12px] font-extrabold tracking-[0.08em] uppercase text-[#6B7280]">Upload resume</span>
+              </div>
+              <h3 className="mt-5 text-[26px] font-bold tracking-[-0.03em] font-display">Upload once. Scored forever.</h3>
+              <p className="mt-3 text-[16px] leading-[1.6] text-[#9CA3AF]">
+                Drop your PDF and every job instantly shows a match score and the skills you&apos;re missing.
+              </p>
+              <div className="mt-6 border border-[#1F2937] rounded-xl p-3.5">
+                <div className="flex justify-between text-[13px] font-bold">
+                  <span>resume.pdf</span>
+                  <span className="text-[#4ADE80]">92%</span>
+                </div>
+                <div className="mt-2.5 h-[7px] rounded-full bg-[#1F2937]">
+                  <div className="h-full w-[92%] rounded-full bg-[#16A34A]" />
+                </div>
+                <div className="mt-3 text-[12px] text-[#6B7280] font-medium">Add &quot;GraphQL&quot; to reach 97%.</div>
+              </div>
+            </div>
+
+            <div className="border border-[#1F2937] rounded-[18px] p-7 bg-white/[0.02]">
+              <div className="flex items-center gap-3">
+                <span className="w-8 h-8 rounded-full bg-[#16A34A] text-white grid place-items-center font-extrabold text-[14px]">3</span>
+                <span className="text-[12px] font-extrabold tracking-[0.08em] uppercase text-[#6B7280]">Apply smarter</span>
+              </div>
+              <h3 className="mt-5 text-[26px] font-bold tracking-[-0.03em] font-display">Apply, then stop worrying.</h3>
+              <p className="mt-3 text-[16px] leading-[1.6] text-[#9CA3AF]">
+                One click takes you to the real posting, and the application lands on your tracker automatically.
+              </p>
+              <div className="mt-6 grid grid-cols-4 gap-2">
+                {['SAVED', 'APPLIED', 'INTERVIEW', 'OFFER'].map((label, i) => (
+                  <div
+                    key={i}
+                    className={`rounded-[10px] py-2.5 px-1.5 text-center text-[9px] sm:text-[10px] font-extrabold border ${i === 3 ? 'border-[#16A34A] bg-[#052E16] text-[#4ADE80]' : 'border-[#1F2937] text-[#6B7280]'
+                      }`}
+                  >
+                    {label}
+                  </div>
+                ))}
+              </div>
+            </div>
+          </div>
+        </div>
+      </section>
+
+      {/* Comparison */}
+      <section className="max-w-[1040px] mx-auto px-5 sm:px-8 py-20 sm:py-24">
+        <div className="text-center max-w-[640px] mx-auto">
+          <span className="inline-block border-l-[3px] border-[#16A34A] pl-2.5 text-[13px] font-bold tracking-[0.08em] uppercase text-[#16A34A]">Why Kaamlee</span>
+          <h2 className="mt-4 text-[34px] sm:text-[48px] leading-[1.04] font-bold tracking-[-0.045em] font-display">
+            A job board finds jobs. Kaamlee gets you hired.
+          </h2>
+        </div>
+
+        <div className="mt-11 border border-[#E5E7EB] rounded-[20px] overflow-hidden shadow-[0_1px_2px_rgba(17,24,39,.04)]">
+          <div className="grid grid-cols-[1.5fr_1fr_1fr] items-center px-5 sm:px-7 py-4.5 border-b border-[#E5E7EB]">
+            <span className="text-[12px] font-extrabold tracking-[0.08em] uppercase text-[#9CA3AF]">What you get</span>
+            <span className="text-center text-[13px] sm:text-[15px] font-semibold text-[#6B7280]">Traditional boards</span>
+            <span className="text-center text-[13px] sm:text-[15px] font-extrabold text-[#16A34A]">Kaamlee</span>
+          </div>
+          {[
+            ['One search across every board', null],
+            ['AI match score on every job', null],
+            ['Live job map', null],
+            ['Application tracking', 'Your spreadsheet'],
+            ['Resume website', null],
+            ['ATS optimisation', 'Paid add-on'],
+            ['Instant job alerts', 'Daily digest'],
+          ].map(([label, theirs], i) => (
+            <div
+              key={i}
+              className={`grid grid-cols-[1.5fr_1fr_1fr] items-center px-5 sm:px-7 py-4 ${i % 2 === 1 ? 'bg-[#FCFDFE]' : ''} ${i < 6 ? 'border-b border-[#F1F5F9]' : ''}`}
+            >
+              <span className="text-[15px] sm:text-[16px] font-semibold">{label}</span>
+              <span className="text-center text-[14px] text-[#6B7280] font-semibold">{theirs || <span className="text-[#D1D5DB] text-[16px]">✕</span>}</span>
+              <span className="text-center text-[#16A34A] font-extrabold">✓</span>
+            </div>
+          ))}
+        </div>
+      </section>
+
+      {/* Stories */}
+      <section id="stories" className="bg-[#F8FAFC] border-y border-[#E5E7EB]">
+        <div className="max-w-[1240px] mx-auto px-5 sm:px-8 py-20 sm:py-[88px]">
+          <div className="flex flex-col lg:flex-row lg:items-end lg:justify-between gap-8">
+            <div className="max-w-[620px]">
+              <span className="inline-block border-l-[3px] border-[#16A34A] pl-2.5 text-[13px] font-bold tracking-[0.08em] uppercase text-[#16A34A]">Success stories</span>
+              <h2 className="mt-4 text-[34px] sm:text-[48px] leading-[1.04] font-bold tracking-[-0.045em] font-display">12,400 offers and counting.</h2>
+            </div>
+            <div className="shrink-0 flex items-center gap-2.5 px-5 py-3.5 border border-[#E5E7EB] rounded-[14px] bg-white w-fit">
+              <span className="text-[22px] font-extrabold tracking-[-0.03em]">4.8</span>
+              <span className="text-[#F59E0B] text-[15px] tracking-[2px]">★★★★★</span>
+              <span className="text-[14px] text-[#6B7280] font-medium">3,200 students</span>
+            </div>
+          </div>
+
+          <div className="mt-9 grid grid-cols-1 lg:grid-cols-[1.2fr_1fr_1fr] gap-4">
+            <div className="bg-[#111827] rounded-[18px] p-8 flex flex-col gap-5 text-white">
+              <p className="text-[19px] sm:text-[21px] leading-[1.5] font-semibold tracking-[-0.02em]">
+                &quot;I stopped opening six tabs every morning. The match score told me which applications were worth my time — offer in five weeks.&quot;
+              </p>
+              <div className="mt-auto flex items-center gap-3">
+                <span className="w-[42px] h-[42px] rounded-full bg-[#16A34A] text-white grid place-items-center font-extrabold">AR</span>
+                <div>
+                  <div className="text-[15px] font-bold">Ananya R.</div>
+                  <div className="text-[14px] text-[#9CA3AF]">SDE-1 at Razorpay · NIT Trichy &apos;25</div>
+                </div>
+              </div>
+            </div>
+
+            {[
+              {
+                quote: 'The ATS checker found three formatting things quietly killing my resume. Callbacks went from zero to four in a fortnight.',
+                initials: 'KM',
+                name: 'Karthik M.',
+                meta: "Designer at Zepto · BITS '24",
+              },
+              {
+                quote: 'The portfolio link is what got me noticed. A recruiter clicked it from my LinkedIn and messaged me the same day.',
+                initials: 'SD',
+                name: 'Sneha D.',
+                meta: "Analyst at Swiggy · DTU '25",
+              },
+            ].map((t, i) => (
+              <div key={i} className="bg-white border border-[#E5E7EB] rounded-[18px] p-7 flex flex-col gap-4.5">
+                <p className="text-[17px] leading-[1.6] font-medium">&quot;{t.quote}&quot;</p>
+                <div className="mt-auto flex items-center gap-3 pt-4">
+                  <span className="w-10 h-10 rounded-full bg-[#F0FDF4] text-[#16A34A] grid place-items-center font-extrabold">{t.initials}</span>
+                  <div>
+                    <div className="text-[15px] font-bold">{t.name}</div>
+                    <div className="text-[14px] text-[#6B7280]">{t.meta}</div>
+                  </div>
+                </div>
+              </div>
+            ))}
+          </div>
+        </div>
+      </section>
+
+      {/* CTA */}
+      <section className="max-w-[1240px] mx-auto px-5 sm:px-8 py-20 sm:py-24">
+        <div
+          className="relative overflow-hidden rounded-[26px] px-6 sm:px-12 py-16 sm:py-[84px] text-center text-white"
+          style={{
+            backgroundColor: '#052E16',
+            backgroundImage:
+              'radial-gradient(70% 80% at 50% 0%, rgba(22,163,74,.45) 0%, rgba(5,46,22,0) 70%), radial-gradient(rgba(255,255,255,.07) 1px, transparent 1px)',
+            backgroundSize: 'auto, 24px 24px',
+          }}
+        >
+          <h2 className="text-[36px] sm:text-[56px] leading-[1.02] font-bold tracking-[-0.045em] font-display">
+            Ready to land your next opportunity?
+          </h2>
+          <p className="mt-4 mx-auto text-[18px] sm:text-[19px] text-[#A7F3D0] max-w-[540px]">
+            Start for free. No credit card required — and the free plan stays free.
+          </p>
+          <div className="mt-8 flex flex-col sm:flex-row items-stretch sm:items-center justify-center gap-3">
+            <button
+              onClick={handleExploreClick}
+              className="cursor-pointer text-[17px] font-bold text-[#052E16] bg-white px-7 py-4 rounded-[14px] hover:bg-[#DCFCE7] hover:-translate-y-px transition-all"
+            >
+              Get started free
+            </button>
+            <a
+              href="#jobs"
+              className="text-[17px] font-bold text-white bg-white/10 border border-white/20 px-7 py-4 rounded-[14px] hover:bg-white/20 transition-colors"
+            >
+              Explore jobs first
+            </a>
+          </div>
+          <div className="mt-7 flex flex-wrap items-center justify-center gap-x-6 gap-y-2 text-[14px] text-[#86EFAC] font-semibold">
+            <span>✓ Free forever plan</span>
+            <span>✓ Setup in 90 seconds</span>
+            <span>✓ Cancel anytime</span>
+          </div>
+        </div>
+      </section>
+
+      {/* Footer */}
+      <footer className="border-t border-[#E5E7EB] bg-white">
+        <div className="max-w-[1240px] mx-auto px-5 sm:px-8 pt-14 pb-8 grid grid-cols-1 lg:grid-cols-[1.6fr_1fr_1fr_1fr] gap-10">
+          <div>
+            <div className="flex items-center gap-2.5">
+              <span className="w-[30px] h-[30px] rounded-[9px] bg-[#16A34A] grid place-items-center text-white font-extrabold text-[15px]">K</span>
+              <span className="text-[19px] font-extrabold tracking-[-0.03em]">Kaamlee</span>
+            </div>
+            <p className="mt-4 text-[15px] text-[#6B7280] max-w-[290px] leading-[1.6]">
+              One search, every job board. Built for students and early-career engineers and designers.
+            </p>
+            <div className="mt-5 flex gap-2.5">
+              <a href="https://www.linkedin.com/" target="_blank" rel="noopener noreferrer" className="px-3.5 py-2 border border-[#E5E7EB] rounded-[10px] text-[14px] font-semibold text-[#374151] hover:border-[#16A34A] hover:text-[#111827] transition-colors">LinkedIn</a>
+              <a href="https://twitter.com/" target="_blank" rel="noopener noreferrer" className="px-3.5 py-2 border border-[#E5E7EB] rounded-[10px] text-[14px] font-semibold text-[#374151] hover:border-[#16A34A] hover:text-[#111827] transition-colors">Twitter</a>
+              <a href="https://github.com/" target="_blank" rel="noopener noreferrer" className="px-3.5 py-2 border border-[#E5E7EB] rounded-[10px] text-[14px] font-semibold text-[#374151] hover:border-[#16A34A] hover:text-[#111827] transition-colors">GitHub</a>
+            </div>
+          </div>
+
+          <div className="flex flex-col gap-3">
+            <span className="text-[12px] font-extrabold tracking-[0.08em] uppercase text-[#9CA3AF]">Product</span>
+            <button onClick={handleExploreClick} className="cursor-pointer text-left text-[15px] text-[#374151] font-medium hover:text-[#16A34A] transition-colors">Job map</button>
+            <Link href="/profile" className="text-[15px] text-[#374151] font-medium hover:text-[#16A34A] transition-colors">Resume match</Link>
+            <Link href="/custom-cv" className="text-[15px] text-[#374151] font-medium hover:text-[#16A34A] transition-colors">ATS checker</Link>
+            <Link href="/applications" className="text-[15px] text-[#374151] font-medium hover:text-[#16A34A] transition-colors">Application tracker</Link>
+            <button onClick={() => setIsPricingOpen(true)} className="cursor-pointer text-left text-[15px] text-[#374151] font-medium hover:text-[#16A34A] transition-colors">Pricing</button>
+          </div>
+
+          <div className="flex flex-col gap-3">
+            <span className="text-[12px] font-extrabold tracking-[0.08em] uppercase text-[#9CA3AF]">Resources</span>
+            <a href="#how" className="text-[15px] text-[#374151] font-medium hover:text-[#16A34A] transition-colors">How it works</a>
+            <a href="#features" className="text-[15px] text-[#374151] font-medium hover:text-[#16A34A] transition-colors">Features</a>
+            <a href="#stories" className="text-[15px] text-[#374151] font-medium hover:text-[#16A34A] transition-colors">Success stories</a>
+            <Link href="/portfolio" className="text-[15px] text-[#374151] font-medium hover:text-[#16A34A] transition-colors">Portfolio</Link>
+          </div>
+
+          <div className="flex flex-col gap-3">
+            <span className="text-[12px] font-extrabold tracking-[0.08em] uppercase text-[#9CA3AF]">Company</span>
+            <Link href="/terms" className="text-[15px] text-[#374151] font-medium hover:text-[#16A34A] transition-colors">Terms</Link>
+            <Link href="/privacy" className="text-[15px] text-[#374151] font-medium hover:text-[#16A34A] transition-colors">Privacy</Link>
+            <a href="https://commhawk.in/" target="_blank" rel="noopener noreferrer" className="text-[15px] text-[#374151] font-medium hover:text-[#16A34A] transition-colors">
+              Built by Commhawk
+            </a>
+          </div>
+        </div>
+
+        <div className="max-w-[1240px] mx-auto px-5 sm:px-8 py-5 pb-10 border-t border-[#E5E7EB] flex justify-between text-[14px] text-[#9CA3AF]">
+          <span>© 2026 Kaamlee</span>
+          <span>Made in India</span>
+        </div>
+      </footer>
+
+      <PricingModal isOpen={isPricingOpen} onClose={() => setIsPricingOpen(false)} />
     </main>
   );
 }
