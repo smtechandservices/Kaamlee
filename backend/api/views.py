@@ -848,7 +848,7 @@ class RunScraperScriptView(views.APIView):
 
     # script key -> display name. Each key must match a scripts/jobs/{key}.py
     # module exposing a sync_board(board_name) generator (see ashbyhq.py).
-    SCRIPTS = {'ashbyhq': 'Ashby', 'greenhouse': 'Greenhouse', 'recruitee': 'Recruitee', 'lever': 'Lever', 'workable': 'Workable'}
+    SCRIPTS = {'ashbyhq': 'Ashby', 'greenhouse': 'Greenhouse', 'recruitee': 'Recruitee', 'lever': 'Lever', 'workable': 'Workable', 'epam': 'EPAM'}
 
     def post(self, request):
         script = request.data.get('script')

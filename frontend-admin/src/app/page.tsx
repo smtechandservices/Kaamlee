@@ -35,6 +35,7 @@ const SCRIPT_OPTIONS = [
   { value: 'recruitee', label: 'Recruitee (*.recruitee.com)' },
   { value: 'lever', label: 'Lever (jobs.lever.co)' },
   { value: 'workable', label: 'Workable (apply.workable.com)' },
+  { value: 'epam', label: 'EPAM (careers.epam.com)' },
 ];
 // Which career_url substring identifies a company as belonging to each
 // script — so the company picker only offers boards that script can
@@ -46,6 +47,7 @@ const SCRIPT_URL_MATCH: Record<string, string> = {
   recruitee: 'recruitee.com',
   lever: 'lever.co',
   workable: 'workable.com',
+  epam: 'epam.com',
 };
 const MAX_SCRIPT_COMPANIES = 3;
 // sessionStorage key for the in-progress run's logs/results/progress — see
@@ -415,8 +417,8 @@ export default function AdminDashboard() {
     }
   };
 
-  const addScriptCompany = (name: string) => {
-    if (!name || scriptCompanies.length >= MAX_SCRIPT_COMPANIES || scriptCompanies.includes(name)) return;
+  const addScriptCompany = (name: string, max: number = MAX_SCRIPT_COMPANIES) => {
+    if (!name || scriptCompanies.length >= max || scriptCompanies.includes(name)) return;
     setScriptCompanies(prev => [...prev, name]);
   };
 
@@ -665,7 +667,9 @@ export default function AdminDashboard() {
             <h2 className="text-lg font-bold flex items-center gap-2">
               <Download size={18} className="text-blue-500" /> Import Jobs
             </h2>
-            <span className="text-xs text-[#555]">Up to {MAX_SCRIPT_COMPANIES} companies per run</span>
+            <span className="text-xs text-[#555]">
+              {scriptChoice === 'epam' ? 'One company at a time — single global feed' : `Up to ${MAX_SCRIPT_COMPANIES} companies per run`}
+            </span>
           </div>
 
           <div className="flex flex-col gap-4">
@@ -684,7 +688,10 @@ export default function AdminDashboard() {
 
             <div>
               <label className="block text-[10px] font-black uppercase tracking-[0.2em] text-[#555] mb-1.5">
-                Companies ({scriptCompanies.length}/{MAX_SCRIPT_COMPANIES})
+                {(() => {
+                  const max = scriptChoice === 'epam' ? 1 : MAX_SCRIPT_COMPANIES;
+                  return `Companies (${scriptCompanies.length}/${max})`;
+                })()}
               </label>
               <div className="flex flex-wrap items-center gap-2 bg-[#0a0a0a] border border-[#222] rounded-xl px-3 py-2 min-h-[42px]">
                 {scriptCompanies.map(name => (
@@ -698,7 +705,15 @@ export default function AdminDashboard() {
                     </button>
                   </span>
                 ))}
-                {scriptCompanies.length < MAX_SCRIPT_COMPANIES && (() => {
+                {(() => {
+                  // EPAM has a single global feed rather than one board per
+                  // company, so more than one at once would just refetch the
+                  // same postings twice under different labels — cap it to 1
+                  // here instead of the usual MAX_SCRIPT_COMPANIES (the
+                  // backend rejects a second one too, see RunScraperScriptView).
+                  const max = scriptChoice === 'epam' ? 1 : MAX_SCRIPT_COMPANIES;
+                  if (scriptCompanies.length >= max) return null;
+
                   const urlMatch = SCRIPT_URL_MATCH[scriptChoice];
                   const availableForScript = companyOptions
                     .filter(c => !urlMatch || c.career_url?.includes(urlMatch))
@@ -706,7 +721,7 @@ export default function AdminDashboard() {
                   return (
                     <select
                       value=""
-                      onChange={(e) => addScriptCompany(e.target.value)}
+                      onChange={(e) => addScriptCompany(e.target.value, max)}
                       className="flex-1 min-w-[140px] bg-transparent text-sm focus:outline-none cursor-pointer"
                     >
                       <option value="" disabled>

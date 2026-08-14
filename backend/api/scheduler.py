@@ -70,6 +70,7 @@ _ATS_PATTERNS = [
     ('ashbyhq', re.compile(r'jobs\.ashbyhq\.com/([^/?#]+)', re.I)),
     ('workable', re.compile(r'apply\.workable\.com/([^/?#]+)', re.I)),
     ('recruitee', re.compile(r'([a-z0-9-]+)\.recruitee\.com', re.I)),
+    ('epam', re.compile(r'(careers\.epam\.com)', re.I)),
 ]
 
 
