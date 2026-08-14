@@ -805,7 +805,7 @@ export default function AdminDashboard() {
                   {r.ok ? (
                     <div className="text-[#888] space-y-0.5">
                       <div>{r.fetched} fetched · {r.created} created · {r.updated} updated</div>
-                      <div>{r.geocoded} geocoded · {r.borrowed} borrowed · {r.removed} removed (no coords)</div>
+                      <div>{r.geocoded} geocoded · {r.borrowed} borrowed · {r.removed} removed</div>
                     </div>
                   ) : (
                     <div className="text-red-400">{r.error}</div>

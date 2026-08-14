@@ -53,7 +53,7 @@ from django.utils import timezone
 from api.models import Company, Job
 from scripts.job_categorizer import categorize_job
 from scripts.geocode_jobs import run_streaming as geocode_jobs_streaming
-from scripts.jobs import bulk_upsert_jobs, checkpoint_sqlite
+from scripts.jobs import bulk_upsert_jobs, checkpoint_sqlite, remove_old_jobs, remove_stale_jobs
 
 REQUEST_TIMEOUT = 30
 
@@ -136,6 +136,7 @@ def sync_board(client_name, company_name=None, stop_event=None):
     yield f"{len(jobs)} posting(s) received"
 
     job_objs = []
+    fetched_ids = set()
     stopped = False
     for i, job in enumerate(jobs, start=1):
         if stop_event is not None and i % 200 == 0 and stop_event.is_set():
@@ -148,7 +149,7 @@ def sync_board(client_name, company_name=None, stop_event=None):
         country = job.get('country') or ''
         is_remote = bool(job.get('telecommuting'))
 
-        job_objs.append(Job(
+        obj = Job(
             id_from_site=f"workable:{client_key}:{job['shortcode']}:{city}|{state or ''}|{country}",
             title=job.get('title') or '',
             company=company_name,
@@ -165,7 +166,9 @@ def sync_board(client_name, company_name=None, stop_event=None):
             date_posted=_date_posted(job),
             salary=None,
             category=categorize_job(job.get('title'), department_hint=job.get('department')),
-        ))
+        )
+        fetched_ids.add(obj.id_from_site)
+        job_objs.append(obj)
 
     created, updated = bulk_upsert_jobs(job_objs)
     yield f"{created} created, {updated} updated"
@@ -205,6 +208,28 @@ def sync_board(client_name, company_name=None, stop_event=None):
         ).delete()[0]
         if removed:
             yield f"Removed {removed} job(s) left with no coordinates"
+
+    # Postings that used to be on this board but weren't in this run's fetch
+    # at all (closed, removed, ...) are gone for good, not just uncoordinated
+    # — same stopped/empty-fetch guards as above, since either case means we
+    # don't actually know the board's full current listing.
+    if stopped:
+        yield "Stopped by admin request — skipping cleanup of no-longer-listed postings this run"
+    elif not jobs:
+        yield "No postings received — skipping cleanup of no-longer-listed postings this run"
+    else:
+        removed_stale = remove_stale_jobs(f"workable:{client_key}:", fetched_ids)
+        removed += removed_stale
+        if removed_stale:
+            yield f"Removed {removed_stale} job(s) no longer listed on the board"
+
+    # Postings older than a month are pruned too, regardless of whether
+    # they're still listed — unlike the two cleanups above, this doesn't
+    # depend on the run being complete, so it always runs.
+    removed_old = remove_old_jobs(f"workable:{client_key}:")
+    removed += removed_old
+    if removed_old:
+        yield f"Removed {removed_old} job(s) older than a month"
 
     # Only updates an existing Company row — this script doesn't create one,
     # so a board with no matching Company entry just has no last_scraped_at.

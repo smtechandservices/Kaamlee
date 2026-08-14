@@ -1,6 +1,13 @@
+from datetime import timedelta
+
 from django.db import connection
+from django.utils import timezone
 
 from api.models import Job
+
+# A posting open this long is unlikely to still be worth surfacing, and
+# without a cutoff the table only ever grows — see remove_old_jobs.
+MAX_JOB_AGE_DAYS = 30
 
 # Every Job field the per-ATS scripts populate on each posting, excluding
 # id_from_site (the upsert conflict target) and fields Django manages itself
@@ -58,6 +65,56 @@ def bulk_upsert_jobs(job_objs, update_fields=JOB_UPDATE_FIELDS):
     updated = len(existing)
     created = len(deduped) - updated
     return created, updated
+
+
+def remove_stale_jobs(prefix, fetched_ids):
+    """Deletes every Job row whose id_from_site starts with `prefix` (e.g.
+    "greenhouse:stripe:") but isn't in `fetched_ids` — i.e. postings that
+    were synced from this board on a previous run but weren't returned at
+    all this time (closed, removed, or — for Ashby — explicitly unlisted).
+
+    Without this, a closed posting scraped once stays visible forever: the
+    "no coordinates" cleanup each script also runs only catches
+    freshly-fetched postings that couldn't be geocoded, never ones that
+    simply disappeared from the source. Callers should skip calling this
+    on a run that was stopped early or came back with zero postings —
+    either way there's no trustworthy full picture of what's currently
+    listed, and deleting on an incomplete view would wipe out live postings
+    rather than stale ones.
+
+    Returns the number of rows deleted. Chunked the same way as
+    bulk_upsert_jobs's existence check — SQLite's SQLITE_MAX_VARIABLE_NUMBER
+    can be as low as 999, and a big board can have thousands of postings.
+    """
+    existing_ids = set(
+        Job.objects.filter(id_from_site__startswith=prefix).values_list('id_from_site', flat=True)
+    )
+    stale_ids = list(existing_ids - fetched_ids)
+    removed = 0
+    for i in range(0, len(stale_ids), _EXISTENCE_CHECK_CHUNK):
+        removed += Job.objects.filter(id_from_site__in=stale_ids[i:i + _EXISTENCE_CHECK_CHUNK]).delete()[0]
+    return removed
+
+
+def remove_old_jobs(prefix, max_age_days=MAX_JOB_AGE_DAYS):
+    """Deletes every Job row whose id_from_site starts with `prefix` and
+    whose date_posted is more than `max_age_days` old — independent of
+    whether the posting is still listed on the source. remove_stale_jobs
+    only catches postings that vanished from the source entirely; this
+    catches postings the source is still happily serving but that are
+    simply old, which would otherwise stick around forever since nothing
+    else ever revisits a job once it's been synced.
+
+    Jobs with no date_posted at all are left alone — there's no age to
+    judge them by, and deleting on a missing field would be guessing.
+    Safe to call regardless of whether this run's fetch was complete,
+    partial, or empty: unlike remove_stale_jobs, this only looks at what's
+    already saved, never at what this run did or didn't see.
+
+    Returns the number of rows deleted.
+    """
+    cutoff = timezone.now().date() - timedelta(days=max_age_days)
+    return Job.objects.filter(id_from_site__startswith=prefix, date_posted__lt=cutoff).delete()[0]
 
 
 def checkpoint_sqlite():

@@ -50,7 +50,7 @@ from django.utils import timezone
 
 from api.models import Company, Job
 from scripts.job_categorizer import categorize_job
-from scripts.jobs import bulk_upsert_jobs, checkpoint_sqlite
+from scripts.jobs import bulk_upsert_jobs, checkpoint_sqlite, remove_old_jobs, remove_stale_jobs
 from scripts.geocode_jobs import run_streaming as geocode_jobs_streaming
 
 REQUEST_TIMEOUT = 30
@@ -207,6 +207,7 @@ def sync_board(board_name, company_name=None, stop_event=None):
         yield f"{len(jobs)} posting(s) received"
 
     job_objs = []
+    fetched_ids = set()
     for i, job in enumerate(jobs, start=1):
         if stop_event is not None and i % 200 == 0 and stop_event.is_set():
             yield f"Stopped by admin request — prepared {i - 1}/{len(jobs)} before stopping"
@@ -217,7 +218,7 @@ def sync_board(board_name, company_name=None, stop_event=None):
         is_remote = job.get('vacancy_type') == 'Remote'
         specializations = job.get('job_specialization') or []
 
-        job_objs.append(Job(
+        obj = Job(
             id_from_site=f"epam:{job['uid']}",
             title=job.get('name') or '',
             company=company_name,
@@ -234,7 +235,9 @@ def sync_board(board_name, company_name=None, stop_event=None):
             date_posted=_date_posted(job),
             salary=None,
             category=categorize_job(job.get('name'), department_hint=specializations[0] if specializations else None),
-        ))
+        )
+        fetched_ids.add(obj.id_from_site)
+        job_objs.append(obj)
 
     created, updated = bulk_upsert_jobs(job_objs)
     yield f"{created} created, {updated} updated"
@@ -274,6 +277,31 @@ def sync_board(board_name, company_name=None, stop_event=None):
         ).delete()[0]
         if removed:
             yield f"Removed {removed} job(s) left with no coordinates"
+
+    # Postings that used to be listed but weren't in this run's fetch at all
+    # (closed, removed, ...) are gone for good, not just uncoordinated — same
+    # stopped/empty-fetch guards as above, since either case means we don't
+    # actually know EPAM's full current listing. Scoped globally ('epam:'
+    # rather than a per-company prefix) since this run's fetch always covers
+    # every EPAM posting worldwide regardless of what company label it's
+    # saved under.
+    if stopped:
+        yield "Stopped by admin request — skipping cleanup of no-longer-listed postings this run"
+    elif not jobs:
+        yield "No postings received — skipping cleanup of no-longer-listed postings this run"
+    else:
+        removed_stale = remove_stale_jobs('epam:', fetched_ids)
+        removed += removed_stale
+        if removed_stale:
+            yield f"Removed {removed_stale} job(s) no longer listed on the board"
+
+    # Postings older than a month are pruned too, regardless of whether
+    # they're still listed — unlike the two cleanups above, this doesn't
+    # depend on the run being complete, so it always runs.
+    removed_old = remove_old_jobs('epam:')
+    removed += removed_old
+    if removed_old:
+        yield f"Removed {removed_old} job(s) older than a month"
 
     # Only updates an existing Company row — this script doesn't create one,
     # so a run with no matching Company entry just has no last_scraped_at.
