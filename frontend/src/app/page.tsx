@@ -2,6 +2,7 @@
 
 import React, { useEffect, useRef, useState } from 'react';
 import Link from 'next/link';
+import Image from 'next/image';
 import {
   Map, Sparkles, Layers, Rocket, FileCheck2,
   ShieldCheck, Bell, Kanban, LogOut, Plus,
@@ -170,7 +171,7 @@ function Spotlight({ children, className = '' }: { children: React.ReactNode; cl
     >
       <div
         className="pointer-events-none absolute inset-0 opacity-0 transition-opacity duration-500 group-hover:opacity-100"
-        style={{ background: 'radial-gradient(420px 200px at var(--mx,50%) var(--my,0%), rgba(47,105,255,0.10), transparent 70%)' }}
+        style={{ background: 'radial-gradient(420px 200px at var(--mx,50%) var(--my,0%), rgba(22,163,74,0.10), transparent 70%)' }}
       />
       {children}
     </div>
@@ -244,7 +245,7 @@ const MAP_MARKERS: { name: string; coords: [number, number] }[] = [
 ];
 
 const JOB_CARD_TINTS = [
-  { bg: '#eef3ff', text: '#2f69ff' },
+  { bg: '#ecfdf5', text: '#16a34a' },
   { bg: '#f3eeff', text: '#7c4dff' },
   { bg: '#fff7e0', text: '#c08a12' },
   { bg: '#eafaf0', text: '#16a34a' },
@@ -299,7 +300,7 @@ function arcPointAt(from: [number, number], to: [number, number], curvature: num
 
 /* ============ ICON HELPERS ============ */
 const Tick = ({ dark = false }: { dark?: boolean }) => (
-  <span className={`grid h-5 w-5 flex-none place-items-center rounded-full mt-[1px] ${dark ? 'bg-white/10 text-white' : 'bg-[#eef3ff] text-[#2f69ff]'}`}>
+  <span className={`grid h-5 w-5 flex-none place-items-center rounded-full mt-[1px] ${dark ? 'bg-white/10 text-white' : 'bg-[#ecfdf5] text-[#16a34a]'}`}>
     <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="3"><path d="m20 6-11 11-5-5" /></svg>
   </span>
 );
@@ -318,12 +319,10 @@ const ArrowChevron = ({ className = '' }: { className?: string }) => (
 
 const BrandMark = ({ size = 38 }: { size?: number }) => (
   <span
-    className="grid flex-none place-items-center rounded-[11px] border border-black/[0.08] bg-white shadow-[0_1px_2px_rgba(16,18,26,.05),0_6px_16px_-8px_rgba(16,18,26,.10)]"
+    className="grid flex-none place-items-center overflow-hidden rounded-[11px] border border-black/[0.08] shadow-[0_1px_2px_rgba(16,18,26,.05),0_6px_16px_-8px_rgba(16,18,26,.10)]"
     style={{ width: size, height: size }}
   >
-    <svg width={size * 0.47} height={size * 0.47} viewBox="0 0 24 24" fill="none" className="animate-[awlBolt_2.8s_cubic-bezier(.22,.61,.36,1)_infinite]">
-      <path d="M13.5 2 4 13.2h6.2L9.8 22 20 10.6h-6.4L13.5 2Z" fill="#2f69ff" />
-    </svg>
+    <Image src="/logo.png" alt="Kaamlee" width={size} height={size} className="h-full w-full object-cover" />
   </span>
 );
 
@@ -346,7 +345,7 @@ const SOURCES = [
   { name: 'YC', color: '#ff6600', letter: 'Y', count: '3,201 live', d: 'Every open role across the current Y Combinator company batch.' },
 ];
 
-const TESTIMONIAL_TINTS = ['#2f69ff', '#0f9d76', '#e0714a', '#7c4dff', '#0e7490', '#c026d3', '#d946a8', '#16a34a'];
+const TESTIMONIAL_TINTS = ['#16a34a', '#0f9d76', '#e0714a', '#7c4dff', '#0e7490', '#c026d3', '#d946a8', '#16a34a'];
 const TESTIMONIALS: [string, string, string][] = [
   ['Ananya Reddy', 'Software Engineer, Bengaluru', 'I stopped refreshing five tabs a day. The map showed me every open role in one screen.'],
   ['Rohan Verma', 'Product Manager', 'The AI match score told me exactly which roles were worth my time. Interview in nine days.'],
@@ -422,7 +421,7 @@ function FAQItem({ faq, isOpen, onToggle }: { faq: { q: string; a: string }; isO
     <div
       className="overflow-hidden rounded-[20px] border bg-white transition-shadow duration-400"
       style={{
-        borderColor: isOpen ? 'rgba(47,105,255,0.22)' : 'rgba(61,61,61,0.08)',
+        borderColor: isOpen ? 'rgba(22,163,74,0.22)' : 'rgba(61,61,61,0.08)',
         boxShadow: isOpen ? '0 2px 4px rgba(16,18,26,.04), 0 18px 40px -18px rgba(16,18,26,.22)' : 'none',
       }}
     >
@@ -436,9 +435,9 @@ function FAQItem({ faq, isOpen, onToggle }: { faq: { q: string; a: string }; isO
           className="ml-auto grid h-[30px] w-[30px] flex-none place-items-center rounded-full border transition-all duration-450"
           style={{
             transform: isOpen ? 'rotate(135deg)' : 'none',
-            background: isOpen ? '#2f69ff' : 'transparent',
+            background: isOpen ? '#16a34a' : 'transparent',
             color: isOpen ? '#fff' : '#0b0b0c',
-            borderColor: isOpen ? '#2f69ff' : 'rgba(61,61,61,0.12)',
+            borderColor: isOpen ? '#16a34a' : 'rgba(61,61,61,0.12)',
           }}
         >
           <Plus size={14} strokeWidth={2.4} />
@@ -549,7 +548,7 @@ export default function LandingPage() {
 
         setArcProgress(0);
         const start = performance.now();
-        const dur = 3600;
+        const dur = 2200;
         const tick = (now: number) => {
           const p = Math.min((now - start) / dur, 1);
           setArcProgress(p);
@@ -570,7 +569,7 @@ export default function LandingPage() {
 
   return (
     <main
-      className="min-h-screen overflow-x-clip bg-[#f2f3f5] text-[16px] leading-[1.55] tracking-[-0.01em] text-[#0b0b0c] antialiased selection:bg-[#2f69ff] selection:text-white"
+      className="min-h-screen overflow-x-clip bg-[#f2f3f5] text-[16px] leading-[1.55] tracking-[-0.01em] text-[#0b0b0c] antialiased selection:bg-[#16a34a] selection:text-white"
       style={{ fontFamily: 'Georgia, "Times New Roman", Times, serif' }}
     >
       {/* ============ NAV ============ */}
@@ -594,7 +593,7 @@ export default function LandingPage() {
             {[['#solutions', 'Solutions'], ['#features', 'Features'], ['#sources', 'Sources'], ['#pricing', 'Pricing'], ['#faq', 'FAQ']].map(([href, label]) => (
               <a key={href} href={href} className="group relative whitespace-nowrap rounded-full px-[14px] py-[9px] text-[15px] text-[#3d3d3d] transition-colors duration-200 hover:bg-black/5 hover:text-[#0b0b0c]">
                 {label}
-                <span className="absolute bottom-[5px] left-[14px] right-[14px] h-[1.5px] origin-left scale-x-0 rounded bg-[#2f69ff] transition-transform duration-300 group-hover:scale-x-100" />
+                <span className="absolute bottom-[5px] left-[14px] right-[14px] h-[1.5px] origin-left scale-x-0 rounded bg-[#16a34a] transition-transform duration-300 group-hover:scale-x-100" />
               </a>
             ))}
           </div>
@@ -603,14 +602,14 @@ export default function LandingPage() {
             {!user ? (
               <>
                 <Link href="/login" className="hidden sm:inline-block whitespace-nowrap rounded-full px-4 py-[11px] text-[14px] font-medium text-[#3d3d3d] transition-colors hover:text-[#0b0b0c]">Log in</Link>
-                <button onClick={handleExploreClick} className="cursor-pointer group relative hidden md:inline-flex items-center gap-2 overflow-hidden whitespace-nowrap rounded-full px-[18px] py-[11px] text-[14px] font-medium text-white shadow-[0_1px_0_rgba(255,255,255,.45)_inset,0_10px_24px_-10px_rgba(47,105,255,.85)] transition-transform duration-300 hover:-translate-y-0.5" style={{ background: 'linear-gradient(180deg,#5b8cff,#2f69ff 55%,#1f52e0)' }}>
+                <button onClick={handleExploreClick} className="cursor-pointer group relative hidden md:inline-flex items-center gap-2 overflow-hidden whitespace-nowrap rounded-full px-[18px] py-[11px] text-[14px] font-medium text-white shadow-[0_1px_0_rgba(255,255,255,.45)_inset,0_10px_24px_-10px_rgba(22,163,74,.85)] transition-transform duration-300 hover:-translate-y-0.5" style={{ background: 'linear-gradient(180deg,#4ade80,#16a34a 55%,#15803d)' }}>
                   Open the map <ArrowChevron />
                 </button>
               </>
             ) : (
               <div className="flex items-center gap-3">
                 <Link href="/profile" className="flex items-center gap-2 rounded-full border border-black/10 bg-black/5 px-2 py-1.5 transition-all hover:border-black/20">
-                  <span className="grid h-6 w-6 place-items-center rounded-full bg-gradient-to-br from-[#5b8cff] to-[#2f69ff] text-[10px] font-bold text-white">
+                  <span className="grid h-6 w-6 place-items-center rounded-full bg-gradient-to-br from-[#4ade80] to-[#16a34a] text-[10px] font-bold text-white">
                     {user?.first_name?.[0]}{user?.last_name?.[0]}
                   </span>
                   <span className="hidden sm:inline whitespace-nowrap text-xs font-medium text-[#3d3d3d]">{user?.first_name}</span>
@@ -648,7 +647,7 @@ export default function LandingPage() {
           <button
             onClick={(e) => { setMobileOpen(false); handleExploreClick(e); }}
             className="cursor-pointer mt-2 flex w-full items-center justify-center gap-2 rounded-full py-[15px] text-[15.5px] font-medium text-white"
-            style={{ background: 'linear-gradient(180deg,#5b8cff,#2f69ff 55%,#1f52e0)' }}
+            style={{ background: 'linear-gradient(180deg,#4ade80,#16a34a 55%,#15803d)' }}
           >
             Open the map <ArrowChevron />
           </button>
@@ -656,13 +655,13 @@ export default function LandingPage() {
       </div>
 
       {/* ============ HERO ============ */}
-      <header id="top" className="relative overflow-clip pt-[126px] sm:pt-[180px]">
-        <div className="pointer-events-none absolute left-1/2 top-[-120px] h-[420px] w-[620px] -translate-x-1/2 rounded-full opacity-55 blur-[90px]" style={{ background: 'radial-gradient(circle, rgba(47,105,255,.22), transparent 65%)' }} />
+      <header id="top" className="relative overflow-clip pt-[126px] sm:pt-[140px]">
+        <div className="pointer-events-none absolute left-1/2 top-[-120px] h-[420px] w-[620px] -translate-x-1/2 rounded-full opacity-55 blur-[90px]" style={{ background: 'radial-gradient(circle, rgba(22,163,74,.22), transparent 65%)' }} />
         <div className="sticky top-[140px] z-0 mx-auto flex w-[min(1400px,calc(100%-40px))] flex-col items-center gap-6 text-center sm:top-[112px]">
           <Reveal>
             <div className="inline-flex items-center gap-3 rounded-full border border-black/[0.08] bg-white/75 px-[18px] py-[9px] text-[14.5px] text-[#3d3d3d] shadow-[0_1px_2px_rgba(16,18,26,.05),0_6px_16px_-8px_rgba(16,18,26,.10)] backdrop-blur-md">
-              <span className="inline-flex items-center gap-1.5 rounded-full bg-[#2f69ff]/10 px-2 py-0.5">
-                <span className="h-1.5 w-1.5 rounded-full bg-[#2f69ff] animate-pulse" />
+              <span className="inline-flex items-center gap-1.5 rounded-full bg-[#16a34a]/10 px-2 py-0.5">
+                <span className="h-1.5 w-1.5 rounded-full bg-[#16a34a] animate-pulse" />
               </span>
               <span><b className="font-medium text-[#0b0b0c]"><Counter target={totalJobsLabel} className="tabular-nums" /></b> added this week</span>
               <span className="h-[15px] w-px bg-black/10" />
@@ -685,8 +684,8 @@ export default function LandingPage() {
           </Reveal>
 
           <Reveal delay={280} className="mt-1.5 flex flex-col items-center gap-3 sm:flex-row">
-            <button onClick={handleExploreClick} className="group relative inline-flex items-center gap-2.5 overflow-hidden whitespace-nowrap rounded-full px-[26px] py-[15px] text-[15.5px] font-medium text-white shadow-[0_1px_0_rgba(255,255,255,.45)_inset,0_10px_24px_-10px_rgba(47,105,255,.85)] transition-transform duration-300 hover:-translate-y-0.5">
-              <span className="absolute inset-0 -z-10" style={{ background: 'linear-gradient(180deg,#5b8cff,#2f69ff 55%,#1f52e0)' }} />
+            <button onClick={handleExploreClick} className="group relative inline-flex items-center gap-2.5 overflow-hidden whitespace-nowrap rounded-full px-[26px] py-[15px] text-[15.5px] font-medium text-white shadow-[0_1px_0_rgba(255,255,255,.45)_inset,0_10px_24px_-10px_rgba(22,163,74,.85)] transition-transform duration-300 hover:-translate-y-0.5">
+              <span className="absolute inset-0 -z-10" style={{ background: 'linear-gradient(180deg,#4ade80,#16a34a 55%,#15803d)' }} />
               <span className="cursor-pointer pointer-events-none absolute inset-y-0 left-[-60%] w-[45%] -skew-x-[18deg] bg-gradient-to-r from-transparent via-white/45 to-transparent animate-[awlShine_3.6s_cubic-bezier(.22,.61,.36,1)_infinite]" />
               Open the map <ArrowChevron />
             </button>
@@ -729,7 +728,7 @@ export default function LandingPage() {
                     <Search size={14} className="flex-none" /> Frontend engineer · worldwide
                   </span>
                   <div className="flex flex-wrap gap-1.5">
-                    <span className="rounded-full bg-[#eef3ff] px-3 py-1 text-[12px] font-medium text-[#2f69ff]">0–2 yrs</span>
+                    <span className="rounded-full bg-[#ecfdf5] px-3 py-1 text-[12px] font-medium text-[#16a34a]">0–2 yrs</span>
                     <span className="rounded-full border border-black/[0.10] px-3 py-1 text-[12px] text-black/60">Remote ok</span>
                     <span className="rounded-full border border-black/[0.10] px-3 py-1 text-[12px] text-black/60">₹12L+</span>
                   </div>
@@ -862,8 +861,8 @@ export default function LandingPage() {
           <div className="flex flex-wrap items-end justify-between gap-8">
             <div className="">
               <Reveal>
-                <span className="inline-flex items-center gap-2.5 rounded-full border border-dashed border-[#2f69ff]/35 bg-[#2f69ff]/5 py-2 pl-3 pr-4 text-[13.5px] font-medium text-[#2f69ff]">
-                  <i className="h-[7px] w-[7px] rounded-full bg-[#2f69ff] animate-pulse" />Solutions
+                <span className="inline-flex items-center gap-2.5 rounded-full border border-dashed border-[#16a34a]/35 bg-[#16a34a]/5 py-2 pl-3 pr-4 text-[13.5px] font-medium text-[#16a34a]">
+                  <i className="h-[7px] w-[7px] rounded-full bg-[#16a34a] animate-pulse" />Solutions
                 </span>
               </Reveal>
               <Reveal delay={80}><h2 className="mt-5 text-[30px] tracking-[-0.035em]">Everything the job hunt needed and never had</h2></Reveal>
@@ -874,8 +873,8 @@ export default function LandingPage() {
           <div className="mt-12 grid grid-cols-1 gap-4 sm:grid-cols-2 lg:grid-cols-3">
             {SOLUTIONS.map((s, n) => (
               <Reveal key={s.t} delay={(n % 3) * 100}>
-                <Spotlight className="h-full overflow-hidden rounded-[26px] border border-black/[0.08] bg-white p-6 transition-all duration-450 hover:-translate-y-1.5 hover:border-[#2f69ff]/25 hover:shadow-[0_2px_4px_rgba(16,18,26,.04),0_18px_40px_-18px_rgba(16,18,26,.22)]">
-                  <span className="relative grid h-[52px] w-[52px] place-items-center rounded-[15px] border border-black/[0.08] bg-white text-[#2f69ff] shadow-[0_1px_2px_rgba(16,18,26,.05),0_6px_16px_-8px_rgba(16,18,26,.10)] transition-transform duration-500 group-hover:-translate-y-1 group-hover:-rotate-6 group-hover:scale-105">
+                <Spotlight className="h-full overflow-hidden rounded-[26px] border border-black/[0.08] bg-white p-6 transition-all duration-450 hover:-translate-y-1.5 hover:border-[#16a34a]/25 hover:shadow-[0_2px_4px_rgba(16,18,26,.04),0_18px_40px_-18px_rgba(16,18,26,.22)]">
+                  <span className="relative grid h-[52px] w-[52px] place-items-center rounded-[15px] border border-black/[0.08] bg-white text-[#16a34a] shadow-[0_1px_2px_rgba(16,18,26,.05),0_6px_16px_-8px_rgba(16,18,26,.10)] transition-transform duration-500 group-hover:-translate-y-1 group-hover:-rotate-6 group-hover:scale-105">
                     <s.icon size={22} strokeWidth={1.7} />
                   </span>
                   <h3 className="relative mt-5 text-[21px] tracking-[-0.03em]">{s.t}</h3>
@@ -891,7 +890,7 @@ export default function LandingPage() {
       <section id="features" className="relative overflow-hidden pb-16">
         <div className="relative mx-auto w-[min(1400px,calc(100%-40px))]">
           <div className="mx-auto flex flex-col items-center gap-4.5 text-center">
-            <Reveal><span className="inline-flex items-center gap-2.5 rounded-full border border-dashed border-[#2f69ff]/35 bg-[#2f69ff]/5 py-2 pl-3 pr-4 text-[13.5px] font-medium text-[#2f69ff]"><i className="h-[7px] w-[7px] rounded-full bg-[#2f69ff] animate-pulse" />Features</span></Reveal>
+            <Reveal><span className="inline-flex items-center gap-2.5 rounded-full border border-dashed border-[#16a34a]/35 bg-[#16a34a]/5 py-2 pl-3 pr-4 text-[13.5px] font-medium text-[#16a34a]"><i className="h-[7px] w-[7px] rounded-full bg-[#16a34a] animate-pulse" />Features</span></Reveal>
             <Reveal delay={80}><h2 className="text-[30px] tracking-[-0.035em] sm:text-[40px] lg:text-[46px]">Tools that get application in, <br /> not just the job in front of you</h2></Reveal>
             <Reveal delay={160}><p className="max-w-[60ch] text-[17px] leading-relaxed text-[rgba(61,61,61,0.72)]">Every listing gets scored and every application gets tracked.</p></Reveal>
           </div>
@@ -910,16 +909,16 @@ export default function LandingPage() {
                     <div className="mt-3.5 flex items-center gap-2 rounded-full border border-black/[0.08] bg-[#fafafa] px-3 py-1.5 text-[10px] text-black/45">kaamlee.com/p/your-name</div>
                     <div className="mt-3.5 grid grid-cols-3 grid-rows-2 gap-2">
                       <div className="col-span-2 row-span-2 flex flex-col justify-between rounded-lg border border-black/[0.06] bg-[#f4f6fa] p-3">
-                        <div className="h-7 w-7 rounded-full bg-gradient-to-br from-[#5b8cff] to-[#2f69ff]" />
+                        <div className="h-7 w-7 rounded-full bg-gradient-to-br from-[#4ade80] to-[#16a34a]" />
                         <div className="space-y-1.5"><div className="h-2 w-2/3 rounded bg-black/10" /><div className="h-1.5 w-1/2 rounded bg-black/5" /></div>
                       </div>
                       <div className="rounded-lg border border-black/[0.06] bg-[#f4f6fa]" />
-                      <div className="rounded-lg border border-[#2f69ff]/20 bg-[#2f69ff]/10" />
+                      <div className="rounded-lg border border-[#16a34a]/20 bg-[#16a34a]/10" />
                     </div>
                   </div>
                   <div className="absolute bottom-[10%] left-[6%] flex animate-[awlFloaty_5.4s_cubic-bezier(.22,.61,.36,1)_infinite] gap-2">
                     {['Noir', 'Minimal', 'Bento'].map((t, i) => (
-                      <span key={t} className={`rounded-full border px-2.5 py-1 text-[9px] uppercase tracking-widest ${i === 0 ? 'border-[#2f69ff]/30 bg-[#2f69ff]/10 text-[#2f69ff]' : 'border-black/[0.08] bg-white text-black/45'}`}>{t}</span>
+                      <span key={t} className={`rounded-full border px-2.5 py-1 text-[9px] uppercase tracking-widest ${i === 0 ? 'border-[#16a34a]/30 bg-[#16a34a]/10 text-[#16a34a]' : 'border-black/[0.08] bg-white text-black/45'}`}>{t}</span>
                     ))}
                   </div>
                 </div>
@@ -939,7 +938,7 @@ export default function LandingPage() {
                     { role: 'Data Platform Lead', tmpl: 'Classic', score: 41, color: 'text-[#dc2626] border-[#dc2626]/25 bg-[#fee2e2]', top: '70%' },
                   ].map((cv) => (
                     <div key={cv.role} className="absolute left-[6%] right-[6%] flex items-center gap-3 rounded-[14px] border border-black/[0.08] bg-white p-3 shadow-[0_1px_2px_rgba(16,18,26,.05),0_6px_16px_-8px_rgba(16,18,26,.10)]" style={{ top: cv.top }}>
-                      <span className="grid h-9 w-9 flex-none place-items-center rounded-lg bg-[#eef3ff] text-[#2f69ff]"><FileCheck2 size={16} /></span>
+                      <span className="grid h-9 w-9 flex-none place-items-center rounded-lg bg-[#ecfdf5] text-[#16a34a]"><FileCheck2 size={16} /></span>
                       <div className="min-w-0 flex-1">
                         <div className="truncate text-[12px] font-bold">{cv.role}</div>
                         <div className="text-[9.5px] uppercase tracking-widest text-black/45">{cv.tmpl}</div>
@@ -968,7 +967,7 @@ export default function LandingPage() {
                   <div className="absolute left-[8%] right-[8%] top-[54%] flex animate-[awlFloaty_5s_cubic-bezier(.22,.61,.36,1)_infinite] items-center gap-2.5 rounded-[14px] border border-black/[0.08] bg-white p-3.5">
                     <span className="grid h-8 w-8 flex-none place-items-center rounded-[11px] border border-black/[0.08] bg-[#fafafa] text-[rgba(61,61,61,0.72)]"><Clock size={15} /></span>
                     <div className="flex-1"><div className="h-2 w-2/3 rounded bg-black/10" /><div className="mt-1.5 h-2 w-1/2 rounded bg-black/5" /></div>
-                    <span className="text-[11.5px] text-[#2f69ff]">2 min</span>
+                    <span className="text-[11.5px] text-[#16a34a]">2 min</span>
                   </div>
                 </div>
                 <div className="p-6"><h3 className="text-[21px] tracking-[-0.03em]">Smart job alerts</h3><p className="mt-2 text-[15px] text-[rgba(61,61,61,0.72)]">Pinged the moment a new listing matches your resume.</p></div>
@@ -982,8 +981,8 @@ export default function LandingPage() {
                     <div className="text-[12.5px] text-black/55">Match Score</div>
                     <div className="mt-0.5 text-[28px] font-medium tracking-[-0.04em] sm:text-[30px]"><Counter target={94} suffix=".7%" /></div>
                     <svg viewBox="0 0 260 70" className="mt-2 h-[60px] w-full sm:h-[70px]">
-                      <path d="M4 58 46 42 88 50 130 20 172 30 214 12 254 22" fill="none" stroke="#2f69ff" strokeWidth="2.5" strokeLinecap="round" strokeDasharray="330" className="animate-[awlDraw2_2.6s_cubic-bezier(.22,.61,.36,1)_infinite]" />
-                      <circle cx="130" cy="20" r="5" fill="#fff" stroke="#2f69ff" strokeWidth="2.5" />
+                      <path d="M4 58 46 42 88 50 130 20 172 30 214 12 254 22" fill="none" stroke="#16a34a" strokeWidth="2.5" strokeLinecap="round" strokeDasharray="330" className="animate-[awlDraw2_2.6s_cubic-bezier(.22,.61,.36,1)_infinite]" />
+                      <circle cx="130" cy="20" r="5" fill="#fff" stroke="#16a34a" strokeWidth="2.5" />
                     </svg>
                   </div>
                 </div>
@@ -1016,7 +1015,7 @@ export default function LandingPage() {
       <section className="pb-16">
         <div className="mx-auto w-[min(1400px,calc(100%-40px))]">
           <div className="mx-auto flex flex-col items-center gap-4.5 text-center">
-            <Reveal><span className="inline-flex items-center gap-2.5 rounded-full border border-dashed border-[#2f69ff]/35 bg-[#2f69ff]/5 py-2 pl-3 pr-4 text-[13.5px] font-medium text-[#2f69ff]"><i className="h-[7px] w-[7px] rounded-full bg-[#2f69ff] animate-pulse" />AI Automation</span></Reveal>
+            <Reveal><span className="inline-flex items-center gap-2.5 rounded-full border border-dashed border-[#16a34a]/35 bg-[#16a34a]/5 py-2 pl-3 pr-4 text-[13.5px] font-medium text-[#16a34a]"><i className="h-[7px] w-[7px] rounded-full bg-[#16a34a] animate-pulse" />AI Automation</span></Reveal>
             <Reveal delay={80}><h2 className="text-[30px] tracking-[-0.035em]">Built to remove the manual work of applying, permanently</h2></Reveal>
           </div>
 
@@ -1034,11 +1033,11 @@ export default function LandingPage() {
                   <div className="mt-3.5 flex items-center gap-2.5 rounded-xl border border-[#fde68a] bg-[#fffbeb] px-3.5 py-3 text-[13.5px] text-[#8a6a12]">💡 Cut time-to-apply by 40% with instant match scoring</div>
                   <div className="mt-3.5 grid grid-cols-2 gap-3">
                     <div className="rounded-[14px] border border-black/[0.08] bg-[#fafafa] p-3.5">
-                      <span className="grid h-8 w-8 place-items-center rounded-lg bg-[#eef3ff] text-[#2f69ff]"><Search size={15} /></span>
+                      <span className="grid h-8 w-8 place-items-center rounded-lg bg-[#ecfdf5] text-[#16a34a]"><Search size={15} /></span>
                       <b className="mt-2.5 block text-[14px] font-medium">Job Discovery</b><small className="text-[12.5px] text-black/55">2.5 min average</small>
                     </div>
                     <div className="rounded-[14px] border border-black/[0.08] bg-[#fafafa] p-3.5">
-                      <span className="grid h-8 w-8 place-items-center rounded-lg bg-[#eef3ff] text-[#2f69ff]"><Sparkles size={15} /></span>
+                      <span className="grid h-8 w-8 place-items-center rounded-lg bg-[#ecfdf5] text-[#16a34a]"><Sparkles size={15} /></span>
                       <b className="mt-2.5 block text-[14px] font-medium">AI Matching</b><small className="text-[12.5px] text-black/55">8.2 sec average</small>
                     </div>
                   </div>
@@ -1061,7 +1060,7 @@ export default function LandingPage() {
                   <div className="mt-3 flex items-center gap-3 border-t border-black/[0.08] pt-3">
                     <span className="grid h-[38px] w-[38px] flex-none place-items-center rounded-[11px] border border-black/[0.08] bg-[#fafafa] text-[rgba(61,61,61,0.72)]"><FileCheck2 size={17} /></span>
                     <div className="flex-1"><b className="text-[15px] font-medium">Senior_PM_Google.json</b><div className="text-[13px] text-[rgba(61,61,61,0.72)]">Tailored to JD · sent for review</div></div>
-                    <span className="text-[12px] text-[#2f69ff]">Parsing…</span>
+                    <span className="text-[12px] text-[#16a34a]">Parsing…</span>
                   </div>
                   <FillBar target={62} className="mt-3.5 h-1.5 overflow-hidden rounded-full bg-[#eceff5]" barClassName="h-full rounded-full" />
                   <div className="mt-3.5 grid grid-cols-2 gap-3">
@@ -1079,7 +1078,7 @@ export default function LandingPage() {
       <section id="sources" className="pb-16">
         <div className="mx-auto w-[min(1400px,calc(100%-40px))] rounded-[34px] border border-black/[0.08] bg-white px-6 py-12 sm:px-10 sm:py-16">
           <div className="mx-auto flex flex-col items-center gap-4.5 text-center">
-            <Reveal><span className="inline-flex items-center gap-2.5 rounded-full border border-dashed border-[#2f69ff]/35 bg-[#2f69ff]/5 py-2 pl-3 pr-4 text-[13.5px] font-medium text-[#2f69ff]"><i className="h-[7px] w-[7px] rounded-full bg-[#2f69ff] animate-pulse" />Sources</span></Reveal>
+            <Reveal><span className="inline-flex items-center gap-2.5 rounded-full border border-dashed border-[#16a34a]/35 bg-[#16a34a]/5 py-2 pl-3 pr-4 text-[13.5px] font-medium text-[#16a34a]"><i className="h-[7px] w-[7px] rounded-full bg-[#16a34a] animate-pulse" />Sources</span></Reveal>
             <Reveal delay={80}><h2 className="text-[30px] tracking-[-0.035em]">Twelve job boards. One map.</h2></Reveal>
             <Reveal delay={160}><p className="max-w-[52ch] leading-relaxed text-[rgba(61,61,61,0.72)]">These are the busiest of the twelve boards <br /> we crawl every fifteen minutes no account needed to browse.</p></Reveal>
           </div>
@@ -1106,7 +1105,7 @@ export default function LandingPage() {
       <section className="relative overflow-hidden pb-16">
         <div className="relative mx-auto w-[min(1400px,calc(100%-40px))]">
           <div className="mx-auto flex flex-col items-center gap-4.5 text-center">
-            <Reveal><span className="inline-flex items-center gap-2.5 rounded-full border border-dashed border-[#2f69ff]/35 bg-[#2f69ff]/5 py-2 pl-3 pr-4 text-[13.5px] font-medium text-[#2f69ff]"><i className="h-[7px] w-[7px] rounded-full bg-[#2f69ff] animate-pulse" />How it works</span></Reveal>
+            <Reveal><span className="inline-flex items-center gap-2.5 rounded-full border border-dashed border-[#16a34a]/35 bg-[#16a34a]/5 py-2 pl-3 pr-4 text-[13.5px] font-medium text-[#16a34a]"><i className="h-[7px] w-[7px] rounded-full bg-[#16a34a] animate-pulse" />How it works</span></Reveal>
             <Reveal delay={80}><h2 className="text-[30px] tracking-[-0.035em]">From twelve tabs to one, in about ninety seconds</h2></Reveal>
             <Reveal delay={160}><p className="leading-relaxed text-[rgba(61,61,61,0.72)]">No setup, no account required to look around connect a resume only when you&apos;re ready for match scores.</p></Reveal>
           </div>
@@ -1118,10 +1117,10 @@ export default function LandingPage() {
             ].map((s, i) => (
               <Reveal key={s.n} delay={i * 120}>
                 <article className="relative overflow-hidden rounded-[26px] border border-black/[0.08] bg-white p-7 transition-all duration-450 hover:-translate-y-1.5 hover:shadow-[0_2px_4px_rgba(16,18,26,.04),0_18px_40px_-18px_rgba(16,18,26,.22)]">
-                  <span className="text-[13px] font-medium tracking-[0.06em] text-[#2f69ff]">STEP {s.n}</span>
+                  <span className="text-[13px] font-medium tracking-[0.06em] text-[#16a34a]">STEP {s.n}</span>
                   <h3 className="mt-4 text-[22px]">{s.t}</h3>
                   <p className="mt-2.5 text-[15px] text-[rgba(61,61,61,0.72)]">{s.d}</p>
-                  <FillBar target={s.w} className="absolute inset-x-[26px] bottom-0 h-0.5 overflow-hidden bg-black/[0.08]" barClassName="h-full bg-[#2f69ff]" delay={i * 150} />
+                  <FillBar target={s.w} className="absolute inset-x-[26px] bottom-0 h-0.5 overflow-hidden bg-black/[0.08]" barClassName="h-full bg-[#16a34a]" delay={i * 150} />
                 </article>
               </Reveal>
             ))}
@@ -1132,7 +1131,7 @@ export default function LandingPage() {
       {/* ============ TESTIMONIALS ============ */}
       <section className="overflow-hidden pb-16">
         <div className="mx-auto flex w-[min(1400px,calc(100%-40px))] flex-col items-center gap-4.5 text-center">
-          <Reveal><span className="inline-flex items-center gap-2.5 rounded-full border border-dashed border-[#2f69ff]/35 bg-[#2f69ff]/5 py-2 pl-3 pr-4 text-[13.5px] font-medium text-[#2f69ff]"><i className="h-[7px] w-[7px] rounded-full bg-[#2f69ff] animate-pulse" />Testimonials</span></Reveal>
+          <Reveal><span className="inline-flex items-center gap-2.5 rounded-full border border-dashed border-[#16a34a]/35 bg-[#16a34a]/5 py-2 pl-3 pr-4 text-[13.5px] font-medium text-[#16a34a]"><i className="h-[7px] w-[7px] rounded-full bg-[#16a34a] animate-pulse" />Testimonials</span></Reveal>
           <Reveal delay={80}><h2 className="text-[30px] tracking-[-0.035em]">Trusted by job seekers who were done scrolling</h2></Reveal>
           <Reveal delay={160}><p className="leading-relaxed text-[rgba(61,61,61,0.72)]">People use Kaamlee to cut the noise out of the search and put real energy into the applications that count.</p></Reveal>
         </div>
@@ -1164,7 +1163,7 @@ export default function LandingPage() {
       <section id="pricing" className="pb-16">
         <div className="mx-auto w-[min(1400px,calc(100%-40px))] rounded-[34px] border border-black/[0.08] bg-white px-6 py-12 sm:px-10 sm:py-16">
           <div className="mx-auto flex flex-col items-center gap-4.5 text-center">
-            <Reveal><span className="inline-flex items-center gap-2.5 rounded-full border border-dashed border-[#2f69ff]/35 bg-[#2f69ff]/5 py-2 pl-3 pr-4 text-[13.5px] font-medium text-[#2f69ff]"><i className="h-[7px] w-[7px] rounded-full bg-[#2f69ff] animate-pulse" />Pricing</span></Reveal>
+            <Reveal><span className="inline-flex items-center gap-2.5 rounded-full border border-dashed border-[#16a34a]/35 bg-[#16a34a]/5 py-2 pl-3 pr-4 text-[13.5px] font-medium text-[#16a34a]"><i className="h-[7px] w-[7px] rounded-full bg-[#16a34a] animate-pulse" />Pricing</span></Reveal>
             <Reveal delay={80}><h2 className="text-[30px] tracking-[-0.035em]">Start free, upgrade when you&apos;re ready</h2></Reveal>
             <Reveal delay={160}><p className="leading-relaxed text-[rgba(61,61,61,0.72)]">Browse for free. When you want the full map and tools, pay monthly or save by paying for 3 months at once.</p></Reveal>
           </div>
@@ -1178,7 +1177,7 @@ export default function LandingPage() {
                     ? { background: 'linear-gradient(180deg,#101216,#0b0b0c)', color: '#fff', borderColor: '#20232b', boxShadow: '0 30px 80px -30px rgba(16,18,26,.35)' }
                     : { borderColor: 'rgba(61,61,61,0.08)', background: '#fff' }}
                 >
-                  {p.badge && <span className="absolute right-[22px] top-[22px] rounded-full bg-[#2f69ff]/16 px-3 py-1.5 text-[12px] text-[#9fbaff]">{p.badge}</span>}
+                  {p.badge && <span className="absolute right-[22px] top-[22px] rounded-full bg-[#16a34a]/16 px-3 py-1.5 text-[12px] text-[#9fbaff]">{p.badge}</span>}
                   <span className="inline-flex items-center gap-2.5 text-[17px] font-medium"><Tick dark={p.dark} />{p.name}</span>
                   <div className="mt-4 flex items-end gap-1.5">
                     <b className="text-[42px] font-medium tracking-[-0.045em] sm:text-[46px]">₹{p.price}</b>
@@ -1201,9 +1200,9 @@ export default function LandingPage() {
                   <button
                     onClick={(e) => (p.action === 'explore' ? handleExploreClick(e) : setIsPricingOpen(true))}
                     className={`mt-6.5 w-full cursor-pointer rounded-full py-4 text-center text-[15.5px] font-medium transition-all ${
-                      p.dark ? 'text-white shadow-[0_1px_0_rgba(255,255,255,.45)_inset,0_10px_24px_-10px_rgba(47,105,255,.85)] hover:-translate-y-0.5' : 'border border-black/[0.10] bg-white hover:-translate-y-0.5 hover:shadow-[0_2px_4px_rgba(16,18,26,.04),0_18px_40px_-18px_rgba(16,18,26,.22)]'
+                      p.dark ? 'text-white shadow-[0_1px_0_rgba(255,255,255,.45)_inset,0_10px_24px_-10px_rgba(22,163,74,.85)] hover:-translate-y-0.5' : 'border border-black/[0.10] bg-white hover:-translate-y-0.5 hover:shadow-[0_2px_4px_rgba(16,18,26,.04),0_18px_40px_-18px_rgba(16,18,26,.22)]'
                     }`}
-                    style={p.dark ? { background: 'linear-gradient(180deg,#5b8cff,#2f69ff 55%,#1f52e0)' } : undefined}
+                    style={p.dark ? { background: 'linear-gradient(180deg,#4ade80,#16a34a 55%,#15803d)' } : undefined}
                   >
                     {p.cta}
                   </button>
@@ -1217,7 +1216,7 @@ export default function LandingPage() {
       {/* ============ FAQ ============ */}
       <section id="faq" className="pb-16">
         <div className="mx-auto flex w-[min(1400px,calc(100%-40px))] flex-col items-center gap-4.5 text-center">
-          <Reveal><span className="inline-flex items-center gap-2.5 rounded-full border border-dashed border-[#2f69ff]/35 bg-[#2f69ff]/5 py-2 pl-3 pr-4 text-[13.5px] font-medium text-[#2f69ff]"><i className="h-[7px] w-[7px] rounded-full bg-[#2f69ff] animate-pulse" />Help &amp; support</span></Reveal>
+          <Reveal><span className="inline-flex items-center gap-2.5 rounded-full border border-dashed border-[#16a34a]/35 bg-[#16a34a]/5 py-2 pl-3 pr-4 text-[13.5px] font-medium text-[#16a34a]"><i className="h-[7px] w-[7px] rounded-full bg-[#16a34a] animate-pulse" />Help &amp; support</span></Reveal>
           <Reveal delay={80}><h2 className="text-[30px] tracking-[-0.035em]">Frequently asked questions</h2></Reveal>
           <Reveal delay={160}><p className="leading-relaxed text-[rgba(61,61,61,0.72)]">How Kaamlee handles data freshness, pricing and AI matching.</p></Reveal>
         </div>
@@ -1235,7 +1234,7 @@ export default function LandingPage() {
         <div className="mx-auto w-[min(1400px,calc(100%-40px))]">
           <Reveal type="scale">
             <div className="relative overflow-hidden rounded-[34px] px-6 py-16 text-center text-white sm:px-8 sm:py-[84px]" style={{ background: 'linear-gradient(165deg,#141821,#0a0b0e 60%)' }}>
-              <div className="pointer-events-none absolute left-1/2 top-[-60px] h-[380px] w-[640px] -translate-x-1/2 rounded-full opacity-50 blur-[90px]" style={{ background: 'radial-gradient(circle, rgba(47,105,255,.55), transparent 62%)' }} />
+              <div className="pointer-events-none absolute left-1/2 top-[-60px] h-[380px] w-[640px] -translate-x-1/2 rounded-full opacity-50 blur-[90px]" style={{ background: 'radial-gradient(circle, rgba(22,163,74,.55), transparent 62%)' }} />
               <div className="pointer-events-none absolute inset-0 opacity-35">
                 {[0, 2, 4].map((d) => (
                   <i key={d} className="absolute left-1/2 top-1/2 -translate-x-1/2 -translate-y-1/2 rounded-full border border-white/[0.14] animate-[awlRipple_6s_cubic-bezier(.22,.61,.36,1)_infinite]" style={{ animationDelay: `${d}s` }} />
@@ -1243,7 +1242,7 @@ export default function LandingPage() {
               </div>
               <h2 className="relative mx-auto text-[30px] tracking-[-0.03em]">Stop scrolling ten tabs. Start applying from one map.</h2>
               <p className="relative mx-auto mt-4.5 max-w-3xl text-white/68 sm:text-[16.5px]">From live listings to AI-matched roles, tailored CVs and a portfolio that gets you noticed <br /> Kaamlee handles the busywork so you can focus on landing the role.</p>
-              <button onClick={() => setIsPricingOpen(true)} className="cursor-pointer group relative mt-8 inline-flex items-center gap-2.5 overflow-hidden rounded-full px-[26px] py-[15px] text-[15.5px] font-medium text-white shadow-[0_1px_0_rgba(255,255,255,.45)_inset,0_10px_24px_-10px_rgba(47,105,255,.85)] transition-transform duration-300 hover:-translate-y-0.5" style={{ background: 'linear-gradient(180deg,#5b8cff,#2f69ff 55%,#1f52e0)' }}>
+              <button onClick={() => setIsPricingOpen(true)} className="cursor-pointer group relative mt-8 inline-flex items-center gap-2.5 overflow-hidden rounded-full px-[26px] py-[15px] text-[15.5px] font-medium text-white shadow-[0_1px_0_rgba(255,255,255,.45)_inset,0_10px_24px_-10px_rgba(22,163,74,.85)] transition-transform duration-300 hover:-translate-y-0.5" style={{ background: 'linear-gradient(180deg,#4ade80,#16a34a 55%,#15803d)' }}>
                 Get started <ArrowChevron />
               </button>
             </div>
@@ -1280,10 +1279,10 @@ export default function LandingPage() {
                 onSubmit={(e) => { e.preventDefault(); setSubscribed(true); (e.target as HTMLFormElement).reset(); }}
                 className="mt-4 flex gap-2"
               >
-                <input type="email" required placeholder="Enter your email" aria-label="Email" className="min-w-0 flex-1 rounded-full border border-black/[0.10] bg-white px-4 py-3.5 text-[14.5px] outline-none transition-all focus:border-[#2f69ff] focus:shadow-[0_0_0_4px_rgba(47,105,255,.12)]" />
+                <input type="email" required placeholder="Enter your email" aria-label="Email" className="min-w-0 flex-1 rounded-full border border-black/[0.10] bg-white px-4 py-3.5 text-[14.5px] outline-none transition-all focus:border-[#16a34a] focus:shadow-[0_0_0_4px_rgba(22,163,74,.12)]" />
                 <button type="submit" className="whitespace-nowrap rounded-full bg-[#0b0b0c] px-[18px] py-3.5 text-[14px] font-medium text-white">Subscribe</button>
               </form>
-              <small className="mt-2.5 block text-[#2f69ff] transition-opacity duration-400" style={{ opacity: subscribed ? 1 : 0 }}>Thanks — you&apos;re on the list.</small>
+              <small className="mt-2.5 block text-[#16a34a] transition-opacity duration-400" style={{ opacity: subscribed ? 1 : 0 }}>Thanks, you&apos;re on the list.</small>
             </Reveal>
           </div>
           <div className="mt-14 flex flex-wrap items-center justify-between gap-4 border-t border-black/[0.08] pt-6 text-[14px] text-black/55">
