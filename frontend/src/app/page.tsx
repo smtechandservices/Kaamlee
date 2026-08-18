@@ -757,7 +757,7 @@ export default function LandingPage() {
               <span className="inline-flex items-center gap-1.5 rounded-full bg-[#16a34a]/10 px-2 py-0.5">
                 <span className="h-1.5 w-1.5 rounded-full bg-[#16a34a] animate-pulse" />
               </span>
-              <span><b className="font-medium text-[#0b0b0c]"><Counter target={totalJobsLabel} className="tabular-nums" /></b> added this week</span>
+              <span><b className="font-medium text-[#0b0b0c]"><Counter target={totalJobsLabel} className="tabular-nums" /></b> jobs added this week</span>
               <span className="h-[15px] w-px bg-black/10" />
               <span className="inline-flex items-center gap-1.5 font-medium text-[#0b0b0c]">
                 <CheckCircle2 size={14} className="text-[#16a34a]" /> Live · refreshed every 15 min
