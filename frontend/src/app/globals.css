@@ -131,6 +131,19 @@
   }
 }
 
+/* Landing page (aiwork-style) animations — kept in the static stylesheet rather
+   than injected via styled-jsx, since a client-hydration-timed @keyframes can
+   miss the animation's first start and never catch up until something forces
+   a style recalc (e.g. :hover). */
+@keyframes awlBolt { 0%, 88%, 100% { transform: scale(1); } 92% { transform: scale(1.18) rotate(-6deg); } }
+@keyframes awlShine { 0% { left: -60%; } 55%, 100% { left: 130%; } }
+@keyframes awlBar { to { transform: scaleY(1); } }
+@keyframes awlDraw { 0% { stroke-dashoffset: 260; } 55%, 100% { stroke-dashoffset: 0; } }
+@keyframes awlDraw2 { from { stroke-dashoffset: 330; } to { stroke-dashoffset: 0; } }
+@keyframes awlFloaty { 0%, 100% { transform: translateY(0); } 50% { transform: translateY(-9px); } }
+@keyframes awlMarquee { to { transform: translateX(-50%); } }
+@keyframes awlRipple { 0% { width: 200px; height: 200px; opacity: 0.5; } 100% { width: 1200px; height: 1200px; opacity: 0; } }
+
 @theme inline {
   --font-heading: var(--font-sans);
   --font-sans: var(--font-sans);

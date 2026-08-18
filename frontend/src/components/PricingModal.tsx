@@ -150,7 +150,7 @@ export default function PricingModal({ isOpen, onClose, showCloseButton = true }
                 className="flex flex-col items-center w-full"
               >
                 <div className="flex items-center justify-center mb-5 sm:mb-6">
-                  <span className="text-[9px] font-mono text-green-500 bg-green-500/10 border border-green-500/30 px-3 py-1 tracking-[0.25em] uppercase">Early Access · Beta</span>
+                  <span className="text-[9px] font-mono text-green-500 bg-green-500/10 border border-green-500/30 px-3 py-1 tracking-[0.25em] uppercase">Kaamlee Subscription</span>
                 </div>
 
                 <h2 className="text-3xl sm:text-4xl md:text-5xl font-black tracking-tighter mb-6 sm:mb-8 leading-[1.1]">
@@ -188,14 +188,14 @@ export default function PricingModal({ isOpen, onClose, showCloseButton = true }
                 </div>
 
                 <p className="text-[10px] sm:text-xs text-green-500/60 font-mono uppercase tracking-widest mb-6 sm:mb-8">
-                  Beta pricing · Lock in today&apos;s rate before plans start from ₹299
+                  Pay monthly or save time with the 3-month plan
                 </p>
 
                 {/* Feature comparison — stacked on mobile, side-by-side on lg+ */}
                 <div className="w-full mb-8 sm:mb-10">
                   <div className="border border-green-500/20 rounded-sm p-4 sm:p-5 bg-[#060a06] shadow-[0_0_40px_-10px_rgba(34,197,94,0.1)]">
                     <div className="flex items-center justify-between mb-4">
-                      <span className="text-[9px] font-mono uppercase tracking-[0.25em] text-green-500/70">All Users · Beta</span>
+                      <span className="text-[9px] font-mono uppercase tracking-[0.25em] text-green-500/70">Included for all users</span>
                       <span className="text-[8px] font-mono uppercase tracking-[0.15em] text-green-500 bg-green-500/10 border border-green-500/20 px-2 py-0.5">₹{plan.amount_inr}{plan.durationLabel}</span>
                     </div>
                     <div className="space-y-2.5">
@@ -271,7 +271,7 @@ export default function PricingModal({ isOpen, onClose, showCloseButton = true }
 
                 <div className="mt-8 sm:mt-10 pt-8 sm:pt-10 border-t border-white/5 w-full flex justify-center">
                   <div className="font-mono text-[#333] text-[10px] sm:text-[14px] uppercase tracking-widest text-center">
-                    Future plans start from ₹299 · Beta users keep ₹99
+                    Cancel anytime · No hidden fees
                   </div>
                 </div>
               </motion.div>
