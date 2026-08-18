@@ -18,8 +18,8 @@
   --muted: oklch(0.97 0 0);
   --input-bg: #1a1a1a;
   --input-border: #333333;
-  --background: oklch(1 0 0);
-  --foreground: oklch(0.145 0 0);
+  --background: #f2f3f5;
+  --foreground: #0b0b0c;
   --card: oklch(1 0 0);
   --card-foreground: oklch(0.145 0 0);
   --popover: oklch(1 0 0);
@@ -58,11 +58,9 @@
   body {
     background-color: var(--background);
     color: var(--foreground);
-    font-family: var(--font-sans), sans-serif;
+    font-family: Georgia, "Times New Roman", Times, serif;
+    letter-spacing: -0.01em;
     @apply bg-background text-foreground;
-  }
-  html {
-    @apply font-sans;
   }
   .maplibregl-popup-content {
     @apply bg-transparent! shadow-none! p-0! rounded-none!;
@@ -73,19 +71,8 @@
 }
 
 /* Custom Utilities */
-.glass {
-  background: rgba(17, 17, 17, 0.8);
-  backdrop-filter: blur(8px);
-  border: 1px solid var(--card-border);
-}
-
 .job-card {
   transition: all 0.2s ease;
-}
-
-.job-card:hover {
-  background: #161616;
-  border-color: var(--accent);
 }
 
 .marker-pulse {

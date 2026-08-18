@@ -93,7 +93,7 @@ export default function EmailVerificationGate({ email, verified, onVerified, onE
 
   if (verified) {
     return (
-      <div className="flex items-center gap-1.5 text-xs font-bold text-green-500 ml-1">
+      <div className="flex items-center gap-1.5 text-xs font-semibold text-[#16a34a] ml-1">
         <CheckCircle2 size={14} /> Email verified
       </div>
     );
@@ -105,7 +105,7 @@ export default function EmailVerificationGate({ email, verified, onVerified, onE
         type="button"
         onClick={sendCode}
         disabled={isSending || !email.trim()}
-        className="cursor-pointer text-xs font-bold text-white bg-[#1a1a1a] border border-[#222] rounded-lg px-3 py-2 hover:bg-[#222] transition-all disabled:opacity-50 flex items-center gap-2"
+        className="cursor-pointer text-xs font-semibold text-[#0b0b0c] bg-white border border-black/[0.10] rounded-full px-3 py-2 hover:bg-black/[0.03] transition-all disabled:opacity-50 flex items-center gap-2"
       >
         {isSending ? <Loader2 size={14} className="animate-spin" /> : 'Verify email'}
       </button>
@@ -113,15 +113,15 @@ export default function EmailVerificationGate({ email, verified, onVerified, onE
   }
 
   return (
-    <div className="space-y-3 bg-[#0a0a0a] border border-[#222] rounded-xl p-4">
-      <p className="text-xs text-[#888]">Enter the code sent to {sentTo}</p>
+    <div className="space-y-3 bg-black/[0.02] border border-black/[0.08] rounded-2xl p-4">
+      <p className="text-xs text-black/45">Enter the code sent to {sentTo}</p>
       <OtpDigitInput value={code} onChange={setCode} onComplete={confirmCode} autoFocus />
       <div className="flex items-center justify-between pt-1">
         <button
           type="button"
           onClick={() => confirmCode(code)}
           disabled={isVerifying}
-          className="cursor-pointer text-xs font-bold text-white hover:underline disabled:opacity-50 flex items-center gap-1.5"
+          className="cursor-pointer text-xs font-semibold text-[#16a34a] hover:underline disabled:opacity-50 flex items-center gap-1.5"
         >
           {isVerifying ? <Loader2 size={14} className="animate-spin" /> : 'Confirm'}
         </button>
@@ -129,7 +129,7 @@ export default function EmailVerificationGate({ email, verified, onVerified, onE
           type="button"
           onClick={sendCode}
           disabled={cooldown > 0 || isSending}
-          className="cursor-pointer text-xs text-[#666] hover:text-white transition-colors disabled:opacity-50"
+          className="cursor-pointer text-xs text-black/45 hover:text-[#0b0b0c] transition-colors disabled:opacity-50"
         >
           {cooldown > 0 ? `Resend in ${cooldown}s` : 'Resend code'}
         </button>

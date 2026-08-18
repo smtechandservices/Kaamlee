@@ -358,8 +358,8 @@ export default function ExplorePage() {
 
   if (!isReady) {
     return (
-      <div className="h-screen bg-[#0a0a0a] flex items-center justify-center">
-        <div className="w-8 h-8 border-2 border-green-500 border-t-transparent rounded-full animate-spin" />
+      <div className="h-screen bg-[#f2f3f5] flex items-center justify-center">
+        <div className="w-8 h-8 border-2 border-[#16a34a] border-t-transparent rounded-full animate-spin" />
       </div>
     );
   }
@@ -398,33 +398,33 @@ export default function ExplorePage() {
   };
 
   return (
-    <main className="h-screen flex bg-[#0a0a0a] overflow-hidden relative">
+    <main className="h-screen flex bg-[#f2f3f5] overflow-hidden relative">
       {/* Desktop nav rail - replaces the old header nav links (Custom CV, Billing, Profile, Logout) */}
       <Sidebar />
 
       <div className="flex-1 flex flex-col overflow-hidden">
       {/* Header - Always visible for navigation/logout */}
-      <PageHeader backHref="/" title="Explore" wordmark>
-        <div className="w-px h-6 bg-[#222] mx-1 sm:mx-2" />
+      <PageHeader backHref="/dashboard" title="Explore" wordmark>
+        <div className="w-px h-6 bg-black/[0.08] mx-1 sm:mx-2" />
         {/* View Toggles - Always visible */}
-        <div className="flex items-center gap-1 sm:gap-2 bg-[#161616] rounded-full p-1 border border-[#222]">
+        <div className="flex items-center gap-1 sm:gap-2 bg-white rounded-full p-1 border border-black/[0.08] shadow-[0_1px_2px_rgba(16,18,26,.05),0_6px_16px_-8px_rgba(16,18,26,.10)]">
           <button
             onClick={() => setViewMode('split')}
-            className={`cursor-pointer p-1 sm:p-1.5 rounded-full transition-all hidden md:block ${viewMode === 'split' ? 'bg-[#22c55e] text-white' : 'text-[#555] hover:text-[#888]'}`}
+            className={`cursor-pointer p-1 sm:p-1.5 rounded-full transition-all hidden md:block ${viewMode === 'split' ? 'bg-[#16a34a] text-white' : 'text-black/40 hover:text-black/70'}`}
             title="Split View"
           >
             <List size={14} />
           </button>
           <button
             onClick={() => setViewMode('list')}
-            className={`cursor-pointer p-1 sm:p-1.5 rounded-full transition-all md:hidden ${viewMode === 'list' ? 'bg-[#22c55e] text-white' : 'text-[#555] hover:text-[#888]'}`}
+            className={`cursor-pointer p-1 sm:p-1.5 rounded-full transition-all md:hidden ${viewMode === 'list' ? 'bg-[#16a34a] text-white' : 'text-black/40 hover:text-black/70'}`}
             title="List View"
           >
             <List size={14} />
           </button>
           <button
             onClick={() => setViewMode('map')}
-            className={`cursor-pointer p-1 sm:p-1.5 rounded-full transition-all ${viewMode === 'map' ? 'bg-[#22c55e] text-white' : 'text-[#555] hover:text-[#888]'}`}
+            className={`cursor-pointer p-1 sm:p-1.5 rounded-full transition-all ${viewMode === 'map' ? 'bg-[#16a34a] text-white' : 'text-black/40 hover:text-black/70'}`}
             title="Map View"
           >
             <MapIcon size={14} />
@@ -432,17 +432,18 @@ export default function ExplorePage() {
         </div>
 
         {/* Mobile sidebar toggle - desktop uses the always-visible left sidebar instead */}
-        <div className="w-px h-6 bg-[#222] mx-1 sm:mx-2 md:hidden" />
+        <div className="w-px h-6 bg-black/[0.08] mx-1 sm:mx-2 md:hidden" />
       </PageHeader>
 
       {isReady && !isSubscribed && (
-        <div className="flex items-center justify-between gap-3 px-4 sm:px-5 py-2 bg-green-500/10 border-b border-green-500/20">
-          <span className="text-[10px] sm:text-[11px] text-green-400 font-semibold">
+        <div className="flex items-center justify-between gap-3 px-4 sm:px-5 py-2 bg-[#16a34a]/10 border-b border-[#16a34a]/20">
+          <span className="text-[10px] sm:text-[11px] text-[#15803d] font-semibold" style={{ fontFamily: 'var(--font-outfit)' }}>
             You're viewing a preview of recent jobs. Subscribe to unlock the full map and job list.
           </span>
           <button
             onClick={() => setIsPricingOpen(true)}
-            className="cursor-pointer shrink-0 px-3 py-1 rounded-lg text-[10px] sm:text-[11px] font-bold bg-[#22c55e] text-white hover:bg-[#1ea34e] transition-colors"
+            className="cursor-pointer shrink-0 px-3 py-1 rounded-full text-[10px] sm:text-[11px] font-semibold text-white transition-transform hover:-translate-y-0.5"
+            style={{ background: 'linear-gradient(180deg,#4ade80,#16a34a 55%,#15803d)', fontFamily: 'var(--font-outfit)' }}
           >
             Unlock
           </button>
@@ -455,30 +456,30 @@ export default function ExplorePage() {
         <aside
           ref={asideRef}
           style={isDesktop ? { width: panelWidth } : undefined}
-          className={`${viewMode === 'map' ? 'hidden' : 'flex'} w-full md:w-auto flex-col border-r border-[#222] bg-[#0a0a0a] z-10 shrink-0 ${isResizing ? '' : 'transition-[width] duration-150'}`}
+          className={`${viewMode === 'map' ? 'hidden' : 'flex'} w-full md:w-auto flex-col border-r border-black/[0.08] bg-white z-10 shrink-0 ${isResizing ? '' : 'transition-[width] duration-150'}`}
         >
-          
+
           {/* Search Area */}
-          <div className="p-4 sm:p-5 border-b border-[#222] bg-[#0a0a0a]">
+          <div className="p-4 sm:p-5 border-b border-black/[0.08] bg-white">
             <div className="flex flex-col sm:flex-row items-stretch gap-3">
-              <div className="bg-[#161616] border border-[#222] rounded-2xl flex-1 shadow-inner flex flex-col overflow-hidden focus-within:border-[#22c55e]/50 transition-all">
+              <div className="bg-[#fafafa] border border-black/[0.08] rounded-2xl flex-1 flex flex-col overflow-hidden focus-within:border-[#16a34a]/40 transition-all">
                 <div className="h-12 sm:h-14 flex items-center px-4">
-                  <Search className="text-[#555] shrink-0 w-4 h-4" />
+                  <Search className="text-black/35 shrink-0 w-4 h-4" />
                   <input
                     type="text"
                     placeholder="Job title, keywords, or company"
-                    className="bg-transparent border-none outline-none ring-0 focus:ring-0 text-xs sm:text-sm text-white placeholder-[#555] flex-1 ml-3"
+                    className="bg-transparent border-none outline-none ring-0 focus:ring-0 text-xs sm:text-sm text-[#0b0b0c] placeholder-black/35 flex-1 ml-3"
                     value={searchQuery}
                     onChange={(e) => setSearchQuery(e.target.value)}
                   />
                 </div>
-                <div className="w-full h-px bg-[#222]" />
+                <div className="w-full h-px bg-black/[0.08]" />
                 <div className="h-12 sm:h-14 flex items-center px-4">
-                  <MapIcon className="text-[#555] shrink-0 w-4 h-4" />
+                  <MapIcon className="text-black/35 shrink-0 w-4 h-4" />
                   <input
                     type="text"
                     placeholder="City, state, zip code, or remote"
-                    className="bg-transparent border-none outline-none ring-0 focus:ring-0 text-xs sm:text-sm text-white placeholder-[#555] w-full ml-3"
+                    className="bg-transparent border-none outline-none ring-0 focus:ring-0 text-xs sm:text-sm text-[#0b0b0c] placeholder-black/35 w-full ml-3"
                     value={locationQuery}
                     onChange={(e) => setLocationQuery(e.target.value)}
                   />
@@ -486,15 +487,16 @@ export default function ExplorePage() {
               </div>
 
               {/* Quick Categories Vertical Scrollable List - Fixed height */}
-              <div className="h-12 sm:h-[116px] w-full sm:w-[140px] flex flex-row sm:flex-col border border-[#222] rounded-2xl bg-[#080808] overflow-hidden">
-                <div className="flex-1 flex flex-row sm:flex-col overflow-x-auto sm:overflow-y-auto no-scrollbar p-1.5 gap-1 sm:space-y-0.5 bg-black/40">
+              <div className="h-12 sm:h-[116px] w-full sm:w-[140px] flex flex-row sm:flex-col border border-black/[0.08] rounded-2xl bg-[#fafafa] overflow-hidden">
+                <div className="flex-1 flex flex-row sm:flex-col overflow-x-auto sm:overflow-y-auto no-scrollbar p-1.5 gap-1 sm:space-y-0.5">
                   <button
                     onClick={() => setSelectedCategory('All')}
-                    className={`shrink-0 sm:w-full text-left px-2.5 py-1.5 rounded-lg text-[9px] sm:text-[10px] font-bold transition-all border ${
+                    className={`shrink-0 sm:w-full text-left px-2.5 py-1.5 rounded-lg text-[9px] sm:text-[10px] font-semibold transition-all border ${
                       selectedCategory === 'All'
-                        ? 'bg-green-500/10 text-green-400 border-green-500/30'
-                        : 'bg-transparent text-[#555] border-transparent hover:bg-[#111] hover:text-[#888]'
+                        ? 'bg-[#16a34a]/10 text-[#16a34a] border-[#16a34a]/25'
+                        : 'bg-transparent text-black/45 border-transparent hover:bg-white hover:text-black/70'
                     }`}
+                    style={{ fontFamily: 'var(--font-outfit)' }}
                   >
                     All Categories
                   </button>
@@ -502,11 +504,12 @@ export default function ExplorePage() {
                     <button
                       key={category}
                       onClick={() => setSelectedCategory(category)}
-                      className={`shrink-0 sm:w-full text-left px-2.5 py-1.5 rounded-lg text-[9px] sm:text-[10px] font-bold transition-all border truncate ${
+                      className={`shrink-0 sm:w-full text-left px-2.5 py-1.5 rounded-lg text-[9px] sm:text-[10px] font-semibold transition-all border truncate ${
                         selectedCategory === category
-                          ? 'bg-green-500/10 text-green-400 border-green-500/30'
-                          : 'bg-transparent text-[#555] border-transparent hover:bg-[#111] hover:text-[#888]'
+                          ? 'bg-[#16a34a]/10 text-[#16a34a] border-[#16a34a]/25'
+                          : 'bg-transparent text-black/45 border-transparent hover:bg-white hover:text-black/70'
                       }`}
+                      style={{ fontFamily: 'var(--font-outfit)' }}
                       title={category}
                     >
                       {category}
@@ -518,33 +521,35 @@ export default function ExplorePage() {
           </div>
 
           {/* Category Filters */}
-          <div className="px-4 sm:px-5 py-3 sm:py-4 border-b border-[#222] bg-[#0a0a0a] flex items-center justify-between gap-2 sm:gap-3">
+          <div className="px-4 sm:px-5 py-3 sm:py-4 border-b border-black/[0.08] bg-white flex items-center justify-between gap-2 sm:gap-3">
             <div className="flex items-center gap-2 overflow-x-auto no-scrollbar flex-1">
               {countryOptions.map((country) => (
                 <button
                   key={country}
                   onClick={() => setActiveCountry(country)}
-                  className={`cursor-pointer px-3 sm:px-4 py-1 sm:py-1.5 rounded-lg text-[10px] sm:text-[11px] font-bold transition-all duration-300 border whitespace-nowrap ${
-                    activeCountry === country 
-                      ? 'bg-white text-black border-white' 
-                      : 'bg-[#161616] text-[#888] border-[#222] hover:border-[#333] hover:text-white'
+                  className={`cursor-pointer px-3 sm:px-4 py-1 sm:py-1.5 rounded-full text-[10px] sm:text-[11px] font-semibold transition-all duration-300 border whitespace-nowrap ${
+                    activeCountry === country
+                      ? 'bg-[#0b0b0c] text-white border-[#0b0b0c]'
+                      : 'bg-black/[0.03] text-black/50 border-black/[0.08] hover:border-black/20 hover:text-black/80'
                   }`}
+                  style={{ fontFamily: 'var(--font-outfit)' }}
                 >
                   {country}
                 </button>
               ))}
 
             </div>
-            
-            <div className="w-px h-4 bg-[#222] shrink-0" />
-            
+
+            <div className="w-px h-4 bg-black/[0.08] shrink-0" />
+
             <button
               onClick={() => setRemoteOnly(!remoteOnly)}
-              className={`cursor-pointer px-3 sm:px-4 py-1 sm:py-1.5 rounded-lg text-[10px] sm:text-[11px] font-bold flex items-center gap-1.5 sm:gap-2 transition-all duration-300 border whitespace-nowrap shrink-0 ${
-                remoteOnly 
-                  ? 'bg-[#22c55e] text-white border-[#22c55e]' 
-                  : 'bg-[#161616] text-[#888] border-[#222] hover:border-[#333] hover:text-white'
+              className={`cursor-pointer px-3 sm:px-4 py-1 sm:py-1.5 rounded-full text-[10px] sm:text-[11px] font-semibold flex items-center gap-1.5 sm:gap-2 transition-all duration-300 border whitespace-nowrap shrink-0 ${
+                remoteOnly
+                  ? 'bg-[#16a34a] text-white border-[#16a34a]'
+                  : 'bg-black/[0.03] text-black/50 border-black/[0.08] hover:border-black/20 hover:text-black/80'
               }`}
+              style={{ fontFamily: 'var(--font-outfit)' }}
             >
               <Monitor className="w-2.5 h-2.5 sm:w-3 sm:h-3" />
               Remote
@@ -552,11 +557,12 @@ export default function ExplorePage() {
 
             <button
               onClick={() => setBookmarkedOnly(!bookmarkedOnly)}
-              className={`cursor-pointer px-3 sm:px-4 py-1 sm:py-1.5 rounded-lg text-[10px] sm:text-[11px] font-bold flex items-center gap-1.5 sm:gap-2 transition-all duration-300 border whitespace-nowrap shrink-0 ${
-                bookmarkedOnly 
-                  ? 'bg-green-600 text-white border-green-600' 
-                  : 'bg-[#161616] text-[#888] border-[#222] hover:border-[#333] hover:text-white'
+              className={`cursor-pointer px-3 sm:px-4 py-1 sm:py-1.5 rounded-full text-[10px] sm:text-[11px] font-semibold flex items-center gap-1.5 sm:gap-2 transition-all duration-300 border whitespace-nowrap shrink-0 ${
+                bookmarkedOnly
+                  ? 'bg-[#16a34a] text-white border-[#16a34a]'
+                  : 'bg-black/[0.03] text-black/50 border-black/[0.08] hover:border-black/20 hover:text-black/80'
               }`}
+              style={{ fontFamily: 'var(--font-outfit)' }}
             >
               <Bookmark className="w-2.5 h-2.5 sm:w-3 sm:h-3" fill={bookmarkedOnly ? "currentColor" : "none"} />
               <span className="hidden sm:inline">Bookmarks</span>
@@ -567,28 +573,28 @@ export default function ExplorePage() {
             {isFetchingJobs ? (
               <div className="flex-1 overflow-y-auto p-4 sm:p-5 space-y-4 custom-scrollbar">
                 {Array.from({ length: 6 }).map((_, i) => (
-                  <div key={i} className="p-6 rounded-2xl border border-[#222] bg-[#111]">
+                  <div key={i} className="p-6 rounded-[20px] border border-black/[0.08] bg-white shadow-[0_1px_2px_rgba(16,18,26,.05),0_6px_16px_-8px_rgba(16,18,26,.10)]">
                     <div className="flex gap-5 items-start">
                       <div className="flex flex-col items-center shrink-0 gap-3">
-                        <div className="w-13 h-13 sm:w-14 sm:h-14 rounded-xl bg-[#1e1e1e] animate-pulse" />
-                        <div className="w-full h-8 rounded-xl bg-[#1e1e1e] animate-pulse" />
-                        <div className="w-full h-8 rounded-xl bg-[#1e1e1e] animate-pulse" />
+                        <div className="w-13 h-13 sm:w-14 sm:h-14 rounded-xl bg-black/[0.05] animate-pulse" />
+                        <div className="w-full h-8 rounded-xl bg-black/[0.05] animate-pulse" />
+                        <div className="w-full h-8 rounded-xl bg-black/[0.05] animate-pulse" />
                       </div>
                       <div className="flex-1 min-w-0 space-y-3">
-                        <div className="h-4 bg-[#1e1e1e] rounded-lg animate-pulse w-3/4" />
-                        <div className="h-3 bg-[#1e1e1e] rounded-lg animate-pulse w-1/2" />
+                        <div className="h-4 bg-black/[0.05] rounded-lg animate-pulse w-3/4" />
+                        <div className="h-3 bg-black/[0.05] rounded-lg animate-pulse w-1/2" />
                         <div className="flex gap-2">
-                          <div className="h-5 w-24 bg-[#1e1e1e] rounded-full animate-pulse" />
-                          <div className="h-5 w-16 bg-[#1e1e1e] rounded-full animate-pulse" />
-                          <div className="h-5 w-20 bg-[#1e1e1e] rounded-full animate-pulse" />
+                          <div className="h-5 w-24 bg-black/[0.05] rounded-full animate-pulse" />
+                          <div className="h-5 w-16 bg-black/[0.05] rounded-full animate-pulse" />
+                          <div className="h-5 w-20 bg-black/[0.05] rounded-full animate-pulse" />
                         </div>
                         <div className="space-y-1.5">
-                          <div className="h-3 bg-[#1e1e1e] rounded animate-pulse w-full" />
-                          <div className="h-3 bg-[#1e1e1e] rounded animate-pulse w-5/6" />
+                          <div className="h-3 bg-black/[0.05] rounded animate-pulse w-full" />
+                          <div className="h-3 bg-black/[0.05] rounded animate-pulse w-5/6" />
                         </div>
                         <div className="flex justify-between pt-2">
-                          <div className="h-3 w-28 bg-[#1e1e1e] rounded animate-pulse" />
-                          <div className="h-3 w-16 bg-[#1e1e1e] rounded animate-pulse" />
+                          <div className="h-3 w-28 bg-black/[0.05] rounded animate-pulse" />
+                          <div className="h-3 w-16 bg-black/[0.05] rounded animate-pulse" />
                         </div>
                       </div>
                     </div>
@@ -620,32 +626,34 @@ export default function ExplorePage() {
               ))}
               
               {totalPages > 1 && (
-                <div className="flex items-center justify-between pt-6 pb-2 px-2 border-t border-[#222]/50 mt-4">
-                  <button 
+                <div className="flex items-center justify-between pt-6 pb-2 px-2 border-t border-black/[0.08] mt-4">
+                  <button
                     onClick={() => {
                       setCurrentPage(p => Math.max(1, p - 1));
                       document.querySelector('.flex-1.overflow-y-auto')?.scrollTo(0, 0);
                     }}
                     disabled={currentPage === 1}
-                    className="cursor-pointer px-4 py-2 rounded-xl text-xs font-semibold bg-[#161616] text-[#888] border border-[#222] hover:text-white hover:border-[#333] hover:bg-[#1a1a1a] disabled:opacity-50 disabled:cursor-not-allowed transition-all shadow-sm"
+                    className="cursor-pointer px-4 py-2 rounded-full text-xs font-semibold bg-white text-black/50 border border-black/[0.10] hover:text-[#0b0b0c] hover:border-black/20 disabled:opacity-40 disabled:cursor-not-allowed transition-all shadow-[0_1px_2px_rgba(16,18,26,.05),0_6px_16px_-8px_rgba(16,18,26,.10)]"
+                    style={{ fontFamily: 'var(--font-outfit)' }}
                   >
                     Previous
                   </button>
                   <div className="flex flex-col items-center">
-                    <span className="text-xs text-white font-bold">
+                    <span className="text-xs text-[#0b0b0c] font-semibold" style={{ fontFamily: 'var(--font-outfit)' }}>
                       Page {currentPage} of {totalPages}
                     </span>
-                    <span className="text-[10px] text-[#555] font-medium mt-0.5">
+                    <span className="text-[10px] text-black/40 font-medium mt-0.5" style={{ fontFamily: 'var(--font-outfit)' }}>
                       {totalJobs} total jobs
                     </span>
                   </div>
-                  <button 
+                  <button
                     onClick={() => {
                       setCurrentPage(p => Math.min(totalPages, p + 1));
                       document.querySelector('.flex-1.overflow-y-auto')?.scrollTo(0, 0);
                     }}
                     disabled={currentPage === totalPages}
-                    className="cursor-pointer px-4 py-2 rounded-xl text-xs font-semibold bg-[#161616] text-[#888] border border-[#222] hover:text-white hover:border-[#333] hover:bg-[#1a1a1a] disabled:opacity-50 disabled:cursor-not-allowed transition-all shadow-sm"
+                    className="cursor-pointer px-4 py-2 rounded-full text-xs font-semibold bg-white text-black/50 border border-black/[0.10] hover:text-[#0b0b0c] hover:border-black/20 disabled:opacity-40 disabled:cursor-not-allowed transition-all shadow-[0_1px_2px_rgba(16,18,26,.05),0_6px_16px_-8px_rgba(16,18,26,.10)]"
+                    style={{ fontFamily: 'var(--font-outfit)' }}
                   >
                     Next
                   </button>
@@ -664,12 +672,12 @@ export default function ExplorePage() {
             title="Drag to resize"
             className="hidden md:flex w-1.5 shrink-0 cursor-col-resize items-center justify-center group relative z-20"
           >
-            <div className={`w-px h-full transition-colors ${isResizing ? 'bg-[#22c55e]' : 'bg-[#222] group-hover:bg-[#22c55e]/60'}`} />
+            <div className={`w-px h-full transition-colors ${isResizing ? 'bg-[#16a34a]' : 'bg-black/[0.08] group-hover:bg-[#16a34a]/50'}`} />
           </div>
         )}
 
         {/* Map Area */}
-        <section className={`${viewMode === 'list' ? 'hidden' : 'flex'} flex-1 bg-[#0a0a0a]`}>
+        <section className={`${viewMode === 'list' ? 'hidden' : 'flex'} flex-1 bg-[#f2f3f5]`}>
           <Map
             jobs={mapPins}
             selectedJobId={selectedJobId || undefined}
@@ -687,11 +695,11 @@ export default function ExplorePage() {
           background: transparent;
         }
         .custom-scrollbar::-webkit-scrollbar-thumb {
-          background: #222;
+          background: rgba(0, 0, 0, 0.15);
           border-radius: 10px;
         }
         .custom-scrollbar::-webkit-scrollbar-thumb:hover {
-          background: #333;
+          background: rgba(0, 0, 0, 0.25);
         }
       `}</style>
 

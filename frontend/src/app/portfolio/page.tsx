@@ -10,6 +10,7 @@ import { useAuth } from '@/context/AuthContext';
 import { useSubscriptionGate } from '@/hooks/useSubscriptionGate';
 import PricingModal from '@/components/PricingModal';
 import Link from 'next/link';
+import { PRIMARY_BTN_CLS, PRIMARY_BTN_BG, SECONDARY_BTN_CLS, CARD_CLS } from '@/components/ui/landing-kit';
 
 type Template = 'classic' | 'bento';
 type Theme = 'minimal' | 'noir' | 'noir-violet' | 'minimal-violet' | 'noir-blue' | 'minimal-blue';
@@ -148,27 +149,28 @@ export default function PortfolioSettingsPage() {
 
   if (!isReady) {
     return (
-      <div className="h-screen bg-[#0a0a0a] flex items-center justify-center">
-        <Loader2 className="w-8 h-8 text-green-500 animate-spin" />
+      <div className="h-screen bg-[#f2f3f5] flex items-center justify-center">
+        <Loader2 className="w-8 h-8 text-[#16a34a] animate-spin" />
       </div>
     );
   }
 
   return (
-    <main className="h-screen flex bg-[#0a0a0a] text-white overflow-hidden relative">
+    <main className="h-screen flex bg-[#f2f3f5] text-[#0b0b0c] overflow-hidden relative">
       <Sidebar />
 
       <div className="flex-1 flex flex-col overflow-hidden">
-        <PageHeader backHref="/explore" title="Portfolio" />
+        <PageHeader backHref="/dashboard" title="Portfolio" />
 
         {!isSubscribed && (
-          <div className="flex items-center justify-between gap-3 px-4 sm:px-6 py-2 bg-green-500/10 border-b border-green-500/20 shrink-0">
-            <span className="text-[10px] sm:text-[11px] text-green-400 font-semibold">
+          <div className="flex items-center justify-between gap-3 px-4 sm:px-6 py-2 bg-[#16a34a]/10 border-b border-[#16a34a]/20 shrink-0">
+            <span className="text-[10px] sm:text-[11px] text-[#16a34a] font-semibold" style={{ fontFamily: 'var(--font-outfit)' }}>
               Subscribe to unlock analytics and make your portfolio public.
             </span>
             <button
               onClick={() => setIsPricingOpen(true)}
-              className="cursor-pointer shrink-0 px-3 py-1 rounded-lg text-[10px] sm:text-[11px] font-bold bg-[#22c55e] text-white hover:bg-[#1ea34e] transition-colors"
+              className="cursor-pointer shrink-0 px-3 py-1 rounded-full text-[10px] sm:text-[11px] font-bold text-white transition-transform hover:-translate-y-0.5"
+              style={{ ...PRIMARY_BTN_BG, fontFamily: 'var(--font-outfit)' }}
             >
               Unlock
             </button>
@@ -176,26 +178,27 @@ export default function PortfolioSettingsPage() {
         )}
 
         <div className="flex-1 overflow-y-auto p-6 relative">
-          <div className="absolute top-0 left-1/2 -translate-x-1/2 w-[800px] h-[500px] bg-green-500/5 blur-[120px] rounded-full pointer-events-none" />
+          <div className="absolute top-0 left-1/2 -translate-x-1/2 w-[800px] h-[500px] bg-[#16a34a]/5 blur-[120px] rounded-full pointer-events-none" />
 
           <div className="mx-auto z-10 relative">
             {portfolioHasResume && (
-              <div className="bg-[#111] border border-[#222] rounded-[24px] sm:rounded-[32px] p-6 sm:p-8 md:p-10 shadow-2xl mb-6">
+              <div className={`${CARD_CLS} p-6 sm:p-8 md:p-10 mb-6`}>
                 <div className="flex items-center gap-3 mb-6">
-                  <Eye className="w-5 h-5 text-green-500" />
-                  <h2 className="text-sm font-black uppercase tracking-widest text-white">Analytics</h2>
+                  <Eye className="w-5 h-5 text-[#16a34a]" />
+                  <h2 className="text-sm font-semibold uppercase tracking-widest text-[#0b0b0c]" style={{ fontFamily: 'var(--font-outfit)' }}>Analytics</h2>
                 </div>
 
                 {isSubscribed ? (
                   <PortfolioAnalyticsPanel analytics={analytics} isLoading={isFetchingAnalytics} />
                 ) : (
-                  <div className="bg-[#0a0a0a] border border-dashed border-[#333] rounded-2xl p-6 text-center">
-                    <Eye className="w-8 h-8 text-[#444] mx-auto mb-3" />
-                    <p className="text-xs text-[#555] font-medium mb-4">Subscribe to see who's viewing your portfolio.</p>
+                  <div className="bg-[#f2f3f5] border border-dashed border-black/[0.12] rounded-2xl p-6 text-center">
+                    <Eye className="w-8 h-8 text-black/25 mx-auto mb-3" />
+                    <p className="text-xs text-[rgba(61,61,61,0.72)] font-medium mb-4">Subscribe to see who's viewing your portfolio.</p>
                     <button
                       type="button"
                       onClick={() => setIsPricingOpen(true)}
-                      className="cursor-pointer inline-flex items-center gap-1 text-[10px] text-green-500 hover:text-green-400 font-bold uppercase tracking-widest"
+                      className="cursor-pointer inline-flex items-center gap-1 text-[10px] text-[#16a34a] hover:text-[#15803d] font-bold uppercase tracking-widest"
+                      style={{ fontFamily: 'var(--font-outfit)' }}
                     >
                       Unlock analytics
                     </button>
@@ -204,23 +207,24 @@ export default function PortfolioSettingsPage() {
               </div>
             )}
 
-            <div className="bg-[#111] border border-[#222] rounded-[24px] sm:rounded-[32px] p-6 sm:p-8 md:p-10 shadow-2xl">
+            <div className={`${CARD_CLS} p-6 sm:p-8 md:p-10`}>
               <div className="flex items-center gap-3 mb-6">
-                <Globe className="w-5 h-5 text-green-500" />
-                <h2 className="text-sm font-black uppercase tracking-widest text-white">Public Portfolio</h2>
+                <Globe className="w-5 h-5 text-[#16a34a]" />
+                <h2 className="text-sm font-semibold uppercase tracking-widest text-[#0b0b0c]" style={{ fontFamily: 'var(--font-outfit)' }}>Public Portfolio</h2>
               </div>
 
               {isFetching ? (
                 <div className="flex items-center justify-center py-16">
-                  <Loader2 className="w-6 h-6 text-green-500 animate-spin" />
+                  <Loader2 className="w-6 h-6 text-[#16a34a] animate-spin" />
                 </div>
               ) : !portfolioHasResume ? (
-                <div className="bg-[#0a0a0a] border border-dashed border-[#333] rounded-2xl p-6 text-center">
-                  <Briefcase className="w-8 h-8 text-[#444] mx-auto mb-3" />
-                  <p className="text-xs text-[#555] font-medium mb-4">Upload a resume to unlock your public portfolio.</p>
+                <div className="bg-[#f2f3f5] border border-dashed border-black/[0.12] rounded-2xl p-6 text-center">
+                  <Briefcase className="w-8 h-8 text-black/25 mx-auto mb-3" />
+                  <p className="text-xs text-[rgba(61,61,61,0.72)] font-medium mb-4">Upload a resume to unlock your public portfolio.</p>
                   <Link
                     href="/profile"
-                    className="inline-flex items-center gap-1 text-[10px] text-green-500 hover:text-green-400 font-bold uppercase tracking-widest"
+                    className="inline-flex items-center gap-1 text-[10px] text-[#16a34a] hover:text-[#15803d] font-bold uppercase tracking-widest"
+                    style={{ fontFamily: 'var(--font-outfit)' }}
                   >
                     Go to profile <ExternalLink className="w-3 h-3" />
                   </Link>
@@ -229,7 +233,7 @@ export default function PortfolioSettingsPage() {
                 <div className="space-y-6">
                   {portfolioSuccess && (
                     <motion.div initial={{ opacity: 0, scale: 0.95 }} animate={{ opacity: 1, scale: 1 }}
-                      className="bg-green-500/10 border border-green-500/20 text-green-400 text-sm py-3 px-5 rounded-2xl flex items-center gap-3">
+                      className="bg-[#16a34a]/10 border border-[#16a34a]/20 text-[#15803d] text-sm py-3 px-5 rounded-2xl flex items-center gap-3">
                       <CheckCircle2 size={16} /> Portfolio settings saved!
                     </motion.div>
                   )}
@@ -237,25 +241,25 @@ export default function PortfolioSettingsPage() {
                   {/* Public toggle */}
                   <div className="flex items-center justify-between">
                     <div>
-                      <p className="text-xs font-bold text-white">Make portfolio public</p>
-                      <p className="text-[10px] text-[#555] mt-0.5">
+                      <p className="text-xs font-semibold text-[#0b0b0c]" style={{ fontFamily: 'var(--font-outfit)' }}>Make portfolio public</p>
+                      <p className="text-[10px] text-black/45 mt-0.5">
                         {!isSubscribed && !portfolioPublic ? 'Subscribe to unlock' : 'Anyone with your link can view it'}
                       </p>
                     </div>
                     <button type="button" onClick={handleTogglePublic} disabled={isTogglingPublic}
-                      className={`relative w-12 h-6 rounded-full transition-colors cursor-pointer disabled:opacity-50 ${portfolioPublic ? 'bg-green-500' : 'bg-[#333]'}`}>
-                      <span className={`absolute top-1 w-4 h-4 rounded-full bg-white transition-all ${portfolioPublic ? 'left-7' : 'left-1'}`} />
+                      className={`relative w-12 h-6 rounded-full transition-colors cursor-pointer disabled:opacity-50 ${portfolioPublic ? 'bg-[#16a34a]' : 'bg-black/15'}`}>
+                      <span className={`absolute top-1 w-4 h-4 rounded-full bg-white shadow-sm transition-all ${portfolioPublic ? 'left-7' : 'left-1'}`} />
                     </button>
                   </div>
 
                   {/* Portfolio link */}
                   {user?.username && (
                     <motion.div initial={{ opacity: 0, y: -8 }} animate={{ opacity: 1, y: 0 }}
-                      className="bg-[#0a0a0a] border border-[#222] rounded-xl px-4 py-3 flex items-center justify-between gap-3">
-                      <span className="text-xs text-[#555] font-mono truncate">
+                      className="bg-[#f2f3f5] border border-black/[0.08] rounded-xl px-4 py-3 flex flex-wrap items-center justify-between gap-3">
+                      <span className="text-xs text-black/55 truncate" style={{ fontFamily: 'var(--font-outfit)' }}>
                         kaamlee.in/portfolio/{user.username}
                       </span>
-                      <div className="flex items-center gap-3 shrink-0">
+                      <div className="flex items-center gap-2 shrink-0">
                         <button
                           type="button"
                           onClick={() => {
@@ -263,8 +267,9 @@ export default function PortfolioSettingsPage() {
                             setLinkCopied(true);
                             setTimeout(() => setLinkCopied(false), 2000);
                           }}
-                          className="cursor-pointer flex items-center gap-1 text-[10px] text-[#888] hover:text-white font-bold uppercase tracking-widest">
-                          {linkCopied ? <CheckCircle2 className="w-3 h-3 text-green-500" /> : <LinkIcon className="w-3 h-3" />}
+                          className={`${SECONDARY_BTN_CLS} !px-3.5 !py-1.5 !text-[11px]`}
+                          style={{ fontFamily: 'var(--font-outfit)' }}>
+                          {linkCopied ? <CheckCircle2 className="w-3 h-3 text-[#16a34a]" /> : <LinkIcon className="w-3 h-3" />}
                           {linkCopied ? 'Copied' : 'Copy'}
                         </button>
                         <button
@@ -274,7 +279,8 @@ export default function PortfolioSettingsPage() {
                             if (authToken) localStorage.setItem('kaamlee_edit_token', authToken);
                             window.open(`/portfolio/${user.username}?edit=1`, '_blank');
                           }}
-                          className="cursor-pointer flex items-center gap-1 text-[10px] text-green-500 hover:text-green-400 font-bold uppercase tracking-widest">
+                          className={`${SECONDARY_BTN_CLS} !px-3.5 !py-1.5 !text-[11px]`}
+                          style={{ fontFamily: 'var(--font-outfit)' }}>
                           <ExternalLink className="w-3 h-3" /> Preview
                         </button>
                       </div>
@@ -283,12 +289,12 @@ export default function PortfolioSettingsPage() {
 
                   {/* Template + theme picker */}
                   <div className="space-y-4">
-                    <p className="text-[10px] font-bold text-[#555] uppercase tracking-widest">Choose a template</p>
+                    <p className="text-[10px] font-semibold text-black/45 uppercase tracking-widest" style={{ fontFamily: 'var(--font-outfit)' }}>Choose a template</p>
                     <div className="grid grid-cols-2 gap-3">
                       {TEMPLATES.map((tmpl) => (
                         <button key={tmpl.id} type="button" onClick={() => handleSelectTemplate(tmpl)}
                           className={`cursor-pointer rounded-2xl p-4 text-left transition-all border ${
-                            portfolioTemplate === tmpl.id ? 'border-green-500 bg-green-500/5' : 'border-[#222] bg-[#0a0a0a] hover:border-[#333]'
+                            portfolioTemplate === tmpl.id ? 'border-[#16a34a] bg-[#16a34a]/5' : 'border-black/[0.08] bg-[#f2f3f5] hover:border-black/20'
                           } ${!isSubscribed && tmpl.id !== portfolioTemplate ? 'opacity-50' : ''}`}>
                           {/* Mini preview */}
                           {tmpl.id === 'bento' ? (
@@ -315,8 +321,8 @@ export default function PortfolioSettingsPage() {
                               </div>
                             </div>
                           )}
-                          <p className="text-xs font-black text-white">{tmpl.label}</p>
-                          <p className="text-[9px] text-[#555] mt-0.5">{tmpl.preview}</p>
+                          <p className="text-xs font-semibold text-[#0b0b0c]" style={{ fontFamily: 'var(--font-outfit)' }}>{tmpl.label}</p>
+                          <p className="text-[9px] text-black/45 mt-0.5">{tmpl.preview}</p>
                         </button>
                       ))}
                     </div>
@@ -324,18 +330,18 @@ export default function PortfolioSettingsPage() {
                     {/* Theme picker — only for templates that have theme variants */}
                     {(TEMPLATES.find(t => t.id === portfolioTemplate) ?? TEMPLATES[0]).themes.length > 0 && (
                       <div>
-                        <p className="text-[10px] font-bold text-[#555] uppercase tracking-widest mb-3">Color theme</p>
+                        <p className="text-[10px] font-semibold text-black/45 uppercase tracking-widest mb-3" style={{ fontFamily: 'var(--font-outfit)' }}>Color theme</p>
                         <div className="grid grid-cols-2 gap-3">
                           {(TEMPLATES.find(t => t.id === portfolioTemplate) ?? TEMPLATES[0]).themes.map((th) => (
                             <button key={th.id} type="button" onClick={() => handleSelectTheme(th.id)}
                               className={`cursor-pointer rounded-2xl p-4 text-left transition-all border ${
-                                portfolioTheme === th.id ? 'border-green-500 bg-green-500/5' : 'border-[#222] bg-[#0a0a0a] hover:border-[#333]'
+                                portfolioTheme === th.id ? 'border-[#16a34a] bg-[#16a34a]/5' : 'border-black/[0.08] bg-[#f2f3f5] hover:border-black/20'
                               } ${!isSubscribed && th.id !== portfolioTheme ? 'opacity-50' : ''}`}>
                               <div className="w-full h-8 rounded-lg mb-3 relative overflow-hidden"
                                 style={{ background: th.dark ? '#0a0a0a' : '#f5f5f5', border: `1px solid ${th.dark ? '#222' : '#e0e0e0'}` }}>
                                 <span className="absolute right-1.5 top-1.5 w-3 h-3 rounded-full" style={{ background: th.accent }} />
                               </div>
-                              <p className="text-xs font-black text-white">{th.label}</p>
+                              <p className="text-xs font-semibold text-[#0b0b0c]" style={{ fontFamily: 'var(--font-outfit)' }}>{th.label}</p>
                             </button>
                           ))}
                         </div>
@@ -344,7 +350,8 @@ export default function PortfolioSettingsPage() {
                   </div>
 
                   <button type="button" onClick={handleSavePortfolio} disabled={isSavingPortfolio}
-                    className="cursor-pointer w-full bg-white text-black font-black uppercase tracking-widest py-3.5 rounded-xl hover:bg-[#ededed] active:scale-[0.98] transition-all flex items-center justify-center gap-2 disabled:opacity-50 text-xs">
+                    className={`${PRIMARY_BTN_CLS} w-full rounded-xl py-3.5 text-xs font-semibold uppercase tracking-widest`}
+                    style={{ ...PRIMARY_BTN_BG, fontFamily: 'var(--font-outfit)' }}>
                     {isSavingPortfolio ? <Loader2 className="animate-spin w-4 h-4" /> : <Save className="w-4 h-4" />}
                     Save Portfolio Settings
                   </button>

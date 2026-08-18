@@ -65,7 +65,7 @@ export default function OtpDigitInput({ length = 6, value, onChange, onComplete,
           onChange={(e) => handleChange(i, e.target.value)}
           onKeyDown={(e) => handleKeyDown(i, e)}
           onPaste={(e) => handlePaste(i, e)}
-          className="w-11 h-12 sm:w-12 sm:h-14 bg-[#0a0a0a] border border-[#222] rounded-xl text-center text-lg font-bold focus:border-green-500/50 outline-none transition-all"
+          className="w-11 h-12 sm:w-12 sm:h-14 bg-white border border-black/[0.10] rounded-2xl text-center text-lg font-semibold text-[#0b0b0c] focus:border-[#16a34a] focus:shadow-[0_0_0_4px_rgba(22,163,74,.12)] outline-none transition-all"
         />
       ))}
     </div>

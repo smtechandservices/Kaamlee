@@ -7,7 +7,7 @@ import {
   Map, Sparkles, Layers, Rocket, FileCheck2,
   ShieldCheck, Bell, Kanban, LogOut, Plus,
   Star, Menu as MenuIcon, X as XIcon, Clock, Search, CheckCircle2,
-  Building2, Users, ChevronDown,
+  Building2, Users, ChevronDown, ChevronRight,
 } from 'lucide-react';
 import { useAuth } from '@/context/AuthContext';
 import { useRouter } from 'next/navigation';
@@ -330,31 +330,42 @@ const BrandMark = ({ size = 38 }: { size?: number }) => (
 /* ============ DATA ============ */
 const SOLUTIONS = [
   { icon: Map, t: 'Unified job map', d: 'Every open role from twelve boards, plotted on one map. No tab-hopping between sites.' },
+  { icon: Rocket, t: 'Instant portfolio', d: 'Turn your resume into a public site with a real, shareable link.' },
   { icon: Sparkles, t: 'AI resume matching', d: 'Upload once. We score every live listing against your experience, in real time.' },
   { icon: Layers, t: 'Application tracker', d: 'Move roles across Saved, Applied, Interviewing and Offered on one board.' },
-  { icon: Rocket, t: 'Instant portfolio', d: 'Turn your resume into a public site with a real, shareable link.' },
   { icon: FileCheck2, t: 'Tailored CVs', d: 'Generate an ATS-scored CV for every role you target, in seconds.' },
   { icon: ShieldCheck, t: 'Zero-noise listings', d: 'No popups. No fake urgency. Just the job and the apply button.' },
 ];
 
 const ABOUT_LINKS = [
-  { href: '#solutions', icon: Sparkles, label: 'Solutions', desc: 'Every tool built to close the gap between search and offer.' },
-  { href: '#features', icon: Layers, label: 'Features', desc: 'Portfolio builder, tailored CVs, application tracker and more.' },
-  { href: '#sources', icon: Search, label: 'Sources', desc: 'Twelve job boards, crawled every fifteen minutes.' },
+  { href: '#solutions', icon: Sparkles, label: 'Solutions', desc: 'Every tool built to close the gap between search and offer.', subKey: 'solutions' as const },
+  { href: '#features', icon: Layers, label: 'Features', desc: 'Portfolio builder, tailored CVs, application tracker and more.', subKey: 'features' as const },
+  { href: '#sources', icon: Search, label: 'Sources', desc: 'Twelve job boards, crawled every fifteen minutes.', subKey: null },
 ];
 
-const NAV_LINKS: [string, string][] = [['#b2b', 'For Employers'], ['#ambassadors', 'Campus Ambassadors'], ['#pricing', 'Pricing'], ['#faq', 'FAQ']];
+const ABOUT_SUB_DETAILS: Record<'solutions' | 'features', { t: string; d: string }[]> = {
+  solutions: SOLUTIONS.map(({ t, d }) => ({ t, d })),
+  features: [
+    { t: 'Portfolio, one click', d: 'Turn your resume into a public portfolio site — pick a layout and theme, publish a link.' },
+    { t: 'Tailored CV generator', d: 'A fresh, ATS-scored resume for every role you target — no rewriting from scratch.' },
+    { t: 'Smart job alerts', d: 'Pinged the moment a new listing matches your resume.' },
+    { t: 'Match analytics', d: 'See exactly how your resume stacks up against every listing.' },
+    { t: 'Application tracker', d: 'Every role you save lands on a drag-and-drop board automatically.' },
+  ],
+};
+
+const NAV_LINKS: [string, string][] = [['#b2b', 'Employers'], ['#ambassadors', 'Ambassadors'], ['#pricing', 'Pricing'], ['#faq', 'FAQ']];
 
 const B2B_FEATURES = [
-  { icon: Building2, t: 'Direct job posting', d: 'Post roles and manage the whole pipeline from one dashboard no third-party listing needed.' },
+  { icon: Building2, t: 'Direct job posting', d: 'Post roles and manage the whole pipeline from one dashboard — no third-party listing needed.' },
   { icon: CheckCircle2, t: 'First-round screening', d: 'Every applicant clears a screening interview before you see them, filtering for genuine intent.' },
   { icon: ShieldCheck, t: 'Proctored assessments', d: 'Skill checks run under proctoring, so a test score reflects the candidate, not a search engine.' },
   { icon: Users, t: 'Direct candidate pool', d: 'Recruit from active, job-seeking candidates already building profiles on Kaamlee.' },
 ];
 
 const AMBASSADOR_FEATURES = [
-  { rotate: '-rotate-2', bg: '#34D399', fg: '#04231A', glyph: '◉', t: 'Host events on campus', d: 'Resume clinics, meetups, or a drive whatever gets your batch in a room together.' },
-  { rotate: 'rotate-2', bg: '#FBCFE8', fg: '#3B0A28', glyph: '✦', t: 'Market Kaamlee locally', d: 'Spread the word through your own channels you know your batch better than a national campaign does.' },
+  { rotate: '-rotate-2', bg: '#34D399', fg: '#04231A', glyph: '◉', t: 'Host events on campus', d: 'Resume clinics, meetups, or a drive — whatever gets your batch in a room together.' },
+  { rotate: 'rotate-2', bg: '#FBCFE8', fg: '#3B0A28', glyph: '✦', t: 'Market Kaamlee locally', d: 'Spread the word through your own channels — you know your batch better than a national campaign does.' },
   { rotate: '-rotate-1', bg: '#4F46E5', fg: '#FFFFFF', glyph: '◆', t: 'Per-registration rewards', d: 'Goodies and rewards that scale with how many students from your university you sign up.' },
   { rotate: 'rotate-1', bg: '#FDE68A', fg: '#3B2A03', glyph: '▲', t: 'Per-event rewards + certificate', d: 'Extra rewards for every event hosted, plus a certificate for the program.' },
 ];
@@ -492,6 +503,7 @@ export default function LandingPage() {
   const [navStuck, setNavStuck] = useState(false);
   const [mobileOpen, setMobileOpen] = useState(false);
   const [aboutOpen, setAboutOpen] = useState(false);
+  const [activeAboutSub, setActiveAboutSub] = useState<'solutions' | 'features' | null>(null);
   const [mobileAboutOpen, setMobileAboutOpen] = useState(false);
   const aboutRef = useRef<HTMLDivElement>(null);
   const [subscribed, setSubscribed] = useState(false);
@@ -551,7 +563,10 @@ export default function LandingPage() {
   }, []);
 
   useEffect(() => {
-    if (!aboutOpen) return;
+    if (!aboutOpen) {
+      setActiveAboutSub(null);
+      return;
+    }
     const onPointerDown = (e: PointerEvent) => {
       if (aboutRef.current && !aboutRef.current.contains(e.target as Node)) setAboutOpen(false);
     };
@@ -649,7 +664,7 @@ export default function LandingPage() {
                 <ChevronDown size={14} className={`transition-transform duration-300 ${aboutOpen ? 'rotate-180' : ''}`} />
               </button>
               <div
-                className="absolute left-0 top-[calc(100%+11px)] w-[300px] overflow-hidden rounded-b-[20px] border border-black/[0.08] bg-white p-2 shadow-[0_30px_80px_-30px_rgba(16,18,26,.35)] transition-all duration-250"
+                className="absolute left-0 top-[calc(100%+11px)] w-[300px] rounded-[20px] border border-black/[0.08] bg-white p-2 shadow-[0_30px_80px_-30px_rgba(16,18,26,.35)] transition-all duration-250"
                 style={{
                   opacity: aboutOpen ? 1 : 0,
                   transform: aboutOpen ? 'translateY(0)' : 'translateY(-8px)',
@@ -658,10 +673,41 @@ export default function LandingPage() {
               >
                 <span className="block px-3 pb-1.5 pt-2 text-[11px] font-medium uppercase tracking-[0.1em] text-black/40">About Kaamlee</span>
                 {ABOUT_LINKS.map((l) => (
-                  <a key={l.href} href={l.href} onClick={() => setAboutOpen(false)} className="block rounded-[14px] p-3 text-left transition-colors hover:bg-[#fafafa]">
-                    <span className="block text-[14.5px] font-medium text-[#0b0b0c]">{l.label}</span>
-                    <span className="block text-[12.5px] text-[rgba(61,61,61,0.72)]">{l.desc}</span>
-                  </a>
+                  <div
+                    key={l.href}
+                    className="relative"
+                    onMouseEnter={() => l.subKey && setActiveAboutSub(l.subKey)}
+                    onMouseLeave={() => l.subKey && setActiveAboutSub((k) => (k === l.subKey ? null : k))}
+                  >
+                    <a href={l.href} onClick={() => setAboutOpen(false)} className="flex items-center gap-2 rounded-[14px] p-3 text-left transition-colors hover:bg-[#fafafa]">
+                      <span className="min-w-0 flex-1">
+                        <span className="block text-[14.5px] font-medium text-[#0b0b0c]">{l.label}</span>
+                        <span className="block text-[12.5px] text-[rgba(61,61,61,0.72)]">{l.desc}</span>
+                      </span>
+                      {l.subKey && <ChevronRight size={14} className="hidden flex-none text-black/25 lg:block" />}
+                    </a>
+
+                    {l.subKey && (
+                      <div
+                        className="absolute left-[calc(100%+10px)] top-0 hidden w-[320px] overflow-hidden rounded-[20px] border border-black/[0.08] bg-white p-2 shadow-[0_30px_80px_-30px_rgba(16,18,26,.35)] transition-all duration-200 lg:block"
+                        style={{
+                          opacity: activeAboutSub === l.subKey ? 1 : 0,
+                          transform: activeAboutSub === l.subKey ? 'translateX(0)' : 'translateX(-8px)',
+                          pointerEvents: activeAboutSub === l.subKey ? 'auto' : 'none',
+                        }}
+                        onMouseEnter={() => setActiveAboutSub(l.subKey)}
+                        onMouseLeave={() => setActiveAboutSub(null)}
+                      >
+                        <span className="block px-3 pb-1.5 pt-2 text-[11px] font-medium uppercase tracking-[0.1em] text-black/40">{l.label} in detail</span>
+                        {ABOUT_SUB_DETAILS[l.subKey].map((item) => (
+                          <a key={item.t} href={l.href} onClick={() => setAboutOpen(false)} className="block rounded-[14px] p-3 text-left transition-colors hover:bg-[#fafafa]">
+                            <span className="block text-[13.5px] font-medium text-[#0b0b0c]">{item.t}</span>
+                            <span className="block text-[12px] text-[rgba(61,61,61,0.72)]">{item.d}</span>
+                          </a>
+                        ))}
+                      </div>
+                    )}
+                  </div>
                 ))}
               </div>
             </div>
@@ -752,7 +798,19 @@ export default function LandingPage() {
       <header id="top" className="relative overflow-clip pt-[126px] sm:pt-[140px]">
         <div className="pointer-events-none absolute left-1/2 top-[-120px] h-[420px] w-[620px] -translate-x-1/2 rounded-full opacity-55 blur-[90px]" style={{ background: 'radial-gradient(circle, rgba(22,163,74,.22), transparent 65%)' }} />
         <div className="sticky top-[140px] z-0 mx-auto flex w-[min(1400px,calc(100%-40px))] flex-col items-center gap-6 text-center sm:top-[112px]">
-          <Reveal>
+          <Reveal className="flex flex-col items-center gap-2.5 sm:hidden">
+            <div className="inline-flex items-center gap-2 rounded-full border border-black/[0.08] bg-white/75 px-[16px] py-[9px] text-[13.5px] text-[#3d3d3d] shadow-[0_1px_2px_rgba(16,18,26,.05),0_6px_16px_-8px_rgba(16,18,26,.10)] backdrop-blur-md">
+              <span className="inline-flex items-center gap-1.5 rounded-full bg-[#16a34a]/10 px-2 py-0.5">
+                <span className="h-1.5 w-1.5 rounded-full bg-[#16a34a] animate-pulse" />
+              </span>
+              <span className="whitespace-nowrap"><b className="font-medium text-[#0b0b0c]"><Counter target={totalJobsLabel} className="tabular-nums" /></b> jobs added this week</span>
+            </div>
+            <div className="inline-flex items-center gap-1.5 rounded-full border border-black/[0.08] bg-white/75 px-[16px] py-[9px] text-[13.5px] font-medium text-[#0b0b0c] shadow-[0_1px_2px_rgba(16,18,26,.05),0_6px_16px_-8px_rgba(16,18,26,.10)] backdrop-blur-md">
+              <CheckCircle2 size={14} className="text-[#16a34a]" /> <span className="whitespace-nowrap">Live · refreshed every 15 min</span>
+            </div>
+          </Reveal>
+
+          <Reveal className="hidden sm:block">
             <div className="inline-flex items-center gap-3 rounded-full border border-black/[0.08] bg-white/75 px-[18px] py-[9px] text-[14.5px] text-[#3d3d3d] shadow-[0_1px_2px_rgba(16,18,26,.05),0_6px_16px_-8px_rgba(16,18,26,.10)] backdrop-blur-md">
               <span className="inline-flex items-center gap-1.5 rounded-full bg-[#16a34a]/10 px-2 py-0.5">
                 <span className="h-1.5 w-1.5 rounded-full bg-[#16a34a] animate-pulse" />
@@ -961,8 +1019,7 @@ export default function LandingPage() {
               </Reveal>
               <Reveal delay={80}><h2 className="mt-5 text-[30px] tracking-[-0.035em]">Everything the job hunt needed and never had</h2></Reveal>
             </div>
-            <br />
-            <Reveal type="right" delay={160}><p className="text-[17px] leading-relaxed text-[rgba(61,61,61,0.72)] -mt-5">One map, one AI engine, and the tools to act on what it finds cutting the manual effort out of applying.</p></Reveal>
+            <Reveal type="right" delay={160}><p className="max-w-[46ch] text-[17px] leading-relaxed text-[rgba(61,61,61,0.72)]">One map, one AI engine, and the tools to act on what it finds cutting the manual effort out of applying.</p></Reveal>
           </div>
           <div className="mt-12 grid grid-cols-1 gap-4 sm:grid-cols-2 lg:grid-cols-3">
             {SOLUTIONS.map((s, n) => (
@@ -985,7 +1042,7 @@ export default function LandingPage() {
         <div className="relative mx-auto w-[min(1400px,calc(100%-40px))]">
           <div className="mx-auto flex flex-col items-center gap-4.5 text-center">
             <Reveal><span className="inline-flex items-center gap-2.5 rounded-full border border-dashed border-[#16a34a]/35 bg-[#16a34a]/5 py-2 pl-3 pr-4 text-[13.5px] font-medium text-[#16a34a]"><i className="h-[7px] w-[7px] rounded-full bg-[#16a34a] animate-pulse" />Features</span></Reveal>
-            <Reveal delay={80}><h2 className="text-[30px] tracking-[-0.035em] sm:text-[40px] lg:text-[46px]">Tools that get application in, <br /> not just the job in front of you</h2></Reveal>
+            <Reveal delay={80}><h2 className="text-[30px] tracking-[-0.035em] sm:text-[40px] lg:text-[46px]">Tools that get application in, <br className="hidden sm:block" /> not just the job in front of you</h2></Reveal>
             <Reveal delay={160}><p className="max-w-[60ch] text-[17px] leading-relaxed text-[rgba(61,61,61,0.72)]">Every listing gets scored and every application gets tracked.</p></Reveal>
           </div>
 
@@ -1154,7 +1211,7 @@ export default function LandingPage() {
                   <div className="mt-3 flex items-center gap-3 border-t border-black/[0.08] pt-3">
                     <span className="grid h-[38px] w-[38px] flex-none place-items-center rounded-[11px] border border-black/[0.08] bg-[#fafafa] text-[rgba(61,61,61,0.72)]"><FileCheck2 size={17} /></span>
                     <div className="flex-1"><b className="text-[15px] font-medium">Senior_PM_Google.json</b><div className="text-[13px] text-[rgba(61,61,61,0.72)]">Tailored to JD · sent for review</div></div>
-                    <span className="text-[12px] text-[#16a34a]">Parsing…</span>
+                    <span className="text-[12px] text-[#16a34a]">Parsing</span>
                   </div>
                   <FillBar target={62} className="mt-3.5 h-1.5 overflow-hidden rounded-full bg-[#eceff5]" barClassName="h-full rounded-full" />
                   <div className="mt-3.5 grid grid-cols-2 gap-3">
@@ -1174,7 +1231,7 @@ export default function LandingPage() {
           <div className="mx-auto flex flex-col items-center gap-4.5 text-center">
             <Reveal><span className="inline-flex items-center gap-2.5 rounded-full border border-dashed border-[#16a34a]/35 bg-[#16a34a]/5 py-2 pl-3 pr-4 text-[13.5px] font-medium text-[#16a34a]"><i className="h-[7px] w-[7px] rounded-full bg-[#16a34a] animate-pulse" />Sources</span></Reveal>
             <Reveal delay={80}><h2 className="text-[30px] tracking-[-0.035em]">Twelve job boards. One map.</h2></Reveal>
-            <Reveal delay={160}><p className="max-w-[52ch] leading-relaxed text-[rgba(61,61,61,0.72)]">These are the busiest of the twelve boards <br /> we crawl every fifteen minutes no account needed to browse.</p></Reveal>
+            <Reveal delay={160}><p className="max-w-[52ch] leading-relaxed text-[rgba(61,61,61,0.72)]">These are the busiest of the twelve boards <br className="hidden sm:block" /> we crawl every fifteen minutes — no account needed to browse.</p></Reveal>
           </div>
           <div className="mt-12 grid grid-cols-1 gap-4.5 sm:grid-cols-2 lg:grid-cols-3">
             {SOURCES.map((o, n) => (
@@ -1229,7 +1286,7 @@ export default function LandingPage() {
             <div>
               <Reveal>
                 <span className="inline-flex items-center gap-2.5 rounded-full border border-dashed border-[#4f46e5]/35 bg-[#4f46e5]/5 py-2 pl-3 pr-4 text-[13.5px] font-medium text-[#4f46e5]">
-                  <i className="h-[7px] w-[7px] rounded-full bg-[#4f46e5] animate-pulse" />For EMPLOYERS !
+                  <i className="h-[7px] w-[7px] rounded-full bg-[#4f46e5] animate-pulse" />For employers
                 </span>
               </Reveal>
               <Reveal delay={80}><h2 className="mt-5 max-w-[20ch] text-[30px] tracking-[-0.035em]">Hire from the pool your candidates are already in</h2></Reveal>
@@ -1287,7 +1344,7 @@ export default function LandingPage() {
               </Reveal>
             </div>
 
-            <Reveal type="right" delay={140} className="relative hidden w-[360px] flex-none pt-12 lg:block">
+            <Reveal type="right" delay={140} className="relative hidden w-[360px] flex-none pt-12 xl:block">
               <svg viewBox="0 0 260 100" className="pointer-events-none absolute -top-9 left-2 h-[100px] w-[260px] overflow-visible">
                 <path d="M6 50 C 46 -8 92 88 60 94 C 34 98 18 74 46 64 C 96 48 168 88 252 28" fill="none" stroke="#4f46e5" strokeWidth="4" strokeLinecap="round" />
               </svg>
@@ -1440,7 +1497,7 @@ export default function LandingPage() {
                 ))}
               </div>
               <h2 className="relative mx-auto text-[30px] tracking-[-0.03em]">Stop scrolling ten tabs. Start applying from one map.</h2>
-              <p className="relative mx-auto mt-4.5 max-w-3xl text-white/68 sm:text-[16.5px]">From live listings to AI-matched roles, tailored CVs and a portfolio that gets you noticed <br /> Kaamlee handles the busywork so you can focus on landing the role.</p>
+              <p className="relative mx-auto mt-4.5 max-w-3xl text-white/68 sm:text-[16.5px]">From live listings to AI-matched roles, tailored CVs and a portfolio that gets you noticed — <br className="hidden sm:block" /> Kaamlee handles the busywork so you can focus on landing the role.</p>
               <button onClick={() => setIsPricingOpen(true)} className="cursor-pointer group relative mt-8 inline-flex items-center gap-2.5 overflow-hidden rounded-full px-[26px] py-[15px] text-[15.5px] font-medium text-white shadow-[0_1px_0_rgba(255,255,255,.45)_inset,0_10px_24px_-10px_rgba(22,163,74,.85)] transition-transform duration-300 hover:-translate-y-0.5" style={{ background: 'linear-gradient(180deg,#4ade80,#16a34a 55%,#15803d)' }}>
                 Get started <ArrowChevron />
               </button>
@@ -1448,6 +1505,8 @@ export default function LandingPage() {
           </Reveal>
         </div>
       </section>
+
+      <hr />
 
       {/* ============ FOOTER ============ */}
       <footer className="py-14 sm:py-[78px]">

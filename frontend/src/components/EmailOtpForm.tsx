@@ -4,6 +4,7 @@ import React, { useEffect, useState } from 'react';
 import { Mail, Loader2 } from 'lucide-react';
 import { useAuth } from '@/context/AuthContext';
 import OtpDigitInput from './OtpDigitInput';
+import { PRIMARY_BTN_CLS, PRIMARY_BTN_BG, SECONDARY_BTN_CLS } from '@/components/ui/landing-kit';
 
 interface EmailOtpFormProps {
   onError: (message: string) => void;
@@ -93,21 +94,21 @@ export default function EmailOtpForm({ onError, setLoading }: EmailOtpFormProps)
     return (
       <div className="space-y-3">
         <div className="relative">
-          <Mail size={16} className="absolute left-4 top-1/2 -translate-y-1/2 text-[#444]" />
+          <Mail size={16} className="absolute left-4 top-1/2 -translate-y-1/2 text-black/35" />
           <input
             type="email"
             value={email}
             onChange={(e) => setEmail(e.target.value)}
             onKeyDown={(e) => { if (e.key === 'Enter') { e.preventDefault(); sendCode(); } }}
             placeholder="name@example.com"
-            className="w-full bg-[#0a0a0a] border border-[#222] rounded-xl pl-12 pr-4 py-3 text-sm focus:border-green-500/50 outline-none transition-all placeholder-[#333]"
+            className="w-full bg-white border border-black/[0.10] rounded-full pl-12 pr-4 py-3 text-sm outline-none transition-all placeholder-black/30 focus:border-[#16a34a] focus:shadow-[0_0_0_4px_rgba(22,163,74,.12)]"
           />
         </div>
         <button
           type="button"
           onClick={sendCode}
           disabled={isSending}
-          className="cursor-pointer w-full bg-[#1a1a1a] text-white font-bold py-3 rounded-xl border border-[#222] hover:bg-[#222] transition-all flex items-center justify-center gap-2 disabled:opacity-50"
+          className={SECONDARY_BTN_CLS + ' w-full'}
         >
           {isSending ? <Loader2 size={18} className="animate-spin" /> : 'Send Code'}
         </button>
@@ -117,13 +118,14 @@ export default function EmailOtpForm({ onError, setLoading }: EmailOtpFormProps)
 
   return (
     <div className="space-y-3">
-      <p className="text-xs text-[#888] ml-1">Code sent to {email}</p>
+      <p className="text-xs text-black/45 ml-1">Code sent to {email}</p>
       <OtpDigitInput value={code} onChange={setCode} onComplete={verifyCode} autoFocus />
       <button
         type="button"
         onClick={() => verifyCode(code)}
         disabled={isVerifying}
-        className="cursor-pointer w-full bg-white text-black font-bold py-3 rounded-xl hover:bg-[#ededed] transition-all flex items-center justify-center gap-2 disabled:opacity-50"
+        className={PRIMARY_BTN_CLS + ' w-full'}
+        style={PRIMARY_BTN_BG}
       >
         {isVerifying ? <Loader2 size={18} className="animate-spin" /> : 'Verify Code'}
       </button>
@@ -131,7 +133,7 @@ export default function EmailOtpForm({ onError, setLoading }: EmailOtpFormProps)
         <button
           type="button"
           onClick={() => { setCodeSent(false); setCode(''); }}
-          className="cursor-pointer text-xs text-[#666] hover:text-white transition-colors"
+          className="cursor-pointer text-xs text-black/45 hover:text-[#0b0b0c] transition-colors"
         >
           Change email
         </button>
@@ -139,7 +141,7 @@ export default function EmailOtpForm({ onError, setLoading }: EmailOtpFormProps)
           type="button"
           onClick={sendCode}
           disabled={cooldown > 0 || isSending}
-          className="cursor-pointer text-xs text-[#666] hover:text-white transition-colors disabled:opacity-50 disabled:cursor-default"
+          className="cursor-pointer text-xs text-black/45 hover:text-[#0b0b0c] transition-colors disabled:opacity-50 disabled:cursor-default"
         >
           {cooldown > 0 ? `Resend in ${cooldown}s` : 'Resend code'}
         </button>
