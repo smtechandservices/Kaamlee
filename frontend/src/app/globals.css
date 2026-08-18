@@ -143,6 +143,7 @@
 @keyframes awlFloaty { 0%, 100% { transform: translateY(0); } 50% { transform: translateY(-9px); } }
 @keyframes awlMarquee { to { transform: translateX(-50%); } }
 @keyframes awlRipple { 0% { width: 200px; height: 200px; opacity: 0.5; } 100% { width: 1200px; height: 1200px; opacity: 0; } }
+@keyframes awlSpin { to { transform: rotate(360deg); } }
 
 @theme inline {
   --font-heading: var(--font-sans);

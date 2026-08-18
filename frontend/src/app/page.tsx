@@ -7,6 +7,7 @@ import {
   Map, Sparkles, Layers, Rocket, FileCheck2,
   ShieldCheck, Bell, Kanban, LogOut, Plus,
   Star, Menu as MenuIcon, X as XIcon, Clock, Search, CheckCircle2,
+  Building2, Users, ChevronDown,
 } from 'lucide-react';
 import { useAuth } from '@/context/AuthContext';
 import { useRouter } from 'next/navigation';
@@ -336,8 +337,39 @@ const SOLUTIONS = [
   { icon: ShieldCheck, t: 'Zero-noise listings', d: 'No popups. No fake urgency. Just the job and the apply button.' },
 ];
 
+const ABOUT_LINKS = [
+  { href: '#solutions', icon: Sparkles, label: 'Solutions', desc: 'Every tool built to close the gap between search and offer.' },
+  { href: '#features', icon: Layers, label: 'Features', desc: 'Portfolio builder, tailored CVs, application tracker and more.' },
+  { href: '#sources', icon: Search, label: 'Sources', desc: 'Twelve job boards, crawled every fifteen minutes.' },
+];
+
+const NAV_LINKS: [string, string][] = [['#b2b', 'For Employers'], ['#ambassadors', 'Campus Ambassadors'], ['#pricing', 'Pricing'], ['#faq', 'FAQ']];
+
+const B2B_FEATURES = [
+  { icon: Building2, t: 'Direct job posting', d: 'Post roles and manage the whole pipeline from one dashboard no third-party listing needed.' },
+  { icon: CheckCircle2, t: 'First-round screening', d: 'Every applicant clears a screening interview before you see them, filtering for genuine intent.' },
+  { icon: ShieldCheck, t: 'Proctored assessments', d: 'Skill checks run under proctoring, so a test score reflects the candidate, not a search engine.' },
+  { icon: Users, t: 'Direct candidate pool', d: 'Recruit from active, job-seeking candidates already building profiles on Kaamlee.' },
+];
+
+const AMBASSADOR_FEATURES = [
+  { rotate: '-rotate-2', bg: '#34D399', fg: '#04231A', glyph: '◉', t: 'Host events on campus', d: 'Resume clinics, meetups, or a drive whatever gets your batch in a room together.' },
+  { rotate: 'rotate-2', bg: '#FBCFE8', fg: '#3B0A28', glyph: '✦', t: 'Market Kaamlee locally', d: 'Spread the word through your own channels you know your batch better than a national campaign does.' },
+  { rotate: '-rotate-1', bg: '#4F46E5', fg: '#FFFFFF', glyph: '◆', t: 'Per-registration rewards', d: 'Goodies and rewards that scale with how many students from your university you sign up.' },
+  { rotate: 'rotate-1', bg: '#FDE68A', fg: '#3B2A03', glyph: '▲', t: 'Per-event rewards + certificate', d: 'Extra rewards for every event hosted, plus a certificate for the program.' },
+];
+
+const CAMPUS_NAMES = ['VIT Vellore', 'NIT Surathkal', 'SRM Chennai', 'BITS Pilani', 'DTU Delhi', 'Manipal', 'Christ Bengaluru', 'Symbiosis Pune'];
+
+const WHO_CAN_APPLY = [
+  { rotate: '-rotate-1', bg: '#34D399', fg: '#04231A', t: 'Full-time student in India' },
+  { rotate: 'rotate-1', bg: '#FBCFE8', fg: '#3B0A28', t: 'Comfortable talking to your batch' },
+  { rotate: '-rotate-2', bg: '#4F46E5', fg: '#FFFFFF', t: 'Any year, any course' },
+  { rotate: 'rotate-2', bg: '#FDE68A', fg: '#3B2A03', t: 'Active in a campus group' },
+];
+
 const SOURCES = [
-  { name: 'LinkedIn', color: '#0a66c2', letter: 'in', count: '184,392 live', d: 'The largest single source on the map — refreshed every fifteen minutes.' },
+  { name: 'LinkedIn', color: '#0a66c2', letter: 'in', count: '184,392 live', d: 'The largest single source on the map refreshed every fifteen minutes.' },
   { name: 'Indeed', color: '#003a9b', letter: 'I', count: '92,118 live', d: 'Broad coverage across every level, from internships to leadership roles.' },
   { name: 'Google', color: '#4285f4', letter: 'G', count: '61,540 live', d: 'Aggregated listings pulled straight from Google for Jobs.' },
   { name: 'Wellfound', color: '#0a0a0a', letter: 'W', count: '21,008 live', d: 'Startup and early-stage roles with equity and stage data attached.' },
@@ -350,16 +382,16 @@ const TESTIMONIALS: [string, string, string][] = [
   ['Ananya Reddy', 'Software Engineer, Bengaluru', 'I stopped refreshing five tabs a day. The map showed me every open role in one screen.'],
   ['Rohan Verma', 'Product Manager', 'The AI match score told me exactly which roles were worth my time. Interview in nine days.'],
   ['Fatima Al Suwaidi', 'Data Analyst, Dubai', 'Built my portfolio in twenty minutes and put the link straight on my resume header.'],
-  ['Karan Mehta', 'Backend Engineer', 'Tailored CVs for each application — my ATS score went from 61% to 94% on the same resume.'],
+  ['Karan Mehta', 'Backend Engineer', 'Tailored CVs for each application my ATS score went from 61% to 94% on the same resume.'],
   ['Priya Nair', 'UX Designer', 'No fake urgency, no "12 people applied" banners. Just the job and the apply button.'],
   ['Omar Khan', 'DevOps Engineer, Abu Dhabi', 'The tracker is the only reason I actually know where I stand with each application.'],
   ['Ishaan Kapoor', 'Frontend Lead', 'Twelve boards, one map. I found a role that Indeed never even showed me.'],
-  ['Sana Sheikh', 'Growth Marketer', 'The fifteen-minute refresh matters — I applied to a listing that was six minutes old.'],
+  ['Sana Sheikh', 'Growth Marketer', 'The fifteen-minute refresh matters I applied to a listing that was six minutes old.'],
 ];
 
 const FAQS: { q: string; a: string }[] = [
   { q: 'Where do these jobs actually come from?', a: "We crawl twelve major job boards (LinkedIn, Indeed, ZipRecruiter, etc.) and direct company career pages every fifteen minutes. If it's live on the internet, it's on the map." },
-  { q: 'Will the price change later?', a: "Kaamlee is priced at ₹99/mo or ₹299 for 3 months. There are no hidden tiers or surprise upgrades — the plan you pick unlocks everything, and you can cancel anytime." },
+  { q: 'Will the price change later?', a: "Kaamlee is priced at ₹99/mo or ₹299 for 3 months. There are no hidden tiers or surprise upgrades the plan you pick unlocks everything, and you can cancel anytime." },
   { q: 'How does full access work right now?', a: "Every feature is unlocked for all users on either the ₹99/mo or ₹299/3mo plan. As we roll out premium features (AI matching, Auto-apply, Resume builder, and more), they'll be included at no extra cost." },
   { q: 'How does the AI resume matching work?', a: "Once you upload your resume in your profile, our AI engine parses your technical skills, experience, and career history. It then performs a real-time semantic comparison against every job listing to give you a personalized match percentage." },
   { q: 'How fresh is the data on the map?', a: "Our crawlers operate on a 15-minute refresh cycle. When a job is taken down or filled, it's purged from our system within the hour so you're never applying to ghost listings." },
@@ -459,6 +491,9 @@ export default function LandingPage() {
   const [isPricingOpen, setIsPricingOpen] = useState(false);
   const [navStuck, setNavStuck] = useState(false);
   const [mobileOpen, setMobileOpen] = useState(false);
+  const [aboutOpen, setAboutOpen] = useState(false);
+  const [mobileAboutOpen, setMobileAboutOpen] = useState(false);
+  const aboutRef = useRef<HTMLDivElement>(null);
   const [subscribed, setSubscribed] = useState(false);
   const [cityIndex, setCityIndex] = useState(0);
   const [prevCityIndex, setPrevCityIndex] = useState(0);
@@ -514,6 +549,20 @@ export default function LandingPage() {
     window.addEventListener('scroll', onScroll, { passive: true });
     return () => window.removeEventListener('scroll', onScroll);
   }, []);
+
+  useEffect(() => {
+    if (!aboutOpen) return;
+    const onPointerDown = (e: PointerEvent) => {
+      if (aboutRef.current && !aboutRef.current.contains(e.target as Node)) setAboutOpen(false);
+    };
+    const onKeyDown = (e: KeyboardEvent) => { if (e.key === 'Escape') setAboutOpen(false); };
+    document.addEventListener('pointerdown', onPointerDown);
+    document.addEventListener('keydown', onKeyDown);
+    return () => {
+      document.removeEventListener('pointerdown', onPointerDown);
+      document.removeEventListener('keydown', onKeyDown);
+    };
+  }, [aboutOpen]);
 
   useEffect(() => {
     if (!dashRef.current || !window.matchMedia('(min-width:900px)').matches) return;
@@ -590,7 +639,33 @@ export default function LandingPage() {
           </Link>
 
           <div className="ml-[18px] hidden items-center gap-1 md:flex">
-            {[['#solutions', 'Solutions'], ['#features', 'Features'], ['#sources', 'Sources'], ['#pricing', 'Pricing'], ['#faq', 'FAQ']].map(([href, label]) => (
+            <div className="relative" ref={aboutRef}>
+              <button
+                onClick={() => setAboutOpen((v) => !v)}
+                aria-expanded={aboutOpen}
+                className="group relative inline-flex cursor-pointer items-center gap-1 whitespace-nowrap rounded-full px-[14px] py-[9px] text-[15px] text-[#3d3d3d] transition-colors duration-200 hover:bg-black/5 hover:text-[#0b0b0c]"
+              >
+                About
+                <ChevronDown size={14} className={`transition-transform duration-300 ${aboutOpen ? 'rotate-180' : ''}`} />
+              </button>
+              <div
+                className="absolute left-0 top-[calc(100%+11px)] w-[300px] overflow-hidden rounded-b-[20px] border border-black/[0.08] bg-white p-2 shadow-[0_30px_80px_-30px_rgba(16,18,26,.35)] transition-all duration-250"
+                style={{
+                  opacity: aboutOpen ? 1 : 0,
+                  transform: aboutOpen ? 'translateY(0)' : 'translateY(-8px)',
+                  pointerEvents: aboutOpen ? 'auto' : 'none',
+                }}
+              >
+                <span className="block px-3 pb-1.5 pt-2 text-[11px] font-medium uppercase tracking-[0.1em] text-black/40">About Kaamlee</span>
+                {ABOUT_LINKS.map((l) => (
+                  <a key={l.href} href={l.href} onClick={() => setAboutOpen(false)} className="block rounded-[14px] p-3 text-left transition-colors hover:bg-[#fafafa]">
+                    <span className="block text-[14.5px] font-medium text-[#0b0b0c]">{l.label}</span>
+                    <span className="block text-[12.5px] text-[rgba(61,61,61,0.72)]">{l.desc}</span>
+                  </a>
+                ))}
+              </div>
+            </div>
+            {NAV_LINKS.map(([href, label]) => (
               <a key={href} href={href} className="group relative whitespace-nowrap rounded-full px-[14px] py-[9px] text-[15px] text-[#3d3d3d] transition-colors duration-200 hover:bg-black/5 hover:text-[#0b0b0c]">
                 {label}
                 <span className="absolute bottom-[5px] left-[14px] right-[14px] h-[1.5px] origin-left scale-x-0 rounded bg-[#16a34a] transition-transform duration-300 group-hover:scale-x-100" />
@@ -638,7 +713,26 @@ export default function LandingPage() {
           pointerEvents: mobileOpen ? 'auto' : 'none',
         }}
       >
-        {[['#solutions', 'Solutions'], ['#features', 'Features'], ['#sources', 'Sources'], ['#pricing', 'Pricing'], ['#faq', 'FAQ']].map(([href, label]) => (
+        <button
+          onClick={() => setMobileAboutOpen((v) => !v)}
+          aria-expanded={mobileAboutOpen}
+          className="flex w-full cursor-pointer items-center justify-between rounded-2xl px-3 py-[14px] text-[17px] text-[#3d3d3d] hover:bg-[#fafafa] hover:text-[#0b0b0c]"
+        >
+          About
+          <ChevronDown size={16} className={`transition-transform duration-300 ${mobileAboutOpen ? 'rotate-180' : ''}`} />
+        </button>
+        <div style={{ maxHeight: mobileAboutOpen ? '400px' : '0px', overflow: 'hidden', transition: `max-height 400ms ${EASE_OUT}` }}>
+          <div className="flex flex-col gap-1 py-1">
+            <span className="block px-3 pb-1 pt-1 text-[11px] font-medium uppercase tracking-[0.1em] text-black/40">About Kaamlee</span>
+            {ABOUT_LINKS.map((l) => (
+              <a key={l.href} href={l.href} onClick={() => { setMobileOpen(false); setMobileAboutOpen(false); }} className="block rounded-2xl px-3 py-3 hover:bg-[#fafafa]">
+                <span className="block text-[15px] font-medium text-[#0b0b0c]">{l.label}</span>
+                <span className="block text-[12.5px] text-[rgba(61,61,61,0.72)]">{l.desc}</span>
+              </a>
+            ))}
+          </div>
+        </div>
+        {NAV_LINKS.map(([href, label]) => (
           <a key={href} href={href} onClick={() => setMobileOpen(false)} className="block rounded-2xl px-3 py-[14px] text-[17px] text-[#3d3d3d] hover:bg-[#fafafa] hover:text-[#0b0b0c]">
             {label}
           </a>
@@ -707,7 +801,7 @@ export default function LandingPage() {
           </Reveal>
         </div>
 
-        {/* dashboard mockup — scrolls up and over the sticky hero text above */}
+        {/* dashboard mockup scrolls up and over the sticky hero text above */}
         <Reveal type="scale" delay={380} className="relative z-10 mx-auto mt-12 w-[min(1400px,calc(100%-40px))] bg-[#f2f3f5] sm:mt-16" style={{ perspective: '1600px' }}>
           <div ref={dashRef} className="relative overflow-hidden rounded-t-[22px] border border-b-0 border-black/[0.08] bg-white shadow-[0_30px_80px_-30px_rgba(16,18,26,.35)]" style={{ transformStyle: 'preserve-3d' }}>
             {/* browser chrome */}
@@ -924,7 +1018,7 @@ export default function LandingPage() {
                 </div>
                 <div className="p-6">
                   <h3 className="text-[21px] tracking-[-0.03em]">Portfolio, one click</h3>
-                  <p className="mt-2 text-[15px] text-[rgba(61,61,61,0.72)]">Your resume becomes a public site — pick a layout, pick a theme, publish a real link.</p>
+                  <p className="mt-2 text-[15px] text-[rgba(61,61,61,0.72)]">Your resume becomes a public site pick a layout, pick a theme, publish a real link.</p>
                 </div>
               </div>
             </Reveal>
@@ -949,7 +1043,7 @@ export default function LandingPage() {
                 </div>
                 <div className="p-6">
                   <h3 className="text-[21px] tracking-[-0.03em]">Tailored CV generator</h3>
-                  <p className="mt-2 text-[15px] text-[rgba(61,61,61,0.72)]">A fresh, ATS-scored resume for every role you target — no rewriting from scratch.</p>
+                  <p className="mt-2 text-[15px] text-[rgba(61,61,61,0.72)]">A fresh, ATS-scored resume for every role you target no rewriting from scratch.</p>
                 </div>
               </div>
             </Reveal>
@@ -1113,7 +1207,7 @@ export default function LandingPage() {
             {[
               { n: '01', t: 'We crawl, so you sleep', d: 'Twelve job boards, polled every fifteen minutes. Listings fingerprinted the moment they go live.', w: 100 },
               { n: '02', t: 'Open the map', d: 'No infinite scroll, no fifteen filters. Pan, zoom, see roles plotted where they actually live.', w: 66 },
-              { n: '03', t: 'Apply before noon', d: "One click takes you to the source posting. We don't middleman it — we just made the haystack smaller.", w: 34 },
+              { n: '03', t: 'Apply before noon', d: "One click takes you to the source posting. We don't middleman it we just made the haystack smaller.", w: 34 },
             ].map((s, i) => (
               <Reveal key={s.n} delay={i * 120}>
                 <article className="relative overflow-hidden rounded-[26px] border border-black/[0.08] bg-white p-7 transition-all duration-450 hover:-translate-y-1.5 hover:shadow-[0_2px_4px_rgba(16,18,26,.04),0_18px_40px_-18px_rgba(16,18,26,.22)]">
@@ -1122,6 +1216,111 @@ export default function LandingPage() {
                   <p className="mt-2.5 text-[15px] text-[rgba(61,61,61,0.72)]">{s.d}</p>
                   <FillBar target={s.w} className="absolute inset-x-[26px] bottom-0 h-0.5 overflow-hidden bg-black/[0.08]" barClassName="h-full bg-[#16a34a]" delay={i * 150} />
                 </article>
+              </Reveal>
+            ))}
+          </div>
+        </div>
+      </section>
+
+      {/* ============ FOR EMPLOYERS (B2B) ============ */}
+      <section id="b2b" className="pb-16">
+        <div className="mx-auto w-[min(1400px,calc(100%-40px))] rounded-[34px] border border-black/[0.08] bg-white px-6 py-12 sm:px-10 sm:py-16">
+          <div className="flex flex-wrap items-end justify-between gap-8">
+            <div>
+              <Reveal>
+                <span className="inline-flex items-center gap-2.5 rounded-full border border-dashed border-[#4f46e5]/35 bg-[#4f46e5]/5 py-2 pl-3 pr-4 text-[13.5px] font-medium text-[#4f46e5]">
+                  <i className="h-[7px] w-[7px] rounded-full bg-[#4f46e5] animate-pulse" />For EMPLOYERS !
+                </span>
+              </Reveal>
+              <Reveal delay={80}><h2 className="mt-5 max-w-[20ch] text-[30px] tracking-[-0.035em]">Hire from the pool your candidates are already in</h2></Reveal>
+            </div>
+            <Reveal type="right" delay={160}>
+              <div className="rounded-[18px] border border-black/[0.08] bg-white px-6 py-4 shadow-[0_1px_2px_rgba(16,18,26,.05),0_6px_16px_-8px_rgba(16,18,26,.10)]">
+                <div className="text-[26px] font-medium tracking-[-0.02em]">2</div>
+                <div className="mt-0.5 max-w-[22ch] text-[12.5px] text-[rgba(61,61,61,0.72)]">screening steps before a candidate reaches your desk</div>
+              </div>
+            </Reveal>
+          </div>
+          <Reveal delay={120}><p className="mt-4 max-w-[62ch] text-[16px] leading-relaxed text-[rgba(61,61,61,0.72)]">Post roles directly into Kaamlee and recruit from the same candidate base that&apos;s already searching, matching and tracking applications on the platform, no separate job board required.</p></Reveal>
+
+          <div className="mt-10 grid grid-cols-1 gap-4 sm:grid-cols-2 lg:grid-cols-4">
+            {B2B_FEATURES.map((s, n) => (
+              <Reveal key={s.t} delay={(n % 4) * 90}>
+                <Spotlight className="h-full overflow-hidden rounded-[22px] border border-black/[0.08] bg-white p-5 transition-all duration-450 hover:-translate-y-1.5 hover:border-[#4f46e5]/25 hover:shadow-[0_2px_4px_rgba(16,18,26,.04),0_18px_40px_-18px_rgba(16,18,26,.22)]">
+                  <span className="relative grid h-11 w-11 place-items-center rounded-[13px] border border-black/[0.08] bg-white text-[#4f46e5] shadow-[0_1px_2px_rgba(16,18,26,.05),0_6px_16px_-8px_rgba(16,18,26,.10)]">
+                    <s.icon size={19} strokeWidth={1.7} />
+                  </span>
+                  <h3 className="relative mt-4 text-[16.5px] tracking-[-0.02em]">{s.t}</h3>
+                  <p className="relative mt-2 text-[13.5px] text-[rgba(61,61,61,0.72)]">{s.d}</p>
+                </Spotlight>
+              </Reveal>
+            ))}
+          </div>
+
+          <Reveal delay={200} className="mt-8 flex flex-wrap items-center gap-3.5">
+            <a href="mailto:kaamlee2026@gmail.com?subject=Employer%20interest%20-%20hiring%20on%20Kaamlee" className="group inline-flex items-center gap-2.5 whitespace-nowrap rounded-full px-[22px] py-[13px] text-[14.5px] font-medium text-white shadow-[0_1px_0_rgba(255,255,255,.45)_inset,0_10px_24px_-10px_rgba(79,70,229,.65)] transition-transform duration-300 hover:-translate-y-0.5" style={{ background: 'linear-gradient(180deg,#6366f1,#4f46e5 55%,#4338ca)' }}>
+              Talk to us about hiring <ArrowChevron />
+            </a>
+            <span className="text-[13px] text-[rgba(61,61,61,0.72)]">Built for teams hiring early-career and campus talent</span>
+          </Reveal>
+        </div>
+      </section>
+
+      {/* ============ CAMPUS AMBASSADORS ============ */}
+      <section id="ambassadors" className="pb-16">
+        <div className="relative mx-auto w-[min(1400px,calc(100%-40px))] overflow-hidden rounded-[34px] border border-black/[0.08] bg-white px-6 py-12 sm:px-10 sm:py-16">
+          <div className="pointer-events-none absolute -right-2 -top-2 hidden h-16 w-16 opacity-90 lg:block" style={{ animation: 'awlSpin 46s linear infinite' }}>
+            <div className="h-full w-full" style={{ background: '#4f46e5', clipPath: 'polygon(50% 0%,58% 32%,79% 8%,71% 38%,97% 27%,80% 50%,97% 73%,71% 62%,79% 92%,58% 68%,50% 100%,42% 68%,21% 92%,29% 62%,3% 73%,20% 50%,3% 27%,29% 38%,21% 8%,42% 32%)' }} />
+          </div>
+
+          <div className="relative flex flex-wrap items-start justify-between gap-10">
+            <div className="max-w-[540px]">
+              <Reveal>
+                <span className="-rotate-2 inline-flex items-center gap-2 rounded-full bg-[#FDE68A] px-4 py-2 text-[12.5px] font-bold uppercase tracking-[0.06em] text-[#7c4a03] shadow-[0_6px_16px_-8px_rgba(180,83,9,.35)]" style={{ fontFamily: 'var(--font-outfit)' }}>
+                  <span className="text-[13px]">✦</span> Campus Ambassador Program
+                </span>
+              </Reveal>
+              <Reveal delay={110}><h2 className="mt-4 text-[32px] font-semibold tracking-[-0.03em]" style={{ fontFamily: 'var(--font-outfit)' }}>Kaamlee&apos;s presence on campus, run by students</h2></Reveal>
+              <Reveal delay={120}><p className="relative mt-4 max-w-[52ch] text-[16px] leading-relaxed text-[rgba(61,61,61,0.72)]">Ambassadors host events, spread the word on their campus, and drive registrations from their university. Rewards scale directly with what you bring, how many students sign up, and how many events you run.</p></Reveal>
+              <Reveal delay={60}>
+                <span className="-rotate-5 ml-2 mt-4 block text-[58px] leading-none text-[#d97706]" style={{ fontFamily: 'var(--font-caveat)' }}>join the crew</span>
+              </Reveal>
+            </div>
+
+            <Reveal type="right" delay={140} className="relative hidden w-[360px] flex-none pt-12 lg:block">
+              <svg viewBox="0 0 260 100" className="pointer-events-none absolute -top-9 left-2 h-[100px] w-[260px] overflow-visible">
+                <path d="M6 50 C 46 -8 92 88 60 94 C 34 98 18 74 46 64 C 96 48 168 88 252 28" fill="none" stroke="#4f46e5" strokeWidth="4" strokeLinecap="round" />
+              </svg>
+              <div className="relative flex flex-col gap-2.5">
+                {WHO_CAN_APPLY.map((w) => (
+                  <span key={w.t} className={`rounded-full px-4 py-2.5 text-center text-[12.5px] font-semibold ${w.rotate}`} style={{ background: w.bg, color: w.fg, fontFamily: 'var(--font-outfit)' }}>{w.t}</span>
+                ))}
+              </div>
+              <a href="mailto:kaamlee2026@gmail.com?subject=Campus%20Ambassador%20application" className="rotate-1 mt-12 inline-flex justify-center items-center gap-2 rounded-full bg-[#4ADE80] px-8 py-4 font-semibold tracking-[0.02em] text-black shadow-[0_10px_24px_-10px_rgba(74,222,128,.7)] transition-transform duration-300 hover:-translate-y-0.5" style={{ fontFamily: 'var(--font-outfit)', width: '100%'}}>
+                APPLY as CAMPUS AMBASSADOR <ArrowChevron />
+              </a>
+            </Reveal>
+          </div>
+
+          <Reveal delay={180} className="relative mt-10 overflow-hidden rounded-full border border-black/[0.08] bg-[#fafafa] py-3" style={{ WebkitMaskImage: 'linear-gradient(90deg,transparent,#000 8%,#000 92%,transparent)', maskImage: 'linear-gradient(90deg,transparent,#000 8%,#000 92%,transparent)' }}>
+            <div className="flex w-max animate-[awlMarquee_32s_linear_infinite] gap-8 whitespace-nowrap text-[13px] font-medium tracking-[0.02em] text-black/40">
+              {[...CAMPUS_NAMES, ...CAMPUS_NAMES].map((c, i) => (
+                <span key={i} className="flex items-center gap-8">{c}<span className="text-[#b45309]">✦</span></span>
+              ))}
+            </div>
+          </Reveal>
+
+          <div className="relative mt-10 grid grid-cols-1 gap-4 sm:grid-cols-2 lg:grid-cols-4">
+            {AMBASSADOR_FEATURES.map((s, n) => (
+              <Reveal key={s.t} delay={(n % 4) * 90}>
+                <div
+                  className={`h-full overflow-hidden rounded-[20px] p-5 transition-all duration-400 hover:-translate-y-1.5 hover:rotate-0 hover:shadow-[0_18px_40px_-18px_rgba(16,18,26,.35)] ${s.rotate}`}
+                  style={{ background: s.bg }}
+                >
+                  <span className="block text-[24px]" style={{ color: s.fg }}>{s.glyph}</span>
+                  <h3 className="mt-4 text-[16.5px] font-semibold tracking-[-0.02em]" style={{ fontFamily: 'var(--font-outfit)', color: s.fg }}>{s.t}</h3>
+                  <p className="mt-2 text-[13.5px] leading-relaxed" style={{ color: s.fg, opacity: 0.78 }}>{s.d}</p>
+                </div>
               </Reveal>
             ))}
           </div>
