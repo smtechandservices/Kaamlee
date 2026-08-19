@@ -1493,9 +1493,19 @@ class JobApplicationKitView(views.APIView):
             return Response({'error': 'Job not found.'}, status=404)
 
         profile = getattr(request.user, 'profile', None)
-        content = profile.resume_parsed if profile else None
-        if not content:
+        if not profile or not profile.resume:
             return Response({'error': 'Upload a resume before generating a cover letter.'}, status=400)
+
+        content = profile.resume_parsed
+        if not content:
+            # A resume file exists but parsing it never succeeded (e.g. the AI
+            # parser errored or is temporarily down) — distinct from never
+            # having uploaded one at all, so say so instead of telling the
+            # user to do something they already did.
+            return Response(
+                {'error': "We couldn't read your resume. Try re uploading it, or try again in a bit."},
+                status=502,
+            )
 
         generated = generate_application_kit_with_groq(content, job.title, job.company, job.description)
         if not generated or not generated.get('cover_letter'):

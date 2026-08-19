@@ -13,6 +13,8 @@ interface User {
   linkedin_url?: string;
   resume?: string;
   resume_text?: string;
+  has_resume?: boolean;
+  resume_ai_parsed?: boolean;
   is_subscribed: boolean;
   subscription_expires_at: string | null;
   is_superuser?: boolean;

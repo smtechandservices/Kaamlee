@@ -3,7 +3,7 @@
 import React, { useState, useEffect } from 'react';
 import { useRouter } from 'next/navigation';
 import { motion } from 'framer-motion';
-import { User, Phone, Link as LinkIcon, Loader2, Save, CheckCircle2, Briefcase, X, AtSign, Lock } from 'lucide-react';
+import { User, Phone, Link as LinkIcon, Loader2, Save, CheckCircle2, Briefcase, X, AtSign, Lock, AlertTriangle } from 'lucide-react';
 import Sidebar from '@/components/Sidebar';
 import PageHeader from '@/components/PageHeader';
 import EmailVerificationGate from '@/components/EmailVerificationGate';
@@ -356,6 +356,18 @@ export default function ProfilePage() {
               >
                 <CheckCircle2 size={18} />
                 Resume updated successfully!
+              </motion.div>
+            )}
+
+            {resumeSuccess && user?.has_resume && !user?.resume_ai_parsed && (
+              <motion.div
+                initial={{ opacity: 0, scale: 0.95 }}
+                animate={{ opacity: 1, scale: 1 }}
+                className="bg-amber-50 border border-amber-200 text-amber-700 text-sm py-4 px-5 rounded-2xl flex items-center gap-3"
+                style={OUTFIT}
+              >
+                <AlertTriangle size={18} />
+                Resume uploaded, but AI parsing didn&apos;t go through — portfolio and AI cover letters won&apos;t reflect it yet. Try again in a bit.
               </motion.div>
             )}
 

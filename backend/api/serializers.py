@@ -15,6 +15,7 @@ from scripts.ats_scoring import score_cv
 
 logger = logging.getLogger(__name__)
 _groq = Groq(api_key=os.getenv('GROQ_API_KEY'))
+_GROQ_MODEL = "openai/gpt-oss-120b"
 
 EMAIL_VERIFICATION_WINDOW_MINUTES = 60
 
@@ -100,7 +101,7 @@ def extract_text_from_pdf(pdf_file):
 def parse_resume_with_groq(resume_text: str) -> dict:
     try:
         response = _groq.chat.completions.create(
-            model="llama-3.3-70b-versatile",
+            model=_GROQ_MODEL,
             messages=[
                 {"role": "system", "content": _PARSE_PROMPT},
                 {"role": "user", "content": resume_text[:12000]},
@@ -141,7 +142,7 @@ def tailor_resume_with_groq(content: dict, target_role: str, keywords: list) -> 
     )
     try:
         response = _groq.chat.completions.create(
-            model="llama-3.3-70b-versatile",
+            model=_GROQ_MODEL,
             messages=[
                 {"role": "system", "content": prompt},
                 {"role": "user", "content": json.dumps(content)},
@@ -197,7 +198,7 @@ def generate_application_kit_with_groq(resume_content: dict, job_title: str, com
     )
     try:
         response = _groq.chat.completions.create(
-            model="llama-3.3-70b-versatile",
+            model=_GROQ_MODEL,
             messages=[
                 {"role": "system", "content": prompt},
                 {"role": "user", "content": json.dumps(resume_content)},
@@ -250,6 +251,7 @@ class UserSerializer(serializers.ModelSerializer):
     resume = serializers.FileField(source='profile.resume', required=False, allow_null=True)
     resume_text = serializers.CharField(source='profile.resume_text', read_only=True)
     has_resume = serializers.SerializerMethodField()
+    resume_ai_parsed = serializers.SerializerMethodField()
     is_subscribed = serializers.BooleanField(source='profile.is_subscribed', required=False)
     subscription_expires_at = serializers.DateTimeField(source='profile.subscription_expires_at', required=False, allow_null=True)
     portfolio_is_public = serializers.SerializerMethodField()
@@ -259,10 +261,13 @@ class UserSerializer(serializers.ModelSerializer):
         model = User
         fields = (
             'id', 'username', 'email', 'first_name', 'last_name', 'phone', 'linkedin_url',
-            'resume', 'resume_text', 'has_resume', 'is_subscribed', 'subscription_expires_at',
+            'resume', 'resume_text', 'has_resume', 'resume_ai_parsed', 'is_subscribed', 'subscription_expires_at',
             'is_superuser', 'is_staff', 'portfolio_is_public', 'signed_in_with_google',
         )
-        read_only_fields = ('id', 'email', 'is_superuser', 'is_staff', 'resume_text', 'has_resume', 'portfolio_is_public', 'signed_in_with_google')
+        read_only_fields = (
+            'id', 'email', 'is_superuser', 'is_staff', 'resume_text', 'has_resume', 'resume_ai_parsed',
+            'portfolio_is_public', 'signed_in_with_google',
+        )
 
     MAX_RESUME_SIZE_BYTES = 5 * 1024 * 1024  # 5 MB — the whole file is read into memory for extraction/Groq
 
@@ -284,6 +289,13 @@ class UserSerializer(serializers.ModelSerializer):
     def get_has_resume(self, obj):
         # resume_text is the reliable gate — it's always set after PDF extraction
         return bool(obj.profile.resume_text)
+
+    def get_resume_ai_parsed(self, obj):
+        # Distinct from has_resume: a file can upload and extract fine while
+        # the AI structuring step (parse_resume_with_groq) still fails, e.g.
+        # a Groq outage — features reading resume_parsed (portfolio, cover
+        # letters) would silently stay stale without this signal.
+        return bool(obj.profile.resume_parsed)
 
     def get_portfolio_is_public(self, obj):
         # Portfolio was added after some users already existed, so it may be missing.

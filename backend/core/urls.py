@@ -18,6 +18,7 @@ from django.contrib import admin
 from django.urls import path, include, re_path
 from django.views.static import serve
 from django.conf import settings
+from django.views.decorators.clickjacking import xframe_options_exempt
 
 urlpatterns = [
     path('admin/', admin.site.urls),
@@ -27,6 +28,10 @@ urlpatterns = [
     # Serve user-uploaded media directly from Django. The deployment's nginx
     # has no location block for MEDIA_ROOT, so without this every /media/
     # request 404s at the app level regardless of DEBUG.
-    re_path(r'^media/(?P<path>.*)$', serve, {'document_root': settings.MEDIA_ROOT}),
+    # xframe_options_exempt: the profile page previews resumes in an <iframe>
+    # from a different origin (frontend domain vs api.* backend domain) —
+    # Django's default X-Frame-Options: DENY blocks that entirely, which
+    # browsers surface as a bare "refused to connect" inside the frame.
+    re_path(r'^media/(?P<path>.*)$', xframe_options_exempt(serve), {'document_root': settings.MEDIA_ROOT}),
 ]
 
