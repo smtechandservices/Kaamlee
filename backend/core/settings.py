@@ -29,9 +29,16 @@ BASE_DIR = Path(__file__).resolve().parent.parent
 SECRET_KEY = os.getenv('SECRET_KEY', 'django-insecure-fallback-key-change-this-in-env')
 
 # SECURITY WARNING: don't run with debug turned on in production!
-DEBUG = 'False'
+DEBUG = False
 
 ALLOWED_HOSTS = os.getenv('ALLOWED_HOSTS', '*').split(',')
+
+# The production deployment sits behind an SSL-terminating nginx that talks
+# plain HTTP to gunicorn, so without this Django thinks every request is
+# insecure — request.is_secure() is False, and DRF's absolute file URLs
+# (e.g. the resume field) come back as http://, which browsers silently
+# block as mixed content on the https frontend.
+SECURE_PROXY_SSL_HEADER = ('HTTP_X_FORWARDED_PROTO', 'https')
 
 
 # Application definition
