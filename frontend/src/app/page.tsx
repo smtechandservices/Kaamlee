@@ -346,8 +346,8 @@ const ABOUT_LINKS = [
 const ABOUT_SUB_DETAILS: Record<'solutions' | 'features', { t: string; d: string }[]> = {
   solutions: SOLUTIONS.map(({ t, d }) => ({ t, d })),
   features: [
-    { t: 'Portfolio, one click', d: 'Turn your resume into a public portfolio site — pick a layout and theme, publish a link.' },
-    { t: 'Tailored CV generator', d: 'A fresh, ATS-scored resume for every role you target — no rewriting from scratch.' },
+    { t: 'Portfolio, one click', d: 'Turn your resume into a public portfolio site pick a layout and theme, publish a link.' },
+    { t: 'Tailored CV generator', d: 'A fresh, ATS-scored resume for every role you target no rewriting from scratch.' },
     { t: 'Smart job alerts', d: 'Pinged the moment a new listing matches your resume.' },
     { t: 'Match analytics', d: 'See exactly how your resume stacks up against every listing.' },
     { t: 'Application tracker', d: 'Every role you save lands on a drag-and-drop board automatically.' },
@@ -357,15 +357,15 @@ const ABOUT_SUB_DETAILS: Record<'solutions' | 'features', { t: string; d: string
 const NAV_LINKS: [string, string][] = [['#b2b', 'Employers'], ['#ambassadors', 'Ambassadors'], ['#pricing', 'Pricing'], ['#faq', 'FAQ']];
 
 const B2B_FEATURES = [
-  { icon: Building2, t: 'Direct job posting', d: 'Post roles and manage the whole pipeline from one dashboard — no third-party listing needed.' },
+  { icon: Building2, t: 'Direct job posting', d: 'Post roles and manage the whole pipeline from one dashboardp no third-party listing needed.' },
   { icon: CheckCircle2, t: 'First-round screening', d: 'Every applicant clears a screening interview before you see them, filtering for genuine intent.' },
   { icon: ShieldCheck, t: 'Proctored assessments', d: 'Skill checks run under proctoring, so a test score reflects the candidate, not a search engine.' },
   { icon: Users, t: 'Direct candidate pool', d: 'Recruit from active, job-seeking candidates already building profiles on Kaamlee.' },
 ];
 
 const AMBASSADOR_FEATURES = [
-  { rotate: '-rotate-2', bg: '#34D399', fg: '#04231A', glyph: '◉', t: 'Host events on campus', d: 'Resume clinics, meetups, or a drive — whatever gets your batch in a room together.' },
-  { rotate: 'rotate-2', bg: '#FBCFE8', fg: '#3B0A28', glyph: '✦', t: 'Market Kaamlee locally', d: 'Spread the word through your own channels — you know your batch better than a national campaign does.' },
+  { rotate: '-rotate-2', bg: '#34D399', fg: '#04231A', glyph: '◉', t: 'Host events on campus', d: 'Resume clinics, meetups, or a drive whatever gets your batch in a room together.' },
+  { rotate: 'rotate-2', bg: '#FBCFE8', fg: '#3B0A28', glyph: '✦', t: 'Market Kaamlee locally', d: 'Spread the word through your own channels you know your batch better than a national campaign does.' },
   { rotate: '-rotate-1', bg: '#4F46E5', fg: '#FFFFFF', glyph: '◆', t: 'Per-registration rewards', d: 'Goodies and rewards that scale with how many students from your university you sign up.' },
   { rotate: 'rotate-1', bg: '#FDE68A', fg: '#3B2A03', glyph: '▲', t: 'Per-event rewards + certificate', d: 'Extra rewards for every event hosted, plus a certificate for the program.' },
 ];
@@ -1231,7 +1231,7 @@ export default function LandingPage() {
           <div className="mx-auto flex flex-col items-center gap-4.5 text-center">
             <Reveal><span className="inline-flex items-center gap-2.5 rounded-full border border-dashed border-[#16a34a]/35 bg-[#16a34a]/5 py-2 pl-3 pr-4 text-[13.5px] font-medium text-[#16a34a]"><i className="h-[7px] w-[7px] rounded-full bg-[#16a34a] animate-pulse" />Sources</span></Reveal>
             <Reveal delay={80}><h2 className="text-[30px] tracking-[-0.035em]">Twelve job boards. One map.</h2></Reveal>
-            <Reveal delay={160}><p className="max-w-[52ch] leading-relaxed text-[rgba(61,61,61,0.72)]">These are the busiest of the twelve boards <br className="hidden sm:block" /> we crawl every fifteen minutes — no account needed to browse.</p></Reveal>
+            <Reveal delay={160}><p className="max-w-[52ch] leading-relaxed text-[rgba(61,61,61,0.72)]">These are the busiest of the twelve boards <br className="hidden sm:block" /> we crawl every fifteen minutes no account needed to browse.</p></Reveal>
           </div>
           <div className="mt-12 grid grid-cols-1 gap-4.5 sm:grid-cols-2 lg:grid-cols-3">
             {SOURCES.map((o, n) => (
@@ -1497,7 +1497,7 @@ export default function LandingPage() {
                 ))}
               </div>
               <h2 className="relative mx-auto text-[30px] tracking-[-0.03em]">Stop scrolling ten tabs. Start applying from one map.</h2>
-              <p className="relative mx-auto mt-4.5 max-w-3xl text-white/68 sm:text-[16.5px]">From live listings to AI-matched roles, tailored CVs and a portfolio that gets you noticed — <br className="hidden sm:block" /> Kaamlee handles the busywork so you can focus on landing the role.</p>
+              <p className="relative mx-auto mt-4.5 max-w-3xl text-white/68 sm:text-[16.5px]">From live listings to AI-matched roles, tailored CVs and a portfolio that gets you noticed <br className="hidden sm:block" /> Kaamlee handles the busywork so you can focus on landing the role.</p>
               <button onClick={() => setIsPricingOpen(true)} className="cursor-pointer group relative mt-8 inline-flex items-center gap-2.5 overflow-hidden rounded-full px-[26px] py-[15px] text-[15.5px] font-medium text-white shadow-[0_1px_0_rgba(255,255,255,.45)_inset,0_10px_24px_-10px_rgba(22,163,74,.85)] transition-transform duration-300 hover:-translate-y-0.5" style={{ background: 'linear-gradient(180deg,#4ade80,#16a34a 55%,#15803d)' }}>
                 Get started <ArrowChevron />
               </button>

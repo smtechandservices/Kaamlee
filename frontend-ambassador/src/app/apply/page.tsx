@@ -165,7 +165,7 @@ export default function ApplyPage() {
             <CheckCircle2 size={28} />
           </span>
           <h1 className="mt-6 text-[26px] font-semibold tracking-[-0.03em]" style={{ fontFamily: 'var(--font-outfit)' }}>Application received</h1>
-          <p className="mt-3 text-[15px] leading-relaxed text-black/55">We&apos;ll review it and reach out over email or phone within a few days.</p>
+          <p className="mt-3 text-[15px] leading-relaxed text-black/55">We&apos;ll review it within a few days. If approved, you&apos;ll get an email with your login details, plus a call on the number you applied with.</p>
           <Link href="/" className="mt-8 inline-flex items-center justify-center rounded-full bg-[#0b0b0c] px-7 py-[13px] text-[14.5px] font-bold text-white" style={{ fontFamily: 'var(--font-outfit)' }}>
             Back to home
           </Link>
@@ -229,6 +229,7 @@ export default function ApplyPage() {
               </Field>
               <Field id="phone" label="Phone" required error={errors.phone}>
                 <input id="phone" type="tel" value={form.phone} onChange={(e) => set('phone', e.target.value)} className={inputClass} placeholder="98765 43210" />
+                <p className="mt-1.5 text-[12.5px] text-black/40">We&apos;ll use this number to contact you, including a call if your application is approved.</p>
               </Field>
             </div>
           )}

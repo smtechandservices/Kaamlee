@@ -37,12 +37,12 @@ const STATS = [
 ];
 
 const PERKS = [
-  { icon: '\u{1F4B0}', bg: '#34D399', fg: '#04231A', rotate: '-rotate-2', title: 'Monthly stipend, ₹3k to ₹8k', body: "Paid on the 5th. Tier moves with signups, not seniority." },
+  { icon: '\u{1F4B0}', bg: '#34D399', fg: '#04231A', rotate: '-rotate-2', title: 'Referral Bonus', body: "Refer friends and earn rewards!" },
   { icon: '\u{1F4DC}', bg: '#FBCFE8', fg: '#3B0A28', rotate: 'rotate-3', title: 'Certificate and a signed LOR', body: 'Verifiable for everyone who finishes; LOR for the top 100.' },
-  { icon: '✨', bg: '#FF2D62', fg: '#ffffff', rotate: '-rotate-3', title: 'Kaamlee Pro, free for the year', body: 'Resume match, portfolio and alerts — for you and five friends.' },
+  { icon: '✨', bg: '#FF2D62', fg: '#ffffff', rotate: '-rotate-3', title: 'Kaamlee Pro, free for certain time', body: 'Resume match, portfolio and alerts — for you and five friends.' },
   { icon: '⚡', bg: '#FDE68A', fg: '#3B2A03', rotate: 'rotate-2', title: 'Internship fast-track', body: 'Tier 3 skips the resume screen here and gets referred to partners.' },
   { icon: '⏱️', bg: '#FF4D2E', fg: '#ffffff', rotate: '-rotate-4', title: 'Mentor hours, every month', body: 'With recruiters and founders from the hiring side of the platform.' },
-  { icon: '\u{1F39F}️', bg: '#4F46E5', fg: '#ffffff', rotate: 'rotate-4', title: '₹2,500 event budget', body: 'Reimbursed per event, on top of the stipend. Deck and speaker included.' },
+  { icon: '\u{1F39F}️', bg: '#4F46E5', fg: '#ffffff', rotate: 'rotate-4', title: '₹2,500+ event budget', body: 'Reimbursed per event, on top of the goodies. Deck and speaker included.' },
 ];
 
 const TASKS = [
@@ -63,11 +63,11 @@ const STEPS = [
   { n: 1, when: '15–30 SEP', title: 'Apply', body: 'Five-minute form. No resume, no cover letter.' },
   { n: 2, when: '2–6 OCT', title: 'Short call', body: '15 minutes on video with the campus team.' },
   { n: 3, when: '10 OCT', title: 'Onboard', body: 'Dashboard, asset kit and referral link go live.' },
-  { n: 4, when: 'OCT–MAR', title: 'Run the term', body: 'Six months, stipend monthly, certificate at the end.' },
+  { n: 4, when: 'OCT–MAR', title: 'Run the term', body: 'Refer friends and earn rewards!' },
 ];
 
 const TESTIMONIALS = [
-  { quote: 'I joined for the stipend and left with a PPO. Running the resume clinic taught me more about hiring than any course I took.', initials: 'AK', avatarBg: '#16A34A', avatarFg: '#fff', name: 'Aditi K.', meta: 'VIT Vellore · now Product intern at Kaamlee' },
+  { quote: 'I joined for the certificate and left with a PPO. Running the resume clinic taught me more about hiring than any course I took.', initials: 'AK', avatarBg: '#16A34A', avatarFg: '#fff', name: 'Aditi K.', meta: 'VIT Vellore · now Product intern at Kaamlee' },
   { quote: '400 people from my college signed up. The placement cell now asks me which drives to push.', initials: 'DP', avatarBg: '#FBBF24', avatarFg: '#000', name: 'Dev P.', meta: 'NIT Surathkal · Batch 3' },
   { quote: 'Six hours a month, honestly. The asset kit does most of the work for you.', initials: 'NB', avatarBg: '#FF4D2E', avatarFg: '#fff', name: 'Nikhil B.', meta: 'SRM Chennai · Batch 3' },
 ];
@@ -166,7 +166,9 @@ export default function AmbassadorPage() {
             <span className="w-7 h-7 rounded-lg overflow-hidden shrink-0 border border-black/10">
               <Image src="/logo.png" alt="Kaamlee" width={28} height={28} className="w-full h-full object-cover" />
             </span>
-            <span className="text-lg font-bold tracking-tight font-[var(--font-outfit)]">kaamlee</span>
+            <span className="uppercase tracking-[0.15em] text-[16px] sm:text-[18px] font-semibold" style={{ fontFamily: 'var(--font-jakarta), ui-sans-serif, system-ui, sans-serif' }}>
+              Kaamlee
+            </span>
           </a>
           <nav className="hidden lg:flex items-center gap-6 text-sm font-medium text-[#6B7280] whitespace-nowrap">
             {NAV_LINKS.map((l) => (
@@ -500,7 +502,7 @@ export default function AmbassadorPage() {
               Put your campus
               <br />on the map.
             </h2>
-            <p className="mt-5 mx-auto text-base md:text-lg leading-relaxed max-w-lg font-medium opacity-75">
+            <p className="mt-5 mx-auto text-base md:text-lg leading-relaxed font-medium opacity-75">
               Batch 4 opens 180 seats. Five minutes to apply, and no resume needed.
             </p>
             <div className="mt-8 flex flex-col sm:flex-row items-center justify-center gap-3">
@@ -546,7 +548,6 @@ export default function AmbassadorPage() {
           <div className="flex flex-col gap-3">
             <span className="font-[var(--font-outfit)] text-xs font-semibold tracking-[0.14em] text-[#78716C]">RESOURCES</span>
             <a href="#stories" className="text-sm text-[#374151] font-medium hover:text-[#0A0A0A]">Leaderboard</a>
-            <a href="mailto:campus@kaamlee.com" className="text-sm text-[#374151] font-medium hover:text-[#0A0A0A]">campus@kaamlee.com</a>
           </div>
           <div className="flex flex-col gap-3">
             <span className="font-[var(--font-outfit)] text-xs font-semibold tracking-[0.14em] text-[#78716C]">KAAMLEE</span>
