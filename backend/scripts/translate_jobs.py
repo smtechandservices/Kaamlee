@@ -22,6 +22,8 @@ import argparse
 import logging
 import os
 import sys
+import threading
+import time
 from concurrent.futures import ThreadPoolExecutor, as_completed
 from pathlib import Path
 
@@ -65,6 +67,21 @@ _MAX_TRANSLATE_CHARS = 4999
 
 DEFAULT_WORKERS = 8
 
+# The free/unofficial endpoint throws RequestError under sustained load or
+# once an IP's reputation trips its abuse detection — almost always
+# transient, so a failing call retries through this escalating backoff
+# before giving up on it. If a call still fails after the full schedule,
+# that's treated as a persistent block for the rest of THIS run (see
+# _rate_limited below) rather than repeating the same futile backoff on
+# every remaining job — mirrors scripts/geocode_jobs.py's handling of
+# Nominatim rate limits.
+_RETRY_BACKOFFS = [5, 15, 30, 60]  # seconds
+
+# Set once a call exhausts _RETRY_BACKOFFS — every worker thread checks this
+# and skips straight to "keep original" without attempting more network
+# calls, since the endpoint has already shown itself blocked this run.
+_rate_limited = threading.Event()
+
 
 def _is_non_english(text):
     if not text or len(text.strip()) < _MIN_DETECT_CHARS:
@@ -92,12 +109,26 @@ def _job_is_non_english(job):
 def _translate_text(text):
     if not text:
         return text
-    try:
-        translated = GoogleTranslator(source='auto', target=TARGET_LANG).translate(text[:_MAX_TRANSLATE_CHARS])
-        return translated or text
-    except Exception:
-        logger.warning("Failed to translate text, keeping original", exc_info=True)
+    if _rate_limited.is_set():
         return text
+
+    text = text[:_MAX_TRANSLATE_CHARS]
+    last_error = None
+    for backoff in [0, *_RETRY_BACKOFFS]:
+        if backoff:
+            time.sleep(backoff)
+        try:
+            translated = GoogleTranslator(source='auto', target=TARGET_LANG).translate(text)
+            return translated or text
+        except Exception as e:
+            last_error = e
+
+    logger.warning(
+        "Translation still failing after %ds of retries — treating the endpoint as "
+        "blocked for the rest of this run: %s", sum(_RETRY_BACKOFFS), last_error,
+    )
+    _rate_limited.set()
+    return text
 
 
 def _translate_job(job):
@@ -116,7 +147,12 @@ def _translate_job(job):
 
 
 def run(company=None, limit=None, workers=DEFAULT_WORKERS):
-    """Returns (checked, translated)."""
+    """Returns (checked, translated, rate_limited). rate_limited means the
+    translation endpoint stopped responding partway through — jobs after
+    that point were left untranslated rather than retried forever, and a
+    later rerun should pick them up once the block clears."""
+    _rate_limited.clear()
+
     queryset = Job.objects.all()
     if company:
         queryset = queryset.filter(company__iexact=company)
@@ -140,7 +176,7 @@ def run(company=None, limit=None, workers=DEFAULT_WORKERS):
             if checked % 25 == 0 or checked == total:
                 print(f"{checked}/{total} job(s) checked, {translated} translated so far")
 
-    return checked, translated
+    return checked, translated, _rate_limited.is_set()
 
 
 if __name__ == '__main__':
@@ -153,5 +189,10 @@ if __name__ == '__main__':
     )
     args = parser.parse_args()
 
-    checked, translated = run(company=args.company, limit=args.limit, workers=args.workers)
+    checked, translated, rate_limited = run(company=args.company, limit=args.limit, workers=args.workers)
     print(f"Checked {checked} job(s), translated {translated}.")
+    if rate_limited:
+        print(
+            "Translation endpoint stopped responding partway through this run — "
+            "some jobs were left untranslated. Wait a bit and rerun to pick them up."
+        )
