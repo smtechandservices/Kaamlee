@@ -298,7 +298,7 @@ class RecentJobsView(generics.ListAPIView):
     def get_queryset(self):
         limit = int(self.request.query_params.get('limit', 10))
         limit = min(limit, 299)
-        return Job.objects.order_by('-created_at')[:limit]
+        return Job.objects.order_by('?')[:limit]
 
 class JobPagination(PageNumberPagination):
     page_size = 20
