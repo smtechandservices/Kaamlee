@@ -5,7 +5,7 @@ import Link from 'next/link';
 import Image from 'next/image';
 import { CheckCircle2, Loader2, UploadCloud, ArrowLeft } from 'lucide-react';
 
-const API_URL = process.env.NEXT_PUBLIC_API_URL || 'https://api.kaamlee.in';
+const API_URL = process.env.NEXT_PUBLIC_API_URL || 'http://localhost:8000';
 const MAX_FILE_MB = 5;
 const MAX_FILE_BYTES = MAX_FILE_MB * 1024 * 1024;
 const CURRENT_YEAR = new Date().getFullYear();
