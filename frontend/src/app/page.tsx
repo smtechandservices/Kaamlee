@@ -1315,9 +1315,9 @@ export default function LandingPage() {
           </div>
 
           <Reveal delay={200} className="mt-8 flex flex-wrap items-center gap-3.5">
-            <a href="mailto:kaamlee2026@gmail.com?subject=Employer%20interest%20-%20hiring%20on%20Kaamlee" className="group inline-flex items-center gap-2.5 whitespace-nowrap rounded-full px-[22px] py-[13px] text-[14.5px] font-medium text-white shadow-[0_1px_0_rgba(255,255,255,.45)_inset,0_10px_24px_-10px_rgba(79,70,229,.65)] transition-transform duration-300 hover:-translate-y-0.5" style={{ background: 'linear-gradient(180deg,#6366f1,#4f46e5 55%,#4338ca)' }}>
+            <Link href="/employers" className="group inline-flex items-center gap-2.5 whitespace-nowrap rounded-full px-[22px] py-[13px] text-[14.5px] font-medium text-white shadow-[0_1px_0_rgba(255,255,255,.45)_inset,0_10px_24px_-10px_rgba(79,70,229,.65)] transition-transform duration-300 hover:-translate-y-0.5" style={{ background: 'linear-gradient(180deg,#6366f1,#4f46e5 55%,#4338ca)' }}>
               Talk to us about hiring <ArrowChevron />
-            </a>
+            </Link>
             <span className="text-[13px] text-[rgba(61,61,61,0.72)]">Built for teams hiring early-career and campus talent</span>
           </Reveal>
         </div>

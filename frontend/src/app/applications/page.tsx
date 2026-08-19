@@ -204,7 +204,7 @@ export default function ApplicationsPage() {
               className="text-[10px] sm:text-[11px] text-[#15803d] font-semibold"
               style={{ fontFamily: 'var(--font-outfit)' }}
             >
-              View only — subscribe to drag cards, change status, or stop tracking a job.
+              View only, subscribe to drag cards, change status, or stop tracking a job.
             </span>
             <button
               onClick={() => setIsPricingOpen(true)}

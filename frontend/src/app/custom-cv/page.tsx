@@ -385,7 +385,7 @@ export default function CustomCVListPage() {
               <p className="text-xs text-black/45 font-medium">
                 {cvs.length > 0
                   ? "You've already covered the roles that best match your resume."
-                  : 'No strong role matches found yet — try creating a CV manually.'}
+                  : 'No strong role matches found yet try creating a CV manually.'}
               </p>
             </div>
           ) : (
