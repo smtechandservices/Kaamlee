@@ -2,10 +2,9 @@
 
 import React, { useState, useEffect } from 'react';
 import { motion } from 'framer-motion';
-import { Loader2, Save, CheckCircle2, Briefcase, Globe, ExternalLink, Link as LinkIcon, Eye } from 'lucide-react';
+import { Loader2, Save, CheckCircle2, Briefcase, Globe, ExternalLink, Link as LinkIcon } from 'lucide-react';
 import Sidebar from '@/components/Sidebar';
 import PageHeader from '@/components/PageHeader';
-import PortfolioAnalyticsPanel, { PortfolioAnalyticsData } from '@/components/portfolio/PortfolioAnalyticsPanel';
 import { useAuth } from '@/context/AuthContext';
 import { useSubscriptionGate } from '@/hooks/useSubscriptionGate';
 import PricingModal from '@/components/PricingModal';
@@ -51,8 +50,6 @@ export default function PortfolioSettingsPage() {
   const [isTogglingPublic, setIsTogglingPublic] = useState(false);
   const [portfolioSuccess, setPortfolioSuccess] = useState(false);
   const [linkCopied, setLinkCopied] = useState(false);
-  const [analytics, setAnalytics] = useState<PortfolioAnalyticsData | null>(null);
-  const [isFetchingAnalytics, setIsFetchingAnalytics] = useState(true);
   const [isPricingOpen, setIsPricingOpen] = useState(false);
 
   useEffect(() => {
@@ -71,22 +68,6 @@ export default function PortfolioSettingsPage() {
       .catch(() => {})
       .finally(() => setIsFetching(false));
   }, [token]);
-
-  // Analytics stay a subscriber-only feature — non-subscribers never fetch them.
-  useEffect(() => {
-    if (!token || !isSubscribed) {
-      setIsFetchingAnalytics(false);
-      return;
-    }
-    setIsFetchingAnalytics(true);
-    fetch(`${process.env.NEXT_PUBLIC_API_URL}/api/portfolio/analytics/`, {
-      headers: { Authorization: `Token ${token}` },
-    })
-      .then((r) => r.json())
-      .then(setAnalytics)
-      .catch(() => {})
-      .finally(() => setIsFetchingAnalytics(false));
-  }, [token, isSubscribed]);
 
   const handleSelectTemplate = (tmpl: typeof TEMPLATES[number]) => {
     if (!isSubscribed && tmpl.id !== portfolioTemplate) {
@@ -165,7 +146,7 @@ export default function PortfolioSettingsPage() {
         {!isSubscribed && (
           <div className="flex items-center justify-between gap-3 px-4 sm:px-6 py-2 bg-[#16a34a]/10 border-b border-[#16a34a]/20 shrink-0">
             <span className="text-[10px] sm:text-[11px] text-[#16a34a] font-semibold" style={{ fontFamily: 'var(--font-outfit)' }}>
-              Subscribe to unlock analytics and make your portfolio public.
+              Subscribe to make your portfolio public.
             </span>
             <button
               onClick={() => setIsPricingOpen(true)}
@@ -181,32 +162,6 @@ export default function PortfolioSettingsPage() {
           <div className="absolute top-0 left-1/2 -translate-x-1/2 w-[800px] h-[500px] bg-[#16a34a]/5 blur-[120px] rounded-full pointer-events-none" />
 
           <div className="mx-auto z-10 relative">
-            {portfolioHasResume && (
-              <div className={`${CARD_CLS} p-6 sm:p-8 md:p-10 mb-6`}>
-                <div className="flex items-center gap-3 mb-6">
-                  <Eye className="w-5 h-5 text-[#16a34a]" />
-                  <h2 className="text-sm font-semibold uppercase tracking-widest text-[#0b0b0c]" style={{ fontFamily: 'var(--font-outfit)' }}>Analytics</h2>
-                </div>
-
-                {isSubscribed ? (
-                  <PortfolioAnalyticsPanel analytics={analytics} isLoading={isFetchingAnalytics} />
-                ) : (
-                  <div className="bg-[#f2f3f5] border border-dashed border-black/[0.12] rounded-2xl p-6 text-center">
-                    <Eye className="w-8 h-8 text-black/25 mx-auto mb-3" />
-                    <p className="text-xs text-[rgba(61,61,61,0.72)] font-medium mb-4">Subscribe to see who's viewing your portfolio.</p>
-                    <button
-                      type="button"
-                      onClick={() => setIsPricingOpen(true)}
-                      className="cursor-pointer inline-flex items-center gap-1 text-[10px] text-[#16a34a] hover:text-[#15803d] font-bold uppercase tracking-widest"
-                      style={{ fontFamily: 'var(--font-outfit)' }}
-                    >
-                      Unlock analytics
-                    </button>
-                  </div>
-                )}
-              </div>
-            )}
-
             <div className={`${CARD_CLS} p-6 sm:p-8 md:p-10`}>
               <div className="flex items-center gap-3 mb-6">
                 <Globe className="w-5 h-5 text-[#16a34a]" />
@@ -267,7 +222,7 @@ export default function PortfolioSettingsPage() {
                             setLinkCopied(true);
                             setTimeout(() => setLinkCopied(false), 2000);
                           }}
-                          className={`${SECONDARY_BTN_CLS} !px-3.5 !py-1.5 !text-[11px]`}
+                          className={`cursor-pointer ${SECONDARY_BTN_CLS} !px-3.5 !py-1.5 !text-[11px]`}
                           style={{ fontFamily: 'var(--font-outfit)' }}>
                           {linkCopied ? <CheckCircle2 className="w-3 h-3 text-[#16a34a]" /> : <LinkIcon className="w-3 h-3" />}
                           {linkCopied ? 'Copied' : 'Copy'}
@@ -279,7 +234,7 @@ export default function PortfolioSettingsPage() {
                             if (authToken) localStorage.setItem('kaamlee_edit_token', authToken);
                             window.open(`/portfolio/${user.username}?edit=1`, '_blank');
                           }}
-                          className={`${SECONDARY_BTN_CLS} !px-3.5 !py-1.5 !text-[11px]`}
+                          className={`cursor-pointer ${SECONDARY_BTN_CLS} !px-3.5 !py-1.5 !text-[11px]`}
                           style={{ fontFamily: 'var(--font-outfit)' }}>
                           <ExternalLink className="w-3 h-3" /> Preview
                         </button>
@@ -350,7 +305,7 @@ export default function PortfolioSettingsPage() {
                   </div>
 
                   <button type="button" onClick={handleSavePortfolio} disabled={isSavingPortfolio}
-                    className={`${PRIMARY_BTN_CLS} w-full rounded-xl py-3.5 text-xs font-semibold uppercase tracking-widest`}
+                    className={`cursor-pointer ${PRIMARY_BTN_CLS} w-full rounded-xl py-3.5 text-xs font-semibold uppercase tracking-widest`}
                     style={{ ...PRIMARY_BTN_BG, fontFamily: 'var(--font-outfit)' }}>
                     {isSavingPortfolio ? <Loader2 className="animate-spin w-4 h-4" /> : <Save className="w-4 h-4" />}
                     Save Portfolio Settings

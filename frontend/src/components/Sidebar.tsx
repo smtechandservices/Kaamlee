@@ -80,12 +80,12 @@ export default function Sidebar() {
           })}
         </nav>
 
-        <div className="flex flex-col gap-1 w-full px-3 shrink-0">
+        <div className="flex flex-col gap-2 w-full px-3 pt-3 mt-2 shrink-0 border-t border-black/[0.08]">
           <Link
             href="/profile"
             title={user ? `${user.first_name} ${user.last_name}` : 'Profile'}
             onClick={close}
-            className={itemCls(isProfileActive)}
+            className={`border border-black/[0.08] ${itemCls(isProfileActive)}`}
           >
             <div className="w-7 h-7 rounded-full bg-gradient-to-br from-[#4ade80] to-[#16a34a] flex items-center justify-center text-[10px] font-bold text-white shrink-0">
               {user?.first_name?.[0]}{user?.last_name?.[0]}
@@ -96,7 +96,7 @@ export default function Sidebar() {
           <button
             onClick={() => { logout(); close(); }}
             title="Logout"
-            className={`cursor-pointer ${itemCls(false)}`}
+            className={`cursor-pointer border border-black/[0.08] ${itemCls(false)}`}
           >
             <LogOut size={17} className="shrink-0" strokeWidth={1.8} />
             <span className="text-[13.5px] font-medium leading-none truncate">Logout</span>

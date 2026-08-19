@@ -5,11 +5,13 @@ import Link from 'next/link';
 import { motion } from 'framer-motion';
 import {
   Loader2, Compass, Kanban, FileText, Globe, Receipt,
-  ArrowUpRight, Sparkles, ShieldCheck, MapPin, Briefcase,
+  ArrowUpRight, Sparkles, ShieldCheck, MapPin, Eye, Briefcase,
+  CheckCircle2, Link as LinkIcon,
 } from 'lucide-react';
 import Sidebar from '@/components/Sidebar';
 import PageHeader from '@/components/PageHeader';
 import PricingModal from '@/components/PricingModal';
+import PortfolioAnalyticsPanel, { PortfolioAnalyticsData } from '@/components/portfolio/PortfolioAnalyticsPanel';
 import { useAuth } from '@/context/AuthContext';
 import { useSubscriptionGate } from '@/hooks/useSubscriptionGate';
 import { isSubscriptionActive } from '@/lib/subscription';
@@ -31,19 +33,11 @@ interface Application {
   status_updated_at: string;
 }
 
-const STATUS_STYLE: Record<string, { label: string; dot: string; chip: string }> = {
-  saved: { label: 'Saved', dot: 'bg-slate-400', chip: 'bg-slate-100 text-slate-600' },
-  applied: { label: 'Applied', dot: 'bg-blue-500', chip: 'bg-blue-50 text-blue-600' },
-  interviewing: { label: 'Interviewing', dot: 'bg-amber-500', chip: 'bg-amber-50 text-amber-700' },
-  offered: { label: 'Offered', dot: 'bg-[#16a34a]', chip: 'bg-[#16a34a]/10 text-[#16a34a]' },
-  rejected: { label: 'Rejected', dot: 'bg-red-500', chip: 'bg-red-50 text-red-600' },
-};
-
 const QUICK_LINKS = [
   { href: '/explore', label: 'Explore jobs', desc: 'Search the live map across every board.', icon: Compass },
   { href: '/applications', label: 'Application tracker', desc: 'See where every application stands.', icon: Kanban },
   { href: '/custom-cv', label: 'Custom CV', desc: 'Generate an ATS-scored CV for a role.', icon: FileText },
-  { href: '/portfolio', label: 'Portfolio', desc: 'Manage your public portfolio link.', icon: Globe },
+  { href: '/transactions', label: 'Billing', desc: 'Subscription status and payment history.', icon: Receipt },
 ];
 
 function getDaysLeft(expiry: string | null | undefined) {
@@ -54,7 +48,7 @@ function getDaysLeft(expiry: string | null | undefined) {
 
 export default function DashboardPage() {
   const { user, token } = useAuth();
-  const { isReady } = useSubscriptionGate({ allowUnsubscribed: true });
+  const { isReady, isSubscribed } = useSubscriptionGate({ allowUnsubscribed: true });
 
   const [applications, setApplications] = useState<Application[]>([]);
   const [cvs, setCvs] = useState<CustomCV[]>([]);
@@ -62,6 +56,9 @@ export default function DashboardPage() {
   const [totalJobs, setTotalJobs] = useState<number | null>(null);
   const [isFetching, setIsFetching] = useState(true);
   const [isPricingOpen, setIsPricingOpen] = useState(false);
+  const [linkCopied, setLinkCopied] = useState(false);
+  const [analytics, setAnalytics] = useState<PortfolioAnalyticsData | null>(null);
+  const [isFetchingAnalytics, setIsFetchingAnalytics] = useState(true);
 
   useEffect(() => {
     if (!token) return;
@@ -79,6 +76,20 @@ export default function DashboardPage() {
     }).finally(() => setIsFetching(false));
   }, [token]);
 
+  // Analytics stay a subscriber-only feature — non-subscribers never fetch them.
+  useEffect(() => {
+    if (!token || !isSubscribed) {
+      setIsFetchingAnalytics(false);
+      return;
+    }
+    setIsFetchingAnalytics(true);
+    fetch(`${process.env.NEXT_PUBLIC_API_URL}/api/portfolio/analytics/`, { headers: { Authorization: `Token ${token}` } })
+      .then((r) => r.json())
+      .then(setAnalytics)
+      .catch(() => {})
+      .finally(() => setIsFetchingAnalytics(false));
+  }, [token, isSubscribed]);
+
   if (!isReady || isFetching) {
     return (
       <div className="h-screen bg-[#f2f3f5] flex items-center justify-center">
@@ -91,9 +102,6 @@ export default function DashboardPage() {
   const daysLeft = getDaysLeft(user?.subscription_expires_at);
   const activeCount = applications.filter((a) => a.status === 'applied' || a.status === 'interviewing').length;
   const offeredCount = applications.filter((a) => a.status === 'offered').length;
-  const recentApplications = [...applications]
-    .sort((a, b) => new Date(b.status_updated_at).getTime() - new Date(a.status_updated_at).getTime())
-    .slice(0, 5);
   const bestScore = cvs.reduce((max, cv) => Math.max(max, cv.ats_score ?? 0), 0);
 
   const STATS = [
@@ -170,66 +178,92 @@ export default function DashboardPage() {
               ))}
             </div>
 
-            <div className="mt-8 grid grid-cols-1 gap-6 lg:grid-cols-[1.4fr_1fr]">
-              <motion.div initial={{ opacity: 0, y: 12 }} animate={{ opacity: 1, y: 0 }} transition={{ delay: 0.2 }} className={`${CARD_CLS} p-6`}>
-                <div className="flex items-center justify-between">
-                  <h2 className="text-[16px] font-semibold tracking-[-0.02em]" style={{ fontFamily: 'var(--font-outfit)' }}>Recent applications</h2>
-                  <Link href="/applications" className="text-[13px] font-medium text-[#16a34a] hover:text-[#15803d]" style={{ fontFamily: 'var(--font-outfit)' }}>View all →</Link>
-                </div>
-
-                {recentApplications.length === 0 ? (
-                  <div className="mt-8 flex flex-col items-center gap-3 py-8 text-center">
-                    <span className="grid h-11 w-11 place-items-center rounded-full bg-black/[0.03] text-black/30"><Briefcase size={18} /></span>
-                    <p className="text-[13.5px] text-black/40">No applications tracked yet.</p>
-                    <Link href="/explore" className="text-[13px] font-medium text-[#16a34a] hover:text-[#15803d]">Browse the map →</Link>
-                  </div>
-                ) : (
-                  <div className="mt-5 flex flex-col gap-2">
-                    {recentApplications.map((a) => {
-                      const st = STATUS_STYLE[a.status] ?? STATUS_STYLE.saved;
-                      return (
-                        <div key={a.id} className="flex items-center gap-3 rounded-[14px] border border-black/[0.06] p-3 transition-colors hover:bg-[#fafafa]">
-                          <span className={`h-2 w-2 flex-none rounded-full ${st.dot}`} />
-                          <div className="min-w-0 flex-1">
-                            <div className="truncate text-[13.5px] font-medium text-[#0b0b0c]">{a.job?.title ?? 'Untitled role'}</div>
-                            <div className="truncate text-[12px] text-black/45">{a.job?.company ?? 'Unknown company'} · {a.job?.is_remote ? 'Remote' : a.job?.location_name}</div>
-                          </div>
-                          <span className={`flex-none rounded-full px-2.5 py-1 text-[11px] font-medium ${st.chip}`} style={{ fontFamily: 'var(--font-outfit)' }}>{st.label}</span>
-                        </div>
-                      );
-                    })}
-                  </div>
-                )}
-              </motion.div>
-
-              <motion.div initial={{ opacity: 0, y: 12 }} animate={{ opacity: 1, y: 0 }} transition={{ delay: 0.25 }} className="flex flex-col gap-3">
-                {QUICK_LINKS.map((l) => (
-                  <Link key={l.href} href={l.href} className={`${CARD_CLS} group flex items-center gap-3.5 p-4 transition-all duration-300 hover:-translate-y-0.5 hover:border-[#16a34a]/30`}>
-                    <span className="grid h-10 w-10 flex-none place-items-center rounded-[12px] border border-black/[0.08] bg-[#fafafa] text-[#16a34a] transition-transform duration-300 group-hover:scale-105"><l.icon size={17} /></span>
-                    <div className="min-w-0 flex-1">
-                      <div className="text-[14px] font-medium text-[#0b0b0c]" style={{ fontFamily: 'var(--font-outfit)' }}>{l.label}</div>
-                      <div className="truncate text-[12px] text-black/45">{l.desc}</div>
-                    </div>
-                    <ArrowUpRight size={16} className="flex-none text-black/25 transition-colors group-hover:text-[#16a34a]" />
-                  </Link>
+            <div className="mt-8">
+              <div className="mt-4 grid grid-cols-1 gap-4 sm:grid-cols-2">
+                {QUICK_LINKS.map((l, i) => (
+                  <motion.div key={l.href} initial={{ opacity: 0, y: 12 }} animate={{ opacity: 1, y: 0 }} transition={{ delay: 0.25 + i * 0.04 }}>
+                    <Link href={l.href} className={`${CARD_CLS} group flex items-center gap-3.5 p-4 transition-all duration-300 hover:-translate-y-0.5 hover:border-[#16a34a]/30`}>
+                      <span className="grid h-10 w-10 flex-none place-items-center rounded-[12px] border border-black/[0.08] bg-[#fafafa] text-[#16a34a] transition-transform duration-300 group-hover:scale-105"><l.icon size={17} /></span>
+                      <div className="min-w-0 flex-1">
+                        <div className="text-[14px] font-medium text-[#0b0b0c]" style={{ fontFamily: 'var(--font-outfit)' }}>{l.label}</div>
+                        <div className="truncate text-[12px] text-black/45">{l.desc}</div>
+                      </div>
+                      <ArrowUpRight size={16} className="flex-none text-black/25 transition-colors group-hover:text-[#16a34a]" />
+                    </Link>
+                  </motion.div>
                 ))}
-                <Link href="/transactions" className={`${CARD_CLS} group flex items-center gap-3.5 p-4 transition-all duration-300 hover:-translate-y-0.5 hover:border-[#16a34a]/30`}>
-                  <span className="grid h-10 w-10 flex-none place-items-center rounded-[12px] border border-black/[0.08] bg-[#fafafa] text-[#16a34a] transition-transform duration-300 group-hover:scale-105"><Receipt size={17} /></span>
-                  <div className="min-w-0 flex-1">
-                    <div className="text-[14px] font-medium text-[#0b0b0c]" style={{ fontFamily: 'var(--font-outfit)' }}>Billing</div>
-                    <div className="truncate text-[12px] text-black/45">Subscription status and payment history.</div>
-                  </div>
-                  <ArrowUpRight size={16} className="flex-none text-black/25 transition-colors group-hover:text-[#16a34a]" />
-                </Link>
-              </motion.div>
+              </div>
             </div>
 
-            {portfolio && !portfolio.has_resume && (
-              <motion.div initial={{ opacity: 0, y: 12 }} animate={{ opacity: 1, y: 0 }} transition={{ delay: 0.3 }} className="mt-6 flex items-center gap-3 rounded-[18px] border border-dashed border-black/[0.14] bg-black/[0.015] px-5 py-4">
-                <span className="text-[13.5px] text-black/50">Upload your resume to unlock Custom CVs and a public portfolio.</span>
-                <Link href="/profile" className="ml-auto text-[13px] font-medium text-[#16a34a] hover:text-[#15803d]" style={{ fontFamily: 'var(--font-outfit)' }}>Go to profile →</Link>
-              </motion.div>
-            )}
+            <motion.div initial={{ opacity: 0, y: 12 }} animate={{ opacity: 1, y: 0 }} transition={{ delay: 0.2 }} className={`mt-8 ${CARD_CLS} p-6`}>
+              <div className="flex items-center justify-between">
+                <h2 className="flex items-center gap-2 text-[16px] font-semibold tracking-[-0.02em]" style={{ fontFamily: 'var(--font-outfit)' }}>
+                  <Eye size={16} className="text-[#16a34a]" /> Portfolio insights
+                </h2>
+                <Link href="/portfolio" className="text-[13px] font-medium text-[#16a34a] hover:text-[#15803d]" style={{ fontFamily: 'var(--font-outfit)' }}>Manage portfolio →</Link>
+              </div>
+
+              {!portfolio?.has_resume ? (
+                <div className="mt-8 flex flex-col items-center gap-3 py-8 text-center">
+                  <span className="grid h-11 w-11 place-items-center rounded-full bg-black/[0.03] text-black/30"><Briefcase size={18} /></span>
+                  <p className="text-[13.5px] text-black/40">Upload a resume to unlock your public portfolio.</p>
+                  <Link href="/profile" className="text-[13px] font-medium text-[#16a34a] hover:text-[#15803d]">Go to profile →</Link>
+                </div>
+              ) : (
+                <>
+                  {user?.username && (
+                    <div className="mt-5 flex flex-wrap items-center justify-between gap-3 rounded-xl border border-black/[0.08] bg-[#f2f3f5] px-4 py-3">
+                      <span className="truncate text-[13px] text-black/55" style={{ fontFamily: 'var(--font-outfit)' }}>
+                        kaamlee.in/portfolio/{user.username}
+                      </span>
+                      <div className="flex flex-none items-center gap-2">
+                        <span
+                          className={`rounded-full px-2.5 py-1 text-[11px] font-semibold ${
+                            portfolio.is_public ? 'bg-[#16a34a]/10 text-[#16a34a]' : 'bg-black/[0.05] text-black/45'
+                          }`}
+                          style={{ fontFamily: 'var(--font-outfit)' }}
+                        >
+                          {portfolio.is_public ? 'Public' : 'Private'}
+                        </span>
+                        <button
+                          type="button"
+                          onClick={() => {
+                            navigator.clipboard.writeText(`https://kaamlee.in/portfolio/${user.username}`);
+                            setLinkCopied(true);
+                            setTimeout(() => setLinkCopied(false), 2000);
+                          }}
+                          className="cursor-pointer inline-flex items-center gap-1.5 rounded-full border border-black/[0.10] bg-white px-3 py-1.5 text-[11px] font-medium text-black/60 transition-colors hover:border-black/25 hover:text-black"
+                          style={{ fontFamily: 'var(--font-outfit)' }}
+                        >
+                          {linkCopied ? <CheckCircle2 size={12} className="text-[#16a34a]" /> : <LinkIcon size={12} />}
+                          {linkCopied ? 'Copied' : 'Copy'}
+                        </button>
+                      </div>
+                    </div>
+                  )}
+
+                  {!subscribed ? (
+                    <div className="mt-5 rounded-2xl border border-dashed border-black/[0.12] bg-[#f2f3f5] p-6 text-center">
+                      <Eye className="mx-auto mb-3 h-8 w-8 text-black/25" />
+                      <p className="mb-4 text-[13px] font-medium text-[rgba(61,61,61,0.72)]">Subscribe to see who&apos;s viewing your portfolio.</p>
+                      <button
+                        type="button"
+                        onClick={() => setIsPricingOpen(true)}
+                        className="inline-flex items-center gap-1 text-[11px] font-bold uppercase tracking-widest text-[#16a34a] hover:text-[#15803d]"
+                        style={{ fontFamily: 'var(--font-outfit)' }}
+                      >
+                        Unlock analytics
+                      </button>
+                    </div>
+                  ) : (
+                    <div className="mt-5">
+                      <PortfolioAnalyticsPanel analytics={analytics} isLoading={isFetchingAnalytics} />
+                    </div>
+                  )}
+                </>
+              )}
+            </motion.div>
+
           </div>
         </div>
       </div>

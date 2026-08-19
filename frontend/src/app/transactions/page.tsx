@@ -158,7 +158,7 @@ export default function TransactionsPage() {
 
                 <button
                   onClick={() => setIsPricingModalOpen(true)}
-                  className={`${PRIMARY_BTN_CLS} mt-8 w-full py-4 text-xs uppercase tracking-widest`}
+                  className={`cursor-pointer ${PRIMARY_BTN_CLS} mt-8 w-full py-4 text-xs uppercase tracking-widest`}
                   style={PRIMARY_BTN_BG}
                 >
                   {user?.is_subscribed ? 'Renew Plan' : 'Upgrade Now'}
