@@ -869,7 +869,7 @@ export default function LandingPage() {
                 <span className="h-2.5 w-2.5 rounded-full border border-black/[0.08]" />
                 <span className="h-2.5 w-2.5 rounded-full border border-black/[0.08]" />
               </span>
-              <span className="rounded-full border border-black/[0.08] bg-[#fafafa] px-5 py-1.5 text-[13px] text-black/45">kaamlee.com/map</span>
+              <span className="rounded-full border border-black/[0.08] bg-[#fafafa] px-5 py-1.5 text-[13px] text-black/45">kaamlee.in/map</span>
             </div>
 
             <div className="grid grid-cols-1 md:grid-cols-[280px_1fr]">
@@ -1057,7 +1057,7 @@ export default function LandingPage() {
                       </span>
                       <span className="rounded-full bg-[#16a34a]/10 px-2.5 py-1 text-[10.5px] font-black uppercase tracking-widest text-[#16a34a]">Live</span>
                     </div>
-                    <div className="mt-3.5 flex items-center gap-2 rounded-full border border-black/[0.08] bg-[#fafafa] px-3 py-1.5 text-[10px] text-black/45">kaamlee.com/p/your-name</div>
+                    <div className="mt-3.5 flex items-center gap-2 rounded-full border border-black/[0.08] bg-[#fafafa] px-3 py-1.5 text-[10px] text-black/45">kaamlee.in/p/your-name</div>
                     <div className="mt-3.5 grid grid-cols-3 grid-rows-2 gap-2">
                       <div className="col-span-2 row-span-2 flex flex-col justify-between rounded-lg border border-black/[0.06] bg-[#f4f6fa] p-3">
                         <div className="h-7 w-7 rounded-full bg-gradient-to-br from-[#4ade80] to-[#16a34a]" />
@@ -1205,12 +1205,12 @@ export default function LandingPage() {
                 <div className="mt-6 rounded-[20px] border border-black/[0.08] bg-white p-4.5 shadow-[0_1px_2px_rgba(16,18,26,.05),0_6px_16px_-8px_rgba(16,18,26,.10)]">
                   <div className="flex items-center gap-3">
                     <span className="grid h-[38px] w-[38px] flex-none place-items-center rounded-[11px] border border-black/[0.08] bg-[#fafafa] text-[rgba(61,61,61,0.72)]"><FileCheck2 size={17} /></span>
-                    <div className="flex-1"><b className="text-[15px] font-medium">Resume_Ananya_R.pdf</b><div className="text-[13px] text-[rgba(61,61,61,0.72)]">Parsed 18 fields · 0 errors</div></div>
+                    <div className="flex-1"><b className="text-[15px] font-medium">Resume1.pdf</b><div className="text-[13px] text-[rgba(61,61,61,0.72)]">Parsed 18 fields · 0 errors</div></div>
                     <span className="text-[12px] text-[#16a34a]">Routed</span>
                   </div>
                   <div className="mt-3 flex items-center gap-3 border-t border-black/[0.08] pt-3">
                     <span className="grid h-[38px] w-[38px] flex-none place-items-center rounded-[11px] border border-black/[0.08] bg-[#fafafa] text-[rgba(61,61,61,0.72)]"><FileCheck2 size={17} /></span>
-                    <div className="flex-1"><b className="text-[15px] font-medium">Senior_PM_Google.json</b><div className="text-[13px] text-[rgba(61,61,61,0.72)]">Tailored to JD · sent for review</div></div>
+                    <div className="flex-1"><b className="text-[15px] font-medium">Resume2.pdf</b><div className="text-[13px] text-[rgba(61,61,61,0.72)]">Tailored to JD · sent for review</div></div>
                     <span className="text-[12px] text-[#16a34a]">Parsing</span>
                   </div>
                   <FillBar target={62} className="mt-3.5 h-1.5 overflow-hidden rounded-full bg-[#eceff5]" barClassName="h-full rounded-full" />
@@ -1353,7 +1353,7 @@ export default function LandingPage() {
                   <span key={w.t} className={`rounded-full px-4 py-2.5 text-center text-[12.5px] font-semibold ${w.rotate}`} style={{ background: w.bg, color: w.fg, fontFamily: 'var(--font-outfit)' }}>{w.t}</span>
                 ))}
               </div>
-              <a href="mailto:kaamlee2026@gmail.com?subject=Campus%20Ambassador%20application" className="rotate-1 mt-12 inline-flex justify-center items-center gap-2 rounded-full bg-[#4ADE80] px-8 py-4 font-semibold tracking-[0.02em] text-black shadow-[0_10px_24px_-10px_rgba(74,222,128,.7)] transition-transform duration-300 hover:-translate-y-0.5" style={{ fontFamily: 'var(--font-outfit)', width: '100%'}}>
+              <a href={process.env.NEXT_PUBLIC_AMBASSADOR_URL || 'https://ambassador.kaamlee.in'} className="rotate-1 mt-12 inline-flex justify-center items-center gap-2 rounded-full bg-[#4ADE80] px-8 py-4 font-semibold tracking-[0.02em] text-black shadow-[0_10px_24px_-10px_rgba(74,222,128,.7)] transition-transform duration-300 hover:-translate-y-0.5" style={{ fontFamily: 'var(--font-outfit)', width: '100%'}}>
                 APPLY as CAMPUS AMBASSADOR <ArrowChevron />
               </a>
             </Reveal>

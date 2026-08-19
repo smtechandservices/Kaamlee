@@ -2,7 +2,7 @@
 
 import Link from 'next/link';
 import { usePathname, useRouter } from 'next/navigation';
-import { LayoutDashboard, Building2, CreditCard, Users, MessageSquare, ScrollText, LogOut, Briefcase } from 'lucide-react';
+import { LayoutDashboard, Building2, CreditCard, Users, MessageSquare, ScrollText, LogOut, Briefcase, GraduationCap } from 'lucide-react';
 
 const NAV_ITEMS = [
   { href: '/', label: 'Dashboard', icon: LayoutDashboard },
@@ -10,6 +10,7 @@ const NAV_ITEMS = [
   { href: '/jobs', label: 'Jobs', icon: Briefcase },
   { href: '/revenue', label: 'Finance', icon: CreditCard },
   { href: '/users', label: 'Users', icon: Users },
+  { href: '/ambassadors', label: 'Ambassadors', icon: GraduationCap },
   { href: '/feedback', label: 'Feedback', icon: MessageSquare },
   { href: '/logs', label: 'Logs', icon: ScrollText },
 ];
