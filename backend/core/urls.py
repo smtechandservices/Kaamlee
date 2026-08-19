@@ -15,12 +15,18 @@ Including another URLconf
     2. Add a URL to urlpatterns:  path('blog/', include('blog.urls'))
 """
 from django.contrib import admin
-from django.urls import path, include
+from django.urls import path, include, re_path
+from django.views.static import serve
+from django.conf import settings
 
 urlpatterns = [
     path('admin/', admin.site.urls),
     path('api/', include('api.urls')),
     path('payments/', include('payments.urls')),
     path('ambassador/', include('ambassador.urls')),
+    # Serve user-uploaded media directly from Django. The deployment's nginx
+    # has no location block for MEDIA_ROOT, so without this every /media/
+    # request 404s at the app level regardless of DEBUG.
+    re_path(r'^media/(?P<path>.*)$', serve, {'document_root': settings.MEDIA_ROOT}),
 ]
 
