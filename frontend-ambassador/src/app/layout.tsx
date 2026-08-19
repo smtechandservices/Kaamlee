@@ -1,5 +1,5 @@
 import type { Metadata } from "next";
-import { Outfit, Caveat } from "next/font/google";
+import { Outfit, Plus_Jakarta_Sans } from "next/font/google";
 import "./globals.css";
 
 const outfit = Outfit({
@@ -7,10 +7,9 @@ const outfit = Outfit({
   subsets: ["latin"],
 });
 
-const caveat = Caveat({
-  variable: "--font-caveat",
+const jakarta = Plus_Jakarta_Sans({
+  variable: "--font-jakarta",
   subsets: ["latin"],
-  weight: ["600", "700"],
 });
 
 export const metadata: Metadata = {
@@ -28,7 +27,7 @@ export default function RootLayout({
   children: React.ReactNode;
 }>) {
   return (
-    <html lang="en" className={`${outfit.variable} ${caveat.variable}`}>
+    <html lang="en" className={`${outfit.variable} ${jakarta.variable}`}>
       <body className="antialiased">{children}</body>
     </html>
   );

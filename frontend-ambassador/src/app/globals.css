@@ -1,19 +1,8 @@
 @import "tailwindcss";
 
 @theme {
-  --font-sans: var(--font-outfit);
+  --font-sans: var(--font-jakarta);
 }
-
-@layer base {
-  body {
-    font-family: Georgia, "Times New Roman", Times, serif;
-    letter-spacing: -0.01em;
-  }
-}
-
-@keyframes awlFloaty { 0%, 100% { transform: translateY(0); } 50% { transform: translateY(-9px); } }
-@keyframes awlMarquee { to { transform: translateX(-50%); } }
-@keyframes awlSpin { to { transform: rotate(360deg); } }
 
 ::-webkit-scrollbar { width: 12px; height: 12px; }
 ::-webkit-scrollbar-track { background: transparent; }
