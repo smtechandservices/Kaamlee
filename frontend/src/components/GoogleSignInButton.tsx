@@ -4,6 +4,7 @@ import React, { useLayoutEffect, useRef, useState } from 'react';
 import { GoogleLogin, CredentialResponse } from '@react-oauth/google';
 import { Loader2, Phone } from 'lucide-react';
 import { useAuth } from '@/context/AuthContext';
+import { PRIMARY_BTN_CLS, PRIMARY_BTN_BG } from '@/components/ui/landing-kit';
 
 interface GoogleSignInButtonProps {
   onError: (message: string) => void;
@@ -109,14 +110,14 @@ export default function GoogleSignInButton({ onError, setLoading }: GoogleSignIn
 
   if (pendingToken) {
     return (
-      <div className="w-full bg-[#0a0a0a] border border-[#222] rounded-xl p-5 space-y-4">
+      <div className="w-full bg-white border border-black/[0.08] rounded-[18px] p-5 space-y-4 shadow-[0_1px_2px_rgba(16,18,26,.05),0_6px_16px_-8px_rgba(16,18,26,.10)]">
         <div>
-          <p className="text-sm font-bold text-white mb-1">Add your phone number</p>
-          <p className="text-xs text-[#888]">Google doesn't share this with us — we need it to finish setting up your account.</p>
+          <p className="text-sm font-semibold text-[#0b0b0c] mb-1" style={{ fontFamily: 'var(--font-outfit)' }}>Add your phone number</p>
+          <p className="text-xs text-[rgba(61,61,61,0.72)]">Google doesn't share this with us — we need it to finish setting up your account.</p>
         </div>
 
         {phoneError && (
-          <div className="bg-red-500/10 border border-red-500/20 text-red-400 text-xs py-2 px-3 rounded-lg">
+          <div className="bg-red-50 border border-red-200 text-red-600 text-xs py-2 px-3 rounded-xl">
             {phoneError}
           </div>
         )}
@@ -125,7 +126,7 @@ export default function GoogleSignInButton({ onError, setLoading }: GoogleSignIn
             and HTML disallows nested forms. Enter-to-submit is wired up manually below instead. */}
         <div className="space-y-3">
           <div className="relative">
-            <Phone size={16} className="absolute left-4 top-1/2 -translate-y-1/2 text-[#444]" />
+            <Phone size={16} className="absolute left-4 top-1/2 -translate-y-1/2 text-black/35" />
             <input
               type="tel"
               autoFocus
@@ -139,7 +140,7 @@ export default function GoogleSignInButton({ onError, setLoading }: GoogleSignIn
                 }
               }}
               placeholder="987..."
-              className="w-full bg-[#111] border border-[#222] rounded-xl pl-12 pr-4 py-3 text-sm focus:border-green-500/50 outline-none transition-all placeholder-[#333]"
+              className="w-full bg-white border border-black/[0.10] rounded-full pl-12 pr-4 py-3 text-sm outline-none transition-all placeholder-black/30 focus:border-[#16a34a] focus:shadow-[0_0_0_4px_rgba(22,163,74,.12)]"
             />
           </div>
 
@@ -147,7 +148,8 @@ export default function GoogleSignInButton({ onError, setLoading }: GoogleSignIn
             type="button"
             onClick={handlePhoneSubmit}
             disabled={isSubmittingPhone}
-            className="cursor-pointer w-full bg-white text-black font-bold py-3 rounded-xl hover:bg-[#ededed] transition-all flex items-center justify-center gap-2 disabled:opacity-50"
+            className={PRIMARY_BTN_CLS + ' w-full'}
+            style={PRIMARY_BTN_BG}
           >
             {isSubmittingPhone ? <Loader2 size={18} className="animate-spin" /> : 'Continue'}
           </button>
@@ -155,7 +157,7 @@ export default function GoogleSignInButton({ onError, setLoading }: GoogleSignIn
           <button
             type="button"
             onClick={handleSkipPhone}
-            className="cursor-pointer w-full text-center text-xs text-[#666] hover:text-white transition-colors py-1"
+            className="cursor-pointer w-full text-center text-xs text-black/45 hover:text-[#0b0b0c] transition-colors py-1"
           >
             Skip for now
           </button>
@@ -166,14 +168,13 @@ export default function GoogleSignInButton({ onError, setLoading }: GoogleSignIn
 
   return (
     <div className="relative w-full group/google">
-      <div className="absolute -inset-1 bg-gradient-to-r from-green-600 to-green-400 rounded-xl blur opacity-0 group-hover/google:opacity-40 transition duration-700" />
-      <div ref={containerRef} className="relative w-full flex justify-center rounded-xl overflow-hidden">
+      <div ref={containerRef} className="relative w-full flex justify-center rounded-full overflow-hidden">
         {width && (
           <GoogleLogin
             onSuccess={handleSuccess}
             onError={() => onError('Google sign-in failed.')}
             theme="outline"
-            shape="rectangular"
+            shape="pill"
             size="large"
             text="continue_with"
             logo_alignment="center"

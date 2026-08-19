@@ -71,7 +71,7 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
     sessionStorage.setItem('kaamlee_token', newToken);
     setToken(newToken);
     fetchUser(newToken);
-    router.push('/explore');
+    router.push('/dashboard');
   };
 
   const logout = () => {

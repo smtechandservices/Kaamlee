@@ -11,6 +11,7 @@ geopy==2.4.1
 beautifulsoup4==4.15.0
 PyPDF2==3.0.1
 razorpay==2.0.1
+Pillow
 google-auth==2.35.0
 groq
 xhtml2pdf

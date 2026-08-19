@@ -10,6 +10,7 @@ import type { CustomCV, CVTemplate, ProfessionKeywords } from '@/components/cust
 import Sidebar from '@/components/Sidebar';
 import PageHeader from '@/components/PageHeader';
 import PricingModal from '@/components/PricingModal';
+import { PRIMARY_BTN_CLS, PRIMARY_BTN_BG } from '@/components/ui/landing-kit';
 
 const TEMPLATE_LABELS: Record<CVTemplate, string> = {
   modern: 'Modern',
@@ -18,9 +19,9 @@ const TEMPLATE_LABELS: Record<CVTemplate, string> = {
 };
 
 function scoreColor(score: number) {
-  if (score >= 80) return 'text-green-400 border-green-500/30 bg-green-500/10';
-  if (score >= 50) return 'text-yellow-400 border-yellow-500/30 bg-yellow-500/10';
-  return 'text-red-400 border-red-500/30 bg-red-500/10';
+  if (score >= 80) return 'text-[#16a34a] border-[#16a34a]/25 bg-[#16a34a]/10';
+  if (score >= 50) return 'text-amber-700 border-amber-200 bg-amber-50';
+  return 'text-red-600 border-red-200 bg-red-50';
 }
 
 export default function CustomCVListPage() {
@@ -190,8 +191,8 @@ export default function CustomCVListPage() {
 
   if (!isReady) {
     return (
-      <div className="h-screen bg-[#0a0a0a] flex items-center justify-center">
-        <Loader2 className="w-8 h-8 text-green-500 animate-spin" />
+      <div className="h-screen bg-[#f2f3f5] flex items-center justify-center">
+        <Loader2 className="w-8 h-8 text-[#16a34a] animate-spin" />
       </div>
     );
   }
@@ -199,29 +200,30 @@ export default function CustomCVListPage() {
   const hasResume = !!user?.resume_text;
 
   return (
-    <main className="h-screen flex bg-[#0a0a0a] text-white overflow-hidden relative">
+    <main className="h-screen flex bg-[#f2f3f5] text-[#0b0b0c] overflow-hidden relative">
       <Sidebar />
 
       <div className="flex-1 flex flex-col overflow-hidden">
         <PageHeader backHref="/profile" title="Custom CVs" wordmark />
 
         <div className="flex-1 overflow-y-auto p-6 relative">
-      <div className="absolute top-0 left-1/2 -translate-x-1/2 w-[800px] h-[500px] bg-green-500/5 blur-[120px] rounded-full pointer-events-none" />
+      <div className="absolute top-0 left-1/2 -translate-x-1/2 w-[800px] h-[500px] bg-[#16a34a]/[0.06] blur-[120px] rounded-full pointer-events-none" />
 
       <div className="mx-auto z-10 relative">
       <div className="grid grid-cols-1 lg:grid-cols-2 gap-4 items-start">
         <div className="space-y-4">
-        <div className="bg-[#111] border border-[#222] rounded-[24px] sm:rounded-[32px] p-6 sm:p-8 md:p-10 shadow-2xl">
+        <div className="bg-white border border-black/[0.08] rounded-[24px] sm:rounded-[28px] p-6 sm:p-8 md:p-10 shadow-[0_1px_2px_rgba(16,18,26,.05),0_6px_16px_-8px_rgba(16,18,26,.10)]">
           <div className="flex items-center justify-between mb-6">
             <div className="flex items-center gap-3">
-              <FileText className="w-5 h-5 text-green-500" />
-              <h2 className="text-sm font-black uppercase tracking-widest text-white">Custom CVs</h2>
+              <FileText className="w-5 h-5 text-[#16a34a]" />
+              <h2 className="text-sm font-semibold uppercase tracking-widest text-[#0b0b0c]" style={{ fontFamily: 'var(--font-outfit)' }}>Custom CVs</h2>
             </div>
             {hasResume && !atFreeLimit && (
               <button
                 type="button"
                 onClick={() => setShowNewForm((s) => !s)}
-                className="cursor-pointer flex items-center gap-1.5 text-[10px] font-bold uppercase tracking-widest text-green-500 hover:text-green-400"
+                className="cursor-pointer flex items-center gap-1.5 text-[11px] font-semibold uppercase tracking-widest text-[#16a34a] hover:text-[#15803d]"
+                style={{ fontFamily: 'var(--font-outfit)' }}
               >
                 <Plus className="w-3.5 h-3.5" /> New CV
               </button>
@@ -229,21 +231,22 @@ export default function CustomCVListPage() {
           </div>
 
           {!hasResume ? (
-            <div className="bg-[#0a0a0a] border border-dashed border-[#333] rounded-2xl p-6 text-center">
-              <Briefcase className="w-8 h-8 text-[#444] mx-auto mb-3" />
-              <p className="text-xs text-[#555] font-medium">Upload a resume in your profile to create a custom CV.</p>
+            <div className="bg-black/[0.02] border border-dashed border-black/[0.14] rounded-2xl p-6 text-center">
+              <Briefcase className="w-8 h-8 text-black/25 mx-auto mb-3" />
+              <p className="text-xs text-black/45 font-medium">Upload a resume in your profile to create a custom CV.</p>
             </div>
           ) : (
             <>
               {atFreeLimit && (
-                <div className="flex items-center justify-between gap-3 bg-green-500/10 border border-green-500/20 rounded-2xl p-4 mb-6">
-                  <p className="text-[11px] text-green-400 font-semibold">
+                <div className="flex items-center justify-between gap-3 bg-[#16a34a]/10 border border-[#16a34a]/20 rounded-2xl p-4 mb-6">
+                  <p className="text-[11px] text-[#15803d] font-semibold">
                     Free plan includes 1 custom CV. Subscribe to create more.
                   </p>
                   <button
                     type="button"
                     onClick={() => router.push('/pricing')}
-                    className="cursor-pointer shrink-0 px-3 py-1 rounded-lg text-[10px] font-bold bg-[#22c55e] text-white hover:bg-[#1ea34e] transition-colors"
+                    className="cursor-pointer shrink-0 px-3 py-1.5 rounded-full text-[10px] font-bold text-white shadow-[0_1px_0_rgba(255,255,255,.45)_inset,0_10px_24px_-10px_rgba(22,163,74,.85)] transition-transform duration-300 hover:-translate-y-0.5"
+                    style={{ ...PRIMARY_BTN_BG, fontFamily: 'var(--font-outfit)' }}
                   >
                     Unlock
                   </button>
@@ -254,25 +257,25 @@ export default function CustomCVListPage() {
                   initial={{ opacity: 0, height: 0 }}
                   animate={{ opacity: 1, height: 'auto' }}
                   onSubmit={handleCreate}
-                  className="space-y-4 bg-[#0a0a0a] border border-[#222] rounded-2xl p-5 mb-6"
+                  className="space-y-4 bg-black/[0.02] border border-black/[0.08] rounded-2xl p-5 mb-6"
                 >
                   {error && (
-                    <div className="bg-red-500/10 border border-red-500/20 text-red-400 text-xs py-3 px-4 rounded-xl">
+                    <div className="bg-red-50 border border-red-200 text-red-600 text-xs py-3 px-4 rounded-xl">
                       {error}
                     </div>
                   )}
                   <div className="space-y-2">
-                    <label className="text-[10px] font-bold text-[#555] uppercase tracking-widest ml-1">Label</label>
+                    <label className="text-[10px] font-bold text-black/45 uppercase tracking-widest ml-1" style={{ fontFamily: 'var(--font-outfit)' }}>Label</label>
                     <input
                       type="text"
                       value={newLabel}
                       onChange={(e) => setNewLabel(e.target.value)}
                       placeholder="e.g. Fullstack CV"
-                      className="w-full bg-[#111] border border-[#222] rounded-xl px-4 py-3 text-xs focus:border-green-500/50 outline-none transition-all"
+                      className="w-full bg-white border border-black/[0.10] rounded-xl px-4 py-3 text-xs text-[#0b0b0c] placeholder:text-black/35 focus:border-[#16a34a]/50 outline-none transition-all"
                     />
                   </div>
                   <div className="space-y-2">
-                    <label className="text-[10px] font-bold text-[#555] uppercase tracking-widest ml-1">Template</label>
+                    <label className="text-[10px] font-bold text-black/45 uppercase tracking-widest ml-1" style={{ fontFamily: 'var(--font-outfit)' }}>Template</label>
                     <div className="grid grid-cols-3 gap-2">
                       {(Object.keys(TEMPLATE_LABELS) as CVTemplate[]).map((tmpl) => (
                         <button
@@ -280,7 +283,7 @@ export default function CustomCVListPage() {
                           type="button"
                           onClick={() => setNewTemplate(tmpl)}
                           className={`cursor-pointer rounded-xl py-2.5 text-[11px] font-bold border transition-all ${
-                            newTemplate === tmpl ? 'border-green-500 bg-green-500/10 text-green-400' : 'border-[#222] text-[#888] hover:border-[#333]'
+                            newTemplate === tmpl ? 'border-[#16a34a] bg-[#16a34a]/10 text-[#16a34a]' : 'border-black/[0.10] text-black/45 hover:border-black/20'
                           }`}
                         >
                           {TEMPLATE_LABELS[tmpl]}
@@ -289,19 +292,20 @@ export default function CustomCVListPage() {
                     </div>
                   </div>
                   <div className="space-y-2">
-                    <label className="text-[10px] font-bold text-[#555] uppercase tracking-widest ml-1">Target Role (optional)</label>
+                    <label className="text-[10px] font-bold text-black/45 uppercase tracking-widest ml-1" style={{ fontFamily: 'var(--font-outfit)' }}>Target Role (optional)</label>
                     <input
                       type="text"
                       value={newTargetRole}
                       onChange={(e) => setNewTargetRole(e.target.value)}
                       placeholder="e.g. Fullstack Developer"
-                      className="w-full bg-[#111] border border-[#222] rounded-xl px-4 py-3 text-xs focus:border-green-500/50 outline-none transition-all"
+                      className="w-full bg-white border border-black/[0.10] rounded-xl px-4 py-3 text-xs text-[#0b0b0c] placeholder:text-black/35 focus:border-[#16a34a]/50 outline-none transition-all"
                     />
                   </div>
                   <button
                     type="submit"
                     disabled={isCreating}
-                    className="cursor-pointer w-full bg-white text-black font-black uppercase tracking-widest py-3 rounded-xl hover:bg-[#ededed] active:scale-[0.98] transition-all flex items-center justify-center gap-2 disabled:opacity-50 text-xs"
+                    className={`${PRIMARY_BTN_CLS} w-full uppercase tracking-widest text-xs`}
+                    style={PRIMARY_BTN_BG}
                   >
                     {isCreating ? <Loader2 className="animate-spin w-4 h-4" /> : <Plus className="w-4 h-4" />}
                     Create CV
@@ -311,12 +315,12 @@ export default function CustomCVListPage() {
 
               {isLoading ? (
                 <div className="flex justify-center py-8">
-                  <Loader2 className="w-6 h-6 text-green-500 animate-spin" />
+                  <Loader2 className="w-6 h-6 text-[#16a34a] animate-spin" />
                 </div>
               ) : cvs.length === 0 ? (
-                <div className="bg-[#0a0a0a] border border-dashed border-[#333] rounded-2xl p-6 text-center">
-                  <FileText className="w-8 h-8 text-[#444] mx-auto mb-3" />
-                  <p className="text-xs text-[#555] font-medium">No custom CVs yet. Create one to get started.</p>
+                <div className="bg-black/[0.02] border border-dashed border-black/[0.14] rounded-2xl p-6 text-center">
+                  <FileText className="w-8 h-8 text-black/25 mx-auto mb-3" />
+                  <p className="text-xs text-black/45 font-medium">No custom CVs yet. Create one to get started.</p>
                 </div>
               ) : (
                 <div className="space-y-3">
@@ -325,30 +329,30 @@ export default function CustomCVListPage() {
                       key={cv.id}
                       initial={{ opacity: 0, y: 8 }}
                       animate={{ opacity: 1, y: 0 }}
-                      className={`bg-[#0a0a0a] border border-[#222] rounded-2xl p-4 flex items-center justify-between gap-3 hover:border-[#333] transition-all ${cv.is_locked ? 'opacity-60' : ''}`}
+                      className={`bg-white border border-black/[0.08] rounded-[18px] p-4 flex items-center justify-between gap-3 shadow-[0_1px_2px_rgba(16,18,26,.05),0_6px_16px_-8px_rgba(16,18,26,.10)] hover:-translate-y-0.5 hover:shadow-[0_2px_4px_rgba(16,18,26,.04),0_18px_40px_-18px_rgba(16,18,26,.22)] transition-all duration-300 ${cv.is_locked ? 'opacity-60' : ''}`}
                     >
                       <button
                         type="button"
                         onClick={() => handleOpenCV(cv)}
                         className="cursor-pointer flex-1 text-left"
                       >
-                        <p className="text-xs font-black text-white flex items-center gap-1.5">
+                        <p className="text-xs font-semibold text-[#0b0b0c] flex items-center gap-1.5" style={{ fontFamily: 'var(--font-outfit)' }}>
                           {cv.label || 'Untitled CV'}
-                          {cv.is_locked && <Lock className="w-3 h-3 text-[#555]" />}
+                          {cv.is_locked && <Lock className="w-3 h-3 text-black/35" />}
                         </p>
-                        <p className="text-[10px] text-[#555] mt-0.5">
+                        <p className="text-[10px] text-black/45 mt-0.5">
                           {TEMPLATE_LABELS[cv.template]}
                           {cv.target_role && ` · ${cv.target_role}`}
                           {cv.is_locked && ' · Subscribe to open'}
                         </p>
                       </button>
-                      <span className={`text-[10px] font-bold px-2.5 py-1 rounded-full border ${scoreColor(cv.ats_score)}`}>
+                      <span className={`text-[10px] font-bold px-2.5 py-1 rounded-full border ${scoreColor(cv.ats_score)}`} style={{ fontFamily: 'var(--font-outfit)' }}>
                         {cv.ats_score} ATS
                       </span>
                       <button
                         type="button"
                         onClick={() => handleDelete(cv.id)}
-                        className="cursor-pointer text-[#555] hover:text-red-400 transition-colors p-1"
+                        className="cursor-pointer text-black/35 hover:text-red-500 transition-colors p-1"
                       >
                         <Trash2 className="w-4 h-4" />
                       </button>
@@ -361,42 +365,43 @@ export default function CustomCVListPage() {
         </div>
 
         {/* Recommended CVs */}
-        <div className="bg-[#111] border border-[#222] rounded-[24px] sm:rounded-[32px] p-6 sm:p-8 shadow-2xl">
+        <div className="bg-white border border-black/[0.08] rounded-[24px] sm:rounded-[28px] p-6 sm:p-8 shadow-[0_1px_2px_rgba(16,18,26,.05),0_6px_16px_-8px_rgba(16,18,26,.10)]">
           <div className="flex items-center gap-3 mb-6">
-            <Sparkles className="w-5 h-5 text-green-500" />
-            <h2 className="text-sm font-black uppercase tracking-widest text-white">Recommended CVs</h2>
+            <Sparkles className="w-5 h-5 text-[#16a34a]" />
+            <h2 className="text-sm font-semibold uppercase tracking-widest text-[#0b0b0c]" style={{ fontFamily: 'var(--font-outfit)' }}>Recommended CVs</h2>
           </div>
 
           {suggestionError && (
-            <div className="bg-red-500/10 border border-red-500/20 text-red-400 text-xs py-3 px-4 rounded-xl mb-4">
+            <div className="bg-red-50 border border-red-200 text-red-600 text-xs py-3 px-4 rounded-xl mb-4">
               {suggestionError}
             </div>
           )}
 
           {!hasResume ? (
-            <p className="text-xs text-[#555] font-medium">Upload a resume to get CV recommendations.</p>
+            <p className="text-xs text-black/45 font-medium">Upload a resume to get CV recommendations.</p>
           ) : suggestedRoles.length === 0 ? (
-            <div className="bg-[#0a0a0a] border border-dashed border-[#333] rounded-2xl p-6 text-center">
-              <Sparkles className="w-8 h-8 text-[#444] mx-auto mb-3" />
-              <p className="text-xs text-[#555] font-medium">
+            <div className="bg-black/[0.02] border border-dashed border-black/[0.14] rounded-2xl p-6 text-center">
+              <Sparkles className="w-8 h-8 text-black/25 mx-auto mb-3" />
+              <p className="text-xs text-black/45 font-medium">
                 {cvs.length > 0
                   ? "You've already covered the roles that best match your resume."
-                  : 'No strong role matches found yet — try creating a CV manually.'}
+                  : 'No strong role matches found yet try creating a CV manually.'}
               </p>
             </div>
           ) : (
             <div className="space-y-3">
               {suggestedRoles.map((s) => (
-                <div key={s.role} className="flex items-center justify-between gap-3 bg-[#0a0a0a] border border-[#222] rounded-xl p-4">
+                <div key={s.role} className="flex items-center justify-between gap-3 bg-black/[0.02] border border-black/[0.08] rounded-xl p-4">
                   <div className="min-w-0">
-                    <p className="text-xs font-bold text-white truncate">{s.role}</p>
-                    <p className="text-[10px] text-[#555] mt-0.5">{s.matchCount}/{s.total} keywords match your resume</p>
+                    <p className="text-xs font-semibold text-[#0b0b0c] truncate" style={{ fontFamily: 'var(--font-outfit)' }}>{s.role}</p>
+                    <p className="text-[10px] text-black/45 mt-0.5">{s.matchCount}/{s.total} keywords match your resume</p>
                   </div>
                   <button
                     type="button"
                     onClick={() => (atFreeLimit ? router.push('/pricing') : handleAddSuggested(s.role))}
                     disabled={addingRole === s.role}
-                    className="cursor-pointer shrink-0 flex items-center gap-1.5 text-[10px] font-bold uppercase tracking-widest text-green-400 hover:text-green-300 border border-green-500/30 hover:border-green-500/50 bg-green-500/10 rounded-full px-3 py-1.5 disabled:opacity-50 transition-all"
+                    className="cursor-pointer shrink-0 flex items-center gap-1.5 text-[10px] font-bold uppercase tracking-widest text-[#16a34a] hover:text-[#15803d] border border-[#16a34a]/30 hover:border-[#16a34a]/50 bg-[#16a34a]/10 rounded-full px-3 py-1.5 disabled:opacity-50 transition-all"
+                    style={{ fontFamily: 'var(--font-outfit)' }}
                   >
                     {addingRole === s.role ? <Loader2 className="w-3.5 h-3.5 animate-spin" /> : <Plus className="w-3.5 h-3.5" />}
                     {atFreeLimit ? 'Unlock' : 'Add'}
@@ -410,35 +415,35 @@ export default function CustomCVListPage() {
 
         {/* Suggestions + ATS Mapping Terms */}
         <div className="space-y-4">
-          <div className="bg-[#111] border border-[#222] rounded-[24px] sm:rounded-[32px] p-6 sm:p-8 shadow-2xl">
+          <div className="bg-white border border-black/[0.08] rounded-[24px] sm:rounded-[28px] p-6 sm:p-8 shadow-[0_1px_2px_rgba(16,18,26,.05),0_6px_16px_-8px_rgba(16,18,26,.10)]">
             <div className="flex items-center gap-3 mb-6">
-              <Lightbulb className="w-5 h-5 text-green-500" />
-              <h2 className="text-sm font-black uppercase tracking-widest text-white">Suggestions</h2>
+              <Lightbulb className="w-5 h-5 text-[#16a34a]" />
+              <h2 className="text-sm font-semibold uppercase tracking-widest text-[#0b0b0c]" style={{ fontFamily: 'var(--font-outfit)' }}>Suggestions</h2>
             </div>
 
             {!hasResume ? (
-              <p className="text-xs text-[#555] font-medium">Upload a resume to get improvement suggestions.</p>
+              <p className="text-xs text-black/45 font-medium">Upload a resume to get improvement suggestions.</p>
             ) : cvs.length === 0 ? (
-              <div className="bg-[#0a0a0a] border border-dashed border-[#333] rounded-2xl p-6 text-center">
-                <Lightbulb className="w-8 h-8 text-[#444] mx-auto mb-3" />
-                <p className="text-xs text-[#555] font-medium">Create a custom CV to see improvement suggestions.</p>
+              <div className="bg-black/[0.02] border border-dashed border-black/[0.14] rounded-2xl p-6 text-center">
+                <Lightbulb className="w-8 h-8 text-black/25 mx-auto mb-3" />
+                <p className="text-xs text-black/45 font-medium">Create a custom CV to see improvement suggestions.</p>
               </div>
             ) : suggestions.length === 0 ? (
-              <div className="bg-[#0a0a0a] border border-dashed border-[#333] rounded-2xl p-6 text-center">
-                <CheckCircle2 className="w-8 h-8 text-green-500/40 mx-auto mb-3" />
-                <p className="text-xs text-[#555] font-medium">All checks are passing across your CVs. Nice work!</p>
+              <div className="bg-black/[0.02] border border-dashed border-black/[0.14] rounded-2xl p-6 text-center">
+                <CheckCircle2 className="w-8 h-8 text-[#16a34a]/40 mx-auto mb-3" />
+                <p className="text-xs text-black/45 font-medium">All checks are passing across your CVs. Nice work!</p>
               </div>
             ) : (
               <div className="space-y-3">
                 {suggestions.map((s) => (
-                  <div key={s.check} className="flex items-start gap-3 bg-[#0a0a0a] border border-[#222] rounded-xl p-4">
-                    <Lightbulb className="w-4 h-4 text-yellow-400 shrink-0 mt-0.5" />
+                  <div key={s.check} className="flex items-start gap-3 bg-black/[0.02] border border-black/[0.08] rounded-xl p-4">
+                    <Lightbulb className="w-4 h-4 text-amber-500 shrink-0 mt-0.5" />
                     <div className="flex-1 min-w-0">
-                      <p className="text-xs font-bold text-white">{s.check}</p>
-                      <p className="text-[10px] text-[#888] mt-0.5">{s.message}</p>
+                      <p className="text-xs font-semibold text-[#0b0b0c]" style={{ fontFamily: 'var(--font-outfit)' }}>{s.check}</p>
+                      <p className="text-[10px] text-black/50 mt-0.5">{s.message}</p>
                     </div>
                     {s.count > 1 && (
-                      <span className="text-[9px] font-bold text-[#555] bg-[#161616] border border-[#222] rounded-full px-2 py-0.5 shrink-0">
+                      <span className="text-[9px] font-bold text-black/45 bg-black/[0.04] border border-black/[0.08] rounded-full px-2 py-0.5 shrink-0" style={{ fontFamily: 'var(--font-outfit)' }}>
                         {s.count} CVs
                       </span>
                     )}
@@ -448,32 +453,32 @@ export default function CustomCVListPage() {
             )}
           </div>
 
-          <div className="bg-[#111] border border-[#222] rounded-[24px] sm:rounded-[32px] p-6 sm:p-8 shadow-2xl">
+          <div className="bg-white border border-black/[0.08] rounded-[24px] sm:rounded-[28px] p-6 sm:p-8 shadow-[0_1px_2px_rgba(16,18,26,.05),0_6px_16px_-8px_rgba(16,18,26,.10)]">
             <div className="flex items-center gap-3 mb-6">
-              <Target className="w-5 h-5 text-green-500" />
-              <h2 className="text-sm font-black uppercase tracking-widest text-white">ATS Mapping Terms</h2>
+              <Target className="w-5 h-5 text-[#16a34a]" />
+              <h2 className="text-sm font-semibold uppercase tracking-widest text-[#0b0b0c]" style={{ fontFamily: 'var(--font-outfit)' }}>ATS Mapping Terms</h2>
             </div>
 
             {keywordPanels.length === 0 ? (
-              <div className="bg-[#0a0a0a] border border-dashed border-[#333] rounded-2xl p-6 text-center">
-                <Target className="w-8 h-8 text-[#444] mx-auto mb-3" />
-                <p className="text-xs text-[#555] font-medium">Set a target role on a CV to see the ATS keywords it&apos;s matched against.</p>
+              <div className="bg-black/[0.02] border border-dashed border-black/[0.14] rounded-2xl p-6 text-center">
+                <Target className="w-8 h-8 text-black/25 mx-auto mb-3" />
+                <p className="text-xs text-black/45 font-medium">Set a target role on a CV to see the ATS keywords it&apos;s matched against.</p>
               </div>
             ) : (
               <div className="space-y-5">
                 {keywordPanels.map((p) => (
                   <div key={p.cvId}>
-                    <p className="text-[10px] font-bold text-[#555] uppercase tracking-widest mb-2">
-                      {p.label} <span className="text-[#333]">·</span> {p.targetRole}
+                    <p className="text-[10px] font-bold text-black/45 uppercase tracking-widest mb-2" style={{ fontFamily: 'var(--font-outfit)' }}>
+                      {p.label} <span className="text-black/20">·</span> {p.targetRole}
                     </p>
                     <div className="flex flex-wrap gap-1.5">
                       {p.matched.map((k) => (
-                        <span key={k} className="text-[10px] font-bold px-2.5 py-1 rounded-full border border-green-500/30 bg-green-500/10 text-green-400">
+                        <span key={k} className="text-[10px] font-bold px-2.5 py-1 rounded-full border border-[#16a34a]/25 bg-[#16a34a]/10 text-[#16a34a]">
                           {k}
                         </span>
                       ))}
                       {p.missing.map((k) => (
-                        <span key={k} className="text-[10px] font-bold px-2.5 py-1 rounded-full border border-[#333] bg-[#0a0a0a] text-[#555]">
+                        <span key={k} className="text-[10px] font-bold px-2.5 py-1 rounded-full border border-black/[0.10] bg-black/[0.02] text-black/40">
                           {k}
                         </span>
                       ))}

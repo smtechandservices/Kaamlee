@@ -7,6 +7,7 @@ import { ArrowLeft, User, Mail, Lock, Loader2, Phone, Link as LinkIcon, Eye, Eye
 import { useAuth } from '@/context/AuthContext';
 import GoogleSignInButton from '@/components/GoogleSignInButton';
 import EmailVerificationGate from '@/components/EmailVerificationGate';
+import { PRIMARY_BTN_CLS, PRIMARY_BTN_BG, SECONDARY_BTN_CLS } from '@/components/ui/landing-kit';
 
 export default function SignupPage() {
   const [step, setStep] = useState(1);
@@ -43,7 +44,7 @@ export default function SignupPage() {
 
   const handleNext = async () => {
     setError('');
-    
+
     if (step === 1) {
       if (!firstName || !lastName || !username) {
         setError('Please fill in all required fields.');
@@ -70,7 +71,7 @@ export default function SignupPage() {
       const emailExists = await checkExistence('email', email);
       const phoneExists = await checkExistence('phone', phone);
       setIsValidating(false);
-      
+
       if (emailExists) {
         setError('Email is already registered.');
         return;
@@ -138,24 +139,29 @@ export default function SignupPage() {
   ];
 
   return (
-    <main className="min-h-screen bg-[#0a0a0a] text-white flex flex-col items-center justify-center p-6 relative overflow-hidden">
+    <main className="min-h-screen bg-[#f2f3f5] text-[#0b0b0c] flex flex-col items-center justify-center p-6 relative overflow-hidden">
       {/* Background decoration */}
-      <div className="absolute top-0 left-1/2 -translate-x-1/2 w-[800px] h-[500px] bg-green-500/5 blur-[120px] rounded-full pointer-events-none" />
-      
-      <Link href="/" className="absolute top-6 left-6 sm:top-8 sm:left-8 text-[#888] hover:text-white transition-colors flex items-center gap-2 text-xs sm:text-sm font-medium z-20">
+      <div className="absolute top-0 left-1/2 -translate-x-1/2 w-[800px] h-[500px] bg-[#16a34a]/[0.06] blur-[120px] rounded-full pointer-events-none" />
+
+      <Link href="/" className="absolute top-6 left-6 sm:top-8 sm:left-8 text-black/45 hover:text-[#0b0b0c] transition-colors flex items-center gap-2 text-xs sm:text-sm font-medium z-20" style={{ fontFamily: 'var(--font-outfit)' }}>
         <ArrowLeft className="w-3.5 h-3.5 sm:w-4 sm:h-4" />
         <span className="hidden sm:inline">Back to Home</span>
         <span className="sm:hidden">Back</span>
       </Link>
 
-      <motion.div 
+      <motion.div
         initial={{ opacity: 0, y: 20 }}
         animate={{ opacity: 1, y: 0 }}
         className="w-full max-w-md z-10"
       >
         <div className="hidden md:block text-center my-6">
-          <h1 className="text-3xl sm:text-4xl font-black font-heading tracking-tight mb-2">Create an account</h1>
-          <p className="text-sm sm:text-base text-[#a1a1a1]">Join Kaamlee in 3 simple steps</p>
+          <h1
+            className="text-3xl sm:text-4xl font-semibold tracking-[-0.03em] mb-2"
+            style={{ fontFamily: 'var(--font-outfit)' }}
+          >
+            Create an account
+          </h1>
+          <p className="text-sm sm:text-base text-[rgba(61,61,61,0.72)]">Join Kaamlee in 3 simple steps</p>
         </div>
 
         {/* Step Progress */}
@@ -163,19 +169,27 @@ export default function SignupPage() {
           {steps.map((s, i) => (
             <React.Fragment key={s.id}>
               <div className="flex flex-col items-center gap-2">
-                <div className={`w-10 h-10 rounded-full flex items-center justify-center text-sm font-bold border-2 transition-all duration-500 ${
-                  step >= s.id ? 'bg-green-600 border-green-600 text-white shadow-[0_0_15px_rgba(34,197,94,0.4)]' : 'bg-transparent border-[#222] text-[#444]'
-                }`}>
+                <div
+                  className={`w-10 h-10 rounded-full flex items-center justify-center text-sm font-semibold border-2 transition-all duration-500 ${
+                    step >= s.id ? 'border-transparent text-white shadow-[0_4px_16px_-4px_rgba(22,163,74,.55)]' : 'bg-white border-black/[0.10] text-black/35'
+                  }`}
+                  style={step >= s.id ? { background: 'green' } : undefined}
+                >
                   {step > s.id ? <CheckCircle2 size={20} /> : s.id}
                 </div>
-                <span className={`text-center text-[10px] uppercase tracking-wider font-bold ${step >= s.id ? 'text-white' : 'text-[#444]'}`}>{s.title}</span>
+                <span
+                  className={`text-center text-[10px] uppercase tracking-wider font-semibold ${step >= s.id ? 'text-[#0b0b0c]' : 'text-black/35'}`}
+                  style={{ fontFamily: 'var(--font-outfit)' }}
+                >
+                  {s.title}
+                </span>
               </div>
               {i < steps.length - 1 && (
-                <div className="flex-1 h-[2px] bg-[#222] mx-2 -mt-6 relative overflow-hidden">
-                  <motion.div 
+                <div className="flex-1 h-[2px] bg-black/[0.08] mx-2 -mt-6 relative overflow-hidden rounded-full">
+                  <motion.div
                     initial={{ width: '0%' }}
                     animate={{ width: step > s.id ? '100%' : '0%' }}
-                    className="absolute top-0 left-0 h-full bg-green-600 shadow-[0_0_10px_rgba(34,197,94,0.4)]"
+                    className="absolute top-0 left-0 h-full bg-[#16a34a]"
                   />
                 </div>
               )}
@@ -183,10 +197,10 @@ export default function SignupPage() {
           ))}
         </div>
 
-        <div className="bg-[#111] border border-[#222] rounded-[24px] sm:rounded-3xl p-6 sm:p-8 shadow-2xl relative overflow-hidden">
-          {/* Animated Background Pulse */}
-          <div className="absolute -top-24 -right-24 w-48 h-48 bg-green-600/5 blur-3xl rounded-full animate-pulse" />
-          
+        <div className="bg-white border border-black/[0.08] rounded-[24px] sm:rounded-[28px] p-6 sm:p-8 shadow-[0_30px_80px_-30px_rgba(16,18,26,.35)] relative overflow-hidden">
+          {/* Ambient background wash */}
+          <div className="absolute -top-24 -right-24 w-48 h-48 bg-[#16a34a]/[0.06] blur-3xl rounded-full pointer-events-none" />
+
           <AnimatePresence mode="wait">
             <motion.div
               key={step}
@@ -197,10 +211,10 @@ export default function SignupPage() {
               className="space-y-5"
             >
               {error && (
-                <motion.div 
+                <motion.div
                   initial={{ opacity: 0, height: 0 }}
                   animate={{ opacity: 1, height: 'auto' }}
-                  className="bg-red-500/10 border border-red-500/20 text-red-400 text-xs py-3 px-4 rounded-xl"
+                  className="bg-red-50 border border-red-200 text-red-600 text-xs py-3 px-4 rounded-2xl"
                 >
                   {error}
                 </motion.div>
@@ -211,61 +225,86 @@ export default function SignupPage() {
                   <GoogleSignInButton onError={setError} setLoading={setIsValidating} />
 
                   <div className="flex items-center gap-3">
-                    <div className="flex-1 h-px bg-[#222]" />
-                    <span className="text-[10px] font-bold uppercase tracking-widest text-[#444]">Or sign up with email</span>
-                    <div className="flex-1 h-px bg-[#222]" />
+                    <div className="flex-1 h-px bg-black/[0.08]" />
+                    <span
+                      className="text-[10px] font-semibold uppercase tracking-widest text-black/40"
+                      style={{ fontFamily: 'var(--font-outfit)' }}
+                    >
+                      Or sign up with email
+                    </span>
+                    <div className="flex-1 h-px bg-black/[0.08]" />
                   </div>
 
                   <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
                     <div className="space-y-2">
-                      <label className="text-xs sm:text-sm font-bold text-[#a1a1a1] uppercase ml-1">First Name</label>
+                      <label
+                        className="text-xs font-semibold text-black/45 uppercase tracking-wide ml-1"
+                        style={{ fontFamily: 'var(--font-outfit)' }}
+                      >
+                        First Name
+                      </label>
                       <input
                         type="text"
                         required
                         value={firstName}
                         onChange={(e) => setFirstName(e.target.value)}
                         placeholder="John"
-                        className="w-full bg-[#0a0a0a] border border-[#222] rounded-xl px-4 py-3 text-sm focus:border-green-500/50 outline-none transition-all placeholder-[#333]"
+                        className="w-full bg-white border border-black/[0.10] rounded-full px-4 py-3.5 text-sm outline-none transition-all placeholder-black/30 focus:border-[#16a34a] focus:shadow-[0_0_0_4px_rgba(22,163,74,.12)]"
                       />
                     </div>
                     <div className="space-y-2">
-                      <label className="text-xs sm:text-sm font-bold text-[#a1a1a1] uppercase ml-1">Last Name</label>
+                      <label
+                        className="text-xs font-semibold text-black/45 uppercase tracking-wide ml-1"
+                        style={{ fontFamily: 'var(--font-outfit)' }}
+                      >
+                        Last Name
+                      </label>
                       <input
                         type="text"
                         required
                         value={lastName}
                         onChange={(e) => setLastName(e.target.value)}
                         placeholder="Doe"
-                        className="w-full bg-[#0a0a0a] border border-[#222] rounded-xl px-4 py-3 text-sm focus:border-green-500/50 outline-none transition-all placeholder-[#333]"
+                        className="w-full bg-white border border-black/[0.10] rounded-full px-4 py-3.5 text-sm outline-none transition-all placeholder-black/30 focus:border-[#16a34a] focus:shadow-[0_0_0_4px_rgba(22,163,74,.12)]"
                       />
                     </div>
                   </div>
 
                   <div className="space-y-2">
-                    <label className="text-sm font-bold text-[#a1a1a1] uppercase ml-1">Username</label>
+                    <label
+                      className="text-xs font-semibold text-black/45 uppercase tracking-wide ml-1"
+                      style={{ fontFamily: 'var(--font-outfit)' }}
+                    >
+                      Username
+                    </label>
                     <div className="relative">
-                      <User size={16} className="absolute left-4 top-1/2 -translate-y-1/2 text-[#444]" />
+                      <User size={16} className="absolute left-4 top-1/2 -translate-y-1/2 text-black/35" />
                       <input
                         type="text"
                         required
                         value={username}
                         onChange={(e) => setUsername(e.target.value)}
                         placeholder="johndoe"
-                        className="w-full bg-[#0a0a0a] border border-[#222] rounded-xl pl-12 pr-4 py-3 text-sm focus:border-green-500/50 outline-none transition-all placeholder-[#333]"
+                        className="w-full bg-white border border-black/[0.10] rounded-full pl-12 pr-4 py-3.5 text-sm outline-none transition-all placeholder-black/30 focus:border-[#16a34a] focus:shadow-[0_0_0_4px_rgba(22,163,74,.12)]"
                       />
                     </div>
                   </div>
 
                   <div className="space-y-2">
-                    <label className="text-sm font-bold text-[#a1a1a1] uppercase ml-1">LinkedIn Profile</label>
+                    <label
+                      className="text-xs font-semibold text-black/45 uppercase tracking-wide ml-1"
+                      style={{ fontFamily: 'var(--font-outfit)' }}
+                    >
+                      LinkedIn Profile
+                    </label>
                     <div className="relative">
-                      <LinkIcon size={16} className="absolute left-4 top-1/2 -translate-y-1/2 text-[#444]" />
+                      <LinkIcon size={16} className="absolute left-4 top-1/2 -translate-y-1/2 text-black/35" />
                       <input
                         type="url"
                         value={linkedinUrl}
                         onChange={(e) => setLinkedinUrl(e.target.value)}
                         placeholder="https://linkedin.com/in/..."
-                        className="w-full bg-[#0a0a0a] border border-[#222] rounded-xl pl-12 pr-4 py-3 text-sm focus:border-green-500/50 outline-none transition-all placeholder-[#333]"
+                        className="w-full bg-white border border-black/[0.10] rounded-full pl-12 pr-4 py-3.5 text-sm outline-none transition-all placeholder-black/30 focus:border-[#16a34a] focus:shadow-[0_0_0_4px_rgba(22,163,74,.12)]"
                       />
                     </div>
                   </div>
@@ -275,16 +314,21 @@ export default function SignupPage() {
               {step === 2 && (
                 <div className="space-y-5">
                   <div className="space-y-2">
-                    <label className="text-sm font-bold text-[#a1a1a1] uppercase ml-1">Email Address</label>
+                    <label
+                      className="text-xs font-semibold text-black/45 uppercase tracking-wide ml-1"
+                      style={{ fontFamily: 'var(--font-outfit)' }}
+                    >
+                      Email Address
+                    </label>
                     <div className="relative">
-                      <Mail size={16} className="absolute left-4 top-1/2 -translate-y-1/2 text-[#444]" />
+                      <Mail size={16} className="absolute left-4 top-1/2 -translate-y-1/2 text-black/35" />
                       <input
                         type="email"
                         required
                         value={email}
                         onChange={(e) => { setEmail(e.target.value); setEmailVerified(false); }}
                         placeholder="name@example.com"
-                        className="w-full bg-[#0a0a0a] border border-[#222] rounded-xl pl-12 pr-4 py-3 text-sm focus:border-green-500/50 outline-none transition-all placeholder-[#333]"
+                        className="w-full bg-white border border-black/[0.10] rounded-full pl-12 pr-4 py-3.5 text-sm outline-none transition-all placeholder-black/30 focus:border-[#16a34a] focus:shadow-[0_0_0_4px_rgba(22,163,74,.12)]"
                       />
                     </div>
                     <EmailVerificationGate
@@ -297,16 +341,21 @@ export default function SignupPage() {
                   </div>
 
                   <div className="space-y-2">
-                    <label className="text-sm font-bold text-[#a1a1a1] uppercase ml-1">Phone Number</label>
+                    <label
+                      className="text-xs font-semibold text-black/45 uppercase tracking-wide ml-1"
+                      style={{ fontFamily: 'var(--font-outfit)' }}
+                    >
+                      Phone Number
+                    </label>
                     <div className="relative">
-                      <Phone size={16} className="absolute left-4 top-1/2 -translate-y-1/2 text-[#444]" />
-                      <input 
+                      <Phone size={16} className="absolute left-4 top-1/2 -translate-y-1/2 text-black/35" />
+                      <input
                         type="tel"
                         required
                         value={phone}
                         onChange={(e) => setPhone(e.target.value)}
                         placeholder="987..."
-                        className="w-full bg-[#0a0a0a] border border-[#222] rounded-xl pl-12 pr-4 py-3 text-sm focus:border-green-500/50 outline-none transition-all placeholder-[#333]"
+                        className="w-full bg-white border border-black/[0.10] rounded-full pl-12 pr-4 py-3.5 text-sm outline-none transition-all placeholder-black/30 focus:border-[#16a34a] focus:shadow-[0_0_0_4px_rgba(22,163,74,.12)]"
                       />
                     </div>
                   </div>
@@ -316,21 +365,26 @@ export default function SignupPage() {
               {step === 3 && (
                 <div className="space-y-5">
                   <div className="space-y-2">
-                    <label className="text-sm font-bold text-[#a1a1a1] uppercase ml-1">Password</label>
+                    <label
+                      className="text-xs font-semibold text-black/45 uppercase tracking-wide ml-1"
+                      style={{ fontFamily: 'var(--font-outfit)' }}
+                    >
+                      Password
+                    </label>
                     <div className="relative">
-                      <Lock size={16} className="absolute left-4 top-1/2 -translate-y-1/2 text-[#444]" />
-                      <input 
+                      <Lock size={16} className="absolute left-4 top-1/2 -translate-y-1/2 text-black/35" />
+                      <input
                         type={showPassword ? "text" : "password"}
                         required
                         value={password}
                         onChange={(e) => setPassword(e.target.value)}
                         placeholder="••••••••"
-                        className="w-full bg-[#0a0a0a] border border-[#222] rounded-xl pl-12 pr-12 py-3 text-sm focus:border-green-500/50 outline-none transition-all placeholder-[#333]"
+                        className="w-full bg-white border border-black/[0.10] rounded-full pl-12 pr-12 py-3.5 text-sm outline-none transition-all placeholder-black/30 focus:border-[#16a34a] focus:shadow-[0_0_0_4px_rgba(22,163,74,.12)]"
                       />
                       <button
                         type="button"
                         onClick={() => setShowPassword(!showPassword)}
-                        className="cursor-pointer absolute right-4 top-1/2 -translate-y-1/2 text-[#444] hover:text-[#888] transition-colors z-10"
+                        className="cursor-pointer absolute right-4 top-1/2 -translate-y-1/2 text-black/35 hover:text-black/60 transition-colors z-10"
                       >
                         {showPassword ? <EyeOff size={16} /> : <Eye size={16} />}
                       </button>
@@ -338,21 +392,26 @@ export default function SignupPage() {
                   </div>
 
                   <div className="space-y-2">
-                    <label className="text-sm font-bold text-[#a1a1a1] uppercase ml-1">Confirm Password</label>
+                    <label
+                      className="text-xs font-semibold text-black/45 uppercase tracking-wide ml-1"
+                      style={{ fontFamily: 'var(--font-outfit)' }}
+                    >
+                      Confirm Password
+                    </label>
                     <div className="relative">
-                      <Lock size={16} className="absolute left-4 top-1/2 -translate-y-1/2 text-[#444]" />
-                      <input 
+                      <Lock size={16} className="absolute left-4 top-1/2 -translate-y-1/2 text-black/35" />
+                      <input
                         type={showConfirmPassword ? "text" : "password"}
                         required
                         value={confirmPassword}
                         onChange={(e) => setConfirmPassword(e.target.value)}
                         placeholder="••••••••"
-                        className="w-full bg-[#0a0a0a] border border-[#222] rounded-xl pl-12 pr-12 py-3 text-sm focus:border-green-500/50 outline-none transition-all placeholder-[#333]"
+                        className="w-full bg-white border border-black/[0.10] rounded-full pl-12 pr-12 py-3.5 text-sm outline-none transition-all placeholder-black/30 focus:border-[#16a34a] focus:shadow-[0_0_0_4px_rgba(22,163,74,.12)]"
                       />
                       <button
                         type="button"
                         onClick={() => setShowConfirmPassword(!showConfirmPassword)}
-                        className="cursor-pointer absolute right-4 top-1/2 -translate-y-1/2 text-[#444] hover:text-[#888] transition-colors z-10"
+                        className="cursor-pointer absolute right-4 top-1/2 -translate-y-1/2 text-black/35 hover:text-black/60 transition-colors z-10"
                       >
                         {showConfirmPassword ? <EyeOff size={16} /> : <Eye size={16} />}
                       </button>
@@ -366,18 +425,19 @@ export default function SignupPage() {
                   <button
                     type="button"
                     onClick={handleBack}
-                    className="flex-1 bg-[#1a1a1a] text-white font-bold py-3.5 rounded-xl border border-[#222] hover:bg-[#222] transition-all flex items-center justify-center gap-2"
+                    className={`${SECONDARY_BTN_CLS} flex-1`}
                   >
                     Back
                   </button>
                 )}
-                
+
                 {step < 3 ? (
                   <button
                     type="button"
                     onClick={handleNext}
                     disabled={isValidating || (step === 2 && !emailVerified)}
-                    className="cursor-pointer flex-[2] bg-white text-black font-bold py-3.5 rounded-xl hover:bg-[#ededed] transition-all flex items-center justify-center gap-2 disabled:opacity-50"
+                    className={`${PRIMARY_BTN_CLS} flex-[2]`}
+                    style={PRIMARY_BTN_BG}
                   >
                     {isValidating ? <Loader2 size={18} className="animate-spin" /> : (
                       <>
@@ -387,11 +447,12 @@ export default function SignupPage() {
                     )}
                   </button>
                 ) : (
-                  <button 
+                  <button
                     type="button"
                     onClick={handleSubmit}
                     disabled={isSubmitting}
-                    className="cursor-pointer flex-[2] bg-green-600 text-white font-bold py-3.5 rounded-xl hover:bg-green-700 transition-all flex items-center justify-center gap-2 disabled:opacity-50 shadow-[0_0_20px_rgba(34,197,94,0.3)]"
+                    className={`${PRIMARY_BTN_CLS} flex-[2]`}
+                    style={PRIMARY_BTN_BG}
                   >
                     {isSubmitting ? <Loader2 size={18} className="animate-spin" /> : 'Create Account'}
                   </button>
@@ -400,8 +461,8 @@ export default function SignupPage() {
             </motion.div>
           </AnimatePresence>
 
-          <div className="mt-8 text-center text-sm text-[#a1a1a1]">
-            Already have an account? <Link href="/login" className="text-white hover:underline">Log in</Link>
+          <div className="mt-8 text-center text-sm text-[rgba(61,61,61,0.72)]">
+            Already have an account? <Link href="/login" className="text-[#16a34a] font-medium hover:underline">Log in</Link>
           </div>
         </div>
       </motion.div>

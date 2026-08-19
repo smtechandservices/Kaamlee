@@ -9,6 +9,7 @@ import FeedbackModal from '@/components/FeedbackModal';
 import Sidebar from '@/components/Sidebar';
 import PageHeader from '@/components/PageHeader';
 import { Loader2, CreditCard, CheckCircle2, XCircle, Clock, Shield, Calendar, Zap, RotateCcw, MessageSquare } from 'lucide-react';
+import { PRIMARY_BTN_CLS, PRIMARY_BTN_BG, SECONDARY_BTN_CLS, CARD_CLS, ArrowChevron } from '@/components/ui/landing-kit';
 
 interface Transaction {
   id: number;
@@ -92,8 +93,8 @@ export default function TransactionsPage() {
 
   if (isLoading || loading) {
     return (
-      <div className="h-screen bg-[#0a0a0a] flex items-center justify-center">
-        <Loader2 className="w-8 h-8 text-green-500 animate-spin" />
+      <div className="h-screen bg-[#f2f3f5] flex items-center justify-center">
+        <Loader2 className="w-8 h-8 text-[#16a34a] animate-spin" />
       </div>
     );
   }
@@ -101,85 +102,80 @@ export default function TransactionsPage() {
   const daysLeft = getDaysLeft(user?.subscription_expires_at);
 
   return (
-    <main className="h-screen flex bg-[#0a0a0a] text-white overflow-hidden relative font-sans">
+    <main className="h-screen flex bg-[#f2f3f5] text-[#0b0b0c] overflow-hidden relative">
       <Sidebar />
 
       <div className="flex-1 flex flex-col overflow-hidden">
         <PageHeader backHref="/profile" title="Billing" wordmark />
 
-        <div className="flex-1 overflow-y-auto p-6 relative">
-      <div className="absolute top-0 left-1/2 -translate-x-1/2 w-[800px] h-[500px] bg-green-500/5 blur-[120px] rounded-full pointer-events-none" />
+        <div className="flex-1 overflow-y-auto p-6 relative bg-[#f2f3f5]">
+      <div className="absolute top-0 left-1/2 -translate-x-1/2 w-[800px] h-[500px] bg-[#16a34a]/5 blur-[120px] rounded-full pointer-events-none" />
 
       <div className="mx-auto z-10 relative">
         <div className="grid grid-cols-1 lg:grid-cols-3 gap-8">
           {/* Subscription Sidebar */}
           <div className="lg:col-span-1 space-y-6">
-            <motion.div 
+            <motion.div
               initial={{ opacity: 0, x: -20 }}
               animate={{ opacity: 1, x: 0 }}
-              className="bg-[#111] border border-[#222] rounded-3xl p-8 relative overflow-hidden group"
+              className={`${CARD_CLS} p-8 relative overflow-hidden group`}
             >
-              {/* <div className="absolute top-0 right-0 p-8 opacity-[0.02] group-hover:opacity-[0.05] transition-opacity">
-                <Shield size={120} />
-              </div> */}
-              
               <div className="relative z-10">
                 <div className="space-y-4">
                   <div className="flex items-center justify-between">
-                    <div className="flex items-center gap-3 text-[#888]">
+                    <div className="flex items-center gap-3 text-black/45">
                       <Shield size={16} />
                       <span className="text-sm">Status</span>
                     </div>
-                    <span className={`text-xs font-black uppercase tracking-widest ${user?.is_subscribed ? 'text-green-500' : 'text-red-500'}`}>
+                    <span
+                      className={`text-xs font-semibold uppercase tracking-widest ${user?.is_subscribed ? 'text-[#16a34a]' : 'text-red-600'}`}
+                      style={{ fontFamily: 'var(--font-outfit)' }}
+                    >
                       {user?.is_subscribed ? 'Active' : 'Inactive'}
                     </span>
                   </div>
 
                   <div className="flex items-center justify-between">
-                    <div className="flex items-center gap-3 text-[#888]">
+                    <div className="flex items-center gap-3 text-black/45">
                       <Calendar size={16} />
                       <span className="text-sm">Expires On</span>
                     </div>
-                    <span className="text-xs font-mono text-white">
+                    <span className="text-xs text-[#0b0b0c]" style={{ fontFamily: 'var(--font-outfit)' }}>
                       {user?.subscription_expires_at ? new Date(user.subscription_expires_at).toLocaleDateString() : 'N/A'}
                     </span>
                   </div>
 
                   <div className="flex items-center justify-between">
-                    <div className="flex items-center gap-3 text-[#888]">
+                    <div className="flex items-center gap-3 text-black/45">
                       <Clock size={16} />
                       <span className="text-sm">Time Remaining</span>
                     </div>
-                    <span className="text-xs font-bold text-green-500">
+                    <span className="text-xs font-semibold text-[#16a34a]" style={{ fontFamily: 'var(--font-outfit)' }}>
                       {daysLeft} Days
                     </span>
                   </div>
                 </div>
 
-                {user?.is_subscribed ? (
-                  <button 
-                    onClick={() => setIsPricingModalOpen(true)}
-                    className="mt-8 cursor-pointer w-full bg-green-600 text-white py-4 rounded-2xl font-black uppercase tracking-widest text-xs flex items-center justify-center hover:bg-green-700 transition-all shadow-lg shadow-green-600/20"
-                  >
-                    Renew Plan
-                  </button>
-                ) : (
-                  <button 
-                    onClick={() => setIsPricingModalOpen(true)}
-                    className="mt-8 cursor-pointer w-full bg-white text-black py-4 rounded-2xl font-black uppercase tracking-widest text-xs flex items-center justify-center hover:bg-[#ededed] transition-all"
-                  >
-                    Upgrade Now
-                  </button>
-                )}
+                <button
+                  onClick={() => setIsPricingModalOpen(true)}
+                  className={`cursor-pointer ${PRIMARY_BTN_CLS} mt-8 w-full py-4 text-xs uppercase tracking-widest`}
+                  style={PRIMARY_BTN_BG}
+                >
+                  {user?.is_subscribed ? 'Renew Plan' : 'Upgrade Now'}
+                  <ArrowChevron />
+                </button>
               </div>
             </motion.div>
 
-            <div className="bg-green-500/5 border border-green-500/10 rounded-3xl p-6 space-y-4">
-              <p className="text-[14px] leading-relaxed font-medium">
+            <div className="rounded-[22px] border border-[#16a34a]/15 bg-[#16a34a]/5 p-6 space-y-4">
+              <p className="text-[14px] leading-relaxed font-medium text-[rgba(61,61,61,0.85)]">
                 Payments are powered by Razorpay and handled by Commhawk.
               </p>
-              <div className="pt-4 border-t border-green-500/10">
-                <p className="text-[10px] font-mono uppercase tracking-[0.2em] text-green-500/60 italic">
+              <div className="pt-4 border-t border-[#16a34a]/15">
+                <p
+                  className="text-[10px] uppercase tracking-[0.2em] text-[#16a34a]/70 italic"
+                  style={{ fontFamily: 'var(--font-outfit)' }}
+                >
                   Note : Official payment receipts are sent directly to your registered email address.
                 </p>
               </div>
@@ -188,7 +184,7 @@ export default function TransactionsPage() {
             <button
               type="button"
               onClick={() => setIsFeedbackOpen(true)}
-              className="cursor-pointer w-full flex items-center justify-center gap-2 bg-[#111] border border-[#222] hover:border-[#333] text-[#888] hover:text-white py-4 rounded-3xl font-black uppercase tracking-widest text-xs transition-all"
+              className={`${SECONDARY_BTN_CLS} w-full py-4 text-xs uppercase tracking-widest text-black/55 hover:text-[#0b0b0c]`}
             >
               <MessageSquare size={16} />
               Give Feedback
@@ -198,48 +194,48 @@ export default function TransactionsPage() {
           {/* Transaction History List */}
           <div className="lg:col-span-2 space-y-4">
             <div className="flex items-center gap-4 mb-4">
-               <div className="h-px w-12 bg-[#222]" />
-               <span className="text-[10px] font-black uppercase tracking-[0.2em] text-[#333]">Payment Records</span>
+               <div className="h-px w-12 bg-black/10" />
+               <span className="text-[10px] font-semibold uppercase tracking-[0.2em] text-black/45" style={{ fontFamily: 'var(--font-outfit)' }}>Payment Records</span>
             </div>
 
             {transactions.length === 0 ? (
-              <div className="bg-[#111] border border-[#222] rounded-3xl p-12 text-center">
-                <CreditCard className="w-12 h-12 text-[#222] mx-auto mb-4" />
-                <p className="text-[#555] font-medium">No transactions found</p>
+              <div className={`${CARD_CLS} p-12 text-center`}>
+                <CreditCard className="w-12 h-12 text-black/20 mx-auto mb-4" />
+                <p className="text-black/45 font-medium">No transactions found</p>
               </div>
             ) : (
               transactions.map((tx) => (
-                <motion.div 
+                <motion.div
                   key={tx.id}
                   initial={{ opacity: 0, y: 10 }}
                   animate={{ opacity: 1, y: 0 }}
-                  className="bg-[#111] border border-[#222] rounded-2xl p-5 sm:p-6 flex flex-col sm:flex-row items-start sm:items-center justify-between gap-4"
+                  className={`${CARD_CLS} p-5 sm:p-6 flex flex-col sm:flex-row items-start sm:items-center justify-between gap-4`}
                 >
                   <div className="flex items-center gap-4">
                     <div className={`w-12 h-12 rounded-xl flex items-center justify-center ${
-                      tx.status === 'success' ? 'bg-green-500/10 text-green-500' : 
-                      tx.status === 'failed' ? 'bg-red-500/10 text-red-500' : 'bg-green-500/10 text-green-500'
+                      tx.status === 'success' ? 'bg-[#16a34a]/10 text-[#16a34a]' :
+                      tx.status === 'failed' ? 'bg-red-50 text-red-600' : 'bg-[#16a34a]/10 text-[#16a34a]'
                     }`}>
-                      {tx.status === 'success' ? <CheckCircle2 size={20} /> : 
+                      {tx.status === 'success' ? <CheckCircle2 size={20} /> :
                        tx.status === 'failed' ? <XCircle size={20} /> : <Clock size={20} />}
                     </div>
                     <div>
-                      <div className="font-bold text-lg leading-tight">₹{tx.amount / 100}</div>
-                      <div className="text-[10px] font-mono text-[#555] uppercase tracking-wider mt-1">
+                      <div className="font-semibold text-lg leading-tight text-[#0b0b0c]" style={{ fontFamily: 'var(--font-outfit)' }}>₹{tx.amount / 100}</div>
+                      <div className="text-[10px] text-black/45 uppercase tracking-wider mt-1" style={{ fontFamily: 'var(--font-outfit)' }}>
                         {new Date(tx.created_at).toLocaleString()}
                       </div>
                     </div>
                   </div>
 
                   <div className="flex flex-col items-start sm:items-end gap-1 w-full sm:w-auto">
-                    <div className="text-[10px] font-black uppercase tracking-[0.2em] text-[#333]">Order ID</div>
+                    <div className="text-[10px] font-semibold uppercase tracking-[0.2em] text-black/45" style={{ fontFamily: 'var(--font-outfit)' }}>Order ID</div>
                     <div className="flex items-center gap-3">
-                      <div className="text-xs font-mono text-[#888]">{tx.razorpay_order_id}</div>
+                      <div className="text-xs font-mono text-[rgba(61,61,61,0.72)]">{tx.razorpay_order_id}</div>
                       {tx.status === 'pending' && (
-                        <button 
+                        <button
                           onClick={() => checkStatus(tx.razorpay_order_id)}
                           disabled={checkingStatus === tx.razorpay_order_id}
-                          className="cursor-pointer p-1.5 rounded-lg bg-green-500/10 text-green-500 hover:bg-green-500/20 transition-all group/btn"
+                          className="cursor-pointer p-1.5 rounded-lg bg-[#16a34a]/10 text-[#16a34a] hover:bg-[#16a34a]/20 transition-all group/btn"
                           title="Refresh Status"
                         >
                           <RotateCcw size={12} className={`${checkingStatus === tx.razorpay_order_id ? 'animate-spin' : 'group-hover/btn:rotate-180 transition-transform duration-500'}`} />
@@ -248,8 +244,8 @@ export default function TransactionsPage() {
                     </div>
                     {tx.razorpay_payment_id && (
                       <>
-                        <div className="text-[10px] font-black uppercase tracking-[0.2em] text-[#333] mt-2">Payment ID</div>
-                        <div className="text-xs font-mono text-[#888]">{tx.razorpay_payment_id}</div>
+                        <div className="text-[10px] font-semibold uppercase tracking-[0.2em] text-black/45 mt-2" style={{ fontFamily: 'var(--font-outfit)' }}>Payment ID</div>
+                        <div className="text-xs font-mono text-[rgba(61,61,61,0.72)]">{tx.razorpay_payment_id}</div>
                       </>
                     )}
                   </div>
@@ -279,26 +275,27 @@ export default function TransactionsPage() {
               animate={{ opacity: 1 }}
               exit={{ opacity: 0 }}
               onClick={() => setStatusMessage(null)}
-              className="absolute inset-0 bg-black/80 backdrop-blur-sm"
+              className="absolute inset-0 bg-black/50 backdrop-blur-sm"
             />
-            <motion.div 
+            <motion.div
               initial={{ opacity: 0, scale: 0.9, y: 20 }}
               animate={{ opacity: 1, scale: 1, y: 0 }}
               exit={{ opacity: 0, scale: 0.9, y: 20 }}
-              className="relative bg-[#111] border border-[#222] p-8 rounded-3xl max-w-sm w-full text-center shadow-2xl shadow-green-500/10"
+              className="relative bg-white border border-black/[0.08] p-8 rounded-[30px] max-w-sm w-full text-center shadow-[0_30px_80px_-30px_rgba(16,18,26,.35)]"
             >
-              <div className={`w-16 h-16 rounded-2xl mx-auto mb-6 flex items-center justify-center ${statusMessage.type === 'error' ? 'bg-red-500/10 text-red-500' : 'bg-green-500/10 text-green-500'}`}>
+              <div className={`w-16 h-16 rounded-2xl mx-auto mb-6 flex items-center justify-center ${statusMessage.type === 'error' ? 'bg-red-50 text-red-600' : 'bg-[#16a34a]/10 text-[#16a34a]'}`}>
                 {statusMessage.type === 'error' ? <XCircle size={32} /> : <CheckCircle2 size={32} />}
               </div>
-              <h3 className="text-xl font-black uppercase tracking-tight mb-2">
+              <h3 className="text-xl font-semibold tracking-tight mb-2 text-[#0b0b0c]" style={{ fontFamily: 'var(--font-outfit)' }}>
                 {statusMessage.type === 'error' ? 'Payment Status' : 'Success'}
               </h3>
-              <p className="text-[#888] text-sm leading-relaxed mb-8">
+              <p className="text-[rgba(61,61,61,0.72)] text-sm leading-relaxed mb-8">
                 {statusMessage.text}
               </p>
-              <button 
+              <button
                 onClick={() => setStatusMessage(null)}
-                className="w-full bg-white text-black py-4 rounded-2xl font-black uppercase tracking-widest text-xs hover:bg-[#ededed] transition-all cursor-pointer"
+                className={`${PRIMARY_BTN_CLS} w-full py-4 text-xs uppercase tracking-widest`}
+                style={PRIMARY_BTN_BG}
               >
                 Close
               </button>

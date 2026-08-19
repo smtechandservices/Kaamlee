@@ -7,6 +7,7 @@ import PageHeader from '@/components/PageHeader';
 import { useAuth } from '@/context/AuthContext';
 import { useSubscriptionGate } from '@/hooks/useSubscriptionGate';
 import PricingModal from '@/components/PricingModal';
+import { PRIMARY_BTN_BG } from '@/components/ui/landing-kit';
 
 interface Job {
   id: number;
@@ -25,12 +26,12 @@ interface Application {
   status_updated_at: string;
 }
 
-const COLUMNS: { key: string; label: string; dot: string; accent: string }[] = [
-  { key: 'saved', label: 'Saved', dot: 'bg-[#666]', accent: 'text-[#888]' },
-  { key: 'applied', label: 'Applied', dot: 'bg-blue-400', accent: 'text-blue-400' },
-  { key: 'interviewing', label: 'Interviewing', dot: 'bg-amber-400', accent: 'text-amber-400' },
-  { key: 'offered', label: 'Offered', dot: 'bg-green-400', accent: 'text-green-400' },
-  { key: 'rejected', label: 'Rejected', dot: 'bg-red-400', accent: 'text-red-400' },
+const COLUMNS: { key: string; label: string; dot: string; accent: string; chip: string }[] = [
+  { key: 'saved', label: 'Saved', dot: 'bg-slate-400', accent: 'text-slate-600', chip: 'bg-slate-100' },
+  { key: 'applied', label: 'Applied', dot: 'bg-blue-500', accent: 'text-blue-600', chip: 'bg-blue-50' },
+  { key: 'interviewing', label: 'Interviewing', dot: 'bg-amber-500', accent: 'text-amber-600', chip: 'bg-amber-50' },
+  { key: 'offered', label: 'Offered', dot: 'bg-[#16a34a]', accent: 'text-[#16a34a]', chip: 'bg-[#16a34a]/10' },
+  { key: 'rejected', label: 'Rejected', dot: 'bg-red-500', accent: 'text-red-600', chip: 'bg-red-50' },
 ];
 
 function groupByStatus(applications: Application[]) {
@@ -173,33 +174,42 @@ export default function ApplicationsPage() {
 
   if (!isReady) {
     return (
-      <div className="h-screen bg-[#0a0a0a] flex items-center justify-center">
-        <div className="w-8 h-8 border-2 border-green-500 border-t-transparent rounded-full animate-spin" />
+      <div className="h-screen bg-[#f2f3f5] flex items-center justify-center">
+        <div className="w-8 h-8 border-2 border-[#16a34a] border-t-transparent rounded-full animate-spin" />
       </div>
     );
   }
 
   return (
-    <main className="h-screen flex bg-[#0a0a0a] overflow-hidden relative">
+    <main className="h-screen flex bg-[#f2f3f5] overflow-hidden relative">
       <Sidebar />
 
       <div className="flex-1 flex flex-col overflow-hidden">
         <PageHeader
-          backHref="/explore"
+          backHref="/dashboard"
           title="Application Tracker"
           badge={!isFetching && (
-            <span className="text-[10px] sm:text-xs text-[#555] font-semibold shrink-0">{totalCount} tracked</span>
+            <span
+              className="text-[10px] sm:text-xs text-black/45 font-semibold shrink-0"
+              style={{ fontFamily: 'var(--font-outfit)' }}
+            >
+              {totalCount} tracked
+            </span>
           )}
         />
 
         {!isSubscribed && (
-          <div className="flex items-center justify-between gap-3 px-4 sm:px-6 py-2 bg-green-500/10 border-b border-green-500/20 shrink-0">
-            <span className="text-[10px] sm:text-[11px] text-green-400 font-semibold">
-              View only — subscribe to drag cards, change status, or stop tracking a job.
+          <div className="flex items-center justify-between gap-3 px-4 sm:px-6 py-2 bg-[#16a34a]/10 border-b border-[#16a34a]/20 shrink-0">
+            <span
+              className="text-[10px] sm:text-[11px] text-[#15803d] font-semibold"
+              style={{ fontFamily: 'var(--font-outfit)' }}
+            >
+              View only, subscribe to drag cards, change status, or stop tracking a job.
             </span>
             <button
               onClick={() => setIsPricingOpen(true)}
-              className="cursor-pointer shrink-0 px-3 py-1 rounded-lg text-[10px] sm:text-[11px] font-bold bg-[#22c55e] text-white hover:bg-[#1ea34e] transition-colors"
+              style={{ ...PRIMARY_BTN_BG, fontFamily: 'var(--font-outfit)' }}
+              className="cursor-pointer shrink-0 px-3 py-1 rounded-full text-[10px] sm:text-[11px] font-bold text-white shadow-[0_1px_0_rgba(255,255,255,.45)_inset,0_6px_16px_-8px_rgba(22,163,74,.85)] transition-transform duration-300 hover:-translate-y-0.5"
             >
               Unlock
             </button>
@@ -217,14 +227,22 @@ export default function ApplicationsPage() {
                   onDragOver={(e) => { e.preventDefault(); setDragOverColumn(col.key); }}
                   onDragLeave={() => setDragOverColumn(prev => (prev === col.key ? null : prev))}
                   onDrop={(e) => handleDrop(e, col.key)}
-                  className={`w-[280px] sm:w-[300px] shrink-0 h-full flex flex-col rounded-2xl border bg-[#0d0d0d] transition-colors ${
-                    isOver ? 'border-green-500/50 bg-[#111]' : 'border-[#1c1c1c]'
+                  className={`w-[280px] sm:w-[300px] shrink-0 h-full flex flex-col rounded-[20px] border bg-white transition-colors duration-200 shadow-[0_1px_2px_rgba(16,18,26,.05),0_6px_16px_-8px_rgba(16,18,26,.10)] ${
+                    isOver ? 'border-[#16a34a]/50 bg-[#16a34a]/5' : 'border-black/[0.08]'
                   }`}
                 >
-                  <div className="px-4 py-3 border-b border-[#1c1c1c] flex items-center gap-2 shrink-0">
+                  <div className="px-4 py-3 border-b border-black/[0.08] flex items-center gap-2 shrink-0">
                     <span className={`w-2 h-2 rounded-full ${col.dot}`} />
-                    <h2 className={`text-xs font-bold uppercase tracking-widest ${col.accent}`}>{col.label}</h2>
-                    <span className="text-[10px] text-[#555] font-semibold ml-auto bg-[#161616] px-2 py-0.5 rounded-full border border-[#222]">
+                    <h2
+                      className={`text-xs font-semibold uppercase tracking-widest ${col.accent}`}
+                      style={{ fontFamily: 'var(--font-outfit)' }}
+                    >
+                      {col.label}
+                    </h2>
+                    <span
+                      className={`text-[10px] font-semibold ml-auto ${col.chip} ${col.accent} px-2 py-0.5 rounded-full border border-black/[0.06]`}
+                      style={{ fontFamily: 'var(--font-outfit)' }}
+                    >
                       {cards.length}
                     </span>
                   </div>
@@ -232,10 +250,13 @@ export default function ApplicationsPage() {
                   <div className="flex-1 overflow-y-auto p-2.5 space-y-2.5 custom-scrollbar">
                     {isFetching ? (
                       Array.from({ length: 2 }).map((_, i) => (
-                        <div key={i} className="h-24 rounded-xl bg-[#141414] animate-pulse border border-[#1c1c1c]" />
+                        <div key={i} className="h-24 rounded-[16px] bg-black/[0.03] animate-pulse border border-black/[0.06]" />
                       ))
                     ) : cards.length === 0 ? (
-                      <div className="h-24 flex items-center justify-center text-[11px] text-[#444] text-center px-4">
+                      <div
+                        className="h-24 flex items-center justify-center text-[11px] text-black/40 text-center px-4"
+                        style={{ fontFamily: 'var(--font-outfit)' }}
+                      >
                         {col.key === 'saved' ? 'Bookmark a job to see it here' : 'Drag a card here'}
                       </div>
                     ) : (
@@ -245,17 +266,22 @@ export default function ApplicationsPage() {
                           draggable
                           onDragStart={(e) => handleDragStart(e, app.job.id, col.key)}
                           onDragEnd={() => { setDraggingId(null); setDraggingFrom(null); setDragOverColumn(null); }}
-                          className={`group p-3 rounded-xl border border-[#222] bg-[#141414] hover:border-[#333] transition-all ${
+                          className={`group p-3 rounded-[16px] border border-black/[0.08] bg-white shadow-[0_1px_2px_rgba(16,18,26,.05),0_6px_16px_-8px_rgba(16,18,26,.10)] hover:-translate-y-0.5 hover:shadow-[0_2px_4px_rgba(16,18,26,.04),0_18px_40px_-18px_rgba(16,18,26,.22)] transition-all duration-300 ${
                             isSubscribed ? 'cursor-grab active:cursor-grabbing' : 'cursor-pointer'
                           } ${draggingId === app.job.id ? 'opacity-40' : ''}`}
                         >
                           <div className="flex items-start gap-2">
-                            <GripVertical size={13} className="text-[#333] mt-0.5 shrink-0" />
+                            <GripVertical size={13} className="text-black/25 mt-0.5 shrink-0" />
                             <div className="min-w-0 flex-1">
-                              <h3 className="text-xs font-semibold text-white truncate">{app.job.title}</h3>
-                              <p className="text-[11px] text-[#777] truncate mt-0.5">{app.job.company || 'Confidential'}</p>
+                              <h3
+                                className="text-xs font-semibold text-[#0b0b0c] truncate"
+                                style={{ fontFamily: 'var(--font-outfit)' }}
+                              >
+                                {app.job.title}
+                              </h3>
+                              <p className="text-[11px] text-[rgba(61,61,61,0.72)] truncate mt-0.5">{app.job.company || 'Confidential'}</p>
                               {app.job.location_name && (
-                                <div className="flex items-center gap-1 text-[10px] text-[#555] mt-1.5 truncate">
+                                <div className="flex items-center gap-1 text-[10px] text-black/45 mt-1.5 truncate">
                                   <MapPin size={10} className="shrink-0" />
                                   <span className="truncate">{app.job.location_name}</span>
                                 </div>
@@ -265,7 +291,8 @@ export default function ApplicationsPage() {
                                   value={col.key}
                                   onChange={(e) => handleStatusSelect(app.job.id, col.key, e.target.value)}
                                   onClick={(e) => e.stopPropagation()}
-                                  className="text-[10px] bg-[#1a1a1a] border border-[#262626] rounded-lg px-1.5 py-1 text-[#888] cursor-pointer focus:outline-none focus:border-[#333]"
+                                  style={{ fontFamily: 'var(--font-outfit)' }}
+                                  className="text-[10px] bg-white border border-black/[0.10] rounded-lg px-1.5 py-1 text-black/60 cursor-pointer focus:outline-none focus:border-[#16a34a]/40"
                                 >
                                   {COLUMNS.map(c => (
                                     <option key={c.key} value={c.key}>{c.label}</option>
@@ -276,14 +303,14 @@ export default function ApplicationsPage() {
                                     href={app.job.job_url}
                                     target="_blank"
                                     rel="noopener noreferrer"
-                                    className="text-[#444] hover:text-green-400 transition-colors p-1"
+                                    className="text-black/35 hover:text-[#16a34a] transition-colors p-1"
                                     title="Open job posting"
                                   >
                                     <ExternalLink size={12} />
                                   </a>
                                   <button
                                     onClick={(e) => { e.stopPropagation(); handleRemove(app.job.id, col.key); }}
-                                    className="cursor-pointer text-[#444] hover:text-red-400 transition-colors p-1"
+                                    className="cursor-pointer text-black/35 hover:text-red-600 transition-colors p-1"
                                     title="Stop tracking"
                                   >
                                     <Trash2 size={12} />
@@ -312,11 +339,11 @@ export default function ApplicationsPage() {
           background: transparent;
         }
         .custom-scrollbar::-webkit-scrollbar-thumb {
-          background: #222;
+          background: rgba(0, 0, 0, 0.12);
           border-radius: 10px;
         }
         .custom-scrollbar::-webkit-scrollbar-thumb:hover {
-          background: #333;
+          background: rgba(0, 0, 0, 0.22);
         }
       `}</style>
 

@@ -18,8 +18,8 @@
   --muted: oklch(0.97 0 0);
   --input-bg: #1a1a1a;
   --input-border: #333333;
-  --background: oklch(1 0 0);
-  --foreground: oklch(0.145 0 0);
+  --background: #f2f3f5;
+  --foreground: #0b0b0c;
   --card: oklch(1 0 0);
   --card-foreground: oklch(0.145 0 0);
   --popover: oklch(1 0 0);
@@ -58,11 +58,9 @@
   body {
     background-color: var(--background);
     color: var(--foreground);
-    font-family: var(--font-sans), sans-serif;
+    font-family: Georgia, "Times New Roman", Times, serif;
+    letter-spacing: -0.01em;
     @apply bg-background text-foreground;
-  }
-  html {
-    @apply font-sans;
   }
   .maplibregl-popup-content {
     @apply bg-transparent! shadow-none! p-0! rounded-none!;
@@ -73,19 +71,8 @@
 }
 
 /* Custom Utilities */
-.glass {
-  background: rgba(17, 17, 17, 0.8);
-  backdrop-filter: blur(8px);
-  border: 1px solid var(--card-border);
-}
-
 .job-card {
   transition: all 0.2s ease;
-}
-
-.job-card:hover {
-  background: #161616;
-  border-color: var(--accent);
 }
 
 .marker-pulse {
@@ -130,6 +117,20 @@
     opacity: 0;
   }
 }
+
+/* Landing page (aiwork-style) animations — kept in the static stylesheet rather
+   than injected via styled-jsx, since a client-hydration-timed @keyframes can
+   miss the animation's first start and never catch up until something forces
+   a style recalc (e.g. :hover). */
+@keyframes awlBolt { 0%, 88%, 100% { transform: scale(1); } 92% { transform: scale(1.18) rotate(-6deg); } }
+@keyframes awlShine { 0% { left: -60%; } 55%, 100% { left: 130%; } }
+@keyframes awlBar { to { transform: scaleY(1); } }
+@keyframes awlDraw { 0% { stroke-dashoffset: 260; } 55%, 100% { stroke-dashoffset: 0; } }
+@keyframes awlDraw2 { from { stroke-dashoffset: 330; } to { stroke-dashoffset: 0; } }
+@keyframes awlFloaty { 0%, 100% { transform: translateY(0); } 50% { transform: translateY(-9px); } }
+@keyframes awlMarquee { to { transform: translateX(-50%); } }
+@keyframes awlRipple { 0% { width: 200px; height: 200px; opacity: 0.5; } 100% { width: 1200px; height: 1200px; opacity: 0; } }
+@keyframes awlSpin { to { transform: rotate(360deg); } }
 
 @theme inline {
   --font-heading: var(--font-sans);

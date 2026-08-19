@@ -164,7 +164,7 @@ const Map = ({ jobs, selectedJobId, onJobClick }: MapProps) => {
         center={center}
         zoom={zoom}
         maxZoom={12}
-        theme="dark"
+        theme="light"
         className="w-full h-full"
         onClick={(e) => {
           // Don't deselect if we clicked on a cluster or point
@@ -219,29 +219,30 @@ const Map = ({ jobs, selectedJobId, onJobClick }: MapProps) => {
             >
               <MarkerContent className="group">
                 {job.id === selectedJobId ? (
-                  <MapPin size={20} className="text-[#22c55e] drop-shadow-[0_0_6px_rgba(34,197,94,0.7)] fill-[#22c55e]/20 transition-all duration-300" />
+                  <MapPin size={20} className="text-[#16a34a] drop-shadow-[0_2px_4px_rgba(22,163,74,0.4)] fill-[#16a34a]/20 transition-all duration-300" />
                 ) : (
-                  <MapPin size={14} className="text-white/70 fill-transparent group-hover:text-[#22c55e] group-hover:scale-125 transition-all duration-200" />
+                  <MapPin size={14} className="text-black/40 fill-white/60 group-hover:text-[#16a34a] group-hover:scale-125 transition-all duration-200" />
                 )}
-                <MarkerLabel position="top" className="text-[9px] text-white opacity-0 group-hover:opacity-100 transition-opacity bg-black/80 px-1.5 py-0.5 rounded backdrop-blur-sm mb-1 whitespace-nowrap">
+                <MarkerLabel position="top" className="text-[9px] font-medium text-[#0b0b0c] opacity-0 group-hover:opacity-100 transition-opacity bg-white border border-black/[0.08] px-1.5 py-0.5 rounded-full shadow-[0_1px_2px_rgba(16,18,26,.05),0_6px_16px_-8px_rgba(16,18,26,.10)] mb-1 whitespace-nowrap">
                   {job.company || 'Confidential'}
                 </MarkerLabel>
               </MarkerContent>
-              <MarkerPopup show={job.id === selectedJobId} className="w-64 bg-[#111] border-[#333] p-0 overflow-hidden rounded-xl shadow-2xl">
-                <div className="p-4 bg-[#161616]">
-                  <div className="text-[10px] text-[#555] uppercase tracking-widest font-bold mb-1">
+              <MarkerPopup show={job.id === selectedJobId} className="w-64 bg-white border border-black/[0.08] p-0 overflow-hidden rounded-2xl shadow-[0_30px_80px_-30px_rgba(16,18,26,.35)]">
+                <div className="p-4 bg-white">
+                  <div className="text-[10px] text-black/40 uppercase tracking-widest font-semibold mb-1" style={{ fontFamily: 'var(--font-outfit)' }}>
                     {job.company || 'Confidential'} • {job.location}
                   </div>
-                  <div className="text-sm font-bold text-white mb-2 leading-tight">
+                  <div className="text-sm font-semibold text-[#0b0b0c] mb-2 leading-tight tracking-[-0.01em]" style={{ fontFamily: 'var(--font-outfit)' }}>
                     {job.title}
                   </div>
                   <div className="flex justify-between items-start gap-3 mt-3">
-                    <span className="text-xs text-[#888] line-clamp-2 flex-1">{job.job_type || 'Full-time'}</span>
-                    <a 
-                      href={job.job_url} 
-                      target="_blank" 
+                    <span className="text-xs text-black/50 line-clamp-2 flex-1">{job.job_type || 'Full-time'}</span>
+                    <a
+                      href={job.job_url}
+                      target="_blank"
                       rel="noopener noreferrer"
-                      className="shrink-0 text-[10px] bg-[#22c55e] text-white px-3 py-1.5 rounded-full font-bold flex items-center gap-1 hover:bg-green-600 transition-colors"
+                      className="shrink-0 text-[10px] text-white px-3 py-1.5 rounded-full font-semibold flex items-center gap-1 transition-transform hover:-translate-y-0.5 shadow-[0_1px_0_rgba(255,255,255,.45)_inset,0_10px_24px_-10px_rgba(22,163,74,.85)]"
+                      style={{ background: 'linear-gradient(180deg,#4ade80,#16a34a 55%,#15803d)', fontFamily: 'var(--font-outfit)' }}
                     >
                       Apply Now
                       <ExternalLink size={10} />
@@ -256,67 +257,68 @@ const Map = ({ jobs, selectedJobId, onJobClick }: MapProps) => {
       </Mapcn>
 
       <div className="absolute top-4 left-4 z-10 flex flex-col gap-2">
-        <div className="glass px-3 py-1.5 rounded-full text-[11px] font-medium text-white/80 w-30 flex items-center gap-2 bg-[#111]/80 backdrop-blur-md border border-[#333] pointer-events-none">
-          <div className="w-2 h-2 rounded-full bg-green-500 animate-pulse" />
+        <div className="px-3 py-1.5 rounded-full text-[11px] font-medium text-black/70 w-fit flex items-center gap-2 bg-white/90 backdrop-blur-md border border-black/[0.08] shadow-[0_1px_2px_rgba(16,18,26,.05),0_6px_16px_-8px_rgba(16,18,26,.10)] pointer-events-none" style={{ fontFamily: 'var(--font-outfit)' }}>
+          <div className="w-2 h-2 rounded-full bg-[#16a34a] animate-pulse" />
           {jobs.length} {jobs.length === 1 ? 'Job' : 'Jobs'} Found
         </div>
-        
+
         <AnimatePresence mode="wait">
           {currentNearby && (
-            <motion.div 
+            <motion.div
               key={currentNearby.id}
               initial={{ opacity: 0, x: -20, y: 0 }}
               animate={{ opacity: 1, x: 0, y: 0 }}
               exit={{ opacity: 0, x: 20, y: 0 }}
               transition={{ type: "spring", stiffness: 300, damping: 30 }}
-              className="glass px-4 py-3 rounded-2xl bg-green-600/20 backdrop-blur-xl border border-green-500/30 w-64 shadow-2xl shadow-green-500/10"
+              className="px-4 py-3 rounded-2xl bg-white border border-black/[0.08] w-64 shadow-[0_2px_4px_rgba(16,18,26,.04),0_18px_40px_-18px_rgba(16,18,26,.22)]"
             >
               <div className="flex items-center justify-between mb-4">
-                <div className="text-[9px] font-black uppercase tracking-widest text-green-400">Discovery {currentIndex + 1}/{nearbyJobs.length}</div>
+                <div className="text-[9px] font-semibold uppercase tracking-widest text-[#16a34a]" style={{ fontFamily: 'var(--font-outfit)' }}>Discovery {currentIndex + 1}/{nearbyJobs.length}</div>
                 <div className="flex items-center gap-1">
-                    <button 
+                    <button
                      onClick={() => setNearbyJobs([])}
-                     className="cursor-pointer p-1 rounded-md bg-white/10 hover:bg-red-500/20 transition-colors text-white hover:text-red-400"
+                     className="cursor-pointer p-1 rounded-md bg-black/[0.04] hover:bg-red-50 transition-colors text-black/50 hover:text-red-500"
                     >
                       <X size={12} />
                     </button>
-                    <div className="w-px h-3 bg-white/10 mx-0.5" />
-                   <button 
+                    <div className="w-px h-3 bg-black/[0.08] mx-0.5" />
+                   <button
                     onClick={() => navigateNearby('prev')}
-                    className="cursor-pointer p-1 rounded-md bg-white/10 hover:bg-white/20 transition-colors text-white"
+                    className="cursor-pointer p-1 rounded-md bg-black/[0.04] hover:bg-black/[0.08] transition-colors text-black/60"
                    >
                      <ChevronLeft size={12} />
                    </button>
-                    <button 
+                    <button
                      onClick={() => navigateNearby('next')}
-                     className="cursor-pointer p-1 rounded-md bg-white/10 hover:bg-white/20 transition-colors text-white"
+                     className="cursor-pointer p-1 rounded-md bg-black/[0.04] hover:bg-black/[0.08] transition-colors text-black/60"
                     >
                       <ChevronRight size={12} />
                     </button>
                  </div>
               </div>
               <div className="mb-2">
-                <div className="text-[10px] font-bold text-white/50 truncate mb-0.5">{currentNearby.title}</div>
-                <div className="text-xs font-bold text-white truncate">{currentNearby.company}</div>
+                <div className="text-[10px] font-medium text-black/40 truncate mb-0.5" style={{ fontFamily: 'var(--font-outfit)' }}>{currentNearby.title}</div>
+                <div className="text-xs font-semibold text-[#0b0b0c] truncate" style={{ fontFamily: 'var(--font-outfit)' }}>{currentNearby.company}</div>
               </div>
-              <div className="flex items-center justify-between text-[10px] font-bold">
-                 <span className="text-white/60">{currentNearby.distance.toFixed(1)} km away</span>
-                 <span className="text-green-400">{Math.round(currentNearby.distance * 1.5)} min</span>
+              <div className="flex items-center justify-between text-[10px] font-medium" style={{ fontFamily: 'var(--font-outfit)' }}>
+                 <span className="text-black/45">{currentNearby.distance.toFixed(1)} km away</span>
+                 <span className="text-[#16a34a]">{Math.round(currentNearby.distance * 1.5)} min</span>
               </div>
             </motion.div>
           )}
         </AnimatePresence>
       </div>
 
-      <div className="absolute top-2 right-4 z-10">
-        <button 
+      <div className="absolute top-4 right-4 z-10">
+        <button
           onClick={findNearestStartup}
           disabled={isSearching}
-          className="cursor-pointer group flex items-center gap-2 bg-white text-black px-6 py-1.5 rounded-2xl font-black text-[14px] uppercase tracking-tighter hover:scale-105 active:scale-95 transition-all shadow-2xl shadow-white/10 border border-gray-300 disabled:opacity-70 disabled:cursor-wait"
+          className="cursor-pointer group flex items-center gap-2 bg-white text-[#0b0b0c] px-5 py-2 rounded-full font-medium text-[13px] hover:-translate-y-0.5 active:scale-95 transition-all shadow-[0_1px_2px_rgba(16,18,26,.05),0_6px_16px_-8px_rgba(16,18,26,.10)] border border-black/[0.10] disabled:opacity-70 disabled:cursor-wait disabled:hover:translate-y-0"
+          style={{ fontFamily: 'var(--font-outfit)' }}
         >
           {isSearching ? (
             <>
-              <Loader2 size={14} className="animate-spin text-green-600" />
+              <Loader2 size={14} className="animate-spin text-[#16a34a]" />
               Searching...
             </>
           ) : (

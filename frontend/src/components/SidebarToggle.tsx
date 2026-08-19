@@ -10,7 +10,7 @@ export default function SidebarToggle() {
     <button
       onClick={toggle}
       title="Open menu"
-      className="md:hidden cursor-pointer text-[#888] hover:text-white transition-colors"
+      className="md:hidden cursor-pointer text-black/45 hover:text-[#0b0b0c] transition-colors"
     >
       <Menu size={20} />
     </button>
