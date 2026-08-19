@@ -10,8 +10,8 @@ PLANS = {
     },
     'quarterly': {
         'label': '3 Months',
-        'amount_inr': 299,
-        'amount_paise': 29900,
+        'amount_inr': 249,
+        'amount_paise': 24900,
         'duration_days': 90,
     },
 }
