@@ -327,6 +327,96 @@ const BrandMark = ({ size = 38 }: { size?: number }) => (
   </span>
 );
 
+/* ============ FLOATING WHATSAPP CTA ============ */
+const WHATSAPP_URL = 'https://chat.whatsapp.com/HtJ3XG4RgwAAZiYYN79rOb?s=cl&p=i&ilr=0';
+
+const WhatsAppGlyph = ({ size = 27, className = '' }: { size?: number; className?: string }) => (
+  <svg width={size} height={size} viewBox="0 0 24 24" fill="currentColor" className={className}>
+    <path d="M12.04 2C6.58 2 2.13 6.45 2.13 11.91c0 1.75.46 3.45 1.32 4.95L2.05 22l5.25-1.38c1.45.79 3.08 1.21 4.74 1.21h.01c5.46 0 9.91-4.45 9.91-9.91C21.96 6.45 17.51 2 12.04 2zm5.8 14.02c-.24.68-1.4 1.32-1.93 1.4-.5.08-1.13.11-1.82-.11-.42-.13-.96-.31-1.65-.6-2.9-1.25-4.79-4.17-4.94-4.36-.14-.2-1.18-1.57-1.18-3 0-1.42.75-2.12 1.01-2.41.26-.29.58-.36.77-.36.19 0 .38 0 .55.01.18.01.41-.07.64.49.24.58.81 2 .88 2.15.07.14.12.31.02.5-.09.19-.14.31-.28.48-.14.17-.29.37-.42.5-.14.14-.28.29-.12.57.16.29.71 1.17 1.52 1.9 1.05.94 1.93 1.23 2.21 1.37.29.14.45.12.62-.07.17-.19.72-.84.92-1.12.19-.29.38-.24.64-.14.26.09 1.66.78 1.94.93.29.14.48.21.55.33.07.12.07.68-.17 1.35z" />
+  </svg>
+);
+
+const WHATSAPP_PERKS = [
+  'Get hired and see active job postings',
+  'Socials, meetups and events',
+  'Discuss and build startup ideas together',
+  'The general Kaamlee chat',
+];
+
+function WhatsAppFloat() {
+  const [open, setOpen] = useState(false);
+  const ref = useRef<HTMLDivElement>(null);
+
+  useEffect(() => {
+    if (!open) return;
+    const onPointerDown = (e: PointerEvent) => {
+      if (ref.current && !ref.current.contains(e.target as Node)) setOpen(false);
+    };
+    const onKeyDown = (e: KeyboardEvent) => { if (e.key === 'Escape') setOpen(false); };
+    document.addEventListener('pointerdown', onPointerDown);
+    document.addEventListener('keydown', onKeyDown);
+    return () => {
+      document.removeEventListener('pointerdown', onPointerDown);
+      document.removeEventListener('keydown', onKeyDown);
+    };
+  }, [open]);
+
+  return (
+    <div ref={ref} className="fixed bottom-6 right-5 z-[70] sm:bottom-8 sm:right-8">
+      <div
+        className="absolute bottom-[calc(100%+14px)] right-0 w-[280px] origin-bottom-right rounded-[22px] border border-black/[0.08] bg-white p-5 shadow-[0_30px_80px_-30px_rgba(16,18,26,.35)] transition-all duration-300"
+        style={{
+          opacity: open ? 1 : 0,
+          transform: open ? 'translateY(0) scale(1)' : 'translateY(8px) scale(0.96)',
+          pointerEvents: open ? 'auto' : 'none',
+        }}
+        role="dialog"
+        aria-hidden={!open}
+      >
+        <div className="flex items-center gap-2.5">
+          <span className="grid h-9 w-9 flex-none place-items-center rounded-full text-white" style={{ background: 'linear-gradient(180deg,#4ade80,#16a34a 55%,#15803d)' }}>
+            <WhatsAppGlyph size={17} />
+          </span>
+          <div>
+            <h4 className="text-[15px] font-medium tracking-[-0.02em]">Kaamlee community</h4>
+            <span className="text-[12.5px] text-[rgba(61,61,61,0.72)]">On WhatsApp</span>
+          </div>
+        </div>
+        <ul className="mt-4 flex flex-col gap-2">
+          {WHATSAPP_PERKS.map((perk) => (
+            <li key={perk} className="flex items-start gap-2 text-[13.5px] text-[rgba(61,61,61,0.72)]">
+              <i className="mt-[7px] h-[5px] w-[5px] flex-none rounded-full bg-[#16a34a]" />
+              {perk}
+            </li>
+          ))}
+        </ul>
+        <a
+          href={WHATSAPP_URL}
+          target="_blank"
+          rel="noopener noreferrer"
+          className="group mt-4 flex items-center justify-center gap-2 rounded-full px-5 py-2.5 text-[14px] font-medium text-white shadow-[0_1px_0_rgba(255,255,255,.45)_inset,0_10px_24px_-10px_rgba(22,163,74,.85)] transition-transform duration-300 hover:-translate-y-0.5"
+          style={{ background: 'linear-gradient(180deg,#4ade80,#16a34a 55%,#15803d)' }}
+        >
+          Join on WhatsApp <ArrowChevron />
+        </a>
+      </div>
+
+      <button
+        type="button"
+        onClick={() => setOpen((v) => !v)}
+        aria-expanded={open}
+        aria-haspopup="dialog"
+        aria-label="Join the Kaamlee community on WhatsApp"
+        className="group relative grid h-14 w-14 place-items-center rounded-full text-white shadow-[0_1px_0_rgba(255,255,255,.45)_inset,0_10px_28px_-8px_rgba(22,163,74,.75)] transition-transform duration-300 hover:-translate-y-1"
+        style={{ background: 'linear-gradient(180deg,#4ade80,#16a34a 55%,#15803d)' }}
+      >
+        {!open && <span className="absolute inset-0 -z-10 rounded-full bg-[#16a34a]/50 animate-ping" style={{ animationDuration: '2.4s' }} />}
+        <WhatsAppGlyph className="transition-transform duration-300 group-hover:scale-110" />
+      </button>
+    </div>
+  );
+}
+
 /* ============ DATA ============ */
 const SOLUTIONS = [
   { icon: Map, t: 'Unified job map', d: 'Every open role from twelve boards, plotted on one map. No tab-hopping between sites.' },
@@ -1496,11 +1586,14 @@ export default function LandingPage() {
                   <i key={d} className="absolute left-1/2 top-1/2 -translate-x-1/2 -translate-y-1/2 rounded-full border border-white/[0.14] animate-[awlRipple_6s_cubic-bezier(.22,.61,.36,1)_infinite]" style={{ animationDelay: `${d}s` }} />
                 ))}
               </div>
-              <h2 className="relative mx-auto text-[30px] tracking-[-0.03em]">Stop scrolling ten tabs. Start applying from one map.</h2>
-              <p className="relative mx-auto mt-4.5 max-w-3xl text-white/68 sm:text-[16.5px]">From live listings to AI-matched roles, tailored CVs and a portfolio that gets you noticed <br className="hidden sm:block" /> Kaamlee handles the busywork so you can focus on landing the role.</p>
-              <button onClick={() => setIsPricingOpen(true)} className="cursor-pointer group relative mt-8 inline-flex items-center gap-2.5 overflow-hidden rounded-full px-[26px] py-[15px] text-[15.5px] font-medium text-white shadow-[0_1px_0_rgba(255,255,255,.45)_inset,0_10px_24px_-10px_rgba(22,163,74,.85)] transition-transform duration-300 hover:-translate-y-0.5" style={{ background: 'linear-gradient(180deg,#4ade80,#16a34a 55%,#15803d)' }}>
-                Get started <ArrowChevron />
-              </button>
+              <span className="relative grid h-14 w-14 mx-auto place-items-center rounded-full text-white" style={{ background: 'linear-gradient(180deg,#4ade80,#16a34a 55%,#15803d)' }}>
+                <WhatsAppGlyph size={26} />
+              </span>
+              <h2 className="relative mx-auto mt-5 text-[30px] tracking-[-0.03em]">Get hired on whatsapp</h2>
+              <p className="relative mx-auto mt-4.5 max-w-3xl text-white/68 sm:text-[16.5px]">See active job postings, discuss and build startup ideas together, or drop into socials and events and the general Kaamlee chat.</p>
+              <a href="https://chat.whatsapp.com/HtJ3XG4RgwAAZiYYN79rOb?s=cl&p=i&ilr=0" target="_blank" rel="noopener noreferrer" className="group relative mt-8 inline-flex items-center gap-2.5 overflow-hidden rounded-full px-[26px] py-[15px] text-[15.5px] font-medium text-white shadow-[0_1px_0_rgba(255,255,255,.45)_inset,0_10px_24px_-10px_rgba(22,163,74,.85)] transition-transform duration-300 hover:-translate-y-0.5" style={{ background: 'linear-gradient(180deg,#4ade80,#16a34a 55%,#15803d)' }}>
+                <WhatsAppGlyph size={16} /> Join the Whatsapp Community<ArrowChevron />
+              </a>
             </div>
           </Reveal>
         </div>
@@ -1557,6 +1650,7 @@ export default function LandingPage() {
       </footer>
 
       <PricingModal isOpen={isPricingOpen} onClose={() => setIsPricingOpen(false)} />
+      <WhatsAppFloat />
     </main>
   );
 }
