@@ -1,5 +1,5 @@
 import type { Metadata } from "next";
-import { Outfit, Plus_Jakarta_Sans } from "next/font/google";
+import { Outfit, Plus_Jakarta_Sans, Caveat } from "next/font/google";
 import { Analytics } from "@vercel/analytics/next";
 import "./globals.css";
 
@@ -11,6 +11,12 @@ const outfit = Outfit({
 const jakarta = Plus_Jakarta_Sans({
   variable: "--font-jakarta",
   subsets: ["latin"],
+});
+
+const caveat = Caveat({
+  variable: "--font-caveat",
+  subsets: ["latin"],
+  weight: ["500", "600", "700"],
 });
 
 export const metadata: Metadata = {

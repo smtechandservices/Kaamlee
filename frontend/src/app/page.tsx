@@ -1432,6 +1432,11 @@ export default function LandingPage() {
               <Reveal delay={60}>
                 <span className="-rotate-5 ml-2 mt-4 block text-[58px] leading-none text-[#d97706]" style={{ fontFamily: 'var(--font-caveat)' }}>join the crew</span>
               </Reveal>
+              <Reveal delay={140} className="mt-6 xl:hidden">
+                <a href={process.env.NEXT_PUBLIC_AMBASSADOR_URL || 'https://ambassador.kaamlee.in'} className="inline-flex items-center justify-center gap-2 rounded-full bg-[#4ADE80] px-8 py-4 font-semibold tracking-[0.02em] text-black shadow-[0_10px_24px_-10px_rgba(74,222,128,.7)] transition-transform duration-300 hover:-translate-y-0.5" style={{ fontFamily: 'var(--font-outfit)' }}>
+                  APPLY as CAMPUS AMBASSADOR <ArrowChevron />
+                </a>
+              </Reveal>
             </div>
 
             <Reveal type="right" delay={140} className="relative hidden w-[360px] flex-none pt-12 xl:block">

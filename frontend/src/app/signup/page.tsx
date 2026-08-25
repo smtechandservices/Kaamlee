@@ -1,13 +1,14 @@
 'use client';
 
-import React, { useState } from 'react';
+import React, { useEffect, useState } from 'react';
 import Link from 'next/link';
 import { motion, AnimatePresence } from 'framer-motion';
-import { ArrowLeft, User, Mail, Lock, Loader2, Phone, Link as LinkIcon, Eye, EyeOff, CheckCircle2, ChevronRight } from 'lucide-react';
+import { ArrowLeft, User, Mail, Lock, Loader2, Phone, Link as LinkIcon, Eye, EyeOff, CheckCircle2, ChevronRight, Gift } from 'lucide-react';
 import { useAuth } from '@/context/AuthContext';
 import GoogleSignInButton from '@/components/GoogleSignInButton';
 import EmailVerificationGate from '@/components/EmailVerificationGate';
 import { PRIMARY_BTN_CLS, PRIMARY_BTN_BG, SECONDARY_BTN_CLS } from '@/components/ui/landing-kit';
+import { getReferralCode } from '@/lib/referral';
 
 export default function SignupPage() {
   const [step, setStep] = useState(1);
@@ -20,12 +21,20 @@ export default function SignupPage() {
   const [linkedinUrl, setLinkedinUrl] = useState('');
   const [firstName, setFirstName] = useState('');
   const [lastName, setLastName] = useState('');
+  const [referralCode, setReferralCode] = useState('');
   const [error, setError] = useState('');
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [isValidating, setIsValidating] = useState(false);
   const [showPassword, setShowPassword] = useState(false);
   const [showConfirmPassword, setShowConfirmPassword] = useState(false);
   const { login } = useAuth();
+
+  // Pre-fill from a captured `?ref=` link, but leave it editable so someone
+  // can paste in a code they were told verbally instead.
+  useEffect(() => {
+    const captured = getReferralCode();
+    if (captured) setReferralCode(captured);
+  }, []);
 
   const checkExistence = async (field: string, value: string) => {
     try {
@@ -115,6 +124,7 @@ export default function SignupPage() {
           linkedin_url: linkedinUrl,
           first_name: firstName,
           last_name: lastName,
+          referral_code: referralCode.trim(),
         }),
       });
 
@@ -416,6 +426,26 @@ export default function SignupPage() {
                         {showConfirmPassword ? <EyeOff size={16} /> : <Eye size={16} />}
                       </button>
                     </div>
+                  </div>
+
+                  <div className="space-y-2">
+                    <label
+                      className="text-xs font-semibold text-black/45 uppercase tracking-wide ml-1"
+                      style={{ fontFamily: 'var(--font-outfit)' }}
+                    >
+                      Referral code <span className="normal-case font-normal text-black/35">(optional)</span>
+                    </label>
+                    <div className="relative">
+                      <Gift size={16} className="absolute left-4 top-1/2 -translate-y-1/2 text-black/35" />
+                      <input
+                        type="text"
+                        value={referralCode}
+                        onChange={(e) => setReferralCode(e.target.value.toUpperCase())}
+                        placeholder="e.g. ABCDE12345"
+                        className="w-full bg-white border border-black/[0.10] rounded-full pl-12 pr-4 py-3.5 text-sm outline-none transition-all placeholder-black/30 focus:border-[#16a34a] focus:shadow-[0_0_0_4px_rgba(22,163,74,.12)]"
+                      />
+                    </div>
+                    <p className="text-xs text-black/40 ml-1">Were you referred by a campus ambassador? Enter their code here.</p>
                   </div>
                 </div>
               )}

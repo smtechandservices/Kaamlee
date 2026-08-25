@@ -42,7 +42,7 @@ const PERKS = [
   { icon: '✨', bg: '#FF2D62', fg: '#ffffff', rotate: '-rotate-3', title: 'Kaamlee Pro, free for certain time', body: 'Resume match, portfolio and alerts — for you and five friends.' },
   { icon: '⚡', bg: '#FDE68A', fg: '#3B2A03', rotate: 'rotate-2', title: 'Internship fast-track', body: 'Tier 3 skips the resume screen here and gets referred to partners.' },
   { icon: '⏱️', bg: '#FF4D2E', fg: '#ffffff', rotate: '-rotate-4', title: 'Mentor hours, every month', body: 'With recruiters and founders from the hiring side of the platform.' },
-  { icon: '\u{1F39F}️', bg: '#4F46E5', fg: '#ffffff', rotate: 'rotate-4', title: '₹2,500+ event budget', body: 'Reimbursed per event, on top of the goodies. Deck and speaker included.' },
+  { icon: '\u{1F39F}️', bg: '#4F46E5', fg: '#ffffff', rotate: 'rotate-4', title: '₹2,5K+ event budget', body: 'Reimbursed per event, on top of the goodies. Deck and speaker included.' },
 ];
 
 const TASKS = [

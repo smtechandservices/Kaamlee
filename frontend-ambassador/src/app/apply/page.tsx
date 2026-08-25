@@ -3,9 +3,10 @@
 import React, { useState } from 'react';
 import Link from 'next/link';
 import Image from 'next/image';
-import { CheckCircle2, Loader2, UploadCloud, ArrowLeft } from 'lucide-react';
+import { CheckCircle2, Loader2, UploadCloud, ArrowLeft, Info } from 'lucide-react';
 
 const API_URL = process.env.NEXT_PUBLIC_API_URL || 'http://localhost:8000';
+const KAAMLEE_URL = process.env.NEXT_PUBLIC_KAAMLEE_URL || 'https://kaamlee.in';
 const MAX_FILE_MB = 5;
 const MAX_FILE_BYTES = MAX_FILE_MB * 1024 * 1024;
 const CURRENT_YEAR = new Date().getFullYear();
@@ -71,6 +72,7 @@ export default function ApplyPage() {
   const [file, setFile] = useState<File | null>(null);
   const [errors, setErrors] = useState<Record<string, string>>({});
   const [status, setStatus] = useState<'idle' | 'submitting' | 'success' | 'error'>('idle');
+  const [checkingEmail, setCheckingEmail] = useState(false);
 
   function set<K extends keyof FormState>(key: K, value: FormState[K]) {
     setForm((f) => ({ ...f, [key]: value }));
@@ -102,7 +104,7 @@ export default function ApplyPage() {
   function handleFileChange(e: React.ChangeEvent<HTMLInputElement>) {
     const f = e.target.files?.[0] || null;
     if (f && f.size > MAX_FILE_BYTES) {
-      setErrors((prev) => ({ ...prev, id_card_image: `Image is too large — max ${MAX_FILE_MB} MB.` }));
+      setErrors((prev) => ({ ...prev, id_card_image: `Image is too large, max ${MAX_FILE_MB} MB.` }));
       setFile(null);
       e.target.value = '';
       return;
@@ -111,8 +113,30 @@ export default function ApplyPage() {
     setFile(f);
   }
 
-  function goNext() {
-    if (validateStep(step)) setStep((s) => Math.min(s + 1, STEPS.length - 1));
+  async function goNext() {
+    if (!validateStep(step)) return;
+
+    if (step === 0) {
+      setCheckingEmail(true);
+      try {
+        const res = await fetch(`${API_URL}/ambassador/check-email/?email=${encodeURIComponent(form.email.trim())}`);
+        const data = await res.json().catch(() => ({}));
+        if (!res.ok || !data.exists) {
+          setErrors((e) => ({
+            ...e,
+            email: 'No Kaamlee account found with this email. Sign up on Kaamlee first, then apply.',
+          }));
+          return;
+        }
+      } catch {
+        setErrors((e) => ({ ...e, email: 'Could not verify this email. Check your connection and try again.' }));
+        return;
+      } finally {
+        setCheckingEmail(false);
+      }
+    }
+
+    setStep((s) => Math.min(s + 1, STEPS.length - 1));
   }
 
   function goBack() {
@@ -157,8 +181,7 @@ export default function ApplyPage() {
   if (status === 'success') {
     return (
       <main
-        className="flex min-h-screen items-center justify-center bg-[#f2f3f5] px-5 text-[#0b0b0c]"
-        style={{ fontFamily: 'Georgia, "Times New Roman", Times, serif' }}
+        className="flex min-h-screen items-center justify-center bg-[#FAF9F6] px-5 text-[#0b0b0c]"
       >
         <div className="w-full max-w-[480px] rounded-[28px] border border-black/[0.08] bg-white p-10 text-center">
           <span className="mx-auto grid h-14 w-14 place-items-center rounded-full bg-[#eafaf0] text-[#16a34a]">
@@ -176,8 +199,7 @@ export default function ApplyPage() {
 
   return (
     <main
-      className="min-h-screen bg-[#f2f3f5] px-5 py-14 text-[#0b0b0c] sm:py-20"
-      style={{ fontFamily: 'Georgia, "Times New Roman", Times, serif' }}
+      className="min-h-screen bg-[#FAF9F6] px-5 py-14 text-[#0b0b0c] sm:py-20"
     >
       <div className="mx-auto w-full max-w-5xl">
         <Link href="/" className="flex items-center gap-2.5 text-[16px] font-semibold tracking-[-0.03em]" style={{ fontFamily: 'var(--font-outfit)' }}>
@@ -195,6 +217,17 @@ export default function ApplyPage() {
         <p className="mt-4 text-[16px] leading-relaxed text-black/55">
           Four short steps, no resume needed. We&apos;ll verify your college with the ID card photo.
         </p>
+
+        <div className="mt-5 flex items-start gap-3 rounded-[16px] border border-[#16a34a]/20 bg-[#16a34a]/[0.06] px-4 py-3.5 text-[13.5px] leading-relaxed text-[#0b0b0c]/75">
+          <Info size={17} className="mt-0.5 flex-none text-[#16a34a]" />
+          <p>
+            You need an existing Kaamlee account to apply, we match your application to it by email.{' '}
+            <a href={`${KAAMLEE_URL}/signup`} target="_blank" rel="noopener noreferrer" className="font-semibold text-[#16a34a] hover:underline">
+              Sign up on Kaamlee first
+            </a>{' '}
+            if you haven&apos;t already, then come back here.
+          </p>
+        </div>
 
         {/* ============ STEP PROGRESS ============ */}
         <div className="mt-9 flex items-center">
@@ -226,6 +259,12 @@ export default function ApplyPage() {
               </Field>
               <Field id="email" label="Email" required error={errors.email}>
                 <input id="email" type="email" value={form.email} onChange={(e) => set('email', e.target.value)} className={inputClass} placeholder="you@college.edu" />
+                <p className="mt-1.5 text-[12.5px] text-black/40">
+                  Use the email on your Kaamlee account. Don&apos;t have one yet?{' '}
+                  <a href={`${KAAMLEE_URL}/signup`} target="_blank" rel="noopener noreferrer" className="font-semibold text-[#16a34a] hover:underline">
+                    Sign up first
+                  </a>.
+                </p>
               </Field>
               <Field id="phone" label="Phone" required error={errors.phone}>
                 <input id="phone" type="tel" value={form.phone} onChange={(e) => set('phone', e.target.value)} className={inputClass} placeholder="98765 43210" />
@@ -313,10 +352,11 @@ export default function ApplyPage() {
               <button
                 type="button"
                 onClick={goNext}
-                className="ml-auto flex-1 rounded-full bg-[#0b0b0c] py-[15px] text-[15px] font-bold text-white transition-transform duration-300 hover:-translate-y-0.5"
+                disabled={checkingEmail}
+                className="ml-auto flex flex-1 items-center justify-center gap-2 rounded-full bg-[#0b0b0c] py-[15px] text-[15px] font-bold text-white transition-transform duration-300 hover:-translate-y-0.5 disabled:opacity-60 disabled:hover:translate-y-0"
                 style={{ fontFamily: 'var(--font-outfit)' }}
               >
-                Continue
+                {checkingEmail ? (<><Loader2 size={17} className="animate-spin" /> Checking…</>) : 'Continue'}
               </button>
             ) : (
               <button

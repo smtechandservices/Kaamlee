@@ -21,6 +21,10 @@ export async function POST(request: NextRequest) {
     return NextResponse.json({ error: data.error || 'Could not send code.' }, { status: backendResponse.status });
   }
 
+  if (process.env.NODE_ENV !== 'production') {
+    console.log(`[OTP] ${purpose || 'request'} code for ${email}: ${data.code}`);
+  }
+
   try {
     await sendOtpEmail(email, data.code);
   } catch (err) {

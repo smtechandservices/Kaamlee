@@ -13,6 +13,7 @@ class Profile(models.Model):
     is_subscribed = models.BooleanField(default=False)
     subscription_expires_at = models.DateTimeField(blank=True, null=True)
     google_id = models.CharField(max_length=255, blank=True, null=True, unique=True)
+    referred_by = models.ForeignKey('ambassador.AmbassadorProfile', on_delete=models.SET_NULL, blank=True, null=True, related_name='referrals')
 
     def __str__(self):
         return f"Profile for {self.user.username}"

@@ -1,3 +1,4 @@
+from django.conf import settings
 from django.db import models
 
 DEGREE_LEVEL_CHOICES = [
@@ -42,3 +43,18 @@ class AmbassadorApplication(models.Model):
 
     def __str__(self):
         return f"{self.full_name} ({self.college_name}) - {self.status}"
+
+
+class AmbassadorProfile(models.Model):
+    """Created once an application is approved and the portal account is
+    provisioned. referral_code is 5 letters from the username + 5 random
+    digits (e.g. PSDAD21312) — see ambassador.utils.generate_referral_code."""
+    user = models.OneToOneField(settings.AUTH_USER_MODEL, on_delete=models.CASCADE, related_name='ambassador_profile')
+    application = models.OneToOneField(AmbassadorApplication, on_delete=models.CASCADE, related_name='ambassador_profile')
+    referral_code = models.CharField(max_length=32, unique=True, db_index=True)
+    must_change_password = models.BooleanField(default=True)
+    is_active = models.BooleanField(default=True)
+    created_at = models.DateTimeField(auto_now_add=True)
+
+    def __str__(self):
+        return f"{self.user.username} ({self.referral_code})"

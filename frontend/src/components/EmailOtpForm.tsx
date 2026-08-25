@@ -5,6 +5,7 @@ import { Mail, Loader2 } from 'lucide-react';
 import { useAuth } from '@/context/AuthContext';
 import OtpDigitInput from './OtpDigitInput';
 import { PRIMARY_BTN_CLS, PRIMARY_BTN_BG, SECONDARY_BTN_CLS } from '@/components/ui/landing-kit';
+import { getReferralCode } from '@/lib/referral';
 
 interface EmailOtpFormProps {
   onError: (message: string) => void;
@@ -73,7 +74,7 @@ export default function EmailOtpForm({ onError, setLoading }: EmailOtpFormProps)
       const response = await fetch(`${process.env.NEXT_PUBLIC_API_URL}/api/otp/verify/`, {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ email, code: submittedCode }),
+        body: JSON.stringify({ email, code: submittedCode, referral_code: getReferralCode() }),
       });
       const data = await response.json().catch(() => ({}));
 

@@ -80,7 +80,6 @@ MIDDLEWARE = [
     'core.middleware.DisableGzipForStreamingMiddleware',
     'django.middleware.gzip.GZipMiddleware',
     'corsheaders.middleware.CorsMiddleware',
-    'core.middleware.RequestLogMiddleware',
     'django.contrib.sessions.middleware.SessionMiddleware',
     'django.middleware.common.CommonMiddleware',
     'django.middleware.csrf.CsrfViewMiddleware',
@@ -214,7 +213,6 @@ GOOGLE_CLIENT_ID = os.getenv('GOOGLE_CLIENT_ID', '')
 # frontend's server-only env.
 OTP_INTERNAL_SECRET = os.getenv('OTP_INTERNAL_SECRET', '')
 
-# Request Logging — 5 MB per file, keep last 5 files (25 MB max on disk)
 LOGS_DIR = BASE_DIR / 'logs'
 LOGS_DIR.mkdir(exist_ok=True)
 
@@ -222,36 +220,13 @@ LOGGING = {
     'version': 1,
     'disable_existing_loggers': False,
     'formatters': {
-        'request': {
-            'format': '[{asctime}] {levelname} {message} status={status_code}',
-            'style': '{',
-            'datefmt': '%Y-%m-%d %H:%M:%S',
-        },
         'simple': {
             'format': '[{asctime}] {levelname} {message}',
             'style': '{',
             'datefmt': '%Y-%m-%d %H:%M:%S',
         },
     },
-    'filters': {
-        'default_status_code': {
-            '()': 'core.middleware.DefaultStatusCodeFilter',
-        },
-    },
     'handlers': {
-        'console': {
-            'class': 'logging.StreamHandler',
-            'formatter': 'request',
-            'filters': ['default_status_code'],
-        },
-        'file': {
-            'class': 'logging.handlers.RotatingFileHandler',
-            'filename': LOGS_DIR / 'requests.log',
-            'maxBytes': int(2.5 * 1024 * 1024),  # 2.5 MB
-            'backupCount': 1,
-            'formatter': 'request',
-            'filters': ['default_status_code'],
-        },
         'scheduler_console': {
             'class': 'logging.StreamHandler',
             'formatter': 'simple',
@@ -265,16 +240,6 @@ LOGGING = {
         },
     },
     'loggers': {
-        'django.request': {
-            'handlers': ['console', 'file'],
-            'level': 'DEBUG',
-            'propagate': False,
-        },
-        'request_log': {
-            'handlers': ['console', 'file'],
-            'level': 'INFO',
-            'propagate': False,
-        },
         'api.scheduler': {
             'handlers': ['scheduler_console', 'scheduler_file'],
             'level': 'INFO',

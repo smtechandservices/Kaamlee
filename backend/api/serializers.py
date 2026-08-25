@@ -414,10 +414,11 @@ class RegisterSerializer(serializers.ModelSerializer):
     confirm_password = serializers.CharField(write_only=True)
     phone = serializers.CharField(required=False, allow_blank=True)
     linkedin_url = serializers.URLField(required=False, allow_blank=True)
+    referral_code = serializers.CharField(required=False, allow_blank=True, write_only=True)
 
     class Meta:
         model = User
-        fields = ('id', 'username', 'email', 'password', 'confirm_password', 'first_name', 'last_name', 'phone', 'linkedin_url')
+        fields = ('id', 'username', 'email', 'password', 'confirm_password', 'first_name', 'last_name', 'phone', 'linkedin_url', 'referral_code')
         extra_kwargs = {'password': {'write_only': True}}
 
     def validate(self, data):
@@ -433,7 +434,8 @@ class RegisterSerializer(serializers.ModelSerializer):
         validated_data.pop('confirm_password')
         phone = validated_data.pop('phone', '')
         linkedin_url = validated_data.pop('linkedin_url', '')
-        
+        referral_code = validated_data.pop('referral_code', '')
+
         user = User.objects.create_user(
             validated_data['username'],
             validated_data['email'],
@@ -441,12 +443,15 @@ class RegisterSerializer(serializers.ModelSerializer):
             first_name=validated_data.get('first_name', ''),
             last_name=validated_data.get('last_name', '')
         )
-        
+
         # Profile is created automatically by signal, just update it
         user.profile.phone = phone
         user.profile.linkedin_url = linkedin_url
         user.profile.save()
-        
+
+        from .referrals import attach_referral
+        attach_referral(user.profile, referral_code)
+
         return user
 
 class CompanySerializer(serializers.ModelSerializer):

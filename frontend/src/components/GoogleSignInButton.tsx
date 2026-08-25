@@ -5,6 +5,7 @@ import { GoogleLogin, CredentialResponse } from '@react-oauth/google';
 import { Loader2, Phone } from 'lucide-react';
 import { useAuth } from '@/context/AuthContext';
 import { PRIMARY_BTN_CLS, PRIMARY_BTN_BG } from '@/components/ui/landing-kit';
+import { getReferralCode } from '@/lib/referral';
 
 interface GoogleSignInButtonProps {
   onError: (message: string) => void;
@@ -50,7 +51,7 @@ export default function GoogleSignInButton({ onError, setLoading }: GoogleSignIn
       const response = await fetch(`${process.env.NEXT_PUBLIC_API_URL}/api/auth/google/`, {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ credential: credentialResponse.credential }),
+        body: JSON.stringify({ credential: credentialResponse.credential, referral_code: getReferralCode() }),
       });
 
       const data = await response.json();

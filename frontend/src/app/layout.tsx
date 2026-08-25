@@ -42,6 +42,7 @@ export const metadata: Metadata = {
 import { GoogleOAuthProvider } from "@react-oauth/google";
 import { AuthProvider } from "@/context/AuthContext";
 import { SidebarProvider } from "@/context/SidebarContext";
+import ReferralCapture from "@/components/ReferralCapture";
 
 export default function RootLayout({
   children,
@@ -55,6 +56,7 @@ export default function RootLayout({
     >
       <body className="min-h-full flex flex-col">
         <Script src="https://checkout.razorpay.com/v1/checkout.js" strategy="lazyOnload" />
+        <ReferralCapture />
         <GoogleOAuthProvider clientId={process.env.NEXT_PUBLIC_GOOGLE_CLIENT_ID || ""}>
           <AuthProvider>
             <SidebarProvider>

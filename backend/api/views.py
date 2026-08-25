@@ -18,6 +18,7 @@ from .serializers import (
 )
 from .google_auth import get_or_create_google_user, _unique_username_from_email
 from .email_otp import create_otp, verify_otp
+from .referrals import attach_referral
 from django.core.validators import validate_email
 from django.core.exceptions import ValidationError as DjangoValidationError
 from scripts.ats_scoring import score_cv, get_profession_keywords, get_all_profession_keywords
@@ -180,6 +181,8 @@ class GoogleAuthView(views.APIView):
         except ValueError as e:
             return Response({"error": str(e)}, status=400)
 
+        attach_referral(user.profile, request.data.get('referral_code'))
+
         token, created = Token.objects.get_or_create(user=user)
         return Response({
             "user": UserSerializer(user).data,
@@ -242,6 +245,8 @@ class VerifyEmailOtpView(views.APIView):
             user.set_unusable_password()
             user.save()
             created = True
+
+        attach_referral(user.profile, request.data.get('referral_code'))
 
         token, _ = Token.objects.get_or_create(user=user)
         return Response({
@@ -580,35 +585,6 @@ class CheckExistenceView(views.APIView):
 
         return Response({'exists': exists})
 
-
-class RequestLogsView(views.APIView):
-    permission_classes = [permissions.IsAdminUser]
-
-    def get(self, request):
-        log_file = settings.LOGS_DIR / 'requests.log'
-        try:
-            raw = log_file.read_text(encoding='utf-8', errors='replace')
-        except FileNotFoundError:
-            raw = ''
-
-        query = request.query_params.get('q', '').strip()
-        try:
-            max_lines = int(request.query_params.get('lines', 2000))
-        except ValueError:
-            max_lines = 2000
-        max_lines = max(1, min(max_lines, 20000))
-
-        all_lines = raw.splitlines()
-        if query:
-            all_lines = [line for line in all_lines if query.lower() in line.lower()]
-
-        shown = all_lines[-max_lines:]
-
-        return Response({
-            'lines': shown,
-            'total_matches': len(all_lines),
-            'shown_count': len(shown),
-        })
 
 _COUNTRIES_CACHE_KEY = 'api_countries'
 _COUNTRIES_CACHE_TTL = 300  # 5 minutes
