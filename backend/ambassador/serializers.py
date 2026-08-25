@@ -5,6 +5,7 @@ from .models import AmbassadorApplication, AmbassadorProfile
 class AmbassadorApplicationSerializer(serializers.ModelSerializer):
     ambassador_username = serializers.SerializerMethodField()
     referral_code = serializers.SerializerMethodField()
+    referral_count = serializers.SerializerMethodField()
 
     class Meta:
         model = AmbassadorApplication
@@ -13,7 +14,7 @@ class AmbassadorApplicationSerializer(serializers.ModelSerializer):
             'college_name', 'college_city', 'college_state',
             'course', 'degree_level', 'graduation_year',
             'id_card_image', 'status', 'created_at',
-            'ambassador_username', 'referral_code',
+            'ambassador_username', 'referral_code', 'referral_count',
         ]
         read_only_fields = ['id', 'status', 'created_at']
 
@@ -24,6 +25,15 @@ class AmbassadorApplicationSerializer(serializers.ModelSerializer):
     def get_referral_code(self, obj):
         profile = getattr(obj, 'ambassador_profile', None)
         return profile.referral_code if profile else None
+
+    def get_referral_count(self, obj):
+        # Prefer the annotated count from AdminAmbassadorApplicationListView's
+        # queryset (avoids N+1 across the whole list); fall back to a direct
+        # count for the single-object create/status-update views.
+        if hasattr(obj, 'annotated_referral_count'):
+            return obj.annotated_referral_count
+        profile = getattr(obj, 'ambassador_profile', None)
+        return profile.referrals.count() if profile else 0
 
     MAX_ID_CARD_SIZE_BYTES = 5 * 1024 * 1024  # 5 MB — matches the resume upload limit
 

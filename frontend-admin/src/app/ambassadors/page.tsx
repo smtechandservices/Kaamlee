@@ -17,6 +17,7 @@ import {
   Check,
   X,
   KeyRound,
+  Users,
 } from 'lucide-react';
 import { useRouter } from 'next/navigation';
 
@@ -38,6 +39,7 @@ interface AmbassadorApplication {
   created_at: string;
   ambassador_username: string | null;
   referral_code: string | null;
+  referral_count: number;
 }
 
 interface AmbassadorCredentials {
@@ -311,8 +313,10 @@ export default function AmbassadorsPage() {
                   <th className="text-left px-6 py-5 text-[10px] font-black uppercase tracking-[0.2em] text-[#555]">Status</th>
                   <th className="text-left px-6 py-5 text-[10px] font-black uppercase tracking-[0.2em] text-[#555]">Account</th>
                   <th className="text-left px-6 py-5 text-[10px] font-black uppercase tracking-[0.2em] text-[#555]">Referral code</th>
+                  <th className="text-left px-6 py-5 text-[10px] font-black uppercase tracking-[0.2em] text-[#555]">Referred users</th>
                   <th className="text-left px-6 py-5 text-[10px] font-black uppercase tracking-[0.2em] text-[#555]">Applied</th>
                   <th className="text-left px-6 py-5 text-[10px] font-black uppercase tracking-[0.2em] text-[#555]">Actions</th>
+                  <th className="text-left px-6 py-5 text-[10px] font-black uppercase tracking-[0.2em] text-[#555]">Password</th>
                 </tr>
               </thead>
               <tbody className="divide-y divide-[#222]/50">
@@ -392,6 +396,16 @@ export default function AmbassadorsPage() {
                         )}
                       </td>
                       <td className="px-6 py-5">
+                        {a.ambassador_username ? (
+                          <div className="inline-flex items-center gap-1.5 text-sm font-bold text-white">
+                            <Users size={13} className="text-[#555]" />
+                            {a.referral_count}
+                          </div>
+                        ) : (
+                          <span className="text-xs text-[#444]">—</span>
+                        )}
+                      </td>
+                      <td className="px-6 py-5">
                         <div className="text-sm text-[#666] font-mono whitespace-nowrap">
                           {new Date(a.created_at).toLocaleDateString('en-IN', { day: '2-digit', month: 'short', year: 'numeric' })}
                         </div>
@@ -417,27 +431,28 @@ export default function AmbassadorsPage() {
                             </button>
                           </div>
                         ) : (
-                          <div className="flex items-center gap-3">
-                            <button
-                              onClick={() => updateStatus(a.id, a.status === 'approved' ? 'rejected' : 'approved')}
-                              disabled={updatingId === a.id}
-                              className="cursor-pointer text-xs font-semibold text-[#555] hover:text-white transition-colors disabled:opacity-50"
-                            >
-                              Mark as {a.status === 'approved' ? 'rejected' : 'approved'}
-                            </button>
-                            &nbsp;|&nbsp;
-                            {a.ambassador_username && (
-                              <button
-                                onClick={() => regeneratePassword(a.id)}
-                                disabled={updatingId === a.id}
-                                title="Regenerate temp password"
-                                className="cursor-pointer inline-flex items-center gap-1.5 text-xs font-semibold text-blue-400 hover:text-blue-300 transition-colors disabled:opacity-50"
-                              >
-                                {updatingId === a.id ? <Loader2 size={12} className="animate-spin" /> : <KeyRound size={12} />}
-                                Regenerate password
-                              </button>
-                            )}
-                          </div>
+                          <button
+                            onClick={() => updateStatus(a.id, a.status === 'approved' ? 'rejected' : 'approved')}
+                            disabled={updatingId === a.id}
+                            className="cursor-pointer text-xs font-semibold text-[#555] hover:text-white transition-colors disabled:opacity-50"
+                          >
+                            Mark as {a.status === 'approved' ? 'rejected' : 'approved'}
+                          </button>
+                        )}
+                      </td>
+                      <td className="px-6 py-5">
+                        {a.ambassador_username ? (
+                          <button
+                            onClick={() => regeneratePassword(a.id)}
+                            disabled={updatingId === a.id}
+                            title="Regenerate temp password"
+                            className="cursor-pointer inline-flex items-center gap-1.5 text-xs font-semibold text-blue-400 hover:text-blue-300 transition-colors disabled:opacity-50"
+                          >
+                            {updatingId === a.id ? <Loader2 size={12} className="animate-spin" /> : <KeyRound size={12} />}
+                            Regenerate password
+                          </button>
+                        ) : (
+                          <span className="text-xs text-[#444]">—</span>
                         )}
                       </td>
                     </motion.tr>

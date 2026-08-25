@@ -256,17 +256,18 @@ class UserSerializer(serializers.ModelSerializer):
     subscription_expires_at = serializers.DateTimeField(source='profile.subscription_expires_at', required=False, allow_null=True)
     portfolio_is_public = serializers.SerializerMethodField()
     signed_in_with_google = serializers.SerializerMethodField()
+    referred_by = serializers.SerializerMethodField()
 
     class Meta:
         model = User
         fields = (
             'id', 'username', 'email', 'first_name', 'last_name', 'phone', 'linkedin_url',
             'resume', 'resume_text', 'has_resume', 'resume_ai_parsed', 'is_subscribed', 'subscription_expires_at',
-            'is_superuser', 'is_staff', 'portfolio_is_public', 'signed_in_with_google',
+            'is_superuser', 'is_staff', 'portfolio_is_public', 'signed_in_with_google', 'referred_by',
         )
         read_only_fields = (
             'id', 'email', 'is_superuser', 'is_staff', 'resume_text', 'has_resume', 'resume_ai_parsed',
-            'portfolio_is_public', 'signed_in_with_google',
+            'portfolio_is_public', 'signed_in_with_google', 'referred_by',
         )
 
     MAX_RESUME_SIZE_BYTES = 5 * 1024 * 1024  # 5 MB — the whole file is read into memory for extraction/Groq
@@ -285,6 +286,15 @@ class UserSerializer(serializers.ModelSerializer):
             if header != b'%PDF-':
                 raise serializers.ValidationError("File does not look like a valid PDF.")
         return value
+
+    def get_referred_by(self, obj):
+        referred_by = obj.profile.referred_by
+        if not referred_by:
+            return None
+        return {
+            'ambassador_name': referred_by.application.full_name,
+            'referral_code': referred_by.referral_code,
+        }
 
     def get_has_resume(self, obj):
         # resume_text is the reliable gate — it's always set after PDF extraction

@@ -1006,7 +1006,9 @@ class AdminUserViewSet(viewsets.ModelViewSet):
     permission_classes = [permissions.IsAdminUser]
 
     def get_queryset(self):
-        return User.objects.select_related('profile', 'portfolio').order_by('-date_joined')
+        return User.objects.select_related(
+            'profile', 'portfolio', 'profile__referred_by__application',
+        ).order_by('-date_joined')
 
     @action(detail=True, methods=['post'], url_path='set-password')
     def set_password(self, request, pk=None):

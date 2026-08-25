@@ -54,7 +54,9 @@ class AdminAmbassadorApplicationListView(generics.ListAPIView):
     permission_classes = [permissions.IsAdminUser]
 
     def get_queryset(self):
-        queryset = AmbassadorApplication.objects.select_related('ambassador_profile__user').order_by('-created_at')
+        queryset = AmbassadorApplication.objects.select_related('ambassador_profile__user').annotate(
+            annotated_referral_count=Count('ambassador_profile__referrals', distinct=True)
+        ).order_by('-created_at')
 
         status_param = self.request.query_params.get('status')
         if status_param:

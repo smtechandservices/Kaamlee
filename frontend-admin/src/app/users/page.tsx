@@ -27,7 +27,8 @@ import {
   Globe,
   Lock,
   Trash2,
-  KeyRound
+  KeyRound,
+  GraduationCap
 } from 'lucide-react';
 import Link from 'next/link';
 import { useRouter } from 'next/navigation';
@@ -49,6 +50,7 @@ interface UserProfile {
   is_staff: boolean;
   portfolio_is_public: boolean;
   signed_in_with_google: boolean;
+  referred_by: { ambassador_name: string; referral_code: string } | null;
 }
 
 interface Transaction {
@@ -257,6 +259,7 @@ export default function UserManagement() {
                     <th className="text-left px-6 py-5 text-[10px] font-black uppercase tracking-[0.2em] text-[#555]">Sign-in</th>
                     <th className="text-left px-6 py-5 text-[10px] font-black uppercase tracking-[0.2em] text-[#555]">Subscription</th>
                     <th className="text-left px-6 py-5 text-[10px] font-black uppercase tracking-[0.2em] text-[#555]">Contact</th>
+                    <th className="text-left px-6 py-5 text-[10px] font-black uppercase tracking-[0.2em] text-[#555]">Referred By</th>
                     <th className="text-left px-6 py-5 text-[10px] font-black uppercase tracking-[0.2em] text-[#555]">Resume</th>
                     <th className="text-left px-6 py-5 text-[10px] font-black uppercase tracking-[0.2em] text-[#555]">Portfolio</th>
                     <th className="text-right px-6 py-5 text-[10px] font-black uppercase tracking-[0.2em] text-[#555]">Actions</th>
@@ -341,6 +344,22 @@ export default function UserManagement() {
                                 </div>
                               )}
                            </div>
+                        </td>
+                        <td className="px-6 py-6">
+                           {user.referred_by ? (
+                             <div className="flex items-center gap-2 text-purple-400 font-bold text-sm">
+                               <GraduationCap size={16} className="shrink-0" />
+                               <div>
+                                 <div className="text-nowrap">{user.referred_by.ambassador_name}</div>
+                                 <div className="text-[10px] font-mono text-[#666] font-medium">{user.referred_by.referral_code}</div>
+                               </div>
+                             </div>
+                           ) : (
+                             <div className="flex items-center gap-2 text-[#444] font-bold text-sm">
+                               <XCircle size={16} />
+                               Direct
+                             </div>
+                           )}
                         </td>
                         <td className="px-6 py-6">
                            {user.has_resume ? (
