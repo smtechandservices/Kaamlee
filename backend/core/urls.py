@@ -25,6 +25,7 @@ urlpatterns = [
     path('api/', include('api.urls')),
     path('payments/', include('payments.urls')),
     path('ambassador/', include('ambassador.urls')),
+    path('events/', include('events.urls')),
     # Serve user-uploaded media directly from Django. The deployment's nginx
     # has no location block for MEDIA_ROOT, so without this every /media/
     # request 404s at the app level regardless of DEBUG.

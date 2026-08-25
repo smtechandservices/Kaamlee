@@ -56,6 +56,7 @@ INSTALLED_APPS = [
     'api',
     'payments',
     'ambassador',
+    'events',
 ]
 
 REST_FRAMEWORK = {

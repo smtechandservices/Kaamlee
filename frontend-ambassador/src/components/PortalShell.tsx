@@ -10,7 +10,7 @@ import type { Me } from '@/lib/useAmbassador';
 
 const NAV_ITEMS = [
   { href: '/dashboard', label: 'Dashboard', icon: LayoutDashboard, soon: false },
-  { href: '/events', label: 'Events', icon: CalendarDays, soon: true },
+  { href: '/events', label: 'Events', icon: CalendarDays, soon: false },
   { href: '/rewards', label: 'Rewards', icon: Award, soon: true },
   { href: '/profile', label: 'Profile', icon: UserRound, soon: false },
 ] as const;

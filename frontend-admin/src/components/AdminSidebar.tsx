@@ -2,7 +2,7 @@
 
 import Link from 'next/link';
 import { usePathname, useRouter } from 'next/navigation';
-import { LayoutDashboard, Building2, CreditCard, Users, MessageSquare, LogOut, Briefcase, GraduationCap } from 'lucide-react';
+import { LayoutDashboard, Building2, CreditCard, Users, MessageSquare, LogOut, Briefcase, GraduationCap, CalendarDays } from 'lucide-react';
 
 const NAV_ITEMS = [
   { href: '/', label: 'Dashboard', icon: LayoutDashboard },
@@ -15,6 +15,7 @@ const NAV_ITEMS = [
 
 const AMBASSADOR_NAV_ITEMS = [
   { href: '/ambassadors', label: 'Ambassadors', icon: GraduationCap },
+  { href: '/events', label: 'Events', icon: CalendarDays },
 ];
 
 export default function AdminSidebar() {

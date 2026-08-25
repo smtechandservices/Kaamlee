@@ -529,14 +529,14 @@ const PLANS = [
   },
   {
     name: '1 Month',
-    price: 99, durationLabel: '/ month',
+    price: 99, originalPrice: 299, durationLabel: '/ month',
     sub: 'Pay monthly, cancel anytime.',
     features: PLAN_FEATURES,
     cta: 'Get started', popular: true, dark: true, badge: 'Popular', action: 'pricing' as const,
   },
   {
     name: '3 Months',
-    price: 249, durationLabel: '/ 3 months',
+    price: 249, originalPrice: 799, durationLabel: '/ 3 months',
     sub: 'Pay once, skip the monthly renewal.',
     features: PLAN_FEATURES,
     cta: 'Get started', popular: false, dark: false, action: 'pricing' as const,
@@ -1532,8 +1532,17 @@ export default function LandingPage() {
                   <span className="inline-flex items-center gap-2.5 text-[17px] font-medium"><Tick dark={p.dark} />{p.name}</span>
                   <div className="mt-4 flex items-end gap-1.5">
                     <b className="text-[42px] font-medium tracking-[-0.045em] sm:text-[46px]">₹{p.price}</b>
+                    {'originalPrice' in p && (
+                      <span className={`pb-1.5 text-[21px] line-through decoration-2 ${p.dark ? 'text-white/40 decoration-[#4ade80]' : 'text-black/35 decoration-[#16a34a]'}`}>₹{p.originalPrice}</span>
+                    )}
                     <small className={`pb-1.5 text-[14px] ${p.dark ? 'text-white/55' : 'text-black/55'}`}>{p.durationLabel}</small>
                   </div>
+                  {'originalPrice' in p && (
+                    <span className={`mt-1.5 inline-flex items-center gap-1.5 text-[12px] font-medium ${p.dark ? 'text-[#4ade80]' : 'text-[#16a34a]'}`}>
+                      <i className={`h-[6px] w-[6px] rounded-full animate-pulse ${p.dark ? 'bg-[#4ade80]' : 'bg-[#16a34a]'}`} />
+                      Discounted for now
+                    </span>
+                  )}
                   <p className={`mt-2 text-[14.5px] ${p.dark ? 'text-white/68' : 'text-[rgba(61,61,61,0.72)]'}`}>{p.sub}</p>
                   <hr className="my-5.5" style={{ borderColor: p.dark ? 'rgba(255,255,255,0.12)' : 'rgba(61,61,61,0.08)' }} />
                   <ul className={`flex flex-col gap-3.5 text-[14.8px] ${p.dark ? 'text-white/68' : 'text-[rgba(61,61,61,0.72)]'}`}>
