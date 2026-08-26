@@ -7,6 +7,7 @@ from groq import Groq
 from rest_framework import serializers
 from .models import Job, Bookmark, Feedback, Portfolio, PortfolioView, CustomCV, JobApplicationKit, Company, EmailOTP
 from .permissions import is_user_subscribed
+from .groq_usage import GroqQuotaExceeded, ensure_quota_available, record_usage, usage_summary
 from django.contrib.auth.models import User
 from django.contrib.auth.password_validation import validate_password
 from django.utils import timezone
@@ -16,6 +17,16 @@ from scripts.ats_scoring import score_cv
 logger = logging.getLogger(__name__)
 _groq = Groq(api_key=os.getenv('GROQ_API_KEY'))
 _GROQ_MODEL = "openai/gpt-oss-120b"
+
+def _groq_chat_completion(profile, **kwargs):
+    """Shared entry point for every Groq call: enforces the per-user 24h
+    token budget before spending a request, then records what it actually
+    cost. Raises GroqQuotaExceeded if the profile is already over budget."""
+    ensure_quota_available(profile)
+    response = _groq.chat.completions.create(**kwargs)
+    usage = getattr(response, 'usage', None)
+    record_usage(profile, getattr(usage, 'total_tokens', 0) if usage else 0)
+    return response
 
 EMAIL_VERIFICATION_WINDOW_MINUTES = 60
 
@@ -98,9 +109,13 @@ def extract_text_from_pdf(pdf_file):
         logger.exception("Failed to extract text from uploaded PDF")
         return ""
 
-def parse_resume_with_groq(resume_text: str) -> dict:
+def parse_resume_with_groq(resume_text: str, profile) -> dict:
+    """Best-effort — an exhausted quota degrades the same as any other Groq
+    failure here (resume upload still succeeds, just without AI parsing;
+    see the on-demand retry fallback in PublicPortfolioSerializer)."""
     try:
-        response = _groq.chat.completions.create(
+        response = _groq_chat_completion(
+            profile,
             model=_GROQ_MODEL,
             messages=[
                 {"role": "system", "content": _PARSE_PROMPT},
@@ -116,6 +131,9 @@ def parse_resume_with_groq(resume_text: str) -> dict:
             if raw.startswith("json"):
                 raw = raw[4:]
         return json.loads(raw)
+    except GroqQuotaExceeded:
+        logger.info("Groq resume parse skipped — daily token quota exhausted for profile %s", profile.pk)
+        return {}
     except Exception:
         logger.exception("Groq resume parse error")
         return {}
@@ -135,13 +153,14 @@ Rules — follow these strictly:
 - Keep the same number of experience/project/education entries as the input.
 """
 
-def tailor_resume_with_groq(content: dict, target_role: str, keywords: list) -> dict:
+def tailor_resume_with_groq(content: dict, target_role: str, keywords: list, profile) -> dict:
     prompt = _TAILOR_PROMPT_TEMPLATE.format(
         target_role=target_role,
         keywords=", ".join(keywords) if keywords else "(no specific keyword list — use general best judgement for this role)",
     )
     try:
-        response = _groq.chat.completions.create(
+        response = _groq_chat_completion(
+            profile,
             model=_GROQ_MODEL,
             messages=[
                 {"role": "system", "content": prompt},
@@ -156,6 +175,10 @@ def tailor_resume_with_groq(content: dict, target_role: str, keywords: list) -> 
             if raw.startswith("json"):
                 raw = raw[4:]
         return json.loads(raw)
+    except GroqQuotaExceeded:
+        # Let the caller distinguish "out of quota" from a generic Groq
+        # failure so it can return a clear 429 instead of a 502.
+        raise
     except Exception:
         logger.exception("Groq resume tailor error")
         return {}
@@ -189,7 +212,7 @@ Return ONLY valid JSON, no markdown, with this exact structure:
 }}
 """
 
-def generate_application_kit_with_groq(resume_content: dict, job_title: str, company: str, job_description: str) -> dict:
+def generate_application_kit_with_groq(resume_content: dict, job_title: str, company: str, job_description: str, profile) -> dict:
     prompt = _APPLICATION_KIT_PROMPT_TEMPLATE.format(
         questions="\n".join(f"- {q}" for q in APPLICATION_KIT_QUESTIONS),
         job_title=job_title,
@@ -197,7 +220,8 @@ def generate_application_kit_with_groq(resume_content: dict, job_title: str, com
         job_description=(job_description or "")[:4000],
     )
     try:
-        response = _groq.chat.completions.create(
+        response = _groq_chat_completion(
+            profile,
             model=_GROQ_MODEL,
             messages=[
                 {"role": "system", "content": prompt},
@@ -212,6 +236,8 @@ def generate_application_kit_with_groq(resume_content: dict, job_title: str, com
             if raw.startswith("json"):
                 raw = raw[4:]
         return json.loads(raw)
+    except GroqQuotaExceeded:
+        raise
     except Exception:
         logger.exception("Groq application kit error")
         return {}
@@ -256,17 +282,18 @@ class UserSerializer(serializers.ModelSerializer):
     subscription_expires_at = serializers.DateTimeField(source='profile.subscription_expires_at', required=False, allow_null=True)
     portfolio_is_public = serializers.SerializerMethodField()
     signed_in_with_google = serializers.SerializerMethodField()
+    groq_usage = serializers.SerializerMethodField()
 
     class Meta:
         model = User
         fields = (
             'id', 'username', 'email', 'first_name', 'last_name', 'phone', 'linkedin_url',
             'resume', 'resume_text', 'has_resume', 'resume_ai_parsed', 'is_subscribed', 'subscription_expires_at',
-            'is_superuser', 'is_staff', 'portfolio_is_public', 'signed_in_with_google',
+            'is_superuser', 'is_staff', 'portfolio_is_public', 'signed_in_with_google', 'groq_usage',
         )
         read_only_fields = (
             'id', 'email', 'is_superuser', 'is_staff', 'resume_text', 'has_resume', 'resume_ai_parsed',
-            'portfolio_is_public', 'signed_in_with_google',
+            'portfolio_is_public', 'signed_in_with_google', 'groq_usage',
         )
 
     MAX_RESUME_SIZE_BYTES = 5 * 1024 * 1024  # 5 MB — the whole file is read into memory for extraction/Groq
@@ -304,6 +331,9 @@ class UserSerializer(serializers.ModelSerializer):
 
     def get_signed_in_with_google(self, obj):
         return bool(obj.profile.google_id)
+
+    def get_groq_usage(self, obj):
+        return usage_summary(obj.profile)
 
     def validate_username(self, value):
         # Case-insensitive, matching CheckExistenceView's pre-check — otherwise
@@ -352,7 +382,7 @@ class UserSerializer(serializers.ModelSerializer):
 
                 profile.resume = resume_file
                 profile.resume_text = new_resume_text
-                profile.resume_parsed = parse_resume_with_groq(new_resume_text)
+                profile.resume_parsed = parse_resume_with_groq(new_resume_text, profile)
             else:
                 if profile.resume:
                     try:
@@ -593,7 +623,7 @@ class PublicPortfolioSerializer(serializers.ModelSerializer):
             return profile.resume_parsed
         # Fallback: parse on-demand for users who uploaded before Groq was added
         if profile.resume_text:
-            parsed = parse_resume_with_groq(profile.resume_text)
+            parsed = parse_resume_with_groq(profile.resume_text, profile)
             if parsed:
                 profile.resume_parsed = parsed
                 profile.save(update_fields=['resume_parsed'])

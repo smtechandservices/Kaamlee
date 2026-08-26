@@ -4,6 +4,7 @@ from django.db import connection
 from django.utils import timezone
 
 from api.models import Job
+from .translate import translate_non_english_jobs
 
 # A posting open this long is unlikely to still be worth surfacing, and
 # without a cutoff the table only ever grows — see remove_old_jobs.
@@ -49,6 +50,12 @@ def bulk_upsert_jobs(job_objs, update_fields=JOB_UPDATE_FIELDS):
     # occurrence, same as what a run of update_or_create() calls would have
     # left behind anyway.
     deduped = list({obj.id_from_site: obj for obj in job_objs}.values())
+
+    # Translate non-English postings (e.g. a company's China/Japan-office
+    # listings) to English before they ever hit the DB, so every future
+    # scrape stays normalized instead of needing a manual backfill.
+    if 'title' in update_fields or 'description' in update_fields:
+        translate_non_english_jobs(deduped)
 
     ids = [obj.id_from_site for obj in deduped]
     existing = set()
