@@ -492,8 +492,8 @@ const TESTIMONIALS: [string, string, string][] = [
 
 const FAQS: { q: string; a: string }[] = [
   { q: 'Where do these jobs actually come from?', a: "We crawl twelve major job boards (LinkedIn, Indeed, ZipRecruiter, etc.) and direct company career pages every fifteen minutes. If it's live on the internet, it's on the map." },
-  { q: 'Will the price change later?', a: "Kaamlee is priced at ₹99/mo or ₹249 for 3 months. There are no hidden tiers or surprise upgrades the plan you pick unlocks everything, and you can cancel anytime." },
-  { q: 'How does full access work right now?', a: "Every feature is unlocked for all users on either the ₹99/mo or ₹249/3mo plan. As we roll out premium features (AI matching, Auto-apply, Resume builder, and more), they'll be included at no extra cost." },
+  { q: 'Will the price change later?', a: "Kaamlee is priced at ₹49/mo or ₹249 for 3 months. There are no hidden tiers or surprise upgrades the plan you pick unlocks everything, and you can cancel anytime." },
+  { q: 'How does full access work right now?', a: "Every feature is unlocked for all users on either the ₹49/mo or ₹249/3mo plan. As we roll out premium features (AI matching, Auto-apply, Resume builder, and more), they'll be included at no extra cost." },
   { q: 'How does the AI resume matching work?', a: "Once you upload your resume in your profile, our AI engine parses your technical skills, experience, and career history. It then performs a real-time semantic comparison against every job listing to give you a personalized match percentage." },
   { q: 'How fresh is the data on the map?', a: "Our crawlers operate on a 15-minute refresh cycle. When a job is taken down or filled, it's purged from our system within the hour so you're never applying to ghost listings." },
   { q: 'Can I use Kaamlee on my phone?', a: 'Yes. The platform is fully responsive and optimized for mobile browsers. You can scout the map on the go, with everything synced to your desktop account.' },
@@ -529,7 +529,7 @@ const PLANS = [
   },
   {
     name: '1 Month',
-    price: 99, durationLabel: '/ month',
+    price: 49, durationLabel: '/ month',
     sub: 'Pay monthly, cancel anytime.',
     features: PLAN_FEATURES,
     cta: 'Get started', popular: true, dark: true, badge: 'Popular', action: 'pricing' as const,
@@ -932,7 +932,7 @@ export default function LandingPage() {
               Open the map <ArrowChevron />
             </button>
             <button onClick={() => setIsPricingOpen(true)} className="inline-flex items-center gap-2.5 whitespace-nowrap rounded-full border border-black/[0.10] bg-white px-[26px] py-[15px] text-[15.5px] font-medium shadow-[0_1px_2px_rgba(16,18,26,.05),0_6px_16px_-8px_rgba(16,18,26,.10)] transition-transform duration-300 hover:-translate-y-0.5 hover:shadow-[0_2px_4px_rgba(16,18,26,.04),0_18px_40px_-18px_rgba(16,18,26,.22)]">
-              From ₹99/month
+              From ₹49/month
             </button>
           </Reveal>
 

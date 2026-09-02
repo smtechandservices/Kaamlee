@@ -2,9 +2,9 @@
  * Subscription Pricing Constants
  */
 export const PRICING = {
-  amount_inr: 99,
+  amount_inr: 49,
   currency: 'INR',
-  label: '₹ 99'
+  label: '₹ 49'
 };
 
 // Future plans (post-beta) will start from ₹299/mo once premium features launch.
