@@ -529,14 +529,14 @@ const PLANS = [
   },
   {
     name: '1 Month',
-    price: 49, durationLabel: '/ month',
+    price: 49, originalPrice: 99, durationLabel: '/ month',
     sub: 'Pay monthly, cancel anytime.',
     features: PLAN_FEATURES,
     cta: 'Get started', popular: true, dark: true, badge: 'Popular', action: 'pricing' as const,
   },
   {
     name: '3 Months',
-    price: 139, durationLabel: '/ 3 months',
+    price: 139, originalPrice: 249, durationLabel: '/ 3 months',
     sub: 'Pay once, skip the monthly renewal.',
     features: PLAN_FEATURES,
     cta: 'Get started', popular: false, dark: false, action: 'pricing' as const,
@@ -1527,6 +1527,9 @@ export default function LandingPage() {
                   <span className="inline-flex items-center gap-2.5 text-[17px] font-medium"><Tick dark={p.dark} />{p.name}</span>
                   <div className="mt-4 flex items-end gap-1.5">
                     <b className="text-[42px] font-medium tracking-[-0.045em] sm:text-[46px]">₹{p.price}</b>
+                    {'originalPrice' in p && p.originalPrice && (
+                      <small className={`pb-1.5 text-[16px] line-through ${p.dark ? 'text-white/45' : 'text-black/40'}`}>₹{p.originalPrice}</small>
+                    )}
                     <small className={`pb-1.5 text-[14px] ${p.dark ? 'text-white/55' : 'text-black/55'}`}>{p.durationLabel}</small>
                   </div>
                   <p className={`mt-2 text-[14.5px] ${p.dark ? 'text-white/68' : 'text-[rgba(61,61,61,0.72)]'}`}>{p.sub}</p>
