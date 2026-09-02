@@ -492,7 +492,7 @@ const TESTIMONIALS: [string, string, string][] = [
 
 const FAQS: { q: string; a: string }[] = [
   { q: 'Where do these jobs actually come from?', a: "We crawl twelve major job boards (LinkedIn, Indeed, ZipRecruiter, etc.) and direct company career pages every fifteen minutes. If it's live on the internet, it's on the map." },
-  { q: 'Will the price change later?', a: "Kaamlee is priced at ₹49/mo or ₹249 for 3 months. There are no hidden tiers or surprise upgrades the plan you pick unlocks everything, and you can cancel anytime." },
+  { q: 'Will the price change later?', a: "Kaamlee is priced at ₹49/mo or ₹139 for 3 months. There are no hidden tiers or surprise upgrades the plan you pick unlocks everything, and you can cancel anytime." },
   { q: 'How does full access work right now?', a: "Every feature is unlocked for all users on either the ₹49/mo or ₹249/3mo plan. As we roll out premium features (AI matching, Auto-apply, Resume builder, and more), they'll be included at no extra cost." },
   { q: 'How does the AI resume matching work?', a: "Once you upload your resume in your profile, our AI engine parses your technical skills, experience, and career history. It then performs a real-time semantic comparison against every job listing to give you a personalized match percentage." },
   { q: 'How fresh is the data on the map?', a: "Our crawlers operate on a 15-minute refresh cycle. When a job is taken down or filled, it's purged from our system within the hour so you're never applying to ghost listings." },
@@ -536,7 +536,7 @@ const PLANS = [
   },
   {
     name: '3 Months',
-    price: 249, durationLabel: '/ 3 months',
+    price: 139, durationLabel: '/ 3 months',
     sub: 'Pay once, skip the monthly renewal.',
     features: PLAN_FEATURES,
     cta: 'Get started', popular: false, dark: false, action: 'pricing' as const,
