@@ -6,7 +6,7 @@ from .views import (
     SignupView, GoogleAuthView, UserView, RecentJobsView,
     CheckExistenceView, AdminLoginView, AdminUserViewSet, CategoriesView, CountriesView,
     FeedbackView, AdminFeedbackView, PublicPortfolioView, MyPortfolioView, MyPortfolioContentView, PortfolioAnalyticsView,
-    RequestLogsView, CustomCVListCreateView, CustomCVDetailView, CustomCVTailorView, CustomCVExportView,
+    CustomCVListCreateView, CustomCVDetailView, CustomCVTailorView, CustomCVExportView,
     JobApplicationKitView, AtsKeywordsView, ApplicationsView, AdminJobsView, ChangePasswordView,
     RequestEmailOtpView, VerifyEmailOtpView, ConfirmEmailOtpView, RunScraperScriptView, RunGeocodeView,
     RunningScriptsView, StopScriptView, RunScriptStatusView,
@@ -86,5 +86,4 @@ urlpatterns = [
     path('admin/run-script/stop/', StopScriptView.as_view(), name='admin-run-script-stop'),
     path('admin/run-geocode/', RunGeocodeView.as_view(), name='admin-run-geocode'),
     path('admin/jobs/missing-coordinates/', JobsMissingCoordinatesView.as_view(), name='admin-jobs-missing-coordinates'),
-    path('admin/request-logs/', RequestLogsView.as_view(), name='admin-request-logs'),
 ]

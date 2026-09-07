@@ -45,35 +45,35 @@ export default function AdminLogin() {
   };
 
   return (
-    <div className="min-h-screen bg-[#0a0a0a] flex items-center justify-center p-4 font-sans">
+    <div className="min-h-screen bg-[#f2f3f5] flex items-center justify-center p-4 font-sans">
       <motion.div
         initial={{ opacity: 0, y: 20 }}
         animate={{ opacity: 1, y: 0 }}
         className="w-full max-w-md"
       >
         <div className="text-center mb-8">
-          <div className="inline-flex items-center justify-center w-16 h-16 rounded-2xl bg-blue-600/10 border border-blue-500/20 mb-4">
-            <Lock className="text-blue-500" size={32} />
+          <div className="inline-flex items-center justify-center w-16 h-16 rounded-2xl bg-green-600/10 border border-green-600/20 mb-4">
+            <Lock className="text-green-600" size={32} />
           </div>
-          <h1 className="text-3xl font-bold text-white tracking-tight">Admin</h1>
-          <p className="text-[#555] mt-2 font-medium">Superuser Access Only</p>
+          <h1 className="text-3xl font-bold text-[#0b0b0c] tracking-tight">Admin</h1>
+          <p className="text-[#0b0b0c]/60 mt-2 font-medium">Superuser Access Only</p>
         </div>
 
-        <div className="bg-[#111] border border-[#222] rounded-3xl p-8 shadow-2xl relative overflow-hidden">
-          <div className="absolute top-0 left-0 w-full h-1 bg-gradient-to-r from-blue-600 to-indigo-600" />
+        <div className="bg-white border border-black/[0.08] rounded-3xl p-8 shadow-2xl relative overflow-hidden">
+          <div className="absolute top-0 left-0 w-full h-1 bg-gradient-to-r from-green-400 to-green-600" />
 
           <form onSubmit={handleLogin} className="space-y-6">
             <div>
-              <label className="block text-xs font-bold uppercase tracking-widest text-[#555] mb-2 px-1">
+              <label className="block text-xs font-bold uppercase tracking-widest text-[#0b0b0c]/60 mb-2 px-1">
                 Username
               </label>
               <div className="relative">
-                <User className="absolute left-4 top-1/2 -translate-y-1/2 text-[#444]" size={18} />
+                <User className="absolute left-4 top-1/2 -translate-y-1/2 text-[#0b0b0c]/70" size={18} />
                 <input
                   type="text"
                   value={username}
                   onChange={(e) => setUsername(e.target.value)}
-                  className="w-full bg-black border border-[#222] rounded-xl py-3 pl-12 pr-4 text-white focus:outline-none focus:border-blue-500 transition-all"
+                  className="w-full bg-white border border-black/[0.08] rounded-xl py-3 pl-12 pr-4 text-[#0b0b0c] focus:outline-none focus:border-green-600 transition-all"
                   placeholder="Enter username"
                   required
                 />
@@ -81,16 +81,16 @@ export default function AdminLogin() {
             </div>
 
             <div>
-              <label className="block text-xs font-bold uppercase tracking-widest text-[#555] mb-2 px-1">
+              <label className="block text-xs font-bold uppercase tracking-widest text-[#0b0b0c]/60 mb-2 px-1">
                 Password
               </label>
               <div className="relative">
-                <Lock className="absolute left-4 top-1/2 -translate-y-1/2 text-[#444]" size={18} />
+                <Lock className="absolute left-4 top-1/2 -translate-y-1/2 text-[#0b0b0c]/70" size={18} />
                 <input
                   type="password"
                   value={password}
                   onChange={(e) => setPassword(e.target.value)}
-                  className="w-full bg-black border border-[#222] rounded-xl py-3 pl-12 pr-4 text-white focus:outline-none focus:border-blue-500 transition-all"
+                  className="w-full bg-white border border-black/[0.08] rounded-xl py-3 pl-12 pr-4 text-[#0b0b0c] focus:outline-none focus:border-green-600 transition-all"
                   placeholder="••••••••"
                   required
                 />
@@ -101,7 +101,7 @@ export default function AdminLogin() {
               <motion.div
                 initial={{ opacity: 0, x: -10 }}
                 animate={{ opacity: 1, x: 0 }}
-                className="flex items-center gap-2 p-4 bg-red-500/5 border border-red-500/10 rounded-xl text-red-400 text-sm font-medium"
+                className="flex items-center gap-2 p-4 bg-red-500/5 border border-red-500/10 rounded-xl text-red-500 text-sm font-medium"
               >
                 <AlertCircle size={18} />
                 {error}
@@ -111,7 +111,7 @@ export default function AdminLogin() {
             <button
               type="submit"
               disabled={isLoading}
-              className="cursor-pointer w-full bg-blue-600 hover:bg-blue-500 disabled:opacity-50 disabled:cursor-not-allowed text-white py-4 rounded-xl font-bold flex items-center justify-center gap-2 transition-all shadow-lg shadow-blue-600/20 group"
+              className="cursor-pointer w-full bg-green-600 hover:bg-green-700 disabled:opacity-50 disabled:cursor-not-allowed text-white py-4 rounded-xl font-bold flex items-center justify-center gap-2 transition-all shadow-lg shadow-green-600/20 group"
             >
               {isLoading ? (
                 <Loader2 className="animate-spin" size={20} />
@@ -125,7 +125,7 @@ export default function AdminLogin() {
           </form>
         </div>
 
-        <p className="text-center mt-8 text-[#444] text-xs font-bold uppercase tracking-widest">
+        <p className="text-center mt-8 text-[#0b0b0c]/70 text-xs font-bold uppercase tracking-widest">
           Kaamlee Career Intelligence Hub &copy; 2026
         </p>
       </motion.div>

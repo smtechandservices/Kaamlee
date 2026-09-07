@@ -334,7 +334,7 @@ export default function CompaniesPage() {
   };
 
   return (
-    <div className="min-h-screen bg-[#0a0a0a] text-white p-8 font-sans">
+    <div className="min-h-screen bg-[#f2f3f5] text-[#0b0b0c] p-8 font-sans">
       <div className="mx-auto max-w-6xl">
         <header className="flex flex-col md:flex-row md:items-center justify-between gap-6 mb-10">
           <div className="flex items-center gap-6">
@@ -342,7 +342,7 @@ export default function CompaniesPage() {
               <h1 className="text-3xl font-bold tracking-tight mb-1 flex items-center gap-3">
                 Companies
               </h1>
-              <p className="text-[#555] font-medium">
+              <p className="text-[#0b0b0c]/60 font-medium">
                 {count.toLocaleString()} compan{count !== 1 ? 'ies' : 'y'} configured
               </p>
             </div>
@@ -350,33 +350,33 @@ export default function CompaniesPage() {
 
           <div className="flex items-center gap-3">
             <div className="relative">
-              <Search className="absolute left-4 top-1/2 -translate-y-1/2 text-[#555]" size={18} />
+              <Search className="absolute left-4 top-1/2 -translate-y-1/2 text-[#0b0b0c]/60" size={18} />
               <input
                 type="text"
                 placeholder="Search companies..."
                 value={searchInput}
                 onChange={(e) => setSearchInput(e.target.value)}
                 onKeyDown={(e) => e.key === 'Enter' && applySearch()}
-                className="w-64 bg-[#111] border border-[#222] rounded-2xl py-3 pl-11 pr-4 focus:outline-none focus:border-purple-500 transition-all text-sm"
+                className="w-64 bg-white border border-black/[0.08] rounded-2xl py-3 pl-11 pr-4 focus:outline-none focus:border-purple-500 transition-all text-sm"
               />
             </div>
             <button
               onClick={() => fetchCompanies(true)}
-              className="cursor-pointer p-3 rounded-xl bg-[#111] border border-[#222] hover:bg-[#161616] transition-all"
+              className="cursor-pointer p-3 rounded-xl bg-white border border-black/[0.08] hover:bg-black/[0.03] transition-all"
               title="Refresh"
             >
               <RefreshCcw size={18} className={loading ? 'animate-spin' : ''} />
             </button>
             <button
               onClick={() => setIsBulkModalOpen(true)}
-              className="cursor-pointer bg-[#111] border border-[#222] hover:bg-[#161616] text-white px-5 py-3 rounded-xl font-semibold flex items-center gap-2 transition-all"
+              className="cursor-pointer bg-white border border-black/[0.08] hover:bg-black/[0.03] text-[#0b0b0c] px-5 py-3 rounded-xl font-semibold flex items-center gap-2 transition-all"
             >
               <Upload size={18} />
               Bulk Add
             </button>
             <button
               onClick={openAddModal}
-              className="cursor-pointer bg-purple-600 hover:bg-purple-500 text-white px-5 py-3 rounded-xl font-semibold flex items-center gap-2 transition-all shadow-lg shadow-purple-500/20"
+              className="cursor-pointer bg-purple-600 hover:bg-purple-700 text-white px-5 py-3 rounded-xl font-semibold flex items-center gap-2 transition-all shadow-lg shadow-purple-500/20"
             >
               <Plus size={18} />
               Add Company
@@ -387,7 +387,7 @@ export default function CompaniesPage() {
         {loading ? (
           <div className="flex flex-col items-center justify-center py-40">
             <Loader2 className="w-10 h-10 text-purple-500 animate-spin mb-4" />
-            <p className="text-[#555] text-xs font-bold uppercase tracking-widest">Loading companies</p>
+            <p className="text-[#0b0b0c]/60 text-xs font-bold uppercase tracking-widest">Loading companies</p>
           </div>
         ) : (
           <>
@@ -405,7 +405,7 @@ export default function CompaniesPage() {
                     accent="purple"
                     title={selectedIds.size > 0 ? 'Deselect all' : 'Select all'}
                   />
-                  <span className={`font-medium transition-colors ${selectedIds.size > 0 ? 'text-purple-300' : 'text-[#888]'}`}>
+                  <span className={`font-medium transition-colors ${selectedIds.size > 0 ? 'text-purple-600' : 'text-[#0b0b0c]/40'}`}>
                     {selectedIds.size > 0 ? `${selectedIds.size} selected` : 'Select all'}
                   </span>
                 </label>
@@ -413,7 +413,7 @@ export default function CompaniesPage() {
                   <button
                     onClick={handleBulkDelete}
                     disabled={bulkDeleting}
-                    className="cursor-pointer bg-red-500/10 border border-red-500/30 text-red-400 hover:bg-red-500/20 px-4 py-2 rounded-xl text-sm font-semibold flex items-center gap-2 transition-all disabled:opacity-50 disabled:cursor-not-allowed"
+                    className="cursor-pointer bg-red-500/10 border border-red-500/30 text-red-500 hover:bg-red-600/20 px-4 py-2 rounded-xl text-sm font-semibold flex items-center gap-2 transition-all disabled:opacity-50 disabled:cursor-not-allowed"
                   >
                     {bulkDeleting ? <Loader2 size={14} className="animate-spin" /> : <Trash2 size={14} />}
                     Delete Selected ({selectedIds.size})
@@ -429,7 +429,7 @@ export default function CompaniesPage() {
                     initial={{ opacity: 0, scale: 0.95 }}
                     animate={{ opacity: 1, scale: 1 }}
                     exit={{ opacity: 0, scale: 0.95 }}
-                    className={`bg-[#111] border rounded-3xl p-6 transition-all flex flex-col gap-4 ${selectedIds.has(company.id) ? 'border-purple-500/60' : 'border-[#222] hover:border-purple-500/40'}`}
+                    className={`bg-white border rounded-3xl p-6 transition-all flex flex-col gap-4 ${selectedIds.has(company.id) ? 'border-purple-500/60' : 'border-black/[0.08] hover:border-purple-500/40'}`}
                   >
                     <div className="flex items-start justify-between gap-3">
                       <div className="flex items-center gap-3 min-w-0">
@@ -442,7 +442,7 @@ export default function CompaniesPage() {
                         {company.logo_url ? (
                           <img src={company.logo_url} alt="" className="w-10 h-10 rounded-xl object-contain bg-white shrink-0" />
                         ) : (
-                          <div className="w-10 h-10 rounded-xl bg-purple-500/10 flex items-center justify-center text-purple-400 font-bold text-sm shrink-0">
+                          <div className="w-10 h-10 rounded-xl bg-purple-500/10 flex items-center justify-center text-purple-600 font-bold text-sm shrink-0">
                             {company.name.slice(0, 1).toUpperCase()}
                           </div>
                         )}
@@ -450,15 +450,15 @@ export default function CompaniesPage() {
                           <div className="flex items-center gap-2">
                             <h3 className="text-lg font-bold truncate">{company.name}</h3>
                             {!company.is_active && (
-                              <span className="shrink-0 text-[9px] font-bold uppercase tracking-wider px-1.5 py-0.5 rounded bg-[#222] text-[#666]">Inactive</span>
+                              <span className="shrink-0 text-[9px] font-bold uppercase tracking-wider px-1.5 py-0.5 rounded bg-black/[0.05] text-[#0b0b0c]/55">Inactive</span>
                             )}
                           </div>
-                          {company.domain && <p className="text-xs text-[#555] font-medium truncate">{company.domain}</p>}
+                          {company.domain && <p className="text-xs text-[#0b0b0c]/60 font-medium truncate">{company.domain}</p>}
                         </div>
                       </div>
                       <button
                         onClick={() => toggleActive(company)}
-                        className={`cursor-pointer relative w-11 h-6 rounded-full transition-all shrink-0 ${company.is_active ? 'bg-purple-600' : 'bg-[#333]'}`}
+                        className={`cursor-pointer relative w-11 h-6 rounded-full transition-all shrink-0 ${company.is_active ? 'bg-purple-600' : 'bg-black/[0.08]'}`}
                         title={company.is_active ? 'Active' : 'Inactive'}
                       >
                         <span className={`absolute top-0.5 w-5 h-5 rounded-full bg-white transition-all ${company.is_active ? 'left-5' : 'left-0.5'}`} />
@@ -467,11 +467,11 @@ export default function CompaniesPage() {
 
                     <div className="flex flex-col gap-1.5 text-xs">
                       {company.career_url && (
-                        <a href={company.career_url} target="_blank" rel="noreferrer" className="flex items-center gap-2 text-[#888] hover:text-purple-400 transition-colors truncate">
+                        <a href={company.career_url} target="_blank" rel="noreferrer" className="flex items-center gap-2 text-[#0b0b0c]/40 hover:text-purple-600 transition-colors truncate">
                           <ExternalLink size={13} className="shrink-0" /> <span className="truncate">{company.career_url}</span>
                         </a>
                       )}
-                      <div className="flex items-center gap-2 text-[#666]" title={company.last_scraped_at ? new Date(company.last_scraped_at).toLocaleString() : undefined}>
+                      <div className="flex items-center gap-2 text-[#0b0b0c]/55" title={company.last_scraped_at ? new Date(company.last_scraped_at).toLocaleString() : undefined}>
                         <Clock size={13} className="shrink-0" />
                         <span className="truncate">
                           Last scraped: {company.last_scraped_at
@@ -481,17 +481,17 @@ export default function CompaniesPage() {
                       </div>
                     </div>
 
-                    <div className="pt-4 border-t border-[#222] flex gap-3 mt-auto">
+                    <div className="pt-4 border-t border-black/[0.08] flex gap-3 mt-auto">
                       <button
                         onClick={() => openEditModal(company)}
-                        className="cursor-pointer flex-1 py-2.5 rounded-xl bg-[#1a1a1a] border border-[#222] text-sm font-semibold text-[#888] hover:text-white hover:border-[#333] transition-all flex items-center justify-center gap-2"
+                        className="cursor-pointer flex-1 py-2.5 rounded-xl bg-black/[0.04] border border-black/[0.08] text-sm font-semibold text-[#0b0b0c]/40 hover:text-[#0b0b0c] hover:border-black/[0.12] transition-all flex items-center justify-center gap-2"
                       >
                         <Pencil size={14} />
                         Edit
                       </button>
                       <button
                         onClick={() => handleDelete(company)}
-                        className="cursor-pointer flex-1 py-2.5 rounded-xl bg-[#1a1a1a] border border-[#222] text-sm font-semibold text-[#888] hover:text-red-400 hover:border-red-500/30 transition-all flex items-center justify-center gap-2"
+                        className="cursor-pointer flex-1 py-2.5 rounded-xl bg-black/[0.04] border border-black/[0.08] text-sm font-semibold text-[#0b0b0c]/40 hover:text-red-500 hover:border-red-500/30 transition-all flex items-center justify-center gap-2"
                       >
                         <Trash2 size={14} />
                         Delete
@@ -504,8 +504,8 @@ export default function CompaniesPage() {
 
             {companies.length === 0 && (
               <div className="py-24 text-center">
-                <Building2 className="w-12 h-12 text-[#222] mx-auto mb-4" />
-                <p className="text-[#555] font-medium">
+                <Building2 className="w-12 h-12 text-[#0b0b0c]/80 mx-auto mb-4" />
+                <p className="text-[#0b0b0c]/60 font-medium">
                   {count === 0 && !search ? 'No companies configured yet.' : 'No results match your search.'}
                 </p>
               </div>
@@ -513,21 +513,21 @@ export default function CompaniesPage() {
 
             {count > 0 && (
               <div className="flex items-center justify-between mt-6">
-                <p className="text-xs text-[#555] font-medium">
+                <p className="text-xs text-[#0b0b0c]/60 font-medium">
                   Page {page} of {totalPages}
                 </p>
                 <div className="flex items-center gap-2">
                   <button
                     onClick={() => setPage(p => Math.max(1, p - 1))}
                     disabled={page <= 1}
-                    className="cursor-pointer p-2.5 rounded-xl bg-[#111] border border-[#222] hover:bg-[#161616] disabled:opacity-30 disabled:cursor-not-allowed transition-all"
+                    className="cursor-pointer p-2.5 rounded-xl bg-white border border-black/[0.08] hover:bg-black/[0.03] disabled:opacity-30 disabled:cursor-not-allowed transition-all"
                   >
                     <ChevronLeft size={18} />
                   </button>
                   <button
                     onClick={() => setPage(p => Math.min(totalPages, p + 1))}
                     disabled={page >= totalPages}
-                    className="cursor-pointer p-2.5 rounded-xl bg-[#111] border border-[#222] hover:bg-[#161616] disabled:opacity-30 disabled:cursor-not-allowed transition-all"
+                    className="cursor-pointer p-2.5 rounded-xl bg-white border border-black/[0.08] hover:bg-black/[0.03] disabled:opacity-30 disabled:cursor-not-allowed transition-all"
                   >
                     <ChevronRight size={18} />
                   </button>
@@ -617,14 +617,14 @@ function BulkAddModal({ onClose, onUpload }: {
         animate={{ scale: 1, opacity: 1 }}
         exit={{ scale: 0.95, opacity: 0 }}
         onClick={(e) => e.stopPropagation()}
-        className="bg-[#111] border border-[#333] rounded-3xl w-full max-w-lg shadow-2xl flex flex-col max-h-[90vh]"
+        className="bg-white border border-black/[0.12] rounded-3xl w-full max-w-lg shadow-2xl flex flex-col max-h-[90vh]"
       >
-        <div className="p-6 border-b border-[#333] bg-[#1a1a1a] rounded-t-3xl shrink-0 flex items-center justify-between">
+        <div className="p-6 border-b border-black/[0.12] bg-black/[0.04] rounded-t-3xl shrink-0 flex items-center justify-between">
           <h2 className="text-xl font-bold flex items-center gap-2">
             <Upload size={20} className="text-purple-500" />
             Bulk Add Companies
           </h2>
-          <button onClick={onClose} className="cursor-pointer p-2 hover:bg-[#333] rounded-lg transition-colors text-[#888] hover:text-white">
+          <button onClick={onClose} className="cursor-pointer p-2 hover:bg-black/[0.08] rounded-lg transition-colors text-[#0b0b0c]/40 hover:text-[#0b0b0c]">
             <X size={20} />
           </button>
         </div>
@@ -632,19 +632,19 @@ function BulkAddModal({ onClose, onUpload }: {
         <div className="p-6 space-y-4 overflow-y-auto flex-1">
           <button
             onClick={downloadSampleCsv}
-            className="cursor-pointer w-full flex items-center justify-center gap-2 py-2.5 rounded-xl bg-[#1a1a1a] border border-[#222] text-sm font-semibold text-[#888] hover:text-white hover:border-purple-500/40 transition-all"
+            className="cursor-pointer w-full flex items-center justify-center gap-2 py-2.5 rounded-xl bg-black/[0.04] border border-black/[0.08] text-sm font-semibold text-[#0b0b0c]/40 hover:text-[#0b0b0c] hover:border-purple-500/40 transition-all"
           >
             <Download size={14} />
             Download sample CSV
           </button>
 
           <div>
-            <label className="text-xs font-bold uppercase tracking-wider text-[#555] mb-1.5 block">
-              Upload CSV file<span className="text-purple-400"> *</span>
+            <label className="text-xs font-bold uppercase tracking-wider text-[#0b0b0c]/60 mb-1.5 block">
+              Upload CSV file<span className="text-purple-600"> *</span>
             </label>
-            <label className="flex flex-col items-center justify-center gap-2 border-2 border-dashed border-[#222] hover:border-purple-500/40 rounded-xl px-4 py-6 cursor-pointer transition-all text-center">
-              <Upload size={20} className="text-[#555]" />
-              <span className="text-sm text-[#888]">
+            <label className="flex flex-col items-center justify-center gap-2 border-2 border-dashed border-black/[0.08] hover:border-purple-500/40 rounded-xl px-4 py-6 cursor-pointer transition-all text-center">
+              <Upload size={20} className="text-[#0b0b0c]/60" />
+              <span className="text-sm text-[#0b0b0c]/40">
                 {fileName ?? 'Click to choose a .csv file'}
               </span>
               <input
@@ -654,20 +654,20 @@ function BulkAddModal({ onClose, onUpload }: {
                 onChange={(e) => e.target.files?.[0] && handleFile(e.target.files[0])}
               />
             </label>
-            <p className="text-[10px] text-[#444] mt-1.5">
-              Columns: {BULK_CSV_COLUMNS.join(', ')}. Only <span className="text-[#666]">name</span> and <span className="text-[#666]">career_url</span> are required.
+            <p className="text-[10px] text-[#0b0b0c]/70 mt-1.5">
+              Columns: {BULK_CSV_COLUMNS.join(', ')}. Only <span className="text-[#0b0b0c]/55">name</span> and <span className="text-[#0b0b0c]/55">career_url</span> are required.
             </p>
           </div>
 
           {parseError && (
-            <div className="flex items-start gap-2 text-sm text-red-400 bg-red-500/10 border border-red-500/20 rounded-xl px-4 py-3">
+            <div className="flex items-start gap-2 text-sm text-red-500 bg-red-500/10 border border-red-500/20 rounded-xl px-4 py-3">
               <AlertTriangle size={16} className="shrink-0 mt-0.5" />
               {parseError}
             </div>
           )}
 
           {parsed.length > 0 && !result && (
-            <div className="flex items-center gap-2 text-sm text-purple-300 bg-purple-500/10 border border-purple-500/20 rounded-xl px-4 py-3">
+            <div className="flex items-center gap-2 text-sm text-purple-600 bg-purple-500/10 border border-purple-500/20 rounded-xl px-4 py-3">
               <CheckCircle2 size={16} className="shrink-0" />
               {parsed.length} compan{parsed.length !== 1 ? 'ies' : 'y'} ready to import.
             </div>
@@ -676,18 +676,18 @@ function BulkAddModal({ onClose, onUpload }: {
           {result && (
             <div className="space-y-2">
               {result.created.length > 0 && (
-                <div className="flex items-center gap-2 text-sm text-green-400 bg-green-500/10 border border-green-500/20 rounded-xl px-4 py-3">
+                <div className="flex items-center gap-2 text-sm text-green-700 bg-green-500/10 border border-green-500/20 rounded-xl px-4 py-3">
                   <CheckCircle2 size={16} className="shrink-0" />
                   {result.created.length} compan{result.created.length !== 1 ? 'ies' : 'y'} added.
                 </div>
               )}
               {result.errors.length > 0 && (
-                <div className="text-sm text-yellow-400 bg-yellow-500/10 border border-yellow-500/20 rounded-xl px-4 py-3">
+                <div className="text-sm text-yellow-600 bg-yellow-500/10 border border-yellow-500/20 rounded-xl px-4 py-3">
                   <div className="flex items-center gap-2 font-semibold mb-2">
                     <AlertTriangle size={16} className="shrink-0" />
                     {result.errors.length} row{result.errors.length !== 1 ? 's' : ''} skipped
                   </div>
-                  <ul className="space-y-1 text-xs text-yellow-300/80">
+                  <ul className="space-y-1 text-xs text-yellow-600/80">
                     {result.errors.map((e) => (
                       <li key={e.row}>
                         Row {e.row}{e.name ? ` (${e.name})` : ''}: {Object.entries(e.errors).map(([field, msgs]) => `${field}: ${msgs.join(' ')}`).join('; ')}
@@ -700,14 +700,14 @@ function BulkAddModal({ onClose, onUpload }: {
           )}
         </div>
 
-        <div className="p-6 bg-[#1a1a1a] border-t border-[#333] flex gap-3 shrink-0 rounded-b-3xl">
-          <button onClick={onClose} className="cursor-pointer flex-1 py-3 rounded-xl bg-[#222] hover:bg-[#2a2a2a] font-bold transition-all">
+        <div className="p-6 bg-black/[0.04] border-t border-black/[0.12] flex gap-3 shrink-0 rounded-b-3xl">
+          <button onClick={onClose} className="cursor-pointer flex-1 py-3 rounded-xl bg-black/[0.05] hover:bg-black/[0.10] font-bold transition-all">
             {result ? 'Close' : 'Cancel'}
           </button>
           <button
             disabled={uploading || parsed.length === 0}
             onClick={handleUpload}
-            className="cursor-pointer flex-1 py-3 rounded-xl bg-purple-600 hover:bg-purple-500 disabled:opacity-40 disabled:cursor-not-allowed font-bold transition-all flex items-center justify-center gap-2"
+            className="cursor-pointer flex-1 py-3 rounded-xl bg-purple-600 hover:bg-purple-600 disabled:opacity-40 disabled:cursor-not-allowed font-bold transition-all flex items-center justify-center gap-2"
           >
             {uploading ? <Loader2 size={18} className="animate-spin" /> : null}
             Upload {parsed.length > 0 ? `(${parsed.length})` : ''}
@@ -769,14 +769,14 @@ function CompanyFormModal({ company, onClose, onSave, saving }: {
         animate={{ scale: 1, opacity: 1 }}
         exit={{ scale: 0.95, opacity: 0 }}
         onClick={(e) => e.stopPropagation()}
-        className="bg-[#111] border border-[#333] rounded-3xl w-full max-w-lg shadow-2xl flex flex-col max-h-[90vh]"
+        className="bg-white border border-black/[0.12] rounded-3xl w-full max-w-lg shadow-2xl flex flex-col max-h-[90vh]"
       >
-        <div className="p-6 border-b border-[#333] bg-[#1a1a1a] rounded-t-3xl shrink-0 flex items-center justify-between">
+        <div className="p-6 border-b border-black/[0.12] bg-black/[0.04] rounded-t-3xl shrink-0 flex items-center justify-between">
           <h2 className="text-xl font-bold flex items-center gap-2">
             <Building2 size={20} className="text-purple-500" />
             {company ? 'Edit Company' : 'Add Company'}
           </h2>
-          <button onClick={onClose} className="cursor-pointer p-2 hover:bg-[#333] rounded-lg transition-colors text-[#888] hover:text-white">
+          <button onClick={onClose} className="cursor-pointer p-2 hover:bg-black/[0.08] rounded-lg transition-colors text-[#0b0b0c]/40 hover:text-[#0b0b0c]">
             <X size={20} />
           </button>
         </div>
@@ -784,15 +784,15 @@ function CompanyFormModal({ company, onClose, onSave, saving }: {
         <div className="p-6 space-y-4 overflow-y-auto flex-1">
           {fields.map(({ key, label, placeholder, required }) => (
             <div key={key}>
-              <label className="text-xs font-bold uppercase tracking-wider text-[#555] mb-1.5 block">
-                {label}{required && <span className="text-purple-400"> *</span>}
+              <label className="text-xs font-bold uppercase tracking-wider text-[#0b0b0c]/60 mb-1.5 block">
+                {label}{required && <span className="text-purple-600"> *</span>}
               </label>
               <input
                 type="text"
                 value={form[key] as string}
                 onChange={set(key)}
                 placeholder={placeholder}
-                className="w-full bg-[#0a0a0a] border border-[#222] rounded-xl px-4 py-2.5 text-sm text-white placeholder-[#333] focus:border-purple-500 outline-none transition-all"
+                className="w-full bg-black/[0.03] border border-black/[0.08] rounded-xl px-4 py-2.5 text-sm text-[#0b0b0c] placeholder-black/30 focus:border-purple-500 outline-none transition-all"
               />
             </div>
           ))}
@@ -801,22 +801,22 @@ function CompanyFormModal({ company, onClose, onSave, saving }: {
             <button
               type="button"
               onClick={() => setForm(prev => ({ ...prev, is_active: !prev.is_active }))}
-              className={`relative w-11 h-6 rounded-full transition-all shrink-0 ${form.is_active ? 'bg-purple-600' : 'bg-[#333]'}`}
+              className={`relative w-11 h-6 rounded-full transition-all shrink-0 ${form.is_active ? 'bg-purple-600' : 'bg-black/[0.08]'}`}
             >
               <span className={`absolute top-0.5 w-5 h-5 rounded-full bg-white transition-all ${form.is_active ? 'left-5' : 'left-0.5'}`} />
             </button>
-            <span className="text-sm text-[#888]">Active</span>
+            <span className="text-sm text-[#0b0b0c]/40">Active</span>
           </label>
         </div>
 
-        <div className="p-6 bg-[#1a1a1a] border-t border-[#333] flex gap-3 shrink-0 rounded-b-3xl">
-          <button onClick={onClose} className="cursor-pointer flex-1 py-3 rounded-xl bg-[#222] hover:bg-[#2a2a2a] font-bold transition-all">
+        <div className="p-6 bg-black/[0.04] border-t border-black/[0.12] flex gap-3 shrink-0 rounded-b-3xl">
+          <button onClick={onClose} className="cursor-pointer flex-1 py-3 rounded-xl bg-black/[0.05] hover:bg-black/[0.10] font-bold transition-all">
             Cancel
           </button>
           <button
             disabled={saving || !canSave}
             onClick={() => onSave(form)}
-            className="cursor-pointer flex-1 py-3 rounded-xl bg-purple-600 hover:bg-purple-500 disabled:opacity-40 disabled:cursor-not-allowed font-bold transition-all flex items-center justify-center gap-2"
+            className="cursor-pointer flex-1 py-3 rounded-xl bg-purple-600 hover:bg-purple-600 disabled:opacity-40 disabled:cursor-not-allowed font-bold transition-all flex items-center justify-center gap-2"
           >
             {saving ? <Loader2 size={18} className="animate-spin" /> : null}
             {company ? 'Save Changes' : 'Add Company'}

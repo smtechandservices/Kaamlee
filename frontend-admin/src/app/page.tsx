@@ -572,23 +572,23 @@ export default function AdminDashboard() {
 
   if (loading && !stats) {
     return (
-      <div className="min-h-screen bg-[#0a0a0a] flex items-center justify-center">
-        <Loader2 className="w-8 h-8 text-blue-500 animate-spin" />
+      <div className="min-h-screen bg-[#f2f3f5] flex items-center justify-center">
+        <Loader2 className="w-8 h-8 text-green-600 animate-spin" />
       </div>
     );
   }
 
   if (!stats) {
     return (
-      <div className="min-h-screen bg-[#0a0a0a] flex flex-col items-center justify-center text-white p-8">
+      <div className="min-h-screen bg-[#f2f3f5] flex flex-col items-center justify-center text-[#0b0b0c] p-8">
         <AlertCircle className="w-16 h-16 text-red-500 mb-4" />
         <h1 className="text-2xl font-bold mb-2">Connection Error</h1>
-        <p className="text-[#888] mb-6 text-center max-w-md">
+        <p className="text-[#0b0b0c]/40 mb-6 text-center max-w-md">
           Could not connect to the backend server. Please make sure the Django server is running at {API_BASE}.
         </p>
         <button
           onClick={() => { setLoading(true); fetchData(true); }}
-          className="bg-[#111] border border-[#222] px-6 py-2 rounded-xl hover:bg-[#161616] transition-all flex items-center gap-2"
+          className="bg-white border border-black/[0.08] px-6 py-2 rounded-xl hover:bg-black/[0.03] transition-all flex items-center gap-2"
         >
           <RefreshCcw size={18} />
           Retry Connection
@@ -598,18 +598,18 @@ export default function AdminDashboard() {
   }
 
   return (
-    <div className="min-h-screen bg-[#0a0a0a] text-white p-8 font-sans">
+    <div className="min-h-screen bg-[#f2f3f5] text-[#0b0b0c] p-8 font-sans">
       <div className="mx-auto">
         {/* Header */}
         <header className="flex flex-col md:flex-row md:items-center justify-between gap-6 mb-12">
           <div>
             <h1 className="text-3xl font-bold tracking-tight mb-2">Dashboard</h1>
-            <p className="text-[#888]">Overview of jobs, companies, and users.</p>
+            <p className="text-[#0b0b0c]/40">Overview of jobs, companies, and users.</p>
           </div>
 
           <button
             onClick={() => fetchData(true)}
-            className="cursor-pointer p-3 rounded-xl bg-[#111] border border-[#222] hover:bg-[#161616] transition-all self-start md:self-auto"
+            className="cursor-pointer p-3 rounded-xl bg-white border border-black/[0.08] hover:bg-black/[0.03] transition-all self-start md:self-auto"
             title="Refresh Data"
           >
             <RefreshCcw size={20} className={loading ? 'animate-spin' : ''} />
@@ -617,17 +617,17 @@ export default function AdminDashboard() {
         </header>
 
         {activeRuns.length > 0 && (
-          <div className="bg-[#111] border border-[#222] rounded-3xl p-6 mb-12">
+          <div className="bg-white border border-black/[0.08] rounded-3xl p-6 mb-12">
             <div className="flex items-center justify-between mb-4">
               <h2 className="text-lg font-bold flex items-center gap-2">
-                <Activity size={18} className="text-blue-500 animate-pulse" /> Active Runs
-                <span className="text-xs font-normal text-[#555]">({activeRuns.length})</span>
+                <Activity size={18} className="text-green-600 animate-pulse" /> Active Runs
+                <span className="text-xs font-normal text-[#0b0b0c]/60">({activeRuns.length})</span>
               </h2>
               {activeRuns.length > 1 && (
                 <button
                   onClick={stopAllRuns}
                   disabled={stoppingBoards.size > 0}
-                  className="cursor-pointer flex items-center gap-1.5 text-xs font-semibold text-red-400 hover:text-red-300 disabled:opacity-40 disabled:cursor-not-allowed transition-colors"
+                  className="cursor-pointer flex items-center gap-1.5 text-xs font-semibold text-red-500 hover:text-red-500 disabled:opacity-40 disabled:cursor-not-allowed transition-colors"
                 >
                   <StopCircle size={14} /> Stop All
                 </button>
@@ -637,20 +637,20 @@ export default function AdminDashboard() {
               {activeRuns.map(run => (
                 <div
                   key={run.board}
-                  className="flex items-center justify-between gap-3 px-3.5 py-2.5 rounded-xl bg-[#0a0a0a] border border-[#1a1a1a]"
+                  className="flex items-center justify-between gap-3 px-3.5 py-2.5 rounded-xl bg-black/[0.03] border border-black/[0.08]"
                 >
                   <div className="flex items-center gap-3 min-w-0">
-                    <Loader2 size={14} className="animate-spin text-blue-500 shrink-0" />
+                    <Loader2 size={14} className="animate-spin text-green-600 shrink-0" />
                     <span className="text-sm font-semibold truncate">{run.board}</span>
-                    <span className="text-[10px] font-bold uppercase tracking-wider px-1.5 py-0.5 rounded bg-[#1a1a1a] text-[#666] shrink-0">
+                    <span className="text-[10px] font-bold uppercase tracking-wider px-1.5 py-0.5 rounded bg-black/[0.04] text-[#0b0b0c]/55 shrink-0">
                       {run.script}
                     </span>
-                    <span className="text-xs text-[#555] shrink-0">{formatElapsed(run.started_at)}</span>
+                    <span className="text-xs text-[#0b0b0c]/60 shrink-0">{formatElapsed(run.started_at)}</span>
                   </div>
                   <button
                     onClick={() => stopRun(run.board)}
                     disabled={stoppingBoards.has(run.board)}
-                    className="cursor-pointer flex items-center gap-1 text-xs font-semibold text-[#888] hover:text-red-400 disabled:opacity-40 disabled:cursor-not-allowed transition-colors shrink-0"
+                    className="cursor-pointer flex items-center gap-1 text-xs font-semibold text-[#0b0b0c]/40 hover:text-red-500 disabled:opacity-40 disabled:cursor-not-allowed transition-colors shrink-0"
                   >
                     <StopCircle size={13} /> {stoppingBoards.has(run.board) ? 'Stopping...' : 'Stop'}
                   </button>
@@ -662,23 +662,23 @@ export default function AdminDashboard() {
 
         {/* Import Jobs + Recently Scraped */}
         <div className="grid grid-cols-1 lg:grid-cols-3 gap-6 mb-12">
-          <div className="bg-[#111] border border-[#222] rounded-3xl p-6 lg:col-span-2">
+          <div className="bg-white border border-black/[0.08] rounded-3xl p-6 lg:col-span-2">
           <div className="flex items-center justify-between mb-4">
             <h2 className="text-lg font-bold flex items-center gap-2">
-              <Download size={18} className="text-blue-500" /> Import Jobs
+              <Download size={18} className="text-green-600" /> Import Jobs
             </h2>
-            <span className="text-xs text-[#555]">
+            <span className="text-xs text-[#0b0b0c]/60">
               {scriptChoice === 'epam' ? 'One company at a time — single global feed' : `Up to ${MAX_SCRIPT_COMPANIES} companies per run`}
             </span>
           </div>
 
           <div className="flex flex-col gap-4">
             <div>
-              <label className="block text-[10px] font-black uppercase tracking-[0.2em] text-[#555] mb-1.5">Script</label>
+              <label className="block text-[10px] font-black uppercase tracking-[0.2em] text-[#0b0b0c]/60 mb-1.5">Script</label>
               <select
                 value={scriptChoice}
                 onChange={(e) => { setScriptChoice(e.target.value); setScriptCompanies([]); }}
-                className="w-full bg-[#0a0a0a] border border-[#222] rounded-xl py-2.5 px-3 text-sm focus:outline-none focus:border-blue-500 transition-all cursor-pointer"
+                className="w-full bg-black/[0.03] border border-black/[0.08] rounded-xl py-2.5 px-3 text-sm focus:outline-none focus:border-green-600 transition-all cursor-pointer"
               >
                 {SCRIPT_OPTIONS.map(o => (
                   <option key={o.value} value={o.value}>{o.label}</option>
@@ -687,19 +687,19 @@ export default function AdminDashboard() {
             </div>
 
             <div>
-              <label className="block text-[10px] font-black uppercase tracking-[0.2em] text-[#555] mb-1.5">
+              <label className="block text-[10px] font-black uppercase tracking-[0.2em] text-[#0b0b0c]/60 mb-1.5">
                 {(() => {
                   const max = scriptChoice === 'epam' ? 1 : MAX_SCRIPT_COMPANIES;
                   return `Companies (${scriptCompanies.length}/${max})`;
                 })()}
               </label>
-              <div className="flex flex-wrap items-center gap-2 bg-[#0a0a0a] border border-[#222] rounded-xl px-3 py-2 min-h-[42px]">
+              <div className="flex flex-wrap items-center gap-2 bg-black/[0.03] border border-black/[0.08] rounded-xl px-3 py-2 min-h-[42px]">
                 {scriptCompanies.map(name => (
-                  <span key={name} className="flex items-center gap-1.5 bg-[#1a1a1a] text-xs font-semibold px-2.5 py-1 rounded-lg">
+                  <span key={name} className="flex items-center gap-1.5 bg-black/[0.04] text-xs font-semibold px-2.5 py-1 rounded-lg">
                     {name}
                     <button
                       onClick={() => removeScriptCompany(name)}
-                      className="cursor-pointer text-[#666] hover:text-red-400 transition-colors"
+                      className="cursor-pointer text-[#0b0b0c]/55 hover:text-red-500 transition-colors"
                     >
                       <X size={12} />
                     </button>
@@ -743,14 +743,14 @@ export default function AdminDashboard() {
             <button
               onClick={runScript}
               disabled={runningScript || scriptCompanies.length === 0}
-              className="cursor-pointer bg-blue-600 hover:bg-blue-500 disabled:opacity-40 disabled:cursor-not-allowed px-5 py-2.5 rounded-xl text-sm font-semibold flex items-center justify-center gap-2 transition-all w-full"
+              className="cursor-pointer bg-green-600 hover:bg-green-700 disabled:opacity-40 disabled:cursor-not-allowed px-5 py-2.5 rounded-xl text-sm font-semibold flex items-center justify-center gap-2 transition-all w-full"
             >
               {runningScript ? <Loader2 size={16} className="animate-spin" /> : <Play size={16} />}
               Run
             </button>
           </div>
 
-          {scriptError && <p className="mt-3 text-sm text-red-400">{scriptError}</p>}
+          {scriptError && <p className="mt-3 text-sm text-red-500">{scriptError}</p>}
 
           {runningScript && Object.keys(boardProgress).length > 0 && (
             <div className="mt-4 flex flex-col gap-2.5">
@@ -760,18 +760,18 @@ export default function AdminDashboard() {
                   : null;
                 const eta = formatEta(progress);
                 return (
-                  <div key={board} className="rounded-xl border border-[#222] bg-[#0a0a0a] px-3.5 py-2.5">
+                  <div key={board} className="rounded-xl border border-black/[0.08] bg-black/[0.03] px-3.5 py-2.5">
                     <div className="flex items-center justify-between gap-3 text-xs mb-1.5">
-                      <span className="font-bold text-white">{board}</span>
-                      <span className="text-[#666] truncate">
+                      <span className="font-bold text-[#0b0b0c]">{board}</span>
+                      <span className="text-[#0b0b0c]/55 truncate">
                         {progress.stage}
                         {pct != null && ` — ${progress.current}/${progress.total}`}
                         {eta && ` · ${eta}`}
                       </span>
                     </div>
-                    <div className="h-1.5 rounded-full bg-[#1a1a1a] overflow-hidden">
+                    <div className="h-1.5 rounded-full bg-black/[0.04] overflow-hidden">
                       <div
-                        className={`h-full rounded-full transition-all duration-500 ${pct == null ? 'w-1/3 bg-blue-500/50 animate-pulse' : 'bg-blue-500'}`}
+                        className={`h-full rounded-full transition-all duration-500 ${pct == null ? 'w-1/3 bg-green-600/50 animate-pulse' : 'bg-green-600'}`}
                         style={pct != null ? { width: `${pct}%` } : undefined}
                       />
                     </div>
@@ -784,10 +784,10 @@ export default function AdminDashboard() {
           {runningScript && (
             <div
               ref={logsContainerRef}
-              className="mt-4 h-56 overflow-y-auto rounded-xl border border-[#222] bg-[#0a0a0a] p-4 font-mono text-xs text-[#888] space-y-1"
+              className="mt-4 h-56 overflow-y-auto rounded-xl border border-black/[0.08] bg-black/[0.03] p-4 font-mono text-xs text-[#0b0b0c]/40 space-y-1"
             >
               {scriptLogs.length === 0 ? (
-                <span className="text-[#444]">Starting...</span>
+                <span className="text-[#0b0b0c]/70">Starting...</span>
               ) : (
                 scriptLogs.map((line, i) => <div key={i}>{line}</div>)
               )}
@@ -799,16 +799,16 @@ export default function AdminDashboard() {
               {scriptResults.map(r => (
                 <div
                   key={r.board}
-                  className={`rounded-xl border p-3 text-xs ${r.ok ? 'border-[#222] bg-[#0a0a0a]' : 'border-red-500/30 bg-red-500/5'}`}
+                  className={`rounded-xl border p-3 text-xs ${r.ok ? 'border-black/[0.08] bg-black/[0.03]' : 'border-red-500/30 bg-red-500/5'}`}
                 >
                   <div className="font-bold text-sm mb-1">{r.board}</div>
                   {r.ok ? (
-                    <div className="text-[#888] space-y-0.5">
+                    <div className="text-[#0b0b0c]/40 space-y-0.5">
                       <div>{r.fetched} fetched · {r.created} created · {r.updated} updated</div>
                       <div>{r.geocoded} geocoded · {r.borrowed} borrowed · {r.removed} removed</div>
                     </div>
                   ) : (
-                    <div className="text-red-400">{r.error}</div>
+                    <div className="text-red-500">{r.error}</div>
                   )}
                 </div>
               ))}
@@ -816,7 +816,7 @@ export default function AdminDashboard() {
           )}
         </div>
 
-        <div className="bg-[#111] border border-[#222] rounded-3xl p-6 flex flex-col">
+        <div className="bg-white border border-black/[0.08] rounded-3xl p-6 flex flex-col">
           <h2 className="text-lg font-bold flex items-center gap-2 mb-4">
             <Clock size={18} className="text-green-500" /> Recently Scraped
           </h2>
@@ -827,23 +827,23 @@ export default function AdminDashboard() {
               .slice(0, 8);
 
             if (recentlyScraped.length === 0) {
-              return <p className="text-xs text-[#444] text-center py-8">No companies scraped yet.</p>;
+              return <p className="text-xs text-[#0b0b0c]/70 text-center py-8">No companies scraped yet.</p>;
             }
 
             return (
               <div className="flex flex-col gap-2 overflow-y-auto flex-1 min-h-0 pr-1 [mask-image:linear-gradient(to_bottom,black_92%,transparent)]">
                 {recentlyScraped.map(c => (
-                  <div key={c.id} className="flex items-center gap-3 p-2.5 rounded-xl bg-[#0a0a0a] border border-[#1a1a1a]">
+                  <div key={c.id} className="flex items-center gap-3 p-2.5 rounded-xl bg-black/[0.03] border border-black/[0.08]">
                     {c.logo_url ? (
                       <img src={c.logo_url} alt="" className="w-7 h-7 rounded-lg object-contain bg-white shrink-0" />
                     ) : (
-                      <div className="w-7 h-7 rounded-lg bg-[#1a1a1a] flex items-center justify-center text-[10px] font-bold text-[#555] shrink-0">
+                      <div className="w-7 h-7 rounded-lg bg-black/[0.04] flex items-center justify-center text-[10px] font-bold text-[#0b0b0c]/60 shrink-0">
                         {c.name.slice(0, 1).toUpperCase()}
                       </div>
                     )}
                     <div className="min-w-0 flex-1">
                       <div className="text-sm font-semibold truncate">{c.name}</div>
-                      <div className="text-[10px] text-[#555]">{formatScrapedAt(c.last_scraped_at)}</div>
+                      <div className="text-[10px] text-[#0b0b0c]/60">{formatScrapedAt(c.last_scraped_at)}</div>
                     </div>
                   </div>
                 ))}
@@ -856,7 +856,7 @@ export default function AdminDashboard() {
         {/* Stats Grid */}
         <div className="grid grid-cols-1 md:grid-cols-3 gap-6 mb-12">
           <StatCard
-            icon={<Briefcase className="text-blue-500" />}
+            icon={<Briefcase className="text-green-600" />}
             label="Total Jobs"
             value={stats?.total_jobs.toLocaleString() || '0'}
           />
@@ -873,17 +873,17 @@ export default function AdminDashboard() {
         </div>
 
         {recentJobs.length > 0 && (
-          <div className="relative overflow-hidden rounded-2xl border border-[#222] bg-[#111] mb-12 py-4 [mask-image:linear-gradient(to_right,transparent,black_5%,black_95%,transparent)]">
+          <div className="relative overflow-hidden rounded-2xl border border-black/[0.08] bg-white mb-12 py-4 [mask-image:linear-gradient(to_right,transparent,black_5%,black_95%,transparent)]">
             <div className="flex w-max gap-10 animate-marquee">
               {[...recentJobs, ...recentJobs].map((job, i) => (
                 <div key={`${job.id}-${i}`} className="flex items-center gap-2.5 text-sm shrink-0 whitespace-nowrap">
-                  <Briefcase size={14} className="text-blue-500 shrink-0" />
-                  <span className="font-bold text-white">{job.title}</span>
-                  <span className="text-[#555]">@ {job.company}</span>
+                  <Briefcase size={14} className="text-green-600 shrink-0" />
+                  <span className="font-bold text-[#0b0b0c]">{job.title}</span>
+                  <span className="text-[#0b0b0c]/60">@ {job.company}</span>
                   {(job.location_name || job.is_remote) && (
-                    <span className="text-[#444]">• {job.is_remote ? 'Remote' : job.location_name}</span>
+                    <span className="text-[#0b0b0c]/70">• {job.is_remote ? 'Remote' : job.location_name}</span>
                   )}
-                  <span className="w-1 h-1 rounded-full bg-[#333] ml-6" />
+                  <span className="w-1 h-1 rounded-full bg-black/[0.08] ml-6" />
                 </div>
               ))}
             </div>
@@ -892,9 +892,9 @@ export default function AdminDashboard() {
 
         <div className="flex items-center justify-between mb-4">
           <h2 className="text-xl font-bold">
-            Companies {companiesCount > 0 && <span className="text-[#555] font-medium">({companiesCount})</span>}
+            Companies {companiesCount > 0 && <span className="text-[#0b0b0c]/60 font-medium">({companiesCount})</span>}
           </h2>
-          <Link href="/companies" className="text-sm font-semibold text-purple-400 hover:text-purple-300 transition-colors">
+          <Link href="/companies" className="text-sm font-semibold text-purple-600 hover:text-purple-600 transition-colors">
             Manage all companies →
           </Link>
         </div>
@@ -905,29 +905,29 @@ export default function AdminDashboard() {
         </div>
 
         {companies.length === 0 && (
-          <div className="p-20 text-center text-[#555]">
+          <div className="p-20 text-center text-[#0b0b0c]/60">
             <Building2 className="w-12 h-12 mx-auto mb-4 opacity-20" />
-            <p>No companies configured. <Link href="/companies" className="text-purple-400 hover:underline">Add one</Link>.</p>
+            <p>No companies configured. <Link href="/companies" className="text-purple-600 hover:underline">Add one</Link>.</p>
           </div>
         )}
 
         {companiesCount > 0 && (
           <div className="flex items-center justify-between mt-6">
-            <p className="text-xs text-[#555] font-medium">
+            <p className="text-xs text-[#0b0b0c]/60 font-medium">
               Page {companiesPage} of {companiesTotalPages}
             </p>
             <div className="flex items-center gap-2">
               <button
                 onClick={() => setCompaniesPage(p => Math.max(1, p - 1))}
                 disabled={companiesPage <= 1}
-                className="cursor-pointer p-2.5 rounded-xl bg-[#111] border border-[#222] hover:bg-[#161616] disabled:opacity-30 disabled:cursor-not-allowed transition-all"
+                className="cursor-pointer p-2.5 rounded-xl bg-white border border-black/[0.08] hover:bg-black/[0.03] disabled:opacity-30 disabled:cursor-not-allowed transition-all"
               >
                 <ChevronLeft size={18} />
               </button>
               <button
                 onClick={() => setCompaniesPage(p => Math.min(companiesTotalPages, p + 1))}
                 disabled={companiesPage >= companiesTotalPages}
-                className="cursor-pointer p-2.5 rounded-xl bg-[#111] border border-[#222] hover:bg-[#161616] disabled:opacity-30 disabled:cursor-not-allowed transition-all"
+                className="cursor-pointer p-2.5 rounded-xl bg-white border border-black/[0.08] hover:bg-black/[0.03] disabled:opacity-30 disabled:cursor-not-allowed transition-all"
               >
                 <ChevronRight size={18} />
               </button>
@@ -954,11 +954,11 @@ export default function AdminDashboard() {
 
 function StatCard({ icon, label, value }: { icon: React.ReactNode, label: string, value: string | number }) {
   return (
-    <div className="bg-[#111] border border-[#222] p-6 rounded-3xl hover:border-[#333] transition-all">
-      <div className="w-10 h-10 rounded-2xl bg-[#1a1a1a] flex items-center justify-center mb-4">
+    <div className="bg-white border border-black/[0.08] p-6 rounded-3xl hover:border-black/[0.12] transition-all">
+      <div className="w-10 h-10 rounded-2xl bg-black/[0.04] flex items-center justify-center mb-4">
         {icon}
       </div>
-      <div className="text-xs text-[#555] font-medium uppercase tracking-wider mb-1">{label}</div>
+      <div className="text-xs text-[#0b0b0c]/60 font-medium uppercase tracking-wider mb-1">{label}</div>
       <div className="text-2xl font-bold">{value}</div>
     </div>
   );
@@ -966,13 +966,13 @@ function StatCard({ icon, label, value }: { icon: React.ReactNode, label: string
 
 function CompanyCard({ company }: { company: Company }) {
   return (
-    <div className="bg-[#111] border border-[#222] rounded-3xl p-6 hover:border-purple-500/40 transition-all flex flex-col gap-4">
+    <div className="bg-white border border-black/[0.08] rounded-3xl p-6 hover:border-purple-500/40 transition-all flex flex-col gap-4">
       <div className="flex items-start justify-between gap-3">
         <div className="flex items-center gap-3 min-w-0">
           {company.logo_url ? (
             <img src={company.logo_url} alt="" className="w-9 h-9 rounded-xl object-contain bg-white shrink-0" />
           ) : (
-            <div className="w-9 h-9 rounded-xl bg-[#1a1a1a] flex items-center justify-center text-xs font-bold text-[#555] shrink-0">
+            <div className="w-9 h-9 rounded-xl bg-black/[0.04] flex items-center justify-center text-xs font-bold text-[#0b0b0c]/60 shrink-0">
               {company.name.slice(0, 1).toUpperCase()}
             </div>
           )}
@@ -980,53 +980,53 @@ function CompanyCard({ company }: { company: Company }) {
             <div className="flex items-center gap-2">
               <h3 className="text-lg font-bold truncate">{company.name}</h3>
               {!company.is_active && (
-                <span className="shrink-0 text-[9px] font-bold uppercase tracking-wider px-1.5 py-0.5 rounded bg-[#222] text-[#666]">Inactive</span>
+                <span className="shrink-0 text-[9px] font-bold uppercase tracking-wider px-1.5 py-0.5 rounded bg-black/[0.05] text-[#0b0b0c]/55">Inactive</span>
               )}
             </div>
-            {company.domain && <p className="text-xs text-[#555] font-medium truncate">{company.domain}</p>}
-            <div className="flex items-center gap-1 text-[11px] text-[#555] mt-0.5">
+            {company.domain && <p className="text-xs text-[#0b0b0c]/60 font-medium truncate">{company.domain}</p>}
+            <div className="flex items-center gap-1 text-[11px] text-[#0b0b0c]/60 mt-0.5">
               <Clock size={11} className="shrink-0" />
               <span className="truncate">{formatRelativeScrapedAt(company.last_scraped_at)}</span>
             </div>
           </div>
         </div>
-        <div className="text-center px-3 py-1.5 rounded-xl bg-[#1a1a1a] shrink-0">
+        <div className="text-center px-3 py-1.5 rounded-xl bg-black/[0.04] shrink-0">
           <div className="text-lg font-black leading-none">{company.job_count}</div>
-          <div className="text-[9px] uppercase tracking-widest text-[#555] font-bold">Jobs</div>
+          <div className="text-[9px] uppercase tracking-widest text-[#0b0b0c]/60 font-bold">Jobs</div>
         </div>
       </div>
 
       <div className="flex flex-col gap-1.5 text-xs">
         {company.career_url && (
-          <a href={company.career_url} target="_blank" rel="noreferrer" className="flex items-center gap-2 text-[#888] hover:text-blue-400 transition-colors truncate">
+          <a href={company.career_url} target="_blank" rel="noreferrer" className="flex items-center gap-2 text-[#0b0b0c]/40 hover:text-green-600 transition-colors truncate">
             <Globe size={13} className="shrink-0" /> <span className="truncate">Career page</span> <ExternalLink size={11} className="shrink-0" />
           </a>
         )}
         {company.contact_url && (
-          <a href={company.contact_url} target="_blank" rel="noreferrer" className="flex items-center gap-2 text-[#888] hover:text-blue-400 transition-colors truncate">
+          <a href={company.contact_url} target="_blank" rel="noreferrer" className="flex items-center gap-2 text-[#0b0b0c]/40 hover:text-green-600 transition-colors truncate">
             <ExternalLink size={13} className="shrink-0" /> <span className="truncate">Contact page</span>
           </a>
         )}
         {company.contact_email && (
-          <a href={`mailto:${company.contact_email}`} className="flex items-center gap-2 text-[#888] hover:text-blue-400 transition-colors truncate">
+          <a href={`mailto:${company.contact_email}`} className="flex items-center gap-2 text-[#0b0b0c]/40 hover:text-green-600 transition-colors truncate">
             <Mail size={13} className="shrink-0" /> <span className="truncate">{company.contact_email}</span>
           </a>
         )}
         {company.address && (
-          <div className="flex items-center gap-2 text-[#888] truncate">
+          <div className="flex items-center gap-2 text-[#0b0b0c]/40 truncate">
             <MapPin size={13} className="shrink-0" /> <span className="truncate">{company.address}</span>
           </div>
         )}
         {company.linkedin_url && (
-          <a href={company.linkedin_url} target="_blank" rel="noreferrer" className="flex items-center gap-2 text-[#888] hover:text-blue-400 transition-colors truncate">
+          <a href={company.linkedin_url} target="_blank" rel="noreferrer" className="flex items-center gap-2 text-[#0b0b0c]/40 hover:text-green-600 transition-colors truncate">
             <ExternalLink size={13} className="shrink-0" /> <span className="truncate">LinkedIn</span>
           </a>
         )}
       </div>
 
-      <div className="pt-4 border-t border-[#222] flex-1 min-h-0">
+      <div className="pt-4 border-t border-black/[0.08] flex-1 min-h-0">
         {company.jobs.length === 0 ? (
-          <p className="text-xs text-[#444] text-center py-4">No jobs yet.</p>
+          <p className="text-xs text-[#0b0b0c]/70 text-center py-4">No jobs yet.</p>
         ) : (
           <div className="flex flex-col gap-2 max-h-64 overflow-y-auto pr-1">
             {company.jobs.map(job => (
@@ -1035,10 +1035,10 @@ function CompanyCard({ company }: { company: Company }) {
                 href={job.job_url}
                 target="_blank"
                 rel="noreferrer"
-                className="block p-3 rounded-xl bg-[#0a0a0a] border border-[#1a1a1a] hover:border-blue-500/40 transition-all"
+                className="block p-3 rounded-xl bg-black/[0.03] border border-black/[0.08] hover:border-green-600/40 transition-all"
               >
                 <div className="text-sm font-semibold truncate">{job.title}</div>
-                <div className="flex flex-wrap items-center gap-x-2 gap-y-1 mt-1 text-[10px] text-[#555]">
+                <div className="flex flex-wrap items-center gap-x-2 gap-y-1 mt-1 text-[10px] text-[#0b0b0c]/60">
                   {(job.location_name || job.is_remote) && (
                     <span className="flex items-center gap-1"><MapPin size={10} /> {job.is_remote ? 'Remote' : job.location_name}</span>
                   )}
