@@ -4,6 +4,7 @@ import { useEffect } from 'react';
 import { useRouter } from 'next/navigation';
 import { useAuth } from '@/context/AuthContext';
 import { isSubscriptionActive } from '@/lib/subscription';
+import { loginPath } from '@/lib/redirect';
 
 // Redirects unauthenticated users to /login. Authenticated-but-unsubscribed
 // users are sent to /pricing UNLESS `allowUnsubscribed` is set, in which case
@@ -20,7 +21,7 @@ export function useSubscriptionGate(options?: { allowUnsubscribed?: boolean }) {
   useEffect(() => {
     if (isLoading) return;
     if (!token) {
-      router.push('/login');
+      router.push(loginPath());
       return;
     }
     if (user && !isSubscribed && !allowUnsubscribed) {

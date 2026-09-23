@@ -15,6 +15,7 @@ import Sidebar from '@/components/Sidebar';
 import PageHeader from '@/components/PageHeader';
 import PricingModal from '@/components/PricingModal';
 import { PRIMARY_BTN_CLS, PRIMARY_BTN_BG, SECONDARY_BTN_CLS } from '@/components/ui/landing-kit';
+import { loginPath } from '@/lib/redirect';
 
 const TEMPLATE_LABELS: Record<CVTemplate, string> = {
   modern: 'Modern',
@@ -55,7 +56,7 @@ export default function CustomCVEditorPage() {
   const [isLockedOut, setIsLockedOut] = useState(false);
 
   useEffect(() => {
-    if (!isAuthLoading && !token) router.push('/login');
+    if (!isAuthLoading && !token) router.push(loginPath());
   }, [token, isAuthLoading, router]);
 
   useEffect(() => {

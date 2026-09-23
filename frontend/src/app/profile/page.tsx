@@ -9,6 +9,7 @@ import PageHeader from '@/components/PageHeader';
 import EmailVerificationGate from '@/components/EmailVerificationGate';
 import { useAuth } from '@/context/AuthContext';
 import { PRIMARY_BTN_CLS, PRIMARY_BTN_BG } from '@/components/ui/landing-kit';
+import { loginPath } from '@/lib/redirect';
 
 const OUTFIT = { fontFamily: 'var(--font-outfit)' };
 
@@ -51,7 +52,7 @@ export default function ProfilePage() {
 
   useEffect(() => {
     if (!isAuthLoading && !token) {
-      router.push('/login');
+      router.push(loginPath());
     }
   }, [token, isAuthLoading, router]);
 

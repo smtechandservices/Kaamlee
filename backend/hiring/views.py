@@ -1,3 +1,4 @@
+import random
 import re
 
 from django.db.models import Q, F, Count, Max, Exists, OuterRef
@@ -9,7 +10,8 @@ from rest_framework.pagination import PageNumberPagination
 from rest_framework.response import Response
 
 from employers.permissions import IsEmployerMember, IsApprovedEmployer
-from api.models import Bookmark
+from api.models import Bookmark, Job
+from api.serializers import JobSerializer
 from api.permissions import IsSubscribed, is_user_subscribed
 from api.groq_usage import GroqQuotaExceeded, usage_summary
 from scripts.cv_export import render_cv_pdf, render_cv_docx
@@ -847,7 +849,31 @@ class SuggestedJobPostingsView(views.APIView):
             data['match_reason'] = reasons[0] if reasons else 'New on Kaamlee'
             data['match_score'] = score
             results.append(data)
-        return Response({'results': results, 'personalized': any(row[0] > 0 for row in scored[:self.LIMIT])})
+        return Response({
+            'results': results,
+            'personalized': any(row[0] > 0 for row in scored[:self.LIMIT]),
+            # Top up the row with random scraped jobs when there aren't
+            # enough matching postings — so it's never an empty box.
+            'fallback_jobs': self._random_jobs(request, self.LIMIT - len(results)),
+        })
+
+    def _random_jobs(self, request, count):
+        """`count` random scraped jobs the user may see: from their daily
+        free-preview pool if they're not subscribed, otherwise from every
+        job. Skips ones they've already bookmarked/tracked."""
+        if count <= 0:
+            return []
+        user = request.user
+        queryset = Job.objects.exclude(bookmarked_by__user=user).annotate(
+            is_bookmarked=Exists(Bookmark.objects.filter(user=user, job_id=OuterRef('pk'))),
+        )
+        if not is_user_subscribed(user):
+            _, scraped_ids = preview_ids(request)
+            picked = random.sample(scraped_ids, min(count, len(scraped_ids)))
+            jobs = list(queryset.filter(id__in=picked))
+        else:
+            jobs = list(queryset.order_by('?')[:count])
+        return [JobSerializer(job, context={'request': request}).data for job in jobs]
 
 
 class CombinedJobFeedView(views.APIView):

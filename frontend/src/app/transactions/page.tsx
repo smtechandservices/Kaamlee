@@ -10,6 +10,7 @@ import Sidebar from '@/components/Sidebar';
 import PageHeader from '@/components/PageHeader';
 import { Loader2, CreditCard, CheckCircle2, XCircle, Clock, Shield, Calendar, Zap, RotateCcw, MessageSquare } from 'lucide-react';
 import { PRIMARY_BTN_CLS, PRIMARY_BTN_BG, SECONDARY_BTN_CLS, CARD_CLS, ArrowChevron } from '@/components/ui/landing-kit';
+import { loginPath } from '@/lib/redirect';
 
 interface Transaction {
   id: number;
@@ -32,7 +33,7 @@ export default function TransactionsPage() {
 
   useEffect(() => {
     if (!isLoading && !token) {
-      router.push('/login');
+      router.push(loginPath());
     }
   }, [token, isLoading, router]);
 

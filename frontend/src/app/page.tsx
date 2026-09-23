@@ -608,7 +608,7 @@ export default function LandingPage() {
   const handleMapClick = (e: React.MouseEvent) => {
     e.preventDefault();
     if (isLoading) return;
-    if (!user) router.push('/login');
+    if (!user) router.push(`/login?next=${encodeURIComponent('/map')}`);
     else router.push('/map');
   };
 

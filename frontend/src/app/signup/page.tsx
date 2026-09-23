@@ -8,6 +8,7 @@ import { useAuth } from '@/context/AuthContext';
 import GoogleSignInButton from '@/components/GoogleSignInButton';
 import EmailVerificationGate from '@/components/EmailVerificationGate';
 import { PRIMARY_BTN_CLS, PRIMARY_BTN_BG, SECONDARY_BTN_CLS } from '@/components/ui/landing-kit';
+import { withNext } from '@/lib/redirect';
 
 export default function SignupPage() {
   const [step, setStep] = useState(1);
@@ -462,7 +463,7 @@ export default function SignupPage() {
           </AnimatePresence>
 
           <div className="mt-8 text-center text-sm text-[rgba(61,61,61,0.72)]">
-            Already have an account? <Link href="/login" className="text-[#16a34a] font-medium hover:underline">Log in</Link>
+            Already have an account? <Link href={withNext('/login')} className="text-[#16a34a] font-medium hover:underline">Log in</Link>
           </div>
         </div>
       </motion.div>

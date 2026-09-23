@@ -8,6 +8,7 @@ import { useAuth } from '@/context/AuthContext';
 import GoogleSignInButton from '@/components/GoogleSignInButton';
 import EmailOtpForm from '@/components/EmailOtpForm';
 import { PRIMARY_BTN_CLS, PRIMARY_BTN_BG } from '@/components/ui/landing-kit';
+import { withNext } from '@/lib/redirect';
 
 export default function LoginPage() {
   const [username, setUsername] = useState('');
@@ -170,7 +171,7 @@ export default function LoginPage() {
           </form>
 
           <div className="mt-8 text-center text-sm text-[rgba(61,61,61,0.72)]">
-            Don't have an account? <Link href="/signup" className="text-[#16a34a] font-medium hover:underline">Sign up</Link>
+            Don't have an account? <Link href={withNext('/signup')} className="text-[#16a34a] font-medium hover:underline">Sign up</Link>
           </div>
         </div>
       </motion.div>

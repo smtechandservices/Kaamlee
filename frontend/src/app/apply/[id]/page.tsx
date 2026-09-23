@@ -11,6 +11,7 @@ import PageHeader from '@/components/PageHeader';
 import { useAuth } from '@/context/AuthContext';
 import type { JobPosting } from '@/lib/hiring-types';
 import type { CustomCV } from '@/components/customcv/types';
+import { loginPath } from '@/lib/redirect';
 
 const API_BASE = process.env.NEXT_PUBLIC_API_URL;
 
@@ -43,7 +44,7 @@ export default function ApplyPage() {
   // skipped — `loading` starts true and nothing ever flips it back, so the
   // page just spun forever instead of sending the visitor to log in.
   useEffect(() => {
-    if (!isAuthLoading && !token) router.push('/login');
+    if (!isAuthLoading && !token) router.push(loginPath());
   }, [token, isAuthLoading, router]);
 
   useEffect(() => {

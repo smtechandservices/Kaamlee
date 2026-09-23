@@ -9,6 +9,7 @@ import { useRouter } from 'next/navigation';
 import { PLANS, DEFAULT_PLAN, PlanId } from '@/lib/constants';
 import { loadRazorpayScript } from '@/lib/razorpay';
 import { PRIMARY_BTN_CLS, PRIMARY_BTN_BG } from '@/components/ui/landing-kit';
+import { loginPath } from '@/lib/redirect';
 
 interface PricingModalProps {
   isOpen: boolean;
@@ -94,7 +95,7 @@ export default function PricingModal({ isOpen, onClose, showCloseButton = true }
 
   const handleCTA = () => {
     if (!user) {
-      router.push('/login');
+      router.push(loginPath());
       return;
     }
     handlePayment();

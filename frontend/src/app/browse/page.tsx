@@ -108,6 +108,8 @@ export default function BrowsePage() {
   const [bookmarked, setBookmarked] = useState<TriState>('all');
 
   const [suggested, setSuggested] = useState<SuggestedPosting[]>([]);
+  // Random scraped jobs the backend adds when too few postings match.
+  const [fallbackJobs, setFallbackJobs] = useState<ScrapedJob[]>([]);
   const [personalized, setPersonalized] = useState(false);
   const [loadingSuggested, setLoadingSuggested] = useState(true);
   const suggestRowRef = useRef<HTMLDivElement>(null);
@@ -140,7 +142,11 @@ export default function BrowsePage() {
     authed(`${API}/hiring/jobs/suggested/`)
       .then((r) => (r.ok ? r.json() : null))
       .then((d) => {
-        if (d) { setSuggested(d.results || []); setPersonalized(!!d.personalized); }
+        if (d) {
+          setSuggested(d.results || []);
+          setPersonalized(!!d.personalized);
+          setFallbackJobs((d.fallback_jobs || []).map((j: ScrapedJob & { location_name: string }) => ({ ...j, location: j.location_name })));
+        }
       })
       .catch(() => {})
       .finally(() => setLoadingSuggested(false));
@@ -251,6 +257,7 @@ export default function BrowsePage() {
           ? { kind: 'job', data: { ...item.data, is_bookmarked: data.is_bookmarked } }
           : item
       )));
+      setFallbackJobs((prev) => prev.map((j) => (j.id === jobId ? { ...j, is_bookmarked: data.is_bookmarked } : j)));
     }
   }, [authed]);
 
@@ -307,12 +314,14 @@ export default function BrowsePage() {
                     Suggested for you
                   </h2>
                   <p className="text-[13px] text-black/50 mt-0.5">
-                    {personalized
-                      ? 'Kaamlee jobs you can apply to directly, matched to your resume and interests.'
-                      : 'Fresh Kaamlee jobs you can apply to directly. Upload a resume for sharper matches.'}
+                    {suggested.length === 0 && fallbackJobs.length > 0
+                      ? 'Nothing matched you yet — here are a few jobs to explore. Bookmark or apply to get sharper picks.'
+                      : personalized
+                        ? 'Kaamlee jobs you can apply to directly, matched to your resume and interests.'
+                        : 'Fresh Kaamlee jobs you can apply to directly. Upload a resume for sharper matches.'}
                   </p>
                 </div>
-                {suggested.length > 1 && (
+                {suggested.length + fallbackJobs.length > 1 && (
                   <div className="hidden sm:flex items-center gap-2 shrink-0">
                     {([-1, 1] as const).map((dir) => (
                       <button
@@ -330,7 +339,7 @@ export default function BrowsePage() {
 
               {loadingSuggested ? (
                 <div className="py-10 flex justify-center"><Loader2 className="w-6 h-6 text-[#16a34a] animate-spin" /></div>
-              ) : suggested.length === 0 ? (
+              ) : suggested.length + fallbackJobs.length === 0 ? (
                 <div className={`${CARD_CLS} p-6 text-center text-[14px] text-black/50`}>
                   bookmark some postings to see them here, or check back later for new suggestions.
                 </div>
@@ -346,6 +355,14 @@ export default function BrowsePage() {
                           <Sparkles size={10} /> {p.match_reason}
                         </div>
                         <PostingCard posting={p} onToggleBookmark={togglePostingSave} className="flex-1" />
+                      </div>
+                    ))}
+                    {fallbackJobs.map((j) => (
+                      <div key={`job-${j.id}`} className="w-[340px] sm:w-[400px] shrink-0 snap-start flex flex-col [&>*]:flex-1">
+                        <div className="mb-1.5 ml-1 self-start !flex-none inline-flex items-center gap-1 rounded-full bg-black/[0.05] px-2.5 py-0.5 text-[11px] font-medium text-black/55" style={{ fontFamily: 'var(--font-outfit)' }}>
+                          <Sparkles size={10} /> Picked for you
+                        </div>
+                        <JobCard job={j} onToggleBookmark={toggleJobBookmark} />
                       </div>
                     ))}
                   </div>

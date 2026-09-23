@@ -6,6 +6,7 @@ import { useRouter } from 'next/navigation';
 import { useAuth } from '@/context/AuthContext';
 import { ArrowLeft, Loader2, TrendingUp, Users, CreditCard, IndianRupee, CheckCircle2, XCircle, Clock } from 'lucide-react';
 import { CARD_CLS } from '@/components/ui/landing-kit';
+import { loginPath } from '@/lib/redirect';
 
 interface Transaction {
   id: number;
@@ -35,7 +36,7 @@ export default function RevenuePage() {
 
   useEffect(() => {
     if (!isLoading && !token) {
-      router.push('/login');
+      router.push(loginPath());
     }
   }, [token, isLoading, router]);
 

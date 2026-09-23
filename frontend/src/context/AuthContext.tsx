@@ -2,6 +2,7 @@
 
 import React, { createContext, useContext, useState, useEffect } from 'react';
 import { useRouter } from 'next/navigation';
+import { currentNext } from '@/lib/redirect';
 
 interface User {
   id: number;
@@ -73,7 +74,8 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
     sessionStorage.setItem('kaamlee_token', newToken);
     setToken(newToken);
     fetchUser(newToken);
-    router.push('/dashboard');
+    // Back to the page that sent them to log in (?next=), else the dashboard.
+    router.push(currentNext() || '/dashboard');
   };
 
   const logout = () => {
