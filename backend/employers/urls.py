@@ -1,12 +1,13 @@
 from django.urls import path
 from .views import (
-    MyEmployerView, KYCDocumentUploadView,
+    MyEmployerView, EmployerChangeOwnPasswordView, KYCDocumentUploadView,
     EmployerTeamListView, EmployerTeamInviteView, EmployerTeamMemberDetailView,
     AdminEmployerKYCListView, AdminEmployerKYCDetailView, AdminKYCDocumentDetailView, AdminEmployerMemberDetailView, AdminEmployerMemberCreateView,
 )
 
 urlpatterns = [
     path('me/', MyEmployerView.as_view(), name='employer-me'),
+    path('me/change-password/', EmployerChangeOwnPasswordView.as_view(), name='employer-change-password'),
     path('kyc/', KYCDocumentUploadView.as_view(), name='employer-kyc-upload'),
     path('team/', EmployerTeamListView.as_view(), name='employer-team-list'),
     path('team/invite/', EmployerTeamInviteView.as_view(), name='employer-team-invite'),

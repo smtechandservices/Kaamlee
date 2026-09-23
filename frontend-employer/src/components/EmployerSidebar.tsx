@@ -3,13 +3,13 @@
 import Link from 'next/link';
 import Image from 'next/image';
 import { usePathname, useRouter } from 'next/navigation';
-import { LayoutDashboard, ShieldCheck, Users, Briefcase, LogOut } from 'lucide-react';
+import { LayoutDashboard, ShieldCheck, Users, Briefcase, LogOut, UserCircle2 } from 'lucide-react';
 import { logout } from '@/lib/auth';
 
 const NAV_ITEMS = [
   { href: '/', label: 'Dashboard', icon: LayoutDashboard },
   { href: '/jobs', label: 'Job Postings', icon: Briefcase },
-  { href: '/kyc', label: 'Employer & KYC', icon: ShieldCheck },
+  { href: '/kyc', label: 'Verification', icon: ShieldCheck },
   { href: '/team', label: 'Team', icon: Users },
 ];
 
@@ -53,7 +53,12 @@ export default function EmployerSidebar() {
         })}
       </nav>
 
-      <div className="w-full px-3 pt-3 mt-2 shrink-0 border-t border-black/[0.08]">
+      <div className="w-full px-3 pt-3 mt-2 shrink-0 border-t border-black/[0.08] flex flex-col gap-1.5">
+        <Link href="/profile" title="Profile" className={`border border-black/[0.08] ${itemCls(pathname === '/profile')}`}>
+          <UserCircle2 size={17} className="shrink-0" strokeWidth={1.8} />
+          <span className="leading-none truncate">Profile</span>
+        </Link>
+
         <button
           onClick={handleLogout}
           className={`cursor-pointer border border-black/[0.08] ${itemCls(false)} hover:!bg-red-500/10 hover:!text-red-600`}

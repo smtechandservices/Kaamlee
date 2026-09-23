@@ -1,6 +1,7 @@
 from django.urls import path
 from .views import (
-    EmployerJobPostingListCreateView, EmployerJobPostingDetailView, EmployerJobPostingPublishView,
+    EmployerJobPostingListCreateView, EmployerDashboardView, EmployerJobPostingDetailView,
+    EmployerJobPostingOverviewView, EmployerJobPostingDuplicateView, EmployerJobPostingPublishView,
     EmployerJobApplicationsView, EmployerApplicationStageView, EmployerApplicationCVView,
     AdminJobPostingListView, AdminJobPostingDetailView, AdminJobApplicationsView, AdminApplicationCVView,
     PublicJobPostingListView, SuggestedJobPostingsView, CombinedJobFeedView, PublicJobPostingDetailView, PublicCountriesView, PublicJobMapPinsView,
@@ -9,8 +10,11 @@ from .views import (
 
 urlpatterns = [
     # Employer side
+    path('dashboard/', EmployerDashboardView.as_view(), name='hiring-employer-dashboard'),
     path('jobs/', EmployerJobPostingListCreateView.as_view(), name='hiring-employer-jobs'),
+    path('jobs/overview/', EmployerJobPostingOverviewView.as_view(), name='hiring-employer-jobs-overview'),
     path('jobs/<int:pk>/', EmployerJobPostingDetailView.as_view(), name='hiring-employer-job-detail'),
+    path('jobs/<int:pk>/duplicate/', EmployerJobPostingDuplicateView.as_view(), name='hiring-employer-job-duplicate'),
     path('jobs/<int:pk>/publish/', EmployerJobPostingPublishView.as_view(), name='hiring-employer-job-publish'),
     path('jobs/<int:pk>/applications/', EmployerJobApplicationsView.as_view(), name='hiring-employer-job-applications'),
     path('applications/<int:pk>/stage/', EmployerApplicationStageView.as_view(), name='hiring-application-stage'),

@@ -13,7 +13,7 @@ from api.models import Bookmark
 from api.permissions import IsSubscribed, is_user_subscribed
 from api.groq_usage import GroqQuotaExceeded, usage_summary
 from scripts.cv_export import render_cv_pdf, render_cv_docx
-from .models import JobPosting, Application, ApplicationStageChange, SavedJob, JobApplicationKit
+from .models import JobPosting, Application, ApplicationStageChange, SavedJob, JobApplicationKit, APPLICATION_STAGE_CHOICES
 from .feed import build_feed_page, preview_ids, FEED_PAGE_SIZE, MAX_FEED_PAGE_SIZE
 from .serializers import (
     JobPostingSerializer, AdminJobPostingSerializer, AdminJobPostingCreateSerializer, SavedJobSerializer,
@@ -49,13 +49,200 @@ class EmployerJobPostingListCreateView(generics.ListCreateAPIView):
         serializer.save(employer=membership.employer, created_by=membership)
 
 
-class EmployerJobPostingDetailView(generics.RetrieveUpdateAPIView):
-    """GET/PATCH /hiring/jobs/<id>/ — employer-side edit, scoped to own employer account."""
+class EmployerDashboardView(views.APIView):
+    """GET /hiring/dashboard/ — everything the employer portal's dashboard
+    shows, in one request: postings by status, the application pipeline by
+    stage, this week vs last week, a per-posting breakdown, the latest
+    applicants, and the team. Works before KYC approval too (it just has
+    no postings to report yet)."""
+    permission_classes = [IsEmployerMember]
+    RECENT_APPLICATIONS = 8
+    TOP_POSTINGS = 6
+
+    def get(self, request):
+        from employers.models import EmployerMember
+
+        employer = request.user.employer_membership.employer
+        now = timezone.now()
+        week_ago = now - timezone.timedelta(days=7)
+        two_weeks_ago = now - timezone.timedelta(days=14)
+
+        postings = JobPosting.objects.filter(employer=employer)
+        posting_counts = postings.aggregate(
+            total=Count('id'),
+            published=Count('id', filter=Q(status='published')),
+            draft=Count('id', filter=Q(status='draft')),
+            paused=Count('id', filter=Q(status='paused')),
+            closed=Count('id', filter=Q(status='closed')),
+        )
+
+        applications = Application.objects.filter(job_posting__employer=employer)
+        stage_counts = dict(applications.values_list('stage').annotate(n=Count('id')).values_list('stage', 'n'))
+        pipeline = [{'stage': key, 'label': label, 'count': stage_counts.get(key, 0)} for key, label in APPLICATION_STAGE_CHOICES]
+        application_counts = {
+            'total': sum(stage_counts.values()),
+            'this_week': applications.filter(applied_at__gte=week_ago).count(),
+            'last_week': applications.filter(applied_at__gte=two_weeks_ago, applied_at__lt=week_ago).count(),
+            'in_progress': sum(stage_counts.get(s, 0) for s in ('applied', 'screening', 'shortlisted', 'interview', 'offer')),
+            'hired': stage_counts.get('hired', 0),
+            'rejected': stage_counts.get('rejected', 0),
+        }
+
+        top_postings = (
+            postings.annotate(
+                applications_count=Count('applications'),
+                new_this_week=Count('applications', filter=Q(applications__applied_at__gte=week_ago)),
+                in_progress=Count('applications', filter=~Q(applications__stage__in=['hired', 'rejected'])),
+                hired=Count('applications', filter=Q(applications__stage='hired')),
+            )
+            .order_by('-applications_count', '-created_at')[:self.TOP_POSTINGS]
+        )
+
+        recent = (
+            applications.select_related('candidate', 'job_posting')
+            .order_by('-applied_at')[:self.RECENT_APPLICATIONS]
+        )
+
+        members = EmployerMember.objects.filter(employer=employer).select_related('user').order_by('created_at')
+
+        return Response({
+            'kyc_approved': employer.kyc_status == 'approved',
+            'postings': posting_counts,
+            'applications': application_counts,
+            'pipeline': pipeline,
+            'top_postings': [{
+                'id': p.id,
+                'title': p.title,
+                'status': p.status,
+                'category': p.category,
+                'employment_type': p.employment_type,
+                'location': ', '.join(x for x in [p.city, p.state] if x) or ('Remote' if p.is_remote else ''),
+                'is_remote': p.is_remote,
+                'published_at': p.published_at,
+                'created_at': p.created_at,
+                'applications_count': p.applications_count,
+                'new_this_week': p.new_this_week,
+                'in_progress': p.in_progress,
+                'hired': p.hired,
+            } for p in top_postings],
+            'recent_applications': [{
+                'id': a.id,
+                'candidate_name': f"{a.candidate.first_name} {a.candidate.last_name}".strip() or a.candidate.username,
+                'candidate_username': a.candidate.username,
+                'job_posting_id': a.job_posting_id,
+                'job_posting_title': a.job_posting.title,
+                'stage': a.stage,
+                'applied_at': a.applied_at,
+            } for a in recent],
+            'team': {
+                'total': members.count(),
+                'members': [{
+                    'id': m.id,
+                    'name': f"{m.user.first_name} {m.user.last_name}".strip() or m.user.username,
+                    'username': m.user.username,
+                    'email': m.user.email,
+                    'role': m.role,
+                    'is_you': m.user_id == request.user.id,
+                } for m in members[:8]],
+            },
+        })
+
+
+class EmployerJobPostingOverviewView(views.APIView):
+    """GET /hiring/jobs/overview/ — every posting of the caller's employer
+    with its applicant numbers and latest applicants, for the Job Postings
+    page's card grid. Unpaginated: an employer's own postings are few."""
+    permission_classes = [IsEmployerMember, IsApprovedEmployer]
+    RECENT_PER_POSTING = 5
+
+    def get(self, request):
+        employer = request.user.employer_membership.employer
+        week_ago = timezone.now() - timezone.timedelta(days=7)
+        postings = list(
+            JobPosting.objects.filter(employer=employer)
+            .annotate(
+                applications_count=Count('applications'),
+                new_this_week=Count('applications', filter=Q(applications__applied_at__gte=week_ago)),
+                in_progress=Count('applications', filter=~Q(applications__stage__in=['hired', 'rejected'])),
+                hired=Count('applications', filter=Q(applications__stage='hired')),
+            )
+            .order_by('-created_at')
+        )
+
+        # Latest few applicants per posting, in one query.
+        recent_by_posting = {}
+        recent = (
+            Application.objects.filter(job_posting__employer=employer)
+            .select_related('candidate')
+            .order_by('-applied_at')
+        )
+        for app in recent.iterator():
+            bucket = recent_by_posting.setdefault(app.job_posting_id, [])
+            if len(bucket) < self.RECENT_PER_POSTING:
+                bucket.append({
+                    'id': app.id,
+                    'name': f"{app.candidate.first_name} {app.candidate.last_name}".strip() or app.candidate.username,
+                    'stage': app.stage,
+                    'applied_at': app.applied_at,
+                })
+
+        results = []
+        for p in postings:
+            data = JobPostingSerializer(p, context={'request': request}).data
+            data.update({
+                'applications_count': p.applications_count,
+                'new_this_week': p.new_this_week,
+                'in_progress': p.in_progress,
+                'hired': p.hired,
+                'recent_applicants': recent_by_posting.get(p.id, []),
+            })
+            results.append(data)
+        return Response(results)
+
+
+class EmployerJobPostingDetailView(generics.RetrieveUpdateDestroyAPIView):
+    """GET/PATCH /hiring/jobs/<id>/ — employer-side edit, scoped to own employer account.
+    DELETE — only for a posting nobody has applied to yet; one with
+    applicants should be closed instead, so candidates keep their history."""
     serializer_class = JobPostingSerializer
     permission_classes = [IsEmployerMember, IsApprovedEmployer]
 
     def get_queryset(self):
         return JobPosting.objects.filter(employer=self.request.user.employer_membership.employer)
+
+    def destroy(self, request, *args, **kwargs):
+        job = self.get_object()
+        if job.applications.exists():
+            return Response(
+                {'error': 'This posting has applicants, so it can\'t be deleted — close it instead.'},
+                status=400,
+            )
+        job.delete()
+        return Response(status=204)
+
+
+class EmployerJobPostingDuplicateView(views.APIView):
+    """POST /hiring/jobs/<id>/duplicate/ — copy a posting (same details,
+    form and screening questions) as a new draft with no applicants."""
+    permission_classes = [IsEmployerMember, IsApprovedEmployer]
+    COPIED_FIELDS = [
+        'title', 'description', 'employment_type', 'salary_min', 'salary_max', 'salary_currency',
+        'city', 'state', 'country', 'latitude', 'longitude', 'is_remote', 'experience_level',
+        'category', 'application_form_schema', 'screening_questions',
+    ]
+
+    def post(self, request, pk):
+        membership = request.user.employer_membership
+        source = get_object_or_404(JobPosting, pk=pk, employer=membership.employer)
+        copy = JobPosting.objects.create(
+            employer=membership.employer,
+            created_by=membership,
+            status='draft',
+            **{field: getattr(source, field) for field in self.COPIED_FIELDS},
+        )
+        copy.title = f"{source.title} (copy)"[:255]
+        copy.save(update_fields=['title'])
+        return Response(JobPostingSerializer(copy, context={'request': request}).data, status=201)
 
 
 class EmployerJobPostingPublishView(views.APIView):

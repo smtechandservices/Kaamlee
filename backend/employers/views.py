@@ -28,6 +28,21 @@ class MyEmployerView(generics.RetrieveUpdateAPIView):
         return self.request.user.employer_membership.employer
 
 
+class EmployerChangeOwnPasswordView(views.APIView):
+    """POST /employers/me/change-password/ — any employer member changing
+    their own password from the portal's Profile page. Gated on the current
+    password (same as the admin portal) since the emailed-OTP flow lives in
+    the candidate frontend."""
+    permission_classes = [IsEmployerMember]
+
+    def post(self, request):
+        from api.serializers import AdminChangeOwnPasswordSerializer
+        serializer = AdminChangeOwnPasswordSerializer(data=request.data, context={'request': request})
+        serializer.is_valid(raise_exception=True)
+        serializer.save()
+        return Response({'detail': 'Password updated successfully.'})
+
+
 class KYCDocumentUploadView(generics.CreateAPIView):
     """POST /employers/kyc/ — upload one KYC document. Re-submitting after a
     rejection moves the employer back to pending review."""
