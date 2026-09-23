@@ -293,7 +293,7 @@ export default function BrowsePage() {
                 <div className="py-10 flex justify-center"><Loader2 className="w-6 h-6 text-[#16a34a] animate-spin" /></div>
               ) : suggested.length === 0 ? (
                 <div className={`${CARD_CLS} p-6 text-center text-[14px] text-black/50`}>
-                  You&apos;ve applied to every open Kaamlee job — new ones will show up here.
+                  bookmark some postings to see them here, or check back later for new suggestions.
                 </div>
               ) : (
                 <div className="relative">
