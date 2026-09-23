@@ -1,5 +1,6 @@
 'use client';
 
+import { COMMUNITY_URL } from '@/lib/constants';
 import React, { useEffect, useRef, useState } from 'react';
 import Link from 'next/link';
 import Image from 'next/image';
@@ -328,7 +329,7 @@ const BrandMark = ({ size = 38 }: { size?: number }) => (
 );
 
 /* ============ FLOATING WHATSAPP CTA ============ */
-const WHATSAPP_URL = 'https://chat.whatsapp.com/HtJ3XG4RgwAAZiYYN79rOb?s=cl&p=i&ilr=0';
+const WHATSAPP_URL = COMMUNITY_URL;
 
 const WhatsAppGlyph = ({ size = 27, className = '' }: { size?: number; className?: string }) => (
   <svg width={size} height={size} viewBox="0 0 24 24" fill="currentColor" className={className}>
@@ -525,7 +526,7 @@ const PLANS = [
       { label: 'Resume & CV builder', included: false },
       { label: 'Personalised portfolio builder', included: false },
     ],
-    cta: 'Browse free', popular: false, dark: false, action: 'explore' as const,
+    cta: 'Browse free', popular: false, dark: false, action: 'map' as const,
   },
   {
     name: '1 Month',
@@ -604,11 +605,11 @@ export default function LandingPage() {
   const cityIndexRef = useRef(0);
   const dashRef = useRef<HTMLDivElement>(null);
 
-  const handleExploreClick = (e: React.MouseEvent) => {
+  const handleMapClick = (e: React.MouseEvent) => {
     e.preventDefault();
     if (isLoading) return;
     if (!user) router.push('/login');
-    else router.push('/explore');
+    else router.push('/map');
   };
 
   useEffect(() => {
@@ -813,7 +814,7 @@ export default function LandingPage() {
             {!user ? (
               <>
                 <Link href="/login" className="hidden sm:inline-block whitespace-nowrap rounded-full px-4 py-[11px] text-[14px] font-medium text-[#3d3d3d] transition-colors hover:text-[#0b0b0c]">Log in</Link>
-                <button onClick={handleExploreClick} className="cursor-pointer group relative hidden md:inline-flex items-center gap-2 overflow-hidden whitespace-nowrap rounded-full px-[18px] py-[11px] text-[14px] font-medium text-white shadow-[0_1px_0_rgba(255,255,255,.45)_inset,0_10px_24px_-10px_rgba(22,163,74,.85)] transition-transform duration-300 hover:-translate-y-0.5" style={{ background: 'linear-gradient(180deg,#4ade80,#16a34a 55%,#15803d)' }}>
+                <button onClick={handleMapClick} className="cursor-pointer group relative hidden md:inline-flex items-center gap-2 overflow-hidden whitespace-nowrap rounded-full px-[18px] py-[11px] text-[14px] font-medium text-white shadow-[0_1px_0_rgba(255,255,255,.45)_inset,0_10px_24px_-10px_rgba(22,163,74,.85)] transition-transform duration-300 hover:-translate-y-0.5" style={{ background: 'linear-gradient(180deg,#4ade80,#16a34a 55%,#15803d)' }}>
                   Open the map <ArrowChevron />
                 </button>
               </>
@@ -875,7 +876,7 @@ export default function LandingPage() {
         ))}
         {!user && (
           <button
-            onClick={(e) => { setMobileOpen(false); handleExploreClick(e); }}
+            onClick={(e) => { setMobileOpen(false); handleMapClick(e); }}
             className="cursor-pointer mt-2 flex w-full items-center justify-center gap-2 rounded-full py-[15px] text-[15.5px] font-medium text-white"
             style={{ background: 'linear-gradient(180deg,#4ade80,#16a34a 55%,#15803d)' }}
           >
@@ -926,7 +927,7 @@ export default function LandingPage() {
           </Reveal>
 
           <Reveal delay={280} className="mt-1.5 flex flex-col items-center gap-3 sm:flex-row">
-            <button onClick={handleExploreClick} className="group relative inline-flex items-center gap-2.5 overflow-hidden whitespace-nowrap rounded-full px-[26px] py-[15px] text-[15.5px] font-medium text-white shadow-[0_1px_0_rgba(255,255,255,.45)_inset,0_10px_24px_-10px_rgba(22,163,74,.85)] transition-transform duration-300 hover:-translate-y-0.5">
+            <button onClick={handleMapClick} className="group relative inline-flex items-center gap-2.5 overflow-hidden whitespace-nowrap rounded-full px-[26px] py-[15px] text-[15.5px] font-medium text-white shadow-[0_1px_0_rgba(255,255,255,.45)_inset,0_10px_24px_-10px_rgba(22,163,74,.85)] transition-transform duration-300 hover:-translate-y-0.5">
               <span className="absolute inset-0 -z-10" style={{ background: 'linear-gradient(180deg,#4ade80,#16a34a 55%,#15803d)' }} />
               <span className="cursor-pointer pointer-events-none absolute inset-y-0 left-[-60%] w-[45%] -skew-x-[18deg] bg-gradient-to-r from-transparent via-white/45 to-transparent animate-[awlShine_3.6s_cubic-bezier(.22,.61,.36,1)_infinite]" />
               Open the map <ArrowChevron />
@@ -992,7 +993,7 @@ export default function LandingPage() {
                         const city = job.location_name ? String(job.location_name).split(',')[0] : (job.is_remote ? 'Remote' : job.country);
                         const score = pseudoScore(String(job.id ?? job.title ?? i));
                         return (
-                          <Link key={job.id ?? i} href="/explore" className="flex items-center gap-2.5 rounded-[14px] border border-black/[0.08] bg-white p-2.5 transition-all duration-300 hover:-translate-y-0.5 hover:shadow-[0_2px_4px_rgba(16,18,26,.04),0_18px_40px_-18px_rgba(16,18,26,.22)]">
+                          <Link key={job.id ?? i} href="/map" className="flex items-center gap-2.5 rounded-[14px] border border-black/[0.08] bg-white p-2.5 transition-all duration-300 hover:-translate-y-0.5 hover:shadow-[0_2px_4px_rgba(16,18,26,.04),0_18px_40px_-18px_rgba(16,18,26,.22)]">
                             <span className="grid h-9 w-9 flex-none place-items-center rounded-[10px] text-[12.5px] font-bold" style={{ background: tint.bg, color: tint.text }}>{initialsFrom(job.company || job.title || '??')}</span>
                             <div className="min-w-0 flex-1">
                               <div className="truncate text-[13.5px] font-medium">{job.title}</div>
@@ -1332,7 +1333,7 @@ export default function LandingPage() {
                     <div><h4 className="text-[18px] font-medium tracking-[-0.025em]">{o.name}</h4><span className="text-[13px] text-[rgba(61,61,61,0.72)]">{o.count}</span></div>
                   </div>
                   <p className="flex-1 text-[14.5px] text-[rgba(61,61,61,0.72)]">{o.d}</p>
-                  <button onClick={handleExploreClick} className="cursor-pointer group inline-flex w-fit items-center gap-2 self-start rounded-full border border-black/[0.10] bg-white px-[18px] py-2.5 text-[14px] transition-all hover:border-[#0b0b0c] hover:bg-[#0b0b0c] hover:text-white">
+                  <button onClick={handleMapClick} className="cursor-pointer group inline-flex w-fit items-center gap-2 self-start rounded-full border border-black/[0.10] bg-white px-[18px] py-2.5 text-[14px] transition-all hover:border-[#0b0b0c] hover:bg-[#0b0b0c] hover:text-white">
                     View jobs <ArrowChevron />
                   </button>
                 </div>
@@ -1547,7 +1548,7 @@ export default function LandingPage() {
                     })}
                   </ul>
                   <button
-                    onClick={(e) => (p.action === 'explore' ? handleExploreClick(e) : setIsPricingOpen(true))}
+                    onClick={(e) => (p.action === 'map' ? handleMapClick(e) : setIsPricingOpen(true))}
                     className={`mt-6.5 w-full cursor-pointer rounded-full py-4 text-center text-[15.5px] font-medium transition-all ${
                       p.dark ? 'text-white shadow-[0_1px_0_rgba(255,255,255,.45)_inset,0_10px_24px_-10px_rgba(22,163,74,.85)] hover:-translate-y-0.5' : 'border border-black/[0.10] bg-white hover:-translate-y-0.5 hover:shadow-[0_2px_4px_rgba(16,18,26,.04),0_18px_40px_-18px_rgba(16,18,26,.22)]'
                     }`}
@@ -1594,7 +1595,7 @@ export default function LandingPage() {
               </span>
               <h2 className="relative mx-auto mt-5 text-[30px] tracking-[-0.03em]">Get hired on whatsapp</h2>
               <p className="relative mx-auto mt-4.5 max-w-3xl text-white/68 sm:text-[16.5px]">See active job postings, discuss and build startup ideas together, or drop into socials and events and the general Kaamlee chat.</p>
-              <a href="https://chat.whatsapp.com/HtJ3XG4RgwAAZiYYN79rOb?s=cl&p=i&ilr=0" target="_blank" rel="noopener noreferrer" className="group relative mt-8 inline-flex items-center gap-2.5 overflow-hidden rounded-full px-[26px] py-[15px] text-[15.5px] font-medium text-white shadow-[0_1px_0_rgba(255,255,255,.45)_inset,0_10px_24px_-10px_rgba(22,163,74,.85)] transition-transform duration-300 hover:-translate-y-0.5" style={{ background: 'linear-gradient(180deg,#4ade80,#16a34a 55%,#15803d)' }}>
+              <a href={COMMUNITY_URL} target="_blank" rel="noopener noreferrer" className="group relative mt-8 inline-flex items-center gap-2.5 overflow-hidden rounded-full px-[26px] py-[15px] text-[15.5px] font-medium text-white shadow-[0_1px_0_rgba(255,255,255,.45)_inset,0_10px_24px_-10px_rgba(22,163,74,.85)] transition-transform duration-300 hover:-translate-y-0.5" style={{ background: 'linear-gradient(180deg,#4ade80,#16a34a 55%,#15803d)' }}>
                 <WhatsAppGlyph size={16} /> Join the Whatsapp Community<ArrowChevron />
               </a>
             </div>
@@ -1616,7 +1617,7 @@ export default function LandingPage() {
             </Reveal>
             <Reveal delay={80}>
               <h5 className="mb-4 text-[13px] font-medium uppercase tracking-[0.1em] text-black/45">Company</h5>
-              {[['#top', 'Home'], ['/explore', 'Explore'], ['#pricing', 'Pricing'], ['#faq', 'FAQ']].map(([href, label]) => (
+              {[['#top', 'Home'], ['/map', 'Map'], ['#pricing', 'Pricing'], ['#faq', 'FAQ']].map(([href, label]) => (
                 <a key={label} href={href} className="block py-1.5 text-[15px] text-[rgba(61,61,61,0.72)] transition-all hover:translate-x-1 hover:text-[#0b0b0c]">{label}</a>
               ))}
             </Reveal>

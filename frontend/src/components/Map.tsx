@@ -269,7 +269,7 @@ const Map = ({ jobs, selectedJobId, onJobClick }: MapProps) => {
       <div className="absolute top-4 left-4 z-10 flex flex-col gap-2">
         <div className="px-3 py-1.5 rounded-full text-[11px] font-medium text-black/70 w-fit flex items-center gap-2 bg-white/90 backdrop-blur-md border border-black/[0.08] shadow-[0_1px_2px_rgba(16,18,26,.05),0_6px_16px_-8px_rgba(16,18,26,.10)] pointer-events-none" style={{ fontFamily: 'var(--font-outfit)' }}>
           <div className="w-2 h-2 rounded-full bg-[#16a34a] animate-pulse" />
-          {jobs.length} {jobs.length === 1 ? 'Job' : 'Jobs'} Found
+          {jobs.length.toLocaleString()} on the map
         </div>
 
         <AnimatePresence mode="wait">

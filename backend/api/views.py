@@ -427,6 +427,8 @@ class JobViewSet(viewsets.ModelViewSet):
         is_remote = self.request.query_params.get('is_remote')
         if is_remote == 'true':
             queryset = queryset.filter(is_remote=True)
+        elif is_remote == 'false':
+            queryset = queryset.filter(is_remote=False)
 
         return queryset
 
@@ -543,7 +545,9 @@ class JobViewSet(viewsets.ModelViewSet):
         # Tier goes in the prefix so a free-preview response never leaks into a
         # subscriber's cache entry (or vice versa) for the same filter params.
         cache_prefix = 'api_map_pins' if subscribed else 'api_map_pins_free'
-        cache_key = self._cache_key(request, cache_prefix, scoped_to_user=bookmarked_only)
+        # The free preview is a per-user random pool (hiring.feed), so free
+        # pins are always cached per user.
+        cache_key = self._cache_key(request, cache_prefix, scoped_to_user=bookmarked_only or not subscribed)
         pins = cache.get(cache_key)
         if pins is not None:
             return Response(pins)
@@ -555,9 +559,12 @@ class JobViewSet(viewsets.ModelViewSet):
             queryset = queryset.filter(bookmarked_by__user=request.user)
 
         if not subscribed:
-            # Free preview: most-recent jobs only, so non-subscribers still see
-            # activity on the map without giving away the full unlimited set.
-            queryset = queryset.order_by('-created_at')[:FREE_PREVIEW_LIMIT]
+            # Free preview: only the scraped share of the shared 200-job
+            # preview (hiring.feed.preview_ids), so the map shows exactly
+            # what the combined list does.
+            from hiring.feed import preview_ids
+            _, scraped_ids = preview_ids(request)
+            queryset = queryset.filter(id__in=scraped_ids)
 
         rows = queryset.values(
             'id', 'title', 'company', 'location_name', 'job_type', 'job_url',

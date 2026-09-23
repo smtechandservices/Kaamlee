@@ -129,7 +129,7 @@ export default function ApplyPage() {
         <div className="flex-1 flex flex-col items-center justify-center text-center p-8">
           <AlertCircle className="w-12 h-12 text-red-500 mb-4" />
           <p className="text-sm text-[#0b0b0c]/60">This posting isn't available anymore.</p>
-          <Link href="/explore" className="mt-4 text-sm font-semibold text-[#16a34a] hover:underline">Back to Explore</Link>
+          <Link href="/map" className="mt-4 text-sm font-semibold text-[#16a34a] hover:underline">Back to Map</Link>
         </div>
       </main>
     );
@@ -141,7 +141,7 @@ export default function ApplyPage() {
     <main className="h-screen flex bg-[#f2f3f5] text-[#0b0b0c] overflow-hidden">
       <Sidebar />
       <div className="flex-1 flex flex-col overflow-hidden">
-        <PageHeader backHref="/explore" title="Apply" wordmark />
+        <PageHeader backHref="/map" title="Apply" wordmark />
 
         <div className="flex-1 overflow-y-auto p-6">
           <div className="mx-auto">

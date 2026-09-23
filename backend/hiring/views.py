@@ -14,6 +14,7 @@ from api.permissions import IsSubscribed, is_user_subscribed
 from api.groq_usage import GroqQuotaExceeded, usage_summary
 from scripts.cv_export import render_cv_pdf, render_cv_docx
 from .models import JobPosting, Application, ApplicationStageChange, SavedJob, JobApplicationKit
+from .feed import build_feed_page, preview_ids, FEED_PAGE_SIZE, MAX_FEED_PAGE_SIZE
 from .serializers import (
     JobPostingSerializer, AdminJobPostingSerializer, AdminJobPostingCreateSerializer, SavedJobSerializer,
     ApplicationSerializer, ApplicationCreateSerializer, ApplicationKanbanSerializer, StageChangeSerializer,
@@ -305,6 +306,8 @@ def _filter_published_jobs(queryset, params):
     is_remote = params.get('is_remote')
     if is_remote == 'true':
         queryset = queryset.filter(is_remote=True)
+    elif is_remote == 'false':
+        queryset = queryset.filter(is_remote=False)
 
     employment_type = params.get('employment_type')
     if employment_type:
@@ -341,7 +344,10 @@ class PublicJobPostingListView(generics.ListAPIView):
         if self.request.query_params.get('saved_only') == 'true':
             queryset = queryset.filter(saved_by__user=user)
         if not is_user_subscribed(user):
-            return queryset[:FREE_PREVIEW_LIMIT]
+            # Only the postings inside the shared 200-job free preview
+            # (see hiring.feed.preview_ids).
+            posting_ids, _ = preview_ids(self.request)
+            return queryset.filter(id__in=posting_ids)
         return queryset
 
 
@@ -392,7 +398,7 @@ class SuggestedJobPostingsView(views.APIView):
                     if isinstance(item, str) and 1 < len(item) <= 30:
                         skills.add(item.strip().lower())
 
-        pool = list(
+        pool = (
             JobPosting.objects.filter(status='published')
             .exclude(applications__candidate=user)
             .select_related('employer')
@@ -400,11 +406,17 @@ class SuggestedJobPostingsView(views.APIView):
                 is_saved_annotated=Exists(SavedJob.objects.filter(user=user, job_posting_id=OuterRef('pk'))),
                 has_applied_annotated=Exists(Application.objects.filter(candidate=user, job_posting_id=OuterRef('pk'))),
             )
-            .order_by('-published_at')[:self.CANDIDATE_POOL]
+            .order_by('-published_at')
         )
+        # Non-subscribers only suggest from the postings inside their shared
+        # 200-job preview (hiring.feed.preview_ids).
+        if is_user_subscribed(user):
+            pool = pool[:self.CANDIDATE_POOL]
+        else:
+            pool = pool.filter(id__in=preview_ids(request)[0])
 
         scored = []
-        for job in pool:
+        for job in list(pool):
             title_words = _words(job.title)
             haystack = f"{job.title} {job.description}".lower()
             score, reasons = 0, []
@@ -432,6 +444,32 @@ class SuggestedJobPostingsView(views.APIView):
         return Response({'results': results, 'personalized': any(row[0] > 0 for row in scored[:self.LIMIT])})
 
 
+class CombinedJobFeedView(views.APIView):
+    """GET /hiring/feed/?page=&page_size= — scraped jobs and employer postings mixed
+    into one list, 20 per page by default (max 50), with Explore's filters (search, location,
+    country, category, is_remote, bookmarked_only). Each item is
+    {kind: 'job'|'posting', data}. Non-subscribers get the shared 200-job
+    preview; see hiring.feed for how the two kinds are merged."""
+    permission_classes = [permissions.IsAuthenticated]
+
+    def get(self, request):
+        try:
+            page = max(int(request.query_params.get('page', 1)), 1)
+        except ValueError:
+            page = 1
+        try:
+            page_size = min(max(int(request.query_params.get('page_size', FEED_PAGE_SIZE)), 1), MAX_FEED_PAGE_SIZE)
+        except ValueError:
+            page_size = FEED_PAGE_SIZE
+        total, results = build_feed_page(request, page, page_size)
+        return Response({
+            'count': total,
+            'page_size': page_size,
+            'subscribed': is_user_subscribed(request.user),
+            'results': results,
+        })
+
+
 class PublicJobMapPinsView(views.APIView):
     """GET /hiring/jobs/public/map_pins/ — every matching posting with
     coordinates, unpaginated (the map needs the full set to draw clusters).
@@ -449,7 +487,8 @@ class PublicJobMapPinsView(views.APIView):
         if request.query_params.get('saved_only') == 'true':
             queryset = queryset.filter(saved_by__user=request.user)
         if not is_user_subscribed(request.user):
-            queryset = queryset[:FREE_PREVIEW_LIMIT]
+            posting_ids, _ = preview_ids(request)
+            queryset = queryset.filter(id__in=posting_ids)
         rows = queryset.values(
             'id', 'title', 'latitude', 'longitude', 'city', 'state', 'country', 'is_remote',
             employer_name=F('employer__name'),

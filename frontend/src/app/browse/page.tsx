@@ -13,12 +13,14 @@ import { CARD_CLS } from '@/components/ui/landing-kit';
 import type { JobPosting, ApplicationStage } from '@/lib/hiring-types';
 
 const API = process.env.NEXT_PUBLIC_API_URL;
-const JOBS_PER_PAGE = 20;
+const JOBS_PER_PAGE = 10;
 // Side panel is a glance, not the tracker — the rest live behind "Open tracker".
 const MAX_APPLIED_SHOWN = 6;
 
 type SuggestedPosting = JobPosting & { match_reason: string; match_score: number };
 type ScrapedJob = React.ComponentProps<typeof JobCard>['job'];
+// /hiring/feed/ items — scraped jobs and employer postings, already mixed.
+type FeedItem = { kind: 'job'; data: ScrapedJob } | { kind: 'posting'; data: JobPosting };
 
 interface KaamleeApplication {
   id: number;
@@ -61,16 +63,45 @@ const TONE_CLS: Record<AppliedRow['tone'], string> = {
   bad: 'bg-red-500/10 text-red-600',
 };
 
+type TriState = 'all' | 'yes' | 'no';
+
+function Segmented({ label, value, onChange, options }: {
+  label: string;
+  value: TriState;
+  onChange: (v: TriState) => void;
+  options: [TriState, string][];
+}) {
+  return (
+    <div className="inline-flex items-center gap-1 rounded-full border border-black/[0.10] bg-white p-1" role="group" aria-label={label} style={{ fontFamily: 'var(--font-outfit)' }}>
+      <span className="pl-2 pr-1 text-[11px] font-semibold uppercase tracking-[0.12em] text-black/40">{label}</span>
+      {options.map(([key, text]) => (
+        <button
+          key={key}
+          onClick={() => onChange(key)}
+          aria-pressed={value === key}
+          className={`cursor-pointer rounded-full px-3 py-1.5 text-[12.5px] font-medium transition-all ${
+            value === key ? 'bg-[#16a34a]/10 text-[#16a34a]' : 'text-black/55 hover:text-[#0b0b0c]'
+          }`}
+        >
+          {text}
+        </button>
+      ))}
+    </div>
+  );
+}
+
 const toneFor = (status: string): AppliedRow['tone'] =>
   status === 'rejected' ? 'bad' : ['offer', 'offered', 'hired'].includes(status) ? 'good' : 'active';
 
-export default function JobsPage() {
+export default function BrowsePage() {
   const { token, logout } = useAuth();
   // Free users get in too — the jobs list is the same capped preview Explore shows them.
   const { isReady } = useSubscriptionGate({ allowUnsubscribed: true });
 
   const [categories, setCategories] = useState<string[]>([]);
   const [category, setCategory] = useState('All');
+  const [remote, setRemote] = useState<TriState>('all');
+  const [bookmarked, setBookmarked] = useState<TriState>('all');
 
   const [suggested, setSuggested] = useState<SuggestedPosting[]>([]);
   const [personalized, setPersonalized] = useState(false);
@@ -82,8 +113,7 @@ export default function JobsPage() {
     suggestRowRef.current?.scrollBy({ left: dir * 412, behavior: 'smooth' });
   };
 
-  const [postings, setPostings] = useState<JobPosting[]>([]);
-  const [jobs, setJobs] = useState<ScrapedJob[]>([]);
+  const [jobs, setJobs] = useState<FeedItem[]>([]);
   const [jobsCount, setJobsCount] = useState(0);
   const [page, setPage] = useState(1);
   const [loadingJobs, setLoadingJobs] = useState(true);
@@ -148,42 +178,43 @@ export default function JobsPage() {
     setCategory(c);
     setPage(1);
   };
+  const selectRemote = (v: TriState) => { setRemote(v); setPage(1); };
+  const selectBookmarked = (v: TriState) => { setBookmarked(v); setPage(1); };
 
-  // Employer postings for the category (pinned above scraped jobs, same as
-  // Explore) — refetched only when the category changes.
+  // One mixed, shuffled list of scraped jobs + employer postings from the
+  // combined feed (non-subscribers get the shared 200-job preview).
   useEffect(() => {
     if (!token) return;
-    const params = new URLSearchParams({ page_size: '50' });
+    const params = new URLSearchParams({ page: String(page), page_size: String(JOBS_PER_PAGE) });
     if (category !== 'All') params.set('category', category);
-    authed(`${API}/hiring/jobs/public/?${params}`)
-      .then((r) => (r.ok ? r.json() : null))
-      .then((d) => d && setPostings(Array.isArray(d) ? d : d.results || []))
-      .catch(() => {});
-  }, [token, category, authed]);
-
-  useEffect(() => {
-    if (!token) return;
-    const params = new URLSearchParams({ page: String(page) });
-    if (category !== 'All') params.set('category', category);
+    if (remote !== 'all') params.set('is_remote', remote === 'yes' ? 'true' : 'false');
+    if (bookmarked !== 'all') params.set('bookmarked', bookmarked === 'yes' ? 'true' : 'false');
     setLoadingJobs(true);
-    authed(`${API}/api/jobs/?${params}`)
+    authed(`${API}/hiring/feed/?${params}`)
       .then((r) => (r.ok ? r.json() : null))
       .then((d) => {
         if (!d) return;
-        const list = Array.isArray(d) ? d : d.results || [];
-        setJobs(list.map((j: ScrapedJob & { location_name: string }) => ({ ...j, location: j.location_name })));
-        setJobsCount(d.count ?? list.length);
+        setJobs((d.results || []).map((item: FeedItem) => (
+          item.kind === 'job'
+            ? { kind: 'job', data: { ...item.data, location: (item.data as ScrapedJob & { location_name: string }).location_name } }
+            : item
+        )));
+        setJobsCount(d.count ?? 0);
       })
       .catch(() => {})
       .finally(() => setLoadingJobs(false));
-  }, [token, category, page, authed]);
+  }, [token, category, remote, bookmarked, page, authed]);
 
   const toggleJobBookmark = useCallback(async (e: React.MouseEvent, jobId: string) => {
     e.stopPropagation();
     const res = await authed(`${API}/api/jobs/${jobId}/toggle_bookmark/`, { method: 'POST' }).catch(() => null);
     if (res?.ok) {
       const data = await res.json();
-      setJobs((prev) => prev.map((j) => (j.id === jobId ? { ...j, is_bookmarked: data.is_bookmarked } : j)));
+      setJobs((prev) => prev.map((item) => (
+        item.kind === 'job' && item.data.id === jobId
+          ? { kind: 'job', data: { ...item.data, is_bookmarked: data.is_bookmarked } }
+          : item
+      )));
     }
   }, [authed]);
 
@@ -191,20 +222,26 @@ export default function JobsPage() {
   // DELETE unsaves, no body back — flip optimistically, revert on failure.
   const togglePostingSave = useCallback(async (e: React.MouseEvent, postingId: number) => {
     e.stopPropagation();
-    const current = [...postings, ...suggested].find((p) => p.id === postingId);
+    const feedPostings = jobs.flatMap((item) => (item.kind === 'posting' ? [item.data] : []));
+    const current = [...feedPostings, ...suggested].find((p) => p.id === postingId);
     if (!current) return;
     const next = !current.is_saved;
+    // A posting can be in both the suggestions row and the feed.
     const flip = (value: boolean) => {
-      setPostings((prev) => prev.map((p) => (p.id === postingId ? { ...p, is_saved: value } : p)));
+      setJobs((prev) => prev.map((item) => (
+        item.kind === 'posting' && item.data.id === postingId
+          ? { kind: 'posting', data: { ...item.data, is_saved: value } }
+          : item
+      )));
       setSuggested((prev) => prev.map((p) => (p.id === postingId ? { ...p, is_saved: value } : p)));
     };
     flip(next);
     const res = await authed(`${API}/hiring/saved/${postingId}/`, { method: next ? 'POST' : 'DELETE' }).catch(() => null);
     if (!res?.ok) flip(!next);
-  }, [authed, postings, suggested]);
+  }, [authed, jobs, suggested]);
 
   const totalPages = Math.max(1, Math.ceil(jobsCount / JOBS_PER_PAGE));
-  const totalInCategory = jobsCount + postings.length;
+  const totalInCategory = jobsCount;
   const chips = useMemo(() => ['All', ...categories], [categories]);
 
   if (!isReady) {
@@ -219,16 +256,16 @@ export default function JobsPage() {
     <main className="h-screen flex bg-[#f2f3f5] text-[#0b0b0c] overflow-hidden">
       <Sidebar />
       <div className="flex-1 flex flex-col overflow-hidden">
-        <PageHeader backHref="/dashboard" title="Jobs" />
+        <PageHeader backHref="/dashboard" title="Browse" />
 
         <div className="flex-1 overflow-y-auto" id="jobs-scroll">
           <div className="mx-auto max-w-7xl px-4 sm:px-6 py-6 sm:py-8">
             {/* Suggested */}
-            <section className="mx-4 mb-8">
+            <section className="mb-8">
               <div className="flex items-end justify-between gap-3 mb-4">
                 <div>
                   <h2 className="text-[20px] font-semibold tracking-[-0.02em] flex items-center gap-2" style={{ fontFamily: 'var(--font-outfit)' }}>
-                    <Sparkles size={18} className="text-[#16a34a]" /> Suggested for you
+                    Suggested for you
                   </h2>
                   <p className="text-[13px] text-black/50 mt-0.5">
                     {personalized
@@ -262,7 +299,7 @@ export default function JobsPage() {
                 <div className="relative">
                   <div
                     ref={suggestRowRef}
-                    className="-mx-4 sm:-mx-6 px-4 sm:px-6 flex gap-3 overflow-x-auto no-scrollbar snap-x snap-mandatory scroll-smooth py-1"
+                    className="mx-0 px-4 sm:px-6 flex gap-3 overflow-x-auto no-scrollbar snap-x snap-mandatory scroll-smooth py-1"
                   >
                     {suggested.map((p) => (
                       <div key={p.id} className="w-[340px] sm:w-[400px] shrink-0 snap-start flex flex-col">
@@ -285,6 +322,21 @@ export default function JobsPage() {
                   <span className="text-[13px] text-black/45">{totalInCategory.toLocaleString()} {category === 'All' ? 'total' : `in ${category}`}</span>
                 </div>
 
+                <div className="flex flex-wrap items-center gap-2 mb-3">
+                  <Segmented
+                    label="Remote"
+                    value={remote}
+                    onChange={selectRemote}
+                    options={[['all', 'All'], ['yes', 'Remote'], ['no', 'On-site']]}
+                  />
+                  <Segmented
+                    label="Bookmarks"
+                    value={bookmarked}
+                    onChange={selectBookmarked}
+                    options={[['all', 'All'], ['yes', 'Bookmarked'], ['no', 'Not bookmarked']]}
+                  />
+                </div>
+
                 <div className="flex gap-2 overflow-x-auto no-scrollbar pb-2 mb-4 -mx-1 px-1">
                   {chips.map((c) => (
                     <button
@@ -303,18 +355,19 @@ export default function JobsPage() {
                 </div>
 
                 <div className="flex flex-col gap-3">
-                  {page === 1 && postings.map((p) => (
-                    <PostingCard key={`p-${p.id}`} posting={p} onToggleBookmark={togglePostingSave} />
-                  ))}
                   {loadingJobs ? (
                     <div className="py-16 flex justify-center"><Loader2 className="w-7 h-7 text-[#16a34a] animate-spin" /></div>
                   ) : (
-                    jobs.map((j) => <JobCard key={j.id} job={j} onToggleBookmark={toggleJobBookmark} />)
+                    jobs.map((item) => (
+                      item.kind === 'posting'
+                        ? <PostingCard key={`p-${item.data.id}`} posting={item.data} onToggleBookmark={togglePostingSave} />
+                        : <JobCard key={item.data.id} job={item.data} onToggleBookmark={toggleJobBookmark} />
+                    ))
                   )}
-                  {!loadingJobs && jobs.length === 0 && postings.length === 0 && (
+                  {!loadingJobs && jobs.length === 0 && (
                     <div className={`${CARD_CLS} p-10 text-center`}>
                       <Briefcase className="w-8 h-8 text-black/20 mx-auto mb-3" />
-                      <p className="text-[14px] text-black/50">No jobs in {category} right now.</p>
+                      <p className="text-[14px] text-black/50">No jobs match these filters right now.</p>
                     </div>
                   )}
                 </div>

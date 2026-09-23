@@ -40,7 +40,7 @@ interface KaamleeApplication {
 }
 
 const QUICK_LINKS = [
-  { href: '/explore', label: 'Explore jobs', desc: 'Search the live map across every board.', icon: Compass },
+  { href: '/map', label: 'Map', desc: 'Search the live map across every board.', icon: Compass },
   { href: '/applications', label: 'Application tracker', desc: 'See where every application stands.', icon: Kanban },
   { href: '/custom-cv', label: 'Custom CV', desc: 'Generate an ATS-scored CV for a role.', icon: FileText },
   { href: '/transactions', label: 'Billing', desc: 'Subscription status and payment history.', icon: Receipt },

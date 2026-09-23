@@ -3,14 +3,15 @@
 import Link from 'next/link';
 import Image from 'next/image';
 import { usePathname } from 'next/navigation';
-import { Compass, FileText, Receipt, LogOut, X, Kanban, Globe, LayoutDashboard, Briefcase } from 'lucide-react';
+import { Map as MapIcon, LayoutList, FileText, Receipt, LogOut, X, Kanban, Globe, LayoutDashboard, LifeBuoy, Mail, Users } from 'lucide-react';
+import { SUPPORT_EMAIL, COMMUNITY_URL } from '@/lib/constants';
 import { useAuth } from '@/context/AuthContext';
 import { useSidebar } from '@/context/SidebarContext';
 
 const NAV_ITEMS = [
   { href: '/dashboard', label: 'Dashboard', icon: LayoutDashboard },
-  { href: '/explore', label: 'Explore', icon: Compass },
-  { href: '/jobs', label: 'Jobs', icon: Briefcase },
+  { href: '/map', label: 'Map', icon: MapIcon },
+  { href: '/browse', label: 'Browse', icon: LayoutList },
   { href: '/applications', label: 'Tracker', icon: Kanban },
   { href: '/custom-cv', label: 'Custom CV', icon: FileText },
   { href: '/portfolio', label: 'Portfolio', icon: Globe },
@@ -80,6 +81,37 @@ export default function Sidebar() {
             );
           })}
         </nav>
+
+        {/* Support card — who to reach for help or questions. */}
+        <div className="mx-3 mt-3 mb-1 shrink-0 rounded-[16px] border border-[#16a34a]/20 bg-[#16a34a]/[0.04] p-3">
+          <div className="flex items-center gap-2 text-[13px] font-semibold text-[#0b0b0c]">
+            <span className="grid h-6 w-6 place-items-center rounded-full bg-[#16a34a]/10 text-[#16a34a]">
+              <LifeBuoy size={13} strokeWidth={2} />
+            </span>
+            Need help?
+          </div>
+          <p className="mt-1.5 text-[11.5px] leading-snug text-black/55">
+            Questions or issues? Reach the Kaamlee team or ask the community.
+          </p>
+          <div className="mt-2.5 flex flex-col gap-1.5">
+            <a
+              href={`mailto:${SUPPORT_EMAIL}?subject=${encodeURIComponent('Kaamlee support')}`}
+              onClick={close}
+              className="flex items-center gap-2 rounded-full border border-black/[0.08] bg-white px-3 py-1.5 text-[12px] font-medium text-black/70 hover:text-[#0b0b0c] hover:border-black/20 transition-all"
+            >
+              <Mail size={13} className="shrink-0" /> Contact admin
+            </a>
+            <a
+              href={COMMUNITY_URL}
+              target="_blank"
+              rel="noopener noreferrer"
+              onClick={close}
+              className="flex items-center gap-2 rounded-full border border-black/[0.08] bg-white px-3 py-1.5 text-[12px] font-medium text-black/70 hover:text-[#0b0b0c] hover:border-black/20 transition-all"
+            >
+              <Users size={13} className="shrink-0" /> Join community
+            </a>
+          </div>
+        </div>
 
         <div className="flex flex-col gap-2 w-full px-3 pt-3 mt-2 shrink-0 border-t border-black/[0.08]">
           <Link
