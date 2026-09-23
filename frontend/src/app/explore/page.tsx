@@ -6,10 +6,12 @@ import Sidebar from '@/components/Sidebar';
 import PageHeader from '@/components/PageHeader';
 import { motion, AnimatePresence, Variants } from 'framer-motion';
 import { JobCard } from '@/components/JobCard';
+import { PostingCard } from '@/components/PostingCard';
 import Map from '@/components/Map';
 import { useAuth } from '@/context/AuthContext';
 import { useSubscriptionGate } from '@/hooks/useSubscriptionGate';
 import PricingModal from '@/components/PricingModal';
+import type { JobPosting } from '@/lib/hiring-types';
 
 const PRICING_MODAL_SEEN_KEY = 'explore_pricing_modal_seen';
 
@@ -24,6 +26,19 @@ function getCached(key: string) {
 
 function setCache(key: string, data: any) {
   _cache[key] = { data, ts: Date.now() };
+}
+
+const EMPLOYMENT_TYPE_LABELS: Record<JobPosting['employment_type'], string> = {
+  full_time: 'Full-time',
+  part_time: 'Part-time',
+  contract: 'Contract',
+  internship: 'Internship',
+};
+
+function formatPostingLocation(p: JobPosting): string {
+  const parts = [p.city, p.state, p.country].filter(Boolean);
+  if (p.is_remote) return parts.length ? `Remote · ${parts.join(', ')}` : 'Remote';
+  return parts.join(', ');
 }
 
 function useDebounce<T>(value: T, delay: number): T {
@@ -152,6 +167,16 @@ export default function ExplorePage() {
   const [isFetchingJobs, setIsFetchingJobs] = useState(false);
   const jobsPerPage = 20;
 
+  // Postings employers create directly on Kaamlee (hiring.JobPosting) —
+  // merged into the same list/map as scraped Jobs below. Kept in its own
+  // state/component (not squeezed through JobCard) because its action set
+  // genuinely differs: internal /apply/[id] instead of an external job_url,
+  // and no bookmarking (JobPosting has no Bookmark relation). Unpaginated
+  // (page_size well above realistic volume) and shown pinned at the top of
+  // every page, since it isn't part of the scraped-job pagination cursor.
+  const [postings, setPostings] = useState<JobPosting[]>([]);
+  const [totalPostings, setTotalPostings] = useState(0);
+
   const debouncedSearch = useDebounce(searchQuery, 300);
   const debouncedLocation = useDebounce(locationQuery, 300);
 
@@ -209,6 +234,50 @@ export default function ExplorePage() {
     };
     fetchMeta();
   }, [token]);
+
+  // Employer-posted jobs — respects the same search/location/category/
+  // country/remote filters as the scraped-job fetch below (the hiring
+  // endpoint accepts the same param names), refetched whenever those
+  // change. "Bookmarks" maps to the hiring endpoint's own saved_only param
+  // (postings use SavedJob, a separate save mechanism from the scraped-Job
+  // Bookmark model — see PostingCard's onToggleBookmark) rather than being
+  // excluded outright.
+  useEffect(() => {
+    const fetchPostings = async () => {
+      if (!token) {
+        setPostings([]);
+        setTotalPostings(0);
+        return;
+      }
+      const params = new URLSearchParams(filterParams);
+      params.delete('bookmarked_only');
+      if (bookmarkedOnly) params.set('saved_only', 'true');
+      params.set('page_size', '50');
+      const cacheKey = `postings-${params.toString()}`;
+      const cached = getCached(cacheKey);
+      if (cached && !Array.isArray(cached)) {
+        setPostings(cached.results);
+        setTotalPostings(cached.count);
+        return;
+      }
+      try {
+        const res = await fetch(`${process.env.NEXT_PUBLIC_API_URL}/hiring/jobs/public/?${params}`, {
+          headers: { Authorization: `Token ${token}` },
+        });
+        if (res.status === 401) { logout(); return; }
+        if (!res.ok) return;
+        const data = await res.json();
+        const results = Array.isArray(data) ? data : (data.results || []);
+        const count = Array.isArray(data) ? results.length : (data.count ?? results.length);
+        setCache(cacheKey, { results, count });
+        setPostings(results);
+        setTotalPostings(count);
+      } catch (error) {
+        console.error('Failed to fetch postings:', error);
+      }
+    };
+    fetchPostings();
+  }, [token, logout, bookmarkedOnly, filterParams]);
 
   // Re-fetch the current page whenever filters or the page change — backend
   // paginates and filters at the DB level, so only ~20 jobs cross the wire.
@@ -286,6 +355,27 @@ export default function ExplorePage() {
   // Jobs/pins are already filtered server-side (country, search, location,
   // remote, bookmarked) — no client-side re-filtering needed here anymore.
 
+  // Posting pins merged into the same map as scraped-job pins. Prefixed ids
+  // (`posting-<id>`) keep them from colliding with scraped Job ids, which
+  // are drawn from an entirely different table and can overlap numerically.
+  // job_url here is an internal relative path (`/apply/<id>`) — Map's popup
+  // renders it as a plain `<a href>`, which works for in-app routes too, so
+  // no changes were needed in Map.tsx itself.
+  const postingMapPins = React.useMemo(() => postings
+    .filter(p => p.latitude != null && p.longitude != null)
+    .map(p => ({
+      id: `posting-${p.id}`,
+      title: p.title,
+      company: p.employer_name,
+      location: formatPostingLocation(p),
+      latitude: p.latitude,
+      longitude: p.longitude,
+      job_url: `/apply/${p.id}`,
+      job_type: EMPLOYMENT_TYPE_LABELS[p.employment_type],
+    })), [postings]);
+
+  const combinedMapPins = React.useMemo(() => [...postingMapPins, ...mapPins], [postingMapPins, mapPins]);
+
   const handleMapJobClick = React.useCallback(async (jobId: string | null) => {
     if (!jobId) {
       setSelectedJobId(null);
@@ -295,6 +385,14 @@ export default function ExplorePage() {
     setSelectedJobId(jobId);
     if (viewMode === 'map') {
       setViewMode('split');
+    }
+    // Postings are always fully loaded (unpaginated) and always rendered in
+    // the list regardless of page, so a posting pin never needs the
+    // off-page fallback fetch below — just select it.
+    // Scraped job ids arrive as numbers at runtime; only postings are strings.
+    if (typeof jobId === 'string' && jobId.startsWith('posting-')) {
+      setPinnedJob(null);
+      return;
     }
     // Map pins and the paginated list are separate datasets, so a clicked pin
     // may not be on the currently loaded page — fetch it directly if so.
@@ -355,6 +453,32 @@ export default function ExplorePage() {
       console.error("Failed to toggle bookmark:", error);
     }
   }, [token]);
+
+  // Postings use a separate save mechanism (hiring.SavedJob, not the
+  // scraped-Job Bookmark model) — POST to save / DELETE to unsave, and
+  // neither returns a body, so the toggled value is computed client-side
+  // from the posting's current is_saved rather than read off the response.
+  const handleTogglePostingBookmark = React.useCallback(async (e: React.MouseEvent, postingId: number) => {
+    e.stopPropagation();
+    if (!token) return;
+    const current = postings.find((p) => p.id === postingId);
+    if (!current) return;
+    const nextSaved = !current.is_saved;
+
+    setPostings((prev) => prev.map((p) => (p.id === postingId ? { ...p, is_saved: nextSaved } : p)));
+    try {
+      const res = await fetch(`${process.env.NEXT_PUBLIC_API_URL}/hiring/saved/${postingId}/`, {
+        method: nextSaved ? 'POST' : 'DELETE',
+        headers: { Authorization: `Token ${token}` },
+      });
+      if (!res.ok) {
+        setPostings((prev) => prev.map((p) => (p.id === postingId ? { ...p, is_saved: !nextSaved } : p))); // revert
+      }
+    } catch (error) {
+      console.error('Failed to toggle posting bookmark:', error);
+      setPostings((prev) => prev.map((p) => (p.id === postingId ? { ...p, is_saved: !nextSaved } : p))); // revert
+    }
+  }, [token, postings]);
 
   if (!isReady) {
     return (
@@ -568,7 +692,7 @@ export default function ExplorePage() {
               <span className="hidden sm:inline">Bookmarks</span>
             </button>
           </div>
-          
+
           <AnimatePresence mode="wait">
             {isFetchingJobs ? (
               <div className="flex-1 overflow-y-auto p-4 sm:p-5 space-y-4 custom-scrollbar">
@@ -609,22 +733,41 @@ export default function ExplorePage() {
               animate="visible"
               className={`flex-1 overflow-y-auto p-4 sm:p-5 space-y-4 custom-scrollbar ${isFetchingJobs ? 'hidden' : ''}`}
             >
+              {postings.map(posting => {
+                const pinId = `posting-${posting.id}`;
+                return (
+                  <motion.div
+                    key={pinId}
+                    variants={itemVariants}
+                    id={`job-card-${pinId}`}
+                    className="w-full"
+                  >
+                    <PostingCard
+                      posting={posting}
+                      isSelected={selectedJobId === pinId}
+                      onClick={() => handleJobClick(pinId)}
+                      onToggleBookmark={handleTogglePostingBookmark}
+                    />
+                  </motion.div>
+                );
+              })}
+
               {displayJobs.map(job => (
-                <motion.div 
-                  key={job.id} 
+                <motion.div
+                  key={job.id}
                   variants={itemVariants}
                   id={`job-card-${job.id}`}
                   className="w-full"
                 >
-                  <JobCard 
-                    job={job} 
+                  <JobCard
+                    job={job}
                     isSelected={selectedJobId === job.id}
                     onClick={handleJobClick}
                     onToggleBookmark={handleToggleBookmark}
                   />
                 </motion.div>
               ))}
-              
+
               {totalPages > 1 && (
                 <div className="flex items-center justify-between pt-6 pb-2 px-2 border-t border-black/[0.08] mt-4">
                   <button
@@ -643,7 +786,7 @@ export default function ExplorePage() {
                       Page {currentPage} of {totalPages}
                     </span>
                     <span className="text-[10px] text-black/40 font-medium mt-0.5" style={{ fontFamily: 'var(--font-outfit)' }}>
-                      {totalJobs} total jobs
+                      {totalJobs + totalPostings} total jobs
                     </span>
                   </div>
                   <button
@@ -679,7 +822,7 @@ export default function ExplorePage() {
         {/* Map Area */}
         <section className={`${viewMode === 'list' ? 'hidden' : 'flex'} flex-1 bg-[#f2f3f5]`}>
           <Map
-            jobs={mapPins}
+            jobs={combinedMapPins}
             selectedJobId={selectedJobId || undefined}
             onJobClick={handleMapJobClick}
           />

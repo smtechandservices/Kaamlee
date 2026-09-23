@@ -1,0 +1,18 @@
+JOB_CATEGORIES = [
+    'Technology',
+    'Design',
+    'Product & Project Management',
+    'Marketing',
+    'Sales',
+    'Customer Support',
+    'Human Resources',
+    'Finance & Accounting',
+    'Business & Consulting',
+    'Operations & Administration',
+    'Legal & Compliance',
+    'Engineering',
+    'Healthcare',
+    'Education',
+    'Real Estate',
+    'Other',
+]

@@ -137,7 +137,7 @@ export default function FeedbackPage() {
 
   return (
     <div className="min-h-screen bg-[#f2f3f5] text-[#0b0b0c] p-8 font-sans">
-      <div className="mx-auto max-w-6xl">
+      <div className="mx-auto">
         {/* Header */}
         <header className="flex flex-col md:flex-row md:items-center justify-between gap-6 mb-10">
           <div className="flex items-center gap-6">

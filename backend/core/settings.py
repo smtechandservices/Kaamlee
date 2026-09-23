@@ -44,18 +44,22 @@ SECURE_PROXY_SSL_HEADER = ('HTTP_X_FORWARDED_PROTO', 'https')
 # Application definition
 
 INSTALLED_APPS = [
+    'daphne',
     'django.contrib.admin',
     'django.contrib.auth',
     'django.contrib.contenttypes',
     'django.contrib.sessions',
     'django.contrib.messages',
     'django.contrib.staticfiles',
+    'channels',
     'rest_framework',
     'rest_framework.authtoken',
     'corsheaders',
     'api',
     'payments',
     'ambassador',
+    'employers',
+    'hiring',
 ]
 
 REST_FRAMEWORK = {
@@ -107,6 +111,27 @@ TEMPLATES = [
 ]
 
 WSGI_APPLICATION = 'core.wsgi.application'
+ASGI_APPLICATION = 'core.asgi.application'
+
+# Backs the scraper's live-status WebSocket (see api/consumers.py). Redis is
+# required once more than one process/instance needs to share state — set
+# REDIS_URL in production (e.g. a Render Key Value instance). Falls back to
+# an in-memory layer for local dev / a single-process deployment, which is
+# fine as long as nothing but this one process needs to see the events.
+REDIS_URL = os.getenv('REDIS_URL')
+if REDIS_URL:
+    CHANNEL_LAYERS = {
+        'default': {
+            'BACKEND': 'channels_redis.core.RedisChannelLayer',
+            'CONFIG': {'hosts': [REDIS_URL]},
+        }
+    }
+else:
+    CHANNEL_LAYERS = {
+        'default': {
+            'BACKEND': 'channels.layers.InMemoryChannelLayer',
+        }
+    }
 
 
 # Database

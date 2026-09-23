@@ -5,6 +5,9 @@ dj-database-url==3.1.2
 python-dotenv==1.2.2
 user-agents==2.2.0
 APScheduler==3.11.2
+channels==4.3.2
+channels-redis==4.3.0
+daphne==4.2.3
 requests
 certifi
 geopy==2.4.1

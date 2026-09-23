@@ -1,3 +1,4 @@
+from django.contrib.auth.models import User
 from rest_framework import serializers
 from .models import AmbassadorApplication
 
@@ -18,6 +19,21 @@ class AmbassadorApplicationSerializer(serializers.ModelSerializer):
         if value.size > self.MAX_ID_CARD_SIZE_BYTES:
             raise serializers.ValidationError("Image is too large (max 5 MB).")
         return value
+
+
+class AmbassadorApplicationAdminSerializer(AmbassadorApplicationSerializer):
+    """Admin list only: there's no FK from an application to a Kaamlee
+    account, so a matching login (by email) is surfaced here — lets the
+    admin page offer "delete their account too" when removing an
+    application."""
+    account_username = serializers.SerializerMethodField()
+
+    class Meta(AmbassadorApplicationSerializer.Meta):
+        fields = AmbassadorApplicationSerializer.Meta.fields + ['account_username']
+
+    def get_account_username(self, obj):
+        user = User.objects.filter(email__iexact=obj.email, is_superuser=False).first()
+        return user.username if user else None
 
 
 class AmbassadorApplicationStatusSerializer(serializers.ModelSerializer):

@@ -3,17 +3,20 @@
 import Link from 'next/link';
 import Image from 'next/image';
 import { usePathname, useRouter } from 'next/navigation';
-import { LayoutDashboard, Building2, CreditCard, Users, MessageSquare, LogOut, Briefcase, GraduationCap } from 'lucide-react';
+import { LayoutDashboard, Building2, ShieldCheck, CreditCard, Users, MessageSquare, LogOut, Briefcase, GraduationCap, Radio, FileText } from 'lucide-react';
 
 const NAV_ITEMS = [
   { href: '/', label: 'Dashboard', icon: LayoutDashboard },
   { href: '/companies', label: 'Companies', icon: Building2 },
   { href: '/jobs', label: 'Jobs', icon: Briefcase },
+  { href: '/scraper', label: 'Scraper', icon: Radio },
   { href: '/revenue', label: 'Finance', icon: CreditCard },
   { href: '/users', label: 'Users', icon: Users },
   { href: '/feedback', label: 'Feedback', icon: MessageSquare },
 ];
 
+const EMPLOYER_ITEM = { href: '/employers', label: 'Employers', icon: ShieldCheck };
+const POSTINGS_ITEM = { href: '/postings', label: 'Postings', icon: FileText };
 const AMBASSADOR_ITEM = { href: '/ambassadors', label: 'Ambassadors', icon: GraduationCap };
 
 const itemCls = (active: boolean) =>
@@ -55,6 +58,26 @@ export default function AdminSidebar() {
             </Link>
           );
         })}
+
+        <div className="my-2 border-t border-black/[0.08]" />
+
+        <Link
+          href={EMPLOYER_ITEM.href}
+          title={EMPLOYER_ITEM.label}
+          className={itemCls(pathname === EMPLOYER_ITEM.href)}
+        >
+          <EMPLOYER_ITEM.icon size={17} className="shrink-0" strokeWidth={1.8} />
+          <span className="leading-none truncate">{EMPLOYER_ITEM.label}</span>
+        </Link>
+
+        <Link
+          href={POSTINGS_ITEM.href}
+          title={POSTINGS_ITEM.label}
+          className={itemCls(pathname === POSTINGS_ITEM.href)}
+        >
+          <POSTINGS_ITEM.icon size={17} className="shrink-0" strokeWidth={1.8} />
+          <span className="leading-none truncate">{POSTINGS_ITEM.label}</span>
+        </Link>
 
         <div className="my-2 border-t border-black/[0.08]" />
 

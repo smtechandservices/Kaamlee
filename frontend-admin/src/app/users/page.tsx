@@ -247,11 +247,11 @@ export default function UserManagement() {
           </div>
         ) : (
           <div className="grid grid-cols-1 gap-4">
-            <div className="bg-white border border-black/[0.08] rounded-3xl overflow-hidden shadow-2xl">
+            <div className="bg-white border border-black/[0.08] rounded-3xl overflow-hidden">
               <div className="overflow-x-auto">
               <table className="w-full min-w-[1100px] border-collapse">
                 <thead>
-                  <tr className="border-b border-black/[0.08] bg-black/[0.02]">
+                  <tr className="border-b border-black/[0.08] bg-black/[0.02] text-nowrap">
                     <th className="text-left px-6 py-5 text-[10px] font-black uppercase tracking-[0.2em] text-[#0b0b0c]/60">User Details</th>
                     <th className="text-left px-6 py-5 text-[10px] font-black uppercase tracking-[0.2em] text-[#0b0b0c]/60">Status</th>
                     <th className="text-left px-6 py-5 text-[10px] font-black uppercase tracking-[0.2em] text-[#0b0b0c]/60">Sign-in</th>
@@ -262,7 +262,7 @@ export default function UserManagement() {
                     <th className="text-right px-6 py-5 text-[10px] font-black uppercase tracking-[0.2em] text-[#0b0b0c]/60">Actions</th>
                   </tr>
                 </thead>
-                <tbody className="divide-y divide-black/[0.06]">
+                <tbody className="divide-y divide-black/[0.06] text-nowrap">
                   <AnimatePresence mode='popLayout'>
                     {filteredUsers.map((user) => (
                       <motion.tr 
@@ -274,7 +274,7 @@ export default function UserManagement() {
                       >
                         <td className="px-6 py-6">
                           <div className="flex items-center gap-4">
-                            {/* <div className={`w-12 h-12 rounded-2xl flex items-center justify-center text-lg font-bold shadow-inner ${user.is_superuser ? 'bg-amber-500/10 text-amber-500' : 'bg-green-600/10 text-green-600'}`}>
+                            {/* <div className={`w-12 h-12 rounded-2xl flex items-center justify-center text-lg font-bold ${user.is_superuser ? 'bg-amber-500/10 text-amber-500' : 'bg-green-600/10 text-green-600'}`}>
                               {user.first_name ? user.first_name[0] : user.username[0].toUpperCase()}
                             </div> */}
                             <div>
@@ -479,11 +479,11 @@ export default function UserManagement() {
 
 function EditUserModal({ user, onClose, onSave }: { user: UserProfile, onClose: () => void, onSave: (data: any) => Promise<string | null> }) {
   const [formData, setFormData] = useState({
-    username: user.username,
-    first_name: user.first_name,
-    last_name: user.last_name,
-    phone: user.phone,
-    linkedin_url: user.linkedin_url,
+    username: user.username ?? '',
+    first_name: user.first_name ?? '',
+    last_name: user.last_name ?? '',
+    phone: user.phone ?? '',
+    linkedin_url: user.linkedin_url ?? '',
     is_subscribed: user.is_subscribed,
     subscription_expires_at: user.subscription_expires_at ? (() => {
       const d = new Date(user.subscription_expires_at);
@@ -500,6 +500,8 @@ function EditUserModal({ user, onClose, onSave }: { user: UserProfile, onClose: 
       if (day && month && year) {
         data.subscription_expires_at = new Date(`${year}-${month}-${day}`).toISOString();
       }
+    } else {
+      data.subscription_expires_at = null;
     }
     setSaving(true);
     setError(null);
@@ -514,7 +516,7 @@ function EditUserModal({ user, onClose, onSave }: { user: UserProfile, onClose: 
         initial={{ opacity: 0, scale: 0.95 }}
         animate={{ opacity: 1, scale: 1 }}
         exit={{ opacity: 0, scale: 0.95 }}
-        className="bg-white border border-black/[0.08] rounded-3xl w-full lg:max-w-xl overflow-hidden shadow-2xl"
+        className="bg-white border border-black/[0.08] rounded-3xl w-full lg:max-w-xl overflow-hidden"
       >
         <div className="p-8 border-b border-black/[0.08] flex items-center justify-between">
           <h2 className="text-2xl font-bold">Edit User Details</h2>
@@ -665,7 +667,7 @@ function SetPasswordModal({ user, onClose }: { user: UserProfile, onClose: () =>
         initial={{ opacity: 0, scale: 0.95 }}
         animate={{ opacity: 1, scale: 1 }}
         exit={{ opacity: 0, scale: 0.95 }}
-        className="bg-white border border-black/[0.08] rounded-3xl w-full lg:max-w-md overflow-hidden shadow-2xl"
+        className="bg-white border border-black/[0.08] rounded-3xl w-full lg:max-w-md overflow-hidden"
       >
         <div className="p-8 border-b border-black/[0.08] flex items-center justify-between">
           <div>
@@ -763,7 +765,7 @@ function TransactionsModal({ user, transactions, loading, onClose, onRefresh }: 
         initial={{ opacity: 0, scale: 0.95 }}
         animate={{ opacity: 1, scale: 1 }}
         exit={{ opacity: 0, scale: 0.95 }}
-        className="bg-white border border-black/[0.08] rounded-3xl w-full lg:max-w-2xl overflow-hidden shadow-2xl flex flex-col max-h-[80vh]"
+        className="bg-white border border-black/[0.08] rounded-3xl w-full lg:max-w-2xl overflow-hidden flex flex-col max-h-[80vh]"
       >
         <div className="p-8 border-b border-black/[0.08] flex items-center justify-between shrink-0">
           <div>

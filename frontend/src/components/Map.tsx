@@ -237,16 +237,26 @@ const Map = ({ jobs, selectedJobId, onJobClick }: MapProps) => {
                   </div>
                   <div className="flex justify-between items-start gap-3 mt-3">
                     <span className="text-xs text-black/50 line-clamp-2 flex-1">{job.job_type || 'Full-time'}</span>
-                    <a
-                      href={job.job_url}
-                      target="_blank"
-                      rel="noopener noreferrer"
-                      className="shrink-0 text-[10px] text-white px-3 py-1.5 rounded-full font-semibold flex items-center gap-1 transition-transform hover:-translate-y-0.5 shadow-[0_1px_0_rgba(255,255,255,.45)_inset,0_10px_24px_-10px_rgba(22,163,74,.85)]"
-                      style={{ background: 'linear-gradient(180deg,#4ade80,#16a34a 55%,#15803d)', fontFamily: 'var(--font-outfit)' }}
-                    >
-                      Apply Now
-                      <ExternalLink size={10} />
-                    </a>
+                    {job.job_url?.startsWith('/') ? (
+                      <a
+                        href={job.job_url}
+                        className="shrink-0 text-[10px] text-white px-3 py-1.5 rounded-full font-semibold flex items-center gap-1 transition-transform hover:-translate-y-0.5 shadow-[0_1px_0_rgba(255,255,255,.45)_inset,0_10px_24px_-10px_rgba(22,163,74,.85)]"
+                        style={{ background: 'linear-gradient(180deg,#4ade80,#16a34a 55%,#15803d)', fontFamily: 'var(--font-outfit)' }}
+                      >
+                        Apply Now
+                      </a>
+                    ) : (
+                      <a
+                        href={job.job_url}
+                        target="_blank"
+                        rel="noopener noreferrer"
+                        className="shrink-0 text-[10px] text-white px-3 py-1.5 rounded-full font-semibold flex items-center gap-1 transition-transform hover:-translate-y-0.5 shadow-[0_1px_0_rgba(255,255,255,.45)_inset,0_10px_24px_-10px_rgba(22,163,74,.85)]"
+                        style={{ background: 'linear-gradient(180deg,#4ade80,#16a34a 55%,#15803d)', fontFamily: 'var(--font-outfit)' }}
+                      >
+                        Apply Now
+                        <ExternalLink size={10} />
+                      </a>
+                    )}
                   </div>
                 </div>
               </MarkerPopup>

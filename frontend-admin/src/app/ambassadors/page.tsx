@@ -13,6 +13,7 @@ import {
   ExternalLink,
   Mail,
   Phone,
+  Trash2,
 } from 'lucide-react';
 import { useRouter } from 'next/navigation';
 
@@ -32,6 +33,7 @@ interface AmbassadorApplication {
   id_card_image: string;
   status: 'pending' | 'approved' | 'rejected';
   created_at: string;
+  account_username: string | null;
 }
 
 type StatusFilter = 'all' | 'pending' | 'approved' | 'rejected';
@@ -48,6 +50,8 @@ export default function AmbassadorsPage() {
   const [searchTerm, setSearchTerm] = useState('');
   const [statusFilter, setStatusFilter] = useState<StatusFilter>('all');
   const [updatingId, setUpdatingId] = useState<number | null>(null);
+  const [deletingApp, setDeletingApp] = useState<AmbassadorApplication | null>(null);
+  const [deleting, setDeleting] = useState(false);
   const router = useRouter();
 
   const getToken = () => {
@@ -107,6 +111,29 @@ export default function AmbassadorsPage() {
     }
   }
 
+  async function deleteApplication(removeUser: boolean) {
+    if (!deletingApp) return;
+    const token = getToken();
+    if (!token) return;
+    setDeleting(true);
+    try {
+      const res = await fetch(
+        `${AMBASSADOR_BASE}/admin/applications/${deletingApp.id}/${removeUser ? '?remove_user=true' : ''}`,
+        { method: 'DELETE', headers: { Authorization: `Token ${token}` } }
+      );
+      if (res.ok) {
+        setApplications((prev) => prev.filter((a) => a.id !== deletingApp.id));
+        setDeletingApp(null);
+      } else {
+        alert('Failed to delete application');
+      }
+    } catch (error) {
+      alert('Failed to delete application');
+    } finally {
+      setDeleting(false);
+    }
+  }
+
   const counts = {
     all: applications.length,
     pending: applications.filter((a) => a.status === 'pending').length,
@@ -126,7 +153,7 @@ export default function AmbassadorsPage() {
 
   return (
     <div className="min-h-screen bg-[#f2f3f5] text-[#0b0b0c] p-8 font-sans">
-      <div className="mx-auto max-w-6xl">
+      <div className="mx-auto">
         {/* Header */}
         <header className="flex flex-col md:flex-row md:items-center justify-between gap-6 mb-10">
           <div>
@@ -259,34 +286,43 @@ export default function AmbassadorsPage() {
                         </div>
                       </td>
                       <td className="px-6 py-5">
-                        {a.status === 'pending' ? (
-                          <div className="flex items-center gap-2">
+                        <div className="flex items-center gap-2">
+                          {a.status === 'pending' ? (
+                            <>
+                              <button
+                                onClick={() => updateStatus(a.id, 'approved')}
+                                disabled={updatingId === a.id}
+                                className="cursor-pointer p-2 rounded-lg bg-green-500/10 text-green-700 border border-green-500/30 hover:bg-green-600/20 transition-all disabled:opacity-50"
+                                title="Approve"
+                              >
+                                {updatingId === a.id ? <Loader2 size={14} className="animate-spin" /> : <CheckCircle2 size={14} />}
+                              </button>
+                              <button
+                                onClick={() => updateStatus(a.id, 'rejected')}
+                                disabled={updatingId === a.id}
+                                className="cursor-pointer p-2 rounded-lg bg-red-500/10 text-red-500 border border-red-500/30 hover:bg-red-600/20 transition-all disabled:opacity-50"
+                                title="Reject"
+                              >
+                                {updatingId === a.id ? <Loader2 size={14} className="animate-spin" /> : <XCircle size={14} />}
+                              </button>
+                            </>
+                          ) : (
                             <button
-                              onClick={() => updateStatus(a.id, 'approved')}
+                              onClick={() => updateStatus(a.id, a.status === 'approved' ? 'rejected' : 'approved')}
                               disabled={updatingId === a.id}
-                              className="cursor-pointer p-2 rounded-lg bg-green-500/10 text-green-700 border border-green-500/30 hover:bg-green-600/20 transition-all disabled:opacity-50"
-                              title="Approve"
+                              className="cursor-pointer text-xs font-semibold text-[#0b0b0c]/60 hover:text-[#0b0b0c] transition-colors disabled:opacity-50"
                             >
-                              {updatingId === a.id ? <Loader2 size={14} className="animate-spin" /> : <CheckCircle2 size={14} />}
+                              Mark as {a.status === 'approved' ? 'rejected' : 'approved'}
                             </button>
-                            <button
-                              onClick={() => updateStatus(a.id, 'rejected')}
-                              disabled={updatingId === a.id}
-                              className="cursor-pointer p-2 rounded-lg bg-red-500/10 text-red-500 border border-red-500/30 hover:bg-red-600/20 transition-all disabled:opacity-50"
-                              title="Reject"
-                            >
-                              {updatingId === a.id ? <Loader2 size={14} className="animate-spin" /> : <XCircle size={14} />}
-                            </button>
-                          </div>
-                        ) : (
+                          )}
                           <button
-                            onClick={() => updateStatus(a.id, a.status === 'approved' ? 'rejected' : 'approved')}
-                            disabled={updatingId === a.id}
-                            className="cursor-pointer text-xs font-semibold text-[#0b0b0c]/60 hover:text-[#0b0b0c] transition-colors disabled:opacity-50"
+                            onClick={() => setDeletingApp(a)}
+                            className="cursor-pointer p-2 rounded-lg bg-black/[0.05] text-[#0b0b0c]/40 hover:bg-red-600/20 hover:text-red-500 transition-all ml-4"
+                            title="Remove application"
                           >
-                            Mark as {a.status === 'approved' ? 'rejected' : 'approved'}
+                            <Trash2 size={14} />
                           </button>
-                        )}
+                        </div>
                       </td>
                     </motion.tr>
                   ))}
@@ -305,6 +341,75 @@ export default function AmbassadorsPage() {
           </div>
         )}
       </div>
+
+      <AnimatePresence>
+        {deletingApp && (
+          <DeleteApplicationModal
+            application={deletingApp}
+            deleting={deleting}
+            onCancel={() => setDeletingApp(null)}
+            onConfirm={deleteApplication}
+          />
+        )}
+      </AnimatePresence>
+    </div>
+  );
+}
+
+function DeleteApplicationModal({ application, deleting, onCancel, onConfirm }: {
+  application: AmbassadorApplication;
+  deleting: boolean;
+  onCancel: () => void;
+  onConfirm: (removeUser: boolean) => void;
+}) {
+  const [removeUser, setRemoveUser] = useState(false);
+
+  return (
+    <div className="fixed inset-0 bg-black/80 backdrop-blur-sm z-50 flex items-center justify-center p-4" onClick={onCancel}>
+      <motion.div
+        initial={{ opacity: 0, scale: 0.95 }}
+        animate={{ opacity: 1, scale: 1 }}
+        exit={{ opacity: 0, scale: 0.95 }}
+        onClick={(e) => e.stopPropagation()}
+        className="bg-white border border-black/[0.08] rounded-3xl w-full max-w-md overflow-hidden"
+      >
+        <div className="p-8 border-b border-black/[0.08]">
+          <h2 className="text-xl font-bold">Remove application</h2>
+          <p className="text-sm text-[#0b0b0c]/60 mt-1">{application.full_name} — {application.college_name}</p>
+        </div>
+
+        <div className="p-8 space-y-4">
+          <p className="text-sm text-[#0b0b0c]/70">
+            This permanently deletes the ambassador application. This can&apos;t be undone.
+          </p>
+
+          {application.account_username && (
+            <label className="flex items-start gap-3 bg-red-500/5 border border-red-500/20 rounded-xl p-4 cursor-pointer">
+              <input
+                type="checkbox"
+                checked={removeUser}
+                onChange={(e) => setRemoveUser(e.target.checked)}
+                className="mt-0.5 cursor-pointer accent-red-500"
+              />
+              <span className="text-sm text-[#0b0b0c]/70">
+                Also delete their Kaamlee account <span className="font-semibold text-[#0b0b0c]">@{application.account_username}</span> — this permanently removes their account, profile, and data too.
+              </span>
+            </label>
+          )}
+        </div>
+
+        <div className="p-8 bg-black/[0.02] border-t border-black/[0.08] flex items-center justify-end gap-4">
+          <button onClick={onCancel} className="cursor-pointer px-6 py-3 font-bold text-[#0b0b0c]/60 hover:text-[#0b0b0c] transition-colors">Cancel</button>
+          <button
+            onClick={() => onConfirm(removeUser)}
+            disabled={deleting}
+            className="cursor-pointer bg-red-500 text-white hover:bg-red-600 px-8 py-3 rounded-xl font-bold transition-all shadow-lg shadow-red-500/20 disabled:opacity-50 flex items-center gap-2"
+          >
+            {deleting && <Loader2 size={16} className="animate-spin" />}
+            {removeUser ? 'Delete application + account' : 'Delete application'}
+          </button>
+        </div>
+      </motion.div>
     </div>
   );
 }

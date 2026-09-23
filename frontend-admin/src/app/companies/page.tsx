@@ -20,6 +20,8 @@ import {
   ChevronLeft,
   ChevronRight,
   Clock,
+  Globe,
+  MapPin,
 } from 'lucide-react';
 import Link from 'next/link';
 import { useRouter } from 'next/navigation';
@@ -42,9 +44,35 @@ interface Company {
   is_active: boolean;
   last_scraped_at: string | null;
   created_at: string;
+  // Read-only, added by the list endpoint (CompanyViewSet.list).
+  job_count?: number;
+  jobs?: CompanyJob[];
 }
 
-type CompanyFormData = Omit<Company, 'id' | 'last_scraped_at' | 'created_at'>;
+interface CompanyJob {
+  id: number;
+  title: string;
+  location_name: string;
+  is_remote: boolean;
+  job_url: string;
+  date_posted: string | null;
+  experience_required: string | null;
+  salary: string | null;
+}
+
+type CompanyFormData = Omit<Company, 'id' | 'last_scraped_at' | 'created_at' | 'job_count' | 'jobs'>;
+
+function formatRelativeScrapedAt(value: string | null) {
+  if (!value) return 'never scraped';
+  const diffMs = Date.now() - new Date(value).getTime();
+  const minutes = Math.round(diffMs / 60_000);
+  if (minutes < 1) return 'scraped just now';
+  if (minutes < 60) return `scraped ${minutes} min ago`;
+  const hours = Math.round(minutes / 60);
+  if (hours < 24) return `scraped ${hours} hr${hours !== 1 ? 's' : ''} ago`;
+  const days = Math.round(hours / 24);
+  return `scraped ${days} day${days !== 1 ? 's' : ''} ago`;
+}
 
 const EMPTY_FORM: CompanyFormData = {
   name: '',
@@ -175,6 +203,7 @@ export default function CompaniesPage() {
         setCompanies(cached.results);
         setCount(cached.count);
         setSelectedIds(new Set());
+        setLoading(false);
         return;
       }
     }
@@ -335,7 +364,7 @@ export default function CompaniesPage() {
 
   return (
     <div className="min-h-screen bg-[#f2f3f5] text-[#0b0b0c] p-8 font-sans">
-      <div className="mx-auto max-w-6xl">
+      <div className="mx-auto">
         <header className="flex flex-col md:flex-row md:items-center justify-between gap-6 mb-10">
           <div className="flex items-center gap-6">
             <div>
@@ -454,7 +483,19 @@ export default function CompaniesPage() {
                             )}
                           </div>
                           {company.domain && <p className="text-xs text-[#0b0b0c]/60 font-medium truncate">{company.domain}</p>}
+                          <div
+                            className="flex items-center gap-1 text-[11px] text-[#0b0b0c]/60 mt-0.5"
+                            title={company.last_scraped_at ? `Last scraped ${new Date(company.last_scraped_at).toLocaleString('en-IN')}` : undefined}
+                          >
+                            <Clock size={11} className="shrink-0" />
+                            <span className="truncate">{formatRelativeScrapedAt(company.last_scraped_at)}</span>
+                          </div>
                         </div>
+                      </div>
+                      <div className="flex items-start gap-3 shrink-0">
+                      <div className="text-center px-3 py-1.5 rounded-xl bg-black/[0.04]">
+                        <div className="text-lg font-black leading-none">{(company.job_count ?? 0).toLocaleString()}</div>
+                        <div className="text-[9px] uppercase tracking-widest text-[#0b0b0c]/60 font-bold">Jobs</div>
                       </div>
                       <button
                         onClick={() => toggleActive(company)}
@@ -463,35 +504,53 @@ export default function CompaniesPage() {
                       >
                         <span className={`absolute top-0.5 w-5 h-5 rounded-full bg-white transition-all ${company.is_active ? 'left-5' : 'left-0.5'}`} />
                       </button>
+                      </div>
                     </div>
 
-                    <div className="flex flex-col gap-1.5 text-xs">
-                      {company.career_url && (
-                        <a href={company.career_url} target="_blank" rel="noreferrer" className="flex items-center gap-2 text-[#0b0b0c]/40 hover:text-purple-600 transition-colors truncate">
-                          <ExternalLink size={13} className="shrink-0" /> <span className="truncate">{company.career_url}</span>
-                        </a>
+                    {company.career_url && (
+                      <a href={company.career_url} target="_blank" rel="noreferrer" className="flex items-center gap-2 text-xs text-[#0b0b0c]/40 hover:text-purple-600 transition-colors truncate">
+                        <Globe size={13} className="shrink-0" /> <span className="truncate">Career page</span> <ExternalLink size={11} className="shrink-0" />
+                      </a>
+                    )}
+
+                    <div className="pt-4 border-t border-black/[0.08] flex-1 min-h-0">
+                      {!company.jobs || company.jobs.length === 0 ? (
+                        <p className="text-xs text-[#0b0b0c]/70 text-center py-4">No jobs yet.</p>
+                      ) : (
+                        <div className="flex flex-col gap-2 max-h-64 overflow-y-auto pr-1">
+                          {company.jobs.map(job => (
+                            <a
+                              key={job.id}
+                              href={job.job_url}
+                              target="_blank"
+                              rel="noreferrer"
+                              className="block p-3 rounded-xl bg-black/[0.03] border border-black/[0.08] hover:border-purple-500/40 transition-all"
+                            >
+                              <div className="text-sm font-semibold truncate">{job.title}</div>
+                              <div className="flex flex-wrap items-center gap-x-2 gap-y-1 mt-1 text-[10px] text-[#0b0b0c]/60">
+                                {(job.location_name || job.is_remote) && (
+                                  <span className="flex items-center gap-1"><MapPin size={10} /> {job.is_remote ? 'Remote' : job.location_name}</span>
+                                )}
+                                {job.salary && <span className="text-green-600">{job.salary}</span>}
+                                {job.experience_required && <span>{job.experience_required}</span>}
+                              </div>
+                            </a>
+                          ))}
+                        </div>
                       )}
-                      <div className="flex items-center gap-2 text-[#0b0b0c]/55" title={company.last_scraped_at ? new Date(company.last_scraped_at).toLocaleString() : undefined}>
-                        <Clock size={13} className="shrink-0" />
-                        <span className="truncate">
-                          Last scraped: {company.last_scraped_at
-                            ? new Date(company.last_scraped_at).toLocaleDateString('en-IN', { day: '2-digit', month: 'short', year: 'numeric' })
-                            : 'Never'}
-                        </span>
-                      </div>
                     </div>
 
                     <div className="pt-4 border-t border-black/[0.08] flex gap-3 mt-auto">
                       <button
                         onClick={() => openEditModal(company)}
-                        className="cursor-pointer flex-1 py-2.5 rounded-xl bg-black/[0.04] border border-black/[0.08] text-sm font-semibold text-[#0b0b0c]/40 hover:text-[#0b0b0c] hover:border-black/[0.12] transition-all flex items-center justify-center gap-2"
+                        className="cursor-pointer flex-1 py-2.5 rounded-xl bg-black/[0.04] border border-black/[0.08] text-sm font-semibold text-[#0b0b0c]/70 hover:text-[#0b0b0c] hover:bg-black/[0.06] hover:border-black/[0.12] transition-all flex items-center justify-center gap-2"
                       >
                         <Pencil size={14} />
                         Edit
                       </button>
                       <button
                         onClick={() => handleDelete(company)}
-                        className="cursor-pointer flex-1 py-2.5 rounded-xl bg-black/[0.04] border border-black/[0.08] text-sm font-semibold text-[#0b0b0c]/40 hover:text-red-500 hover:border-red-500/30 transition-all flex items-center justify-center gap-2"
+                        className="cursor-pointer flex-1 py-2.5 rounded-xl bg-red-500/5 border border-red-500/15 text-sm font-semibold text-red-500/80 hover:text-red-600 hover:bg-red-500/10 hover:border-red-500/30 transition-all flex items-center justify-center gap-2"
                       >
                         <Trash2 size={14} />
                         Delete
@@ -707,7 +766,7 @@ function BulkAddModal({ onClose, onUpload }: {
           <button
             disabled={uploading || parsed.length === 0}
             onClick={handleUpload}
-            className="cursor-pointer flex-1 py-3 rounded-xl bg-purple-600 hover:bg-purple-600 disabled:opacity-40 disabled:cursor-not-allowed font-bold transition-all flex items-center justify-center gap-2"
+            className="cursor-pointer flex-1 py-3 rounded-xl bg-purple-600 hover:bg-purple-700 text-white disabled:opacity-40 disabled:cursor-not-allowed font-bold transition-all flex items-center justify-center gap-2"
           >
             {uploading ? <Loader2 size={18} className="animate-spin" /> : null}
             Upload {parsed.length > 0 ? `(${parsed.length})` : ''}
@@ -816,7 +875,7 @@ function CompanyFormModal({ company, onClose, onSave, saving }: {
           <button
             disabled={saving || !canSave}
             onClick={() => onSave(form)}
-            className="cursor-pointer flex-1 py-3 rounded-xl bg-purple-600 hover:bg-purple-600 disabled:opacity-40 disabled:cursor-not-allowed font-bold transition-all flex items-center justify-center gap-2"
+            className="cursor-pointer flex-1 py-3 rounded-xl bg-purple-600 hover:bg-purple-700 text-white disabled:opacity-40 disabled:cursor-not-allowed font-bold transition-all flex items-center justify-center gap-2"
           >
             {saving ? <Loader2 size={18} className="animate-spin" /> : null}
             {company ? 'Save Changes' : 'Add Company'}

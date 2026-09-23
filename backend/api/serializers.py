@@ -246,7 +246,7 @@ def calculate_match(resume_text, job_title, job_description):
     return min(round(score, 1), 100)
 
 class UserSerializer(serializers.ModelSerializer):
-    phone = serializers.CharField(source='profile.phone', required=False)
+    phone = serializers.CharField(source='profile.phone', required=False, allow_blank=True, allow_null=True)
     linkedin_url = serializers.URLField(source='profile.linkedin_url', required=False, allow_blank=True, allow_null=True)
     resume = serializers.FileField(source='profile.resume', required=False, allow_null=True)
     resume_text = serializers.CharField(source='profile.resume_text', read_only=True)

@@ -111,10 +111,7 @@ export default function RevenueDashboard() {
         <header className="flex flex-col md:flex-row md:items-center justify-between gap-6 mb-12">
           <div className="flex items-center gap-6">
             <div>
-              <div className="flex items-center gap-3 mb-1">
-                <h1 className="text-3xl font-bold tracking-tight">Finance Control</h1>
-                <span className="px-2 py-0.5 rounded-md bg-green-600/10 text-green-600 text-[10px] font-black uppercase tracking-widest border border-green-600/20">Live</span>
-              </div>
+              <h1 className="text-3xl font-bold tracking-tight mb-1">Finance Control</h1>
               <p className="text-[#0b0b0c]/40 text-sm">Real-time revenue metrics and transaction oversight.</p>
             </div>
           </div>
@@ -170,7 +167,7 @@ export default function RevenueDashboard() {
         </div>
 
         {/* Transaction History */}
-        <div className="bg-white border border-black/[0.08] rounded-3xl overflow-hidden shadow-2xl">
+        <div className="bg-white border border-black/[0.08] rounded-3xl overflow-hidden">
           <div className="p-8 border-b border-black/[0.08] flex flex-col md:flex-row md:items-center justify-between gap-6">
             <div>
               <h2 className="text-xl font-bold mb-1">Transaction History</h2>
@@ -297,7 +294,7 @@ function StatCard({ icon, label, value, sublabel, trend }: {
     <div className="bg-white border border-black/[0.08] p-8 rounded-3xl hover:border-green-600/30 transition-all group relative overflow-hidden">
       <div className="absolute -right-4 -top-4 w-24 h-24 bg-black/[0.03] blur-2xl rounded-full group-hover:bg-green-700/5 transition-all" />
       
-      <div className="w-12 h-12 rounded-2xl bg-black/[0.04] flex items-center justify-center mb-6 shadow-inner group-hover:scale-110 transition-transform">
+      <div className="w-12 h-12 rounded-2xl bg-black/[0.04] flex items-center justify-center mb-6 group-hover:scale-110 transition-transform">
         {icon}
       </div>
       <div className="text-xs text-[#0b0b0c]/60 font-black uppercase tracking-[0.2em] mb-2">{label}</div>

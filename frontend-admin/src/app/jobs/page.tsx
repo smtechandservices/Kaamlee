@@ -22,7 +22,7 @@ import { getCached, setCache, invalidatePrefix } from '@/lib/cache';
 import Checkbox from '@/components/Checkbox';
 
 const API_BASE = `${process.env.NEXT_PUBLIC_API_URL}/api`;
-const PAGE_SIZE = 20;
+const PAGE_SIZE_OPTIONS = [20, 50, 100];
 
 interface Job {
   id: number;
@@ -168,6 +168,8 @@ export default function JobsPage() {
   const [count, setCount] = useState(0);
   const [stats, setStats] = useState<JobStats | null>(null);
   const [page, setPage] = useState(1);
+  const [pageSize, setPageSize] = useState(PAGE_SIZE_OPTIONS[0]);
+  const [pageInput, setPageInput] = useState('1');
   const [loading, setLoading] = useState(true);
   const [companies, setCompanies] = useState<CompanyOption[]>([]);
   const [selectedCompany, setSelectedCompany] = useState('');
@@ -187,7 +189,11 @@ export default function JobsPage() {
   const [loadingMissingCoords, setLoadingMissingCoords] = useState(false);
   const router = useRouter();
 
-  const totalPages = Math.max(1, Math.ceil(count / PAGE_SIZE));
+  const totalPages = Math.max(1, Math.ceil(count / pageSize));
+
+  useEffect(() => {
+    setPageInput(String(page));
+  }, [page]);
 
   const fetchJobs = useCallback(async (force = false) => {
     const token = localStorage.getItem('admin_token');
@@ -195,7 +201,7 @@ export default function JobsPage() {
       router.push('/login');
       return;
     }
-    const params = new URLSearchParams({ page: String(page) });
+    const params = new URLSearchParams({ page: String(page), page_size: String(pageSize) });
     if (selectedCompany) params.set('company', selectedCompany);
     if (search) params.set('search', search);
     const cacheKey = `job-data:list:${params.toString()}`;
@@ -207,6 +213,7 @@ export default function JobsPage() {
         setCount(cached.count);
         setStats(cached.stats ?? null);
         setSelectedIds(new Set());
+        setLoading(false);
         return;
       }
     }
@@ -233,7 +240,7 @@ export default function JobsPage() {
     } finally {
       setLoading(false);
     }
-  }, [page, selectedCompany, search, router]);
+  }, [page, pageSize, selectedCompany, search, router]);
 
   useEffect(() => {
     fetchJobs();
@@ -267,6 +274,17 @@ export default function JobsPage() {
   const handleCompanyChange = (name: string) => {
     setPage(1);
     setSelectedCompany(name);
+  };
+
+  const handlePageSizeChange = (size: number) => {
+    setPage(1);
+    setPageSize(size);
+  };
+
+  const jumpToPage = () => {
+    const n = Math.round(Number(pageInput));
+    if (Number.isFinite(n)) setPage(Math.min(totalPages, Math.max(1, n)));
+    else setPageInput(String(page));
   };
 
   const openMapPreview = (job: Job, e: React.MouseEvent<HTMLButtonElement>) => {
@@ -481,7 +499,7 @@ export default function JobsPage() {
               <button
                 onClick={openGeocodeMenu}
                 disabled={geocoding}
-                className="cursor-pointer bg-purple-600 hover:bg-purple-600 disabled:opacity-40 disabled:cursor-not-allowed px-4 py-3 rounded-2xl text-sm font-semibold flex items-center gap-2 transition-all"
+                className="cursor-pointer bg-purple-600 hover:bg-purple-700 text-white disabled:opacity-40 disabled:cursor-not-allowed px-4 py-3 rounded-2xl text-sm font-semibold flex items-center gap-2 transition-all"
               >
                 {geocoding ? <Loader2 size={16} className="animate-spin" /> : <Crosshair size={16} />}
                 Run Geocode
@@ -490,7 +508,7 @@ export default function JobsPage() {
               {geocodeMenuOpen && (
                 <>
                   <div className="fixed inset-0 z-40" onClick={() => setGeocodeMenuOpen(false)} />
-                  <div className="absolute right-0 top-full mt-2 w-80 z-50 bg-black/[0.03] border border-black/[0.12] rounded-2xl shadow-2xl overflow-hidden">
+                  <div className="absolute right-0 top-full mt-2 w-80 z-50 bg-black/[0.03] border border-black/[0.12] rounded-2xl overflow-hidden">
                     <div className="px-4 py-3 border-b border-black/[0.12] text-[10px] font-black uppercase tracking-[0.2em] text-[#0b0b0c]/55">
                       Companies missing coordinates
                     </div>
@@ -615,7 +633,7 @@ export default function JobsPage() {
           </div>
         ) : (
           <>
-            <div className="bg-white border border-black/[0.08] rounded-3xl overflow-hidden shadow-2xl">
+            <div className="bg-white border border-black/[0.08] rounded-3xl overflow-hidden">
               <div className="overflow-x-auto">
                 <table className="w-full min-w-[1100px] border-collapse">
                   <thead>
@@ -658,7 +676,7 @@ export default function JobsPage() {
                             />
                           </td>
                           <td className="px-6 py-5">
-                            <div className="font-semibold text-[#0b0b0c] truncate max-w-[260px]">{job.title}</div>
+                            <div className="font-semibold text-[#0b0b0c] leading-snug line-clamp-2 max-w-[340px]" title={job.title}>{job.title}</div>
                             {job.job_type && <div className="text-xs text-[#0b0b0c]/60 mt-0.5">{job.job_type}</div>}
                           </td>
                           <td className="px-6 py-5" onClick={(e) => e.stopPropagation()}>
@@ -740,11 +758,35 @@ export default function JobsPage() {
             </div>
 
             {count > 0 && (
-              <div className="flex items-center justify-between mt-6">
-                <p className="text-xs text-[#0b0b0c]/60 font-medium">
-                  Page {page} of {totalPages}
-                </p>
+              <div className="flex flex-wrap items-center justify-between gap-4 mt-6">
+                <div className="flex items-center gap-3">
+                  <p className="text-xs text-[#0b0b0c]/60 font-medium">
+                    Page {page} of {totalPages.toLocaleString()}
+                  </p>
+                  <div className="flex items-center gap-1.5">
+                    <span className="text-xs text-[#0b0b0c]/40">Rows:</span>
+                    {PAGE_SIZE_OPTIONS.map((size) => (
+                      <button
+                        key={size}
+                        onClick={() => handlePageSizeChange(size)}
+                        className={`cursor-pointer px-2.5 py-1 rounded-lg text-xs font-semibold transition-all ${
+                          pageSize === size ? 'bg-green-600/10 text-green-600' : 'text-[#0b0b0c]/40 hover:text-[#0b0b0c] hover:bg-black/[0.04]'
+                        }`}
+                      >
+                        {size}
+                      </button>
+                    ))}
+                  </div>
+                </div>
+
                 <div className="flex items-center gap-2">
+                  <button
+                    onClick={() => setPage(1)}
+                    disabled={page <= 1}
+                    className="cursor-pointer px-3 py-2.5 rounded-xl bg-white border border-black/[0.08] hover:bg-black/[0.03] disabled:opacity-30 disabled:cursor-not-allowed transition-all text-xs font-semibold"
+                  >
+                    First
+                  </button>
                   <button
                     onClick={() => setPage(p => Math.max(1, p - 1))}
                     disabled={page <= 1}
@@ -752,12 +794,34 @@ export default function JobsPage() {
                   >
                     <ChevronLeft size={18} />
                   </button>
+
+                  <div className="flex items-center gap-1.5 px-1">
+                    <input
+                      type="number"
+                      min={1}
+                      max={totalPages}
+                      value={pageInput}
+                      onChange={(e) => setPageInput(e.target.value)}
+                      onKeyDown={(e) => e.key === 'Enter' && jumpToPage()}
+                      onBlur={jumpToPage}
+                      className="w-14 bg-white border border-black/[0.08] rounded-lg py-2 px-2 text-center text-sm focus:outline-none focus:border-green-600 transition-all"
+                    />
+                    <span className="text-xs text-[#0b0b0c]/40 whitespace-nowrap">of {totalPages.toLocaleString()}</span>
+                  </div>
+
                   <button
                     onClick={() => setPage(p => Math.min(totalPages, p + 1))}
                     disabled={page >= totalPages}
                     className="cursor-pointer p-2.5 rounded-xl bg-white border border-black/[0.08] hover:bg-black/[0.03] disabled:opacity-30 disabled:cursor-not-allowed transition-all"
                   >
                     <ChevronRight size={18} />
+                  </button>
+                  <button
+                    onClick={() => setPage(totalPages)}
+                    disabled={page >= totalPages}
+                    className="cursor-pointer px-3 py-2.5 rounded-xl bg-white border border-black/[0.08] hover:bg-black/[0.03] disabled:opacity-30 disabled:cursor-not-allowed transition-all text-xs font-semibold"
+                  >
+                    Last
                   </button>
                 </div>
               </div>
@@ -776,7 +840,7 @@ export default function JobsPage() {
               exit={{ opacity: 0, scale: 0.95 }}
               transition={{ duration: 0.15 }}
               style={{ top: mapPreview.top, left: mapPreview.left, width: MAP_PREVIEW_WIDTH }}
-              className="fixed z-50 bg-white border border-black/[0.12] rounded-2xl shadow-2xl overflow-hidden"
+              className="fixed z-50 bg-white border border-black/[0.12] rounded-2xl overflow-hidden"
             >
               <div className="flex items-center justify-between px-3 py-2 bg-black/[0.04] border-b border-black/[0.12]">
                 <span className="text-[10px] font-mono text-[#0b0b0c]/40 truncate">
@@ -818,7 +882,7 @@ export default function JobsPage() {
               animate={{ opacity: 1, scale: 1, y: 0 }}
               exit={{ opacity: 0, scale: 0.97, y: 10 }}
               transition={{ duration: 0.15 }}
-              className="fixed z-50 inset-0 m-auto h-fit max-h-[85vh] w-full max-w-2xl overflow-y-auto bg-white border border-black/[0.08] rounded-3xl shadow-2xl"
+              className="fixed z-50 inset-0 m-auto h-fit max-h-[85vh] w-full max-w-2xl overflow-y-auto bg-white border border-black/[0.08] rounded-3xl"
             >
               <div className="flex items-start justify-between gap-4 px-8 py-6 border-b border-black/[0.08] sticky top-0 bg-white/95 backdrop-blur">
                 <div className="flex items-center gap-4 min-w-0">

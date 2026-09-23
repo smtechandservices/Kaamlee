@@ -7,7 +7,7 @@ from rest_framework.decorators import action
 from rest_framework.authtoken.views import ObtainAuthToken
 from rest_framework.response import Response
 from rest_framework.authtoken.models import Token
-from .models import Job, Bookmark, Feedback, Portfolio, PortfolioView, Profile, CustomCV, JobApplicationKit, Company, ScraperRun
+from .models import Job, Bookmark, Feedback, Portfolio, PortfolioView, Profile, CustomCV, JobApplicationKit, Company, ScraperRun, ScraperPauseState
 from .serializers import (
     JobSerializer, JobMapPinSerializer,
     UserSerializer, RegisterSerializer, RecentJobSerializer,
@@ -18,6 +18,8 @@ from .serializers import (
 )
 from .google_auth import get_or_create_google_user, _unique_username_from_email
 from .email_otp import create_otp, verify_otp
+from .constants import JOB_CATEGORIES
+from .scraper_events import publish_scraper_event
 from django.core.validators import validate_email
 from django.core.exceptions import ValidationError as DjangoValidationError
 from scripts.ats_scoring import score_cv, get_profession_keywords, get_all_profession_keywords
@@ -26,7 +28,7 @@ from django.http import HttpResponse, StreamingHttpResponse
 from django.shortcuts import get_object_or_404
 from django.db import models
 from django.db.models import Exists, OuterRef, Q, Count
-from django.db.models.functions import TruncMonth
+from django.db.models.functions import TruncMonth, RowNumber
 from django.core.cache import cache
 from django.contrib.auth.models import User
 from django.utils import timezone
@@ -71,16 +73,20 @@ class _RunRegistry:
         already running (a previous run that finished is fair game to
         reserve again — its stale logs/result get overwritten here)."""
         key = board.strip().lower()
+        started_at = time.time()
         with self._lock:
             existing = self._runs.get(key)
             if existing and not existing['done']:
                 return None
             stop_event = threading.Event()
             self._runs[key] = {
-                'board': board, 'script': script, 'started_at': time.time(),
+                'board': board, 'script': script, 'started_at': started_at,
                 'stop_event': stop_event, 'done': False, 'logs': [], 'result': None,
             }
-            return stop_event
+        publish_scraper_event({
+            'type': 'run_started', 'board': board, 'script': script, 'started_at': started_at,
+        })
+        return stop_event
 
     def cancel(self, board):
         """Pops a reservation that never actually started running — used to
@@ -89,12 +95,15 @@ class _RunRegistry:
         run's completion and keeps its result around for polling.)"""
         with self._lock:
             self._runs.pop(board.strip().lower(), None)
+        publish_scraper_event({'type': 'run_canceled', 'board': board})
 
     def log(self, board, message):
         with self._lock:
             run = self._runs.get(board.strip().lower())
             if run:
                 run['logs'].append(message)
+        if run:
+            publish_scraper_event({'type': 'log', 'board': run['board'], 'message': message})
 
     def finish(self, board, result=None):
         with self._lock:
@@ -103,6 +112,8 @@ class _RunRegistry:
                 run['done'] = True
                 if result is not None:
                     run['result'] = result
+        if run:
+            publish_scraper_event({'type': 'run_finished', 'board': run['board'], 'result': run['result']})
 
     def is_running(self, board):
         with self._lock:
@@ -113,6 +124,22 @@ class _RunRegistry:
         with self._lock:
             return [
                 {'board': r['board'], 'script': r['script'], 'started_at': r['started_at']}
+                for r in self._runs.values() if not r['done']
+            ]
+
+    def snapshot(self):
+        """Like list(), but for a fresh WebSocket connection (a page
+        load/refresh, or a reconnect after a network blip) catching up on
+        a board that was already running before it connected — also
+        includes that board's log lines *so far*, so the console doesn't
+        come up blank until the next line happens to arrive. A copy, not a
+        drain: unlike status() (which polling reads and clears so a line
+        isn't redelivered), nothing here needs "already delivered"
+        bookkeeping, since every connected socket gets every future line
+        anyway via the live 'log' event."""
+        with self._lock:
+            return [
+                {'board': r['board'], 'script': r['script'], 'started_at': r['started_at'], 'logs': list(r['logs'])}
                 for r in self._runs.values() if not r['done']
             ]
 
@@ -138,6 +165,7 @@ class _RunRegistry:
         if not run:
             return False
         run['stop_event'].set()
+        publish_scraper_event({'type': 'run_stop_requested', 'board': run['board']})
         return True
 
     def stop_all(self):
@@ -145,6 +173,8 @@ class _RunRegistry:
             runs = [r for r in self._runs.values() if not r['done']]
         for run in runs:
             run['stop_event'].set()
+        for run in runs:
+            publish_scraper_event({'type': 'run_stop_requested', 'board': run['board']})
         return [r['board'] for r in runs]
 
 _run_registry = _RunRegistry()
@@ -608,9 +638,15 @@ class StatsView(views.APIView):
     def get(self, request):
         data = cache.get(_STATS_CACHE_KEY)
         if data is None:
-            total_jobs = Job.objects.count()
+            # Scraped jobs + employer-posted jobs live on Kaamlee — the
+            # user-facing "total jobs" figure counts both.
+            from hiring.models import JobPosting
+            scraped_jobs = Job.objects.count()
+            published_postings = JobPosting.objects.filter(status='published').count()
             data = {
-                'total_jobs': total_jobs,
+                'total_jobs': scraped_jobs + published_postings,
+                'scraped_jobs': scraped_jobs,
+                'published_postings': published_postings,
             }
             cache.set(_STATS_CACHE_KEY, data, _STATS_CACHE_TTL)
         return Response(data)
@@ -627,11 +663,45 @@ class CompanyViewSet(viewsets.ModelViewSet):
     pagination_class = CompaniesPagination
 
     def get_queryset(self):
-        queryset = Company.objects.all().order_by('-created_at')
+        # Most recently scraped first; never-scraped companies sort last.
+        queryset = Company.objects.all().order_by(
+            models.F('last_scraped_at').desc(nulls_last=True), '-created_at',
+        )
         search = self.request.query_params.get('search')
         if search:
             queryset = queryset.filter(models.Q(name__icontains=search) | models.Q(domain__icontains=search))
         return queryset
+
+    RECENT_JOBS_PER_COMPANY = 10
+
+    def list(self, request, *args, **kwargs):
+        """Adds job_count + the most recent jobs to each company on the page,
+        so the Companies page cards match the dashboard's (see CompaniesView)."""
+        response = super().list(request, *args, **kwargs)
+        rows = response.data['results'] if isinstance(response.data, dict) else response.data
+        names = [row['name'] for row in rows]
+        jobs_qs = Job.objects.filter(site__startswith='http', company__in=names)
+        counts = dict(
+            jobs_qs.values('company').annotate(count=Count('id')).values_list('company', 'count')
+        )
+        # One query for every company's latest N jobs, ranked per company.
+        recent = (
+            jobs_qs.annotate(rank=models.Window(
+                expression=RowNumber(),
+                partition_by=[models.F('company')],
+                order_by=[models.F('date_posted').desc(nulls_last=True), models.F('created_at').desc()],
+            ))
+            .filter(rank__lte=self.RECENT_JOBS_PER_COMPANY)
+            .values('id', 'company', 'title', 'location_name', 'is_remote', 'job_url',
+                    'date_posted', 'experience_required', 'salary')
+        )
+        jobs_by_company = {}
+        for job in recent:
+            jobs_by_company.setdefault(job.pop('company'), []).append(job)
+        for row in rows:
+            row['job_count'] = counts.get(row['name'], 0)
+            row['jobs'] = jobs_by_company.get(row['name'], [])
+        return response
 
     @action(detail=False, methods=['post'], url_path='bulk')
     def bulk_create(self, request):
@@ -822,6 +892,9 @@ class RunScraperScriptView(views.APIView):
     SCRIPTS = {'ashbyhq': 'Ashby', 'greenhouse': 'Greenhouse', 'recruitee': 'Recruitee', 'lever': 'Lever', 'workable': 'Workable', 'epam': 'EPAM'}
 
     def post(self, request):
+        if ScraperPauseState.get_solo().is_paused:
+            return Response({'error': 'Scraping is paused — resume it from the Scraper page before starting a run.'}, status=409)
+
         script = request.data.get('script')
         if script not in self.SCRIPTS:
             return Response({'error': f"Unknown script '{script}'. Choose one of: {', '.join(self.SCRIPTS)}"}, status=400)
@@ -932,20 +1005,83 @@ class StopScriptView(views.APIView):
     or all of them (`{"all": true}`). The board's own sync loop checks a
     shared flag between steps and exits early on its own — a real OS
     thread can't be killed from outside — so stopping isn't instant and
-    whatever's already been fetched/geocoded up to that point stays saved."""
+    whatever's already been fetched/geocoded up to that point stays saved.
+
+    `{"force": true}` alongside either shape additionally force-clears the
+    run from tracking right away, for a board that isn't responding to the
+    cooperative flag at all — stuck on a hung network call, a bug in the
+    loop, or just taking far longer than an admin is willing to wait. This
+    frees the board to be started again immediately and clears it from the
+    dashboard, but — same caveat as above, just more so — it can't actually
+    kill the underlying thread. If that thread really is wedged, it keeps
+    running in the background until it finishes on its own or the process
+    restarts; if it does eventually finish, whatever it reports then will
+    overwrite this force-stop's 'stopped' status on that ScraperRun row.
+    """
     permission_classes = [permissions.IsAdminUser]
 
     def post(self, request):
+        force = bool(request.data.get('force'))
+
         if request.data.get('all'):
             stopped = _run_registry.stop_all()
-            return Response({'stopped': stopped})
+            if force:
+                for board in stopped:
+                    self._force_clear(board)
+            return Response({'stopped': stopped, 'forced': force})
 
         board = (request.data.get('board') or '').strip()
         if not board:
             return Response({'error': 'Provide a board name or {"all": true}.'}, status=400)
         if not _run_registry.stop(board):
             return Response({'error': f"'{board}' isn't currently running."}, status=404)
-        return Response({'stopped': [board]})
+        if force:
+            self._force_clear(board)
+        return Response({'stopped': [board], 'forced': force})
+
+    @staticmethod
+    def _force_clear(board):
+        _run_registry.finish(board, {
+            'ok': False, 'stopped': True,
+            'error': 'Force-stopped by admin.',
+        })
+        ScraperRun.objects.filter(board__iexact=board, status='running').update(
+            status='stopped', finished_at=timezone.now(),
+            error='Force-stopped by admin before it reported a result.',
+        )
+
+class ScraperPauseView(views.APIView):
+    """Global on/off switch for starting new scraper runs (see
+    ScraperPauseState's docstring) — checked by RunScraperScriptView and
+    the auto-scrape scheduler, not by this view itself. A run already in
+    flight isn't affected by pausing; use StopScriptView for that.
+
+    GET returns the current state; POST {"paused": true|false} sets it and
+    broadcasts the change to the scraper WebSocket immediately, so every
+    connected admin sees it live rather than on their next poll/reload.
+    """
+    permission_classes = [permissions.IsAdminUser]
+
+    def get(self, request):
+        state = ScraperPauseState.get_solo()
+        return Response({
+            'paused': state.is_paused,
+            'paused_at': state.paused_at,
+            'paused_by': state.paused_by.username if state.paused_by else None,
+        })
+
+    def post(self, request):
+        paused = bool(request.data.get('paused'))
+        state = ScraperPauseState.get_solo()
+        state.is_paused = paused
+        state.paused_at = timezone.now() if paused else None
+        state.paused_by = request.user if paused else None
+        state.save()
+        publish_scraper_event({
+            'type': 'pause_state', 'paused': paused,
+            'paused_by': request.user.username if paused else None,
+        })
+        return Response({'paused': paused})
 
 class RunGeocodeView(views.APIView):
     """Lets an admin trigger the coordinate backfill (scripts/geocode_jobs.py)
@@ -997,11 +1133,18 @@ class AdminLoginView(ObtainAuthToken):
         })
 
 class AdminUserViewSet(viewsets.ModelViewSet):
+    """Candidate accounts only — employer owners/admins/recruiters have their
+    own login too (see employers.EmployerMember) but are managed from the
+    Employers page instead, not mixed in here."""
     serializer_class = UserSerializer
     permission_classes = [permissions.IsAdminUser]
 
     def get_queryset(self):
-        return User.objects.select_related('profile', 'portfolio').order_by('-date_joined')
+        return (
+            User.objects.filter(employer_membership__isnull=True)
+            .select_related('profile', 'portfolio')
+            .order_by('-date_joined')
+        )
 
     @action(detail=True, methods=['post'], url_path='set-password')
     def set_password(self, request, pk=None):
@@ -1016,8 +1159,7 @@ class CategoriesView(views.APIView):
     permission_classes = [permissions.AllowAny]
 
     def get(self, request):
-        from scripts.job_categorizer import CATEGORIES
-        return Response(CATEGORIES)
+        return Response(JOB_CATEGORIES)
 
 class FeedbackView(views.APIView):
     permission_classes = [permissions.IsAuthenticated]

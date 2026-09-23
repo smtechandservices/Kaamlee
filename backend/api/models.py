@@ -227,6 +227,30 @@ class ScraperRun(models.Model):
         return f"{self.board} ({self.script}) - {self.status}"
 
 
+class ScraperPauseState(models.Model):
+    """Singleton (always pk=1) — a global on/off switch checked before
+    starting any new scraper run, by both RunScraperScriptView
+    (admin-triggered, see api/views.py) and auto_scrape_job (the 5-minute
+    scheduler, see api/scheduler.py). Only gates *new* starts — a run
+    already in flight when this flips on keeps going; use StopScriptView to
+    stop those.
+
+    DB-backed rather than the in-memory _run_registry or the process-local
+    cache, so the pause holds across a restart/deploy and is honored by
+    every worker process, not just whichever one flipped it."""
+    is_paused = models.BooleanField(default=False)
+    paused_at = models.DateTimeField(null=True, blank=True)
+    paused_by = models.ForeignKey(User, on_delete=models.SET_NULL, null=True, blank=True)
+
+    @classmethod
+    def get_solo(cls):
+        obj, _ = cls.objects.get_or_create(pk=1)
+        return obj
+
+    def __str__(self):
+        return 'paused' if self.is_paused else 'not paused'
+
+
 class JobApplicationKit(models.Model):
     user = models.ForeignKey(User, on_delete=models.CASCADE, related_name='application_kits')
     job = models.ForeignKey(Job, on_delete=models.CASCADE, related_name='application_kits')

@@ -58,12 +58,27 @@
       "problemMatcher": []
     },
     {
+      "label": "Run Frontend Employer",
+      "type": "shell",
+      "command": "npm run dev -- --port 3003",
+      "options": {
+        "cwd": "${workspaceFolder}/frontend-employer"
+      },
+      "group": "build",
+      "presentation": {
+        "panel": "dedicated",
+        "reveal": "always"
+      },
+      "problemMatcher": []
+    },
+    {
       "label": "Run All",
       "dependsOn": [
         "Run Backend",
         "Run Frontend",
         "Run Frontend Admin",
-        "Run Frontend Ambassador"
+        "Run Frontend Ambassador",
+        "Run Frontend Employer"
       ],
       "dependsOrder": "parallel",
       "group": {
