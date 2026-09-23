@@ -4,7 +4,8 @@ import logging
 from django.utils import timezone
 from rest_framework import serializers
 
-from api.serializers import _groq, _GROQ_MODEL
+from api.serializers import _groq_chat_completion, _GROQ_MODEL
+from api.groq_usage import GroqQuotaExceeded
 from .models import JobPosting, Application, ApplicationStageChange, SavedJob, JobApplicationKit, APPLICATION_STAGE_CHOICES
 
 logger = logging.getLogger(__name__)
@@ -257,7 +258,7 @@ Return ONLY valid JSON, no markdown, with this exact structure:
 }}
 """
 
-def generate_application_kit_with_groq(resume_content: dict, job_title: str, employer: str, job_description: str) -> dict:
+def generate_application_kit_with_groq(resume_content: dict, job_title: str, employer: str, job_description: str, profile) -> dict:
     prompt = _APPLICATION_KIT_PROMPT_TEMPLATE.format(
         questions="\n".join(f"- {q}" for q in APPLICATION_KIT_QUESTIONS),
         job_title=job_title,
@@ -265,7 +266,8 @@ def generate_application_kit_with_groq(resume_content: dict, job_title: str, emp
         job_description=(job_description or "")[:4000],
     )
     try:
-        response = _groq.chat.completions.create(
+        response = _groq_chat_completion(
+            profile,
             model=_GROQ_MODEL,
             messages=[
                 {"role": "system", "content": prompt},
@@ -280,6 +282,8 @@ def generate_application_kit_with_groq(resume_content: dict, job_title: str, emp
             if raw.startswith("json"):
                 raw = raw[4:]
         return json.loads(raw)
+    except GroqQuotaExceeded:
+        raise
     except Exception:
         logger.exception("Groq application kit error")
         return {}

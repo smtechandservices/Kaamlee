@@ -387,8 +387,7 @@ export default function ScraperPage() {
         <header className="flex flex-col md:flex-row md:items-center justify-between gap-6 mb-10">
           <div>
             <h1 className="text-3xl font-bold tracking-tight mb-1 flex items-center gap-3">
-              <Radio size={26} className="text-green-600" />
-              Scraper — Live
+              Scraper Live
             </h1>
             <p className="text-[#0b0b0c]/60 font-medium">
               Streams every scrape in real time — admin-triggered and the 24/7 auto-scrape scheduler alike.
@@ -508,7 +507,7 @@ export default function ScraperPage() {
               }
 
               return (
-                <div className="flex flex-col gap-2 overflow-y-auto flex-1 min-h-0 max-h-72 pr-1 [mask-image:linear-gradient(to_bottom,black_92%,transparent)]">
+                <div className="flex flex-col gap-2 overflow-y-auto flex-1 min-h-0 max-h-64 pr-1 [mask-image:linear-gradient(to_bottom,black_92%,transparent)]">
                   {recentlyScraped.map(c => (
                     <div key={c.id} className="flex items-center gap-3 p-2.5 rounded-xl bg-black/[0.03] border border-black/[0.08]">
                       {c.logo_url ? (

@@ -8,6 +8,7 @@ from rest_framework.response import Response
 
 from employers.permissions import IsEmployerMember, IsApprovedEmployer
 from api.permissions import IsSubscribed, is_user_subscribed
+from api.groq_usage import GroqQuotaExceeded, usage_summary
 from scripts.cv_export import render_cv_pdf, render_cv_docx
 from .models import JobPosting, Application, ApplicationStageChange, SavedJob, JobApplicationKit
 from .serializers import (
@@ -468,12 +469,21 @@ class JobApplicationKitView(views.APIView):
                 status=502,
             )
 
-        generated = generate_application_kit_with_groq(content, job.title, job.employer.name, job.description)
+        try:
+            generated = generate_application_kit_with_groq(content, job.title, job.employer.name, job.description, profile)
+        except GroqQuotaExceeded:
+            return Response(
+                {'error': "You've hit your daily AI usage limit. It resets 24 hours after your first use today.",
+                 'groq_usage': usage_summary(profile)},
+                status=429,
+            )
         if not generated or not generated.get('cover_letter'):
-            return Response({'error': 'Failed to generate. Please try again.'}, status=502)
+            return Response({'error': 'Failed to generate. Please try again.', 'groq_usage': usage_summary(profile)}, status=502)
 
         kit, _ = JobApplicationKit.objects.update_or_create(
             user=request.user, job_posting=job,
             defaults={'cover_letter': generated.get('cover_letter', ''), 'qa': generated.get('qa', [])},
         )
-        return Response(JobApplicationKitSerializer(kit).data)
+        data = JobApplicationKitSerializer(kit).data
+        data['groq_usage'] = usage_summary(profile)
+        return Response(data)

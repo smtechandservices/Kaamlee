@@ -2,6 +2,7 @@ from django.db import models
 from django.contrib.auth.models import User
 from django.db.models.signals import post_save
 from django.dispatch import receiver
+from django.utils import timezone
 
 class Profile(models.Model):
     user = models.OneToOneField(User, on_delete=models.CASCADE, related_name='profile')
@@ -13,6 +14,10 @@ class Profile(models.Model):
     is_subscribed = models.BooleanField(default=False)
     subscription_expires_at = models.DateTimeField(blank=True, null=True)
     google_id = models.CharField(max_length=255, blank=True, null=True, unique=True)
+    # Per-user Groq token budget — see api.groq_usage. Resets on a rolling
+    # 24h window from groq_tokens_reset_at, not a fixed daily clock.
+    groq_tokens_used = models.PositiveIntegerField(default=0)
+    groq_tokens_reset_at = models.DateTimeField(default=timezone.now)
 
     def __str__(self):
         return f"Profile for {self.user.username}"
