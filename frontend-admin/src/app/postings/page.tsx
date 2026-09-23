@@ -25,6 +25,7 @@ import {
   CheckCircle2,
 } from 'lucide-react';
 import { useRouter } from 'next/navigation';
+import { useMapPreview, CoordinatesButton, MapPreviewPopover } from '@/components/MapPreview';
 
 const HIRING_BASE = `${process.env.NEXT_PUBLIC_API_URL}/hiring`;
 const EMPLOYERS_BASE = `${process.env.NEXT_PUBLIC_API_URL}/employers`;
@@ -87,6 +88,8 @@ interface Posting {
   salary_max: number | null;
   salary_currency: string;
   city: string;
+  latitude: number | null;
+  longitude: number | null;
   state: string;
   country: string;
   is_remote: boolean;
@@ -185,6 +188,7 @@ export default function PostingsPage() {
   const [postings, setPostings] = useState<Posting[]>([]);
   const [count, setCount] = useState(0);
   const [stats, setStats] = useState<PostingStats | null>(null);
+  const mapPreview = useMapPreview();
   const [page, setPage] = useState(1);
   const [loading, setLoading] = useState(true);
   const [searchInput, setSearchInput] = useState('');
@@ -443,12 +447,13 @@ export default function PostingsPage() {
         ) : (
           <div className="bg-white border border-black/[0.08] rounded-3xl overflow-hidden">
             <div className="overflow-x-auto">
-            <table className="w-full min-w-[1200px] border-collapse">
+            <table className="w-full min-w-[1350px] border-collapse">
               <thead>
                 <tr className="border-b border-black/[0.08] bg-black/[0.02]">
                   <th className="text-left px-6 py-5 text-[10px] font-black uppercase tracking-[0.2em] text-[#0b0b0c]/60">Posting</th>
                   <th className="text-left px-6 py-5 text-[10px] font-black uppercase tracking-[0.2em] text-[#0b0b0c]/60">Employer</th>
                   <th className="text-left px-6 py-5 text-[10px] font-black uppercase tracking-[0.2em] text-[#0b0b0c]/60">Location</th>
+                  <th className="text-left px-6 py-5 text-[10px] font-black uppercase tracking-[0.2em] text-[#0b0b0c]/60">Coordinates</th>
                   <th className="text-left px-6 py-5 text-[10px] font-black uppercase tracking-[0.2em] text-[#0b0b0c]/60">Applications</th>
                   <th className="text-left px-6 py-5 text-[10px] font-black uppercase tracking-[0.2em] text-[#0b0b0c]/60">Status</th>
                   <th className="text-left px-6 py-5 text-[10px] font-black uppercase tracking-[0.2em] text-[#0b0b0c]/60">Posted</th>
@@ -503,6 +508,13 @@ export default function PostingsPage() {
                           <MapPin size={13} className="shrink-0" />
                           <span className="truncate max-w-[160px]">{formatLocation(p)}</span>
                         </div>
+                      </td>
+                      <td className="px-6 py-5 text-nowrap" onClick={(e) => e.stopPropagation()}>
+                        <CoordinatesButton
+                          latitude={p.latitude}
+                          longitude={p.longitude}
+                          onOpen={(e) => mapPreview.open({ key: p.id, title: p.title, latitude: p.latitude as number, longitude: p.longitude as number }, e)}
+                        />
                       </td>
                       <td className="px-6 py-5" onClick={(e) => e.stopPropagation()}>
                         <button
@@ -645,6 +657,8 @@ export default function PostingsPage() {
           </motion.div>
         )}
       </AnimatePresence>
+
+      <MapPreviewPopover preview={mapPreview.preview} onClose={mapPreview.close} />
     </div>
   );
 }
@@ -704,6 +718,19 @@ function PostingDetailModal({ posting, onClose, onDelete, onViewApplicants }: {
             <DetailField label="Employment type" value={EMPLOYMENT_TYPE_LABELS[posting.employment_type]} />
             <DetailField label="Experience level" value={EXPERIENCE_LEVEL_LABELS[posting.experience_level]} />
             <DetailField label="Location" value={formatLocation(posting)} />
+            <DetailField
+              label="Coordinates"
+              value={posting.latitude != null && posting.longitude != null ? (
+                <a
+                  href={`https://www.google.com/maps?q=${posting.latitude},${posting.longitude}`}
+                  target="_blank"
+                  rel="noreferrer"
+                  className="font-mono text-xs text-green-700 hover:underline"
+                >
+                  {posting.latitude.toFixed(5)}, {posting.longitude.toFixed(5)} ↗
+                </a>
+              ) : 'Not set — this posting won\'t appear on the candidate map'}
+            />
             <DetailField label="Salary" value={salary ?? '—'} />
             <DetailField label="Applications" value={posting.applications_count} />
             <DetailField label="Employer KYC" value={

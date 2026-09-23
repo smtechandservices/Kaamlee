@@ -18,6 +18,7 @@ import {
   Crosshair,
 } from 'lucide-react';
 import { useRouter } from 'next/navigation';
+import { useMapPreview, CoordinatesButton, MapPreviewPopover } from '@/components/MapPreview';
 import { getCached, setCache, invalidatePrefix } from '@/lib/cache';
 import Checkbox from '@/components/Checkbox';
 
@@ -82,40 +83,6 @@ interface GeocodeResult {
   error?: string;
 }
 
-interface MapPreviewState {
-  job: Job;
-  top: number;
-  left: number;
-}
-
-const MAP_PREVIEW_WIDTH = 260;
-const MAP_PREVIEW_HEIGHT = 220;
-
-// A minimal, plain (non-satellite) preview: Leaflet + CartoDB Positron tiles,
-// loaded via CDN inside the iframe's own document so no map library needs to
-// be added to this app's bundle just for a one-off coordinate check.
-function buildMapSrcDoc(lat: number, lon: number) {
-  return `<!DOCTYPE html>
-<html><head><meta name="viewport" content="width=device-width, initial-scale=1.0">
-<link rel="stylesheet" href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css" />
-<style>
-  html, body, #map { margin: 0; padding: 0; height: 100%; width: 100%; background: #f2f3f5; }
-  .leaflet-control-attribution { font-size: 8px; background: rgba(255,255,255,0.7); color: #666; }
-  .leaflet-control-attribution a { color: #444; }
-</style></head>
-<body>
-<div id="map"></div>
-<script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js"></script>
-<script>
-  var map = L.map('map', { zoomControl: false, attributionControl: true }).setView([${lat}, ${lon}], 15);
-  L.tileLayer('https://{s}.basemaps.cartocdn.com/light_all/{z}/{x}/{y}{r}.png', {
-    maxZoom: 19,
-    attribution: '&copy; OpenStreetMap &copy; CARTO'
-  }).addTo(map);
-  L.circleMarker([${lat}, ${lon}], { radius: 7, color: '#16a34a', weight: 2, fillColor: '#16a34a', fillOpacity: 0.9 }).addTo(map);
-</script>
-</body></html>`;
-}
 
 function JobStatTile({ icon, label, value, sub }: { icon: React.ReactNode; label: string; value: string; sub?: string }) {
   return (
@@ -175,7 +142,7 @@ export default function JobsPage() {
   const [selectedCompany, setSelectedCompany] = useState('');
   const [searchInput, setSearchInput] = useState('');
   const [search, setSearch] = useState('');
-  const [mapPreview, setMapPreview] = useState<MapPreviewState | null>(null);
+  const mapPreview = useMapPreview();
   const [selectedJob, setSelectedJob] = useState<Job | null>(null);
   const [selectedIds, setSelectedIds] = useState<Set<number>>(new Set());
   const [deletingId, setDeletingId] = useState<number | null>(null);
@@ -287,12 +254,6 @@ export default function JobsPage() {
     else setPageInput(String(page));
   };
 
-  const openMapPreview = (job: Job, e: React.MouseEvent<HTMLButtonElement>) => {
-    const rect = e.currentTarget.getBoundingClientRect();
-    const left = Math.min(rect.left, window.innerWidth - MAP_PREVIEW_WIDTH - 16);
-    const top = Math.min(rect.bottom + 8, window.innerHeight - MAP_PREVIEW_HEIGHT - 16);
-    setMapPreview({ job, top, left });
-  };
 
   const toggleSelect = (id: number) => {
     setSelectedIds(prev => {
@@ -697,17 +658,11 @@ export default function JobsPage() {
                             </div>
                           </td>
                           <td className="px-6 py-5 text-nowrap" onClick={(e) => e.stopPropagation()}>
-                            {job.latitude != null && job.longitude != null ? (
-                              <button
-                                onClick={(e) => openMapPreview(job, e)}
-                                className="cursor-pointer font-mono text-xs text-[#0b0b0c]/40 hover:text-green-600 transition-colors underline decoration-dotted underline-offset-2"
-                                title="Preview on map"
-                              >
-                                {job.latitude.toFixed(4)}, {job.longitude.toFixed(4)}
-                              </button>
-                            ) : (
-                              <span className="text-xs text-[#0b0b0c]/70">—</span>
-                            )}
+                            <CoordinatesButton
+                              latitude={job.latitude}
+                              longitude={job.longitude}
+                              onOpen={(e) => mapPreview.open({ key: job.id, title: job.title, latitude: job.latitude as number, longitude: job.longitude as number }, e)}
+                            />
                           </td>
                           <td className="px-6 py-5">
                             <span className="px-2.5 py-1 rounded-full bg-black/[0.04] text-[#0b0b0c]/40 text-[10px] font-bold uppercase tracking-wider whitespace-nowrap">
@@ -830,42 +785,7 @@ export default function JobsPage() {
         )}
       </div>
 
-      <AnimatePresence>
-        {mapPreview && (
-          <React.Fragment key="map-preview">
-            <div className="fixed inset-0 z-40" onClick={() => setMapPreview(null)} />
-            <motion.div
-              initial={{ opacity: 0, scale: 0.95 }}
-              animate={{ opacity: 1, scale: 1 }}
-              exit={{ opacity: 0, scale: 0.95 }}
-              transition={{ duration: 0.15 }}
-              style={{ top: mapPreview.top, left: mapPreview.left, width: MAP_PREVIEW_WIDTH }}
-              className="fixed z-50 bg-white border border-black/[0.12] rounded-2xl overflow-hidden"
-            >
-              <div className="flex items-center justify-between px-3 py-2 bg-black/[0.04] border-b border-black/[0.12]">
-                <span className="text-[10px] font-mono text-[#0b0b0c]/40 truncate">
-                  {mapPreview.job.latitude?.toFixed(5)}, {mapPreview.job.longitude?.toFixed(5)}
-                </span>
-                <button
-                  onClick={() => setMapPreview(null)}
-                  className="cursor-pointer text-[#0b0b0c]/55 hover:text-[#0b0b0c] transition-colors shrink-0 ml-2"
-                >
-                  <X size={14} />
-                </button>
-              </div>
-              <iframe
-                key={mapPreview.job.id}
-                title={`Map preview for ${mapPreview.job.title}`}
-                srcDoc={buildMapSrcDoc(mapPreview.job.latitude as number, mapPreview.job.longitude as number)}
-                sandbox="allow-scripts"
-                className="w-full border-0"
-                style={{ height: MAP_PREVIEW_HEIGHT - 34 }}
-                loading="lazy"
-              />
-            </motion.div>
-          </React.Fragment>
-        )}
-      </AnimatePresence>
+      <MapPreviewPopover preview={mapPreview.preview} onClose={mapPreview.close} />
 
       <AnimatePresence>
         {selectedJob && (

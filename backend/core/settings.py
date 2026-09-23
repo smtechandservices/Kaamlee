@@ -87,6 +87,7 @@ MIDDLEWARE = [
     'core.middleware.DisableGzipForStreamingMiddleware',
     'django.middleware.gzip.GZipMiddleware',
     'corsheaders.middleware.CorsMiddleware',
+    'core.middleware.RequestLogMiddleware',
     'django.contrib.sessions.middleware.SessionMiddleware',
     'django.middleware.common.CommonMiddleware',
     'django.middleware.csrf.CsrfViewMiddleware',
@@ -248,13 +249,33 @@ LOGGING = {
     'version': 1,
     'disable_existing_loggers': False,
     'formatters': {
+        'request': {
+            'format': '[{asctime}] {message}',
+            'style': '{',
+            'datefmt': '%Y-%m-%d %H:%M:%S',
+        },
         'simple': {
             'format': '[{asctime}] {levelname} {message}',
             'style': '{',
             'datefmt': '%Y-%m-%d %H:%M:%S',
         },
     },
+    'filters': {
+        'default_status_code': {
+            '()': 'core.middleware.DefaultStatusCodeFilter',
+        },
+    },
     'handlers': {
+        # Request/response log — file only, so it doesn't flood journald.
+        # 5 MB per file, keep 3 old ones (20 MB max on disk).
+        'request_file': {
+            'class': 'logging.handlers.RotatingFileHandler',
+            'filename': LOGS_DIR / 'requests.log',
+            'maxBytes': 5 * 1024 * 1024,
+            'backupCount': 3,
+            'formatter': 'request',
+            'filters': ['default_status_code'],
+        },
         'console': {
             'class': 'logging.StreamHandler',
             'formatter': 'simple',
@@ -272,6 +293,11 @@ LOGGING = {
         },
     },
     'loggers': {
+        'request_log': {
+            'handlers': ['request_file'],
+            'level': 'INFO',
+            'propagate': False,
+        },
         'django.request': {
             'handlers': ['console'],
             'level': 'DEBUG',
