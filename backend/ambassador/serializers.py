@@ -20,6 +20,30 @@ class AmbassadorApplicationSerializer(serializers.ModelSerializer):
             raise serializers.ValidationError("Image is too large (max 5 MB).")
         return value
 
+    def validate_email(self, value):
+        """Applying is only open to existing Kaamlee candidates (matched by
+        email — applications have no FK to User), and only one live
+        application per email: a rejected applicant may apply again, but a
+        pending or approved one can't stack duplicates."""
+        email = value.strip().lower()
+        is_candidate = User.objects.filter(
+            email__iexact=email, is_staff=False, is_superuser=False, employer_membership__isnull=True,
+        ).exists()
+        if not is_candidate:
+            raise serializers.ValidationError(
+                "No Kaamlee account uses this email. Sign up on Kaamlee first, then apply with the same email."
+            )
+        existing = (
+            AmbassadorApplication.objects.filter(email__iexact=email, status__in=['pending', 'approved'])
+            .order_by('-created_at').first()
+        )
+        if existing:
+            raise serializers.ValidationError(
+                "You're already a Kaamlee campus ambassador." if existing.status == 'approved'
+                else "You've already applied with this email — your application is under review."
+            )
+        return email
+
 
 class AmbassadorApplicationAdminSerializer(AmbassadorApplicationSerializer):
     """Admin list only: there's no FK from an application to a Kaamlee

@@ -74,6 +74,8 @@ REST_FRAMEWORK = {
         # CheckExistenceView must stay unauthenticated (used pre-signup), so it's
         # throttled per-IP instead to make username/email/phone enumeration impractical.
         'check-existence': '20/minute',
+        # Same enumeration concern for the ambassador form's pre-check.
+        'ambassador-email-check': '20/minute',
         'email-otp-request': '5/minute',
         'email-otp-verify': '10/minute',
     },

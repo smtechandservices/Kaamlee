@@ -247,6 +247,18 @@ export default function AmbassadorsPage() {
                         <div className="text-xs text-[#0b0b0c]/60 flex items-center gap-1 mt-0.5">
                           <Phone size={11} /> {a.phone}
                         </div>
+                        {a.account_username ? (
+                          <span
+                            className="mt-1.5 inline-flex items-center gap-1 px-1.5 py-0.5 rounded text-[10px] font-bold uppercase tracking-wider bg-green-500/10 text-green-700"
+                            title={`Kaamlee account @${a.account_username}`}
+                          >
+                            Registered · @{a.account_username}
+                          </span>
+                        ) : (
+                          <span className="mt-1.5 inline-flex items-center gap-1 px-1.5 py-0.5 rounded text-[10px] font-bold uppercase tracking-wider bg-amber-500/10 text-amber-700">
+                            Not registered
+                          </span>
+                        )}
                       </td>
                       <td className="px-6 py-5">
                         <div className="text-sm text-[#0b0b0c]">{a.college_name}</div>

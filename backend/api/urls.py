@@ -4,7 +4,7 @@ from rest_framework.authtoken.views import obtain_auth_token
 from .views import (
     JobViewSet, StatsView, CompaniesView, CompanyViewSet,
     SignupView, GoogleAuthView, UserView, RecentJobsView,
-    CheckExistenceView, AdminLoginView, AdminUserViewSet, CategoriesView, CountriesView,
+    CheckExistenceView, AdminLoginView, AdminChangeOwnPasswordView, AdminUserViewSet, CategoriesView, CountriesView,
     FeedbackView, AdminFeedbackView, PublicPortfolioView, MyPortfolioView, MyPortfolioContentView, PortfolioAnalyticsView,
     CustomCVListCreateView, CustomCVDetailView, CustomCVTailorView, CustomCVExportView,
     JobApplicationKitView, AtsKeywordsView, ApplicationsView, AdminJobsView, ChangePasswordView,
@@ -31,6 +31,7 @@ urlpatterns = [
     path('otp/verify/', VerifyEmailOtpView.as_view(), name='otp-verify'),
     path('otp/confirm/', ConfirmEmailOtpView.as_view(), name='otp-confirm'),
     path('admin-login/', AdminLoginView.as_view(), name='admin-login'),
+    path('admin/me/change-password/', AdminChangeOwnPasswordView.as_view(), name='admin-change-own-password'),
     
     # ==========================================
     # CORE API

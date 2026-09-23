@@ -1,5 +1,6 @@
 'use client';
 
+import { useEffect, useState } from 'react';
 import Link from 'next/link';
 import Image from 'next/image';
 import { usePathname, useRouter } from 'next/navigation';
@@ -24,11 +25,45 @@ const itemCls = (active: boolean) =>
     active ? 'bg-[#16a34a]/10 text-[#16a34a]' : 'text-black/60 hover:text-[#0b0b0c] hover:bg-black/[0.04]'
   }`;
 
+interface StoredAdminUser {
+  username?: string;
+  first_name?: string;
+  last_name?: string;
+}
+
+// Saved at login (and refreshed by the Profile page) — read here for the
+// Profile item's initials, same as the candidate app's sidebar.
+function readStoredUser(): StoredAdminUser | null {
+  try {
+    return JSON.parse(localStorage.getItem('admin_user') || 'null');
+  } catch {
+    return null;
+  }
+}
+
 export default function AdminSidebar() {
   const pathname = usePathname();
   const router = useRouter();
+  const [adminUser, setAdminUser] = useState<StoredAdminUser | null>(null);
+
+  useEffect(() => {
+    const sync = () => setAdminUser(readStoredUser());
+    sync();
+    window.addEventListener('admin-user-updated', sync);
+    window.addEventListener('storage', sync);
+    return () => {
+      window.removeEventListener('admin-user-updated', sync);
+      window.removeEventListener('storage', sync);
+    };
+  }, [pathname]);
 
   if (pathname === '/login') return null;
+
+  const initials =
+    `${adminUser?.first_name?.[0] ?? ''}${adminUser?.last_name?.[0] ?? ''}`.toUpperCase()
+    || adminUser?.username?.[0]?.toUpperCase()
+    || 'A';
+  const profileTitle = [adminUser?.first_name, adminUser?.last_name].filter(Boolean).join(' ') || adminUser?.username || 'Profile';
 
   const handleLogout = () => {
     localStorage.removeItem('admin_token');
@@ -91,7 +126,18 @@ export default function AdminSidebar() {
         </Link>
       </nav>
 
-      <div className="w-full px-3 pt-3 mt-2 shrink-0 border-t border-black/[0.08]">
+      <div className="w-full px-3 pt-3 mt-2 shrink-0 border-t border-black/[0.08] flex flex-col gap-1.5">
+        <Link
+          href="/profile"
+          title={profileTitle}
+          className={`border border-black/[0.08] ${itemCls(pathname === '/profile')}`}
+        >
+          <div className="w-7 h-7 rounded-full bg-gradient-to-br from-[#4ade80] to-[#16a34a] flex items-center justify-center text-[10px] font-bold text-white shrink-0">
+            {initials}
+          </div>
+          <span className="leading-none truncate">Profile</span>
+        </Link>
+
         <button
           onClick={handleLogout}
           className={`cursor-pointer border border-black/[0.08] ${itemCls(false)} hover:!bg-red-500/10 hover:!text-red-600`}

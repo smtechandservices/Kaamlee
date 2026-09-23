@@ -425,6 +425,35 @@ class ChangePasswordSerializer(serializers.Serializer):
         user.save()
         return user
 
+class AdminChangeOwnPasswordSerializer(serializers.Serializer):
+    """An admin changing their own password from the admin portal's Profile
+    page. Gated on the current password rather than the emailed OTP
+    ChangePasswordSerializer uses — the OTP email is sent by the candidate
+    frontend's /api/otp/request route, which the admin portal doesn't have."""
+    current_password = serializers.CharField(write_only=True)
+    new_password = serializers.CharField(write_only=True)
+    confirm_password = serializers.CharField(write_only=True)
+
+    def validate_current_password(self, value):
+        if not self.context['request'].user.check_password(value):
+            raise serializers.ValidationError('Current password is incorrect.')
+        return value
+
+    def validate_new_password(self, value):
+        validate_password(value, user=self.context['request'].user)
+        return value
+
+    def validate(self, data):
+        if data['new_password'] != data['confirm_password']:
+            raise serializers.ValidationError({'confirm_password': 'Passwords do not match.'})
+        return data
+
+    def save(self):
+        user = self.context['request'].user
+        user.set_password(self.validated_data['new_password'])
+        user.save()
+        return user
+
 class AdminSetPasswordSerializer(serializers.Serializer):
     """Lets an admin set a user's password directly — no current password
     needed, since IsAdminUser already gates access to this."""

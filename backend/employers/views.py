@@ -8,7 +8,8 @@ from .permissions import IsEmployerMember, IsEmployerAdmin, IsEmployerOwner
 from .serializers import (
     EmployerSerializer, KYCDocumentSerializer,
     EmployerMemberSerializer, EmployerMemberRoleUpdateSerializer, EmployerTeamInviteSerializer,
-    AdminEmployerSerializer, AdminEmployerCreateSerializer, AdminEmployerKYCReviewSerializer, AdminEmployerMemberUpdateSerializer,
+    AdminEmployerSerializer, AdminEmployerCreateSerializer, AdminEmployerKYCReviewSerializer,
+    AdminEmployerMemberCreateSerializer, AdminEmployerMemberUpdateSerializer,
 )
 
 
@@ -176,7 +177,38 @@ class AdminEmployerMemberDetailView(views.APIView):
 
     def patch(self, request, pk):
         member = get_object_or_404(self.queryset, pk=pk)
+        if (
+            request.data.get('role') and request.data.get('role') != 'owner'
+            and member.role == 'owner' and not _has_other_owner(member)
+        ):
+            return Response({'role': ["This is the employer's only owner — make someone else owner first."]}, status=400)
         serializer = AdminEmployerMemberUpdateSerializer(member, data=request.data, partial=True)
         serializer.is_valid(raise_exception=True)
         serializer.save()
         return Response(EmployerMemberSerializer(member).data)
+
+    def delete(self, request, pk):
+        """Remove a member — deletes the login itself, same as the owner's
+        own team removal (EmployerTeamMemberDetailView.delete). The last
+        owner can't be removed, so an employer is never left without one."""
+        member = get_object_or_404(self.queryset, pk=pk)
+        if member.role == 'owner' and not _has_other_owner(member):
+            return Response({'error': "This is the employer's only owner — make someone else owner first."}, status=400)
+        member.user.delete()
+        return Response(status=204)
+
+
+def _has_other_owner(member):
+    return EmployerMember.objects.filter(employer_id=member.employer_id, role='owner').exclude(pk=member.pk).exists()
+
+
+class AdminEmployerMemberCreateView(views.APIView):
+    """POST /employers/admin/kyc/<id>/members/ — add a login to an employer's team."""
+    permission_classes = [permissions.IsAdminUser]
+
+    def post(self, request, pk):
+        employer = get_object_or_404(Employer, pk=pk)
+        serializer = AdminEmployerMemberCreateSerializer(data=request.data, context={'employer': employer})
+        serializer.is_valid(raise_exception=True)
+        member = serializer.save()
+        return Response(EmployerMemberSerializer(member).data, status=201)

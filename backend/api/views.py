@@ -16,6 +16,7 @@ from .serializers import (
     PortfolioViewSerializer, CustomCVSerializer, CustomCVCreateSerializer, tailor_resume_with_groq,
     JobApplicationKitSerializer, generate_application_kit_with_groq, CompanySerializer,
     BookmarkSerializer, AdminJobSerializer, ChangePasswordSerializer, AdminSetPasswordSerializer,
+    AdminChangeOwnPasswordSerializer,
 )
 from .google_auth import get_or_create_google_user, _unique_username_from_email
 from .email_otp import create_otp, verify_otp
@@ -319,6 +320,16 @@ class ChangePasswordView(views.APIView):
 
     def post(self, request):
         serializer = ChangePasswordSerializer(data=request.data, context={'request': request})
+        serializer.is_valid(raise_exception=True)
+        serializer.save()
+        return Response({'detail': 'Password updated successfully.'})
+
+class AdminChangeOwnPasswordView(views.APIView):
+    """POST /api/admin/me/change-password/ — see AdminChangeOwnPasswordSerializer."""
+    permission_classes = [permissions.IsAdminUser]
+
+    def post(self, request):
+        serializer = AdminChangeOwnPasswordSerializer(data=request.data, context={'request': request})
         serializer.is_valid(raise_exception=True)
         serializer.save()
         return Response({'detail': 'Password updated successfully.'})

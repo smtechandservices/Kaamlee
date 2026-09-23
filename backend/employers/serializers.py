@@ -167,6 +167,16 @@ class EmployerTeamInviteSerializer(serializers.Serializer):
         return EmployerMember.objects.create(employer=employer, user=user, role=validated_data['role'])
 
 
+class AdminEmployerMemberCreateSerializer(EmployerTeamInviteSerializer):
+    """POST /employers/admin/kyc/<id>/members/ — a platform admin adding a
+    login to any employer's team. Same as the owner's invite, except the
+    admin may also create additional owners."""
+    role = serializers.ChoiceField(
+        choices=[('owner', 'Owner'), ('admin', 'Admin'), ('recruiter', 'Recruiter')],
+        default='recruiter',
+    )
+
+
 class AdminEmployerSerializer(LogoFallbackMixin, serializers.ModelSerializer):
     """Read-only employer shape for the admin KYC queue, with documents nested
     so a reviewer doesn't need a second request to see what was submitted.

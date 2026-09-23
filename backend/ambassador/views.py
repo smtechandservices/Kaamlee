@@ -1,7 +1,9 @@
 from django.contrib.auth.models import User
 from django.db.models import Q
-from rest_framework import generics, permissions
+from rest_framework import generics, permissions, views
+from rest_framework.throttling import ScopedRateThrottle
 from rest_framework.parsers import MultiPartParser, FormParser
+from rest_framework import serializers
 from rest_framework.response import Response
 from .models import AmbassadorApplication
 from .serializers import (
@@ -17,6 +19,25 @@ class AmbassadorApplicationCreateView(generics.CreateAPIView):
     serializer_class = AmbassadorApplicationSerializer
     permission_classes = [permissions.AllowAny]
     parser_classes = [MultiPartParser, FormParser]
+
+
+class AmbassadorEmailCheckView(views.APIView):
+    """POST /ambassador/applications/check-email/ — runs the same email
+    rules as submitting (registered Kaamlee candidate, no pending/approved
+    application) so the form can stop the applicant on step one instead of
+    after they've filled everything in. Submission re-checks regardless."""
+    permission_classes = [permissions.AllowAny]
+    throttle_classes = [ScopedRateThrottle]
+    throttle_scope = 'ambassador-email-check'
+
+    def post(self, request):
+        email = (request.data.get('email') or '').strip()
+        try:
+            AmbassadorApplicationSerializer().validate_email(email)
+        except serializers.ValidationError as e:
+            detail = e.detail[0] if isinstance(e.detail, list) else e.detail
+            return Response({'ok': False, 'error': str(detail)}, status=400)
+        return Response({'ok': True})
 
 
 class AdminAmbassadorApplicationListView(generics.ListAPIView):

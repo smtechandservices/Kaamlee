@@ -2,7 +2,7 @@ from django.urls import path
 from .views import (
     MyEmployerView, KYCDocumentUploadView,
     EmployerTeamListView, EmployerTeamInviteView, EmployerTeamMemberDetailView,
-    AdminEmployerKYCListView, AdminEmployerKYCDetailView, AdminKYCDocumentDetailView, AdminEmployerMemberDetailView,
+    AdminEmployerKYCListView, AdminEmployerKYCDetailView, AdminKYCDocumentDetailView, AdminEmployerMemberDetailView, AdminEmployerMemberCreateView,
 )
 
 urlpatterns = [
@@ -15,5 +15,6 @@ urlpatterns = [
     path('admin/kyc/', AdminEmployerKYCListView.as_view(), name='admin-employer-kyc-list'),
     path('admin/kyc/<int:pk>/', AdminEmployerKYCDetailView.as_view(), name='admin-employer-kyc-detail'),
     path('admin/kyc-documents/<int:pk>/', AdminKYCDocumentDetailView.as_view(), name='admin-kyc-document-detail'),
+    path('admin/kyc/<int:pk>/members/', AdminEmployerMemberCreateView.as_view(), name='admin-employer-member-create'),
     path('admin/members/<int:pk>/', AdminEmployerMemberDetailView.as_view(), name='admin-employer-member-detail'),
 ]

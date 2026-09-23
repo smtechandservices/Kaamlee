@@ -18,6 +18,10 @@ import {
   ChevronLeft,
   ChevronRight,
   Plus,
+  Users,
+  UserPlus,
+  Pencil,
+  Trash2,
 } from 'lucide-react';
 import { useRouter } from 'next/navigation';
 
@@ -102,6 +106,8 @@ export default function EmployersKYCPage() {
   const [updatingId, setUpdatingId] = useState<number | null>(null);
   const [rejectingEmployer, setRejectingEmployer] = useState<Employer | null>(null);
   const [editingMember, setEditingMember] = useState<{ employerId: number; member: EmployerMember } | null>(null);
+  const [managingTeamId, setManagingTeamId] = useState<number | null>(null);
+  const managingTeamEmployer = employers.find((e) => e.id === managingTeamId) ?? null;
   const [removingDocId, setRemovingDocId] = useState<number | null>(null);
   const [isCreating, setIsCreating] = useState(false);
   const router = useRouter();
@@ -377,6 +383,12 @@ export default function EmployersKYCPage() {
                             ))}
                           </div>
                         )}
+                        <button
+                          onClick={() => setManagingTeamId(e.id)}
+                          className="cursor-pointer mt-2 inline-flex items-center gap-1 text-xs font-semibold text-purple-600 hover:text-purple-500 transition-colors"
+                        >
+                          <Users size={12} /> Manage team
+                        </button>
                       </td>
                       <td className="px-6 py-5">
                         {e.kyc_documents.length === 0 ? (
@@ -516,6 +528,19 @@ export default function EmployersKYCPage() {
                 fetchEmployers();
               }
             }}
+          />
+        )}
+      </AnimatePresence>
+
+      <AnimatePresence>
+        {managingTeamEmployer && (
+          <ManageTeamModal
+            employer={managingTeamEmployer}
+            onClose={() => setManagingTeamId(null)}
+            onEdit={(member) => setEditingMember({ employerId: managingTeamEmployer.id, member })}
+            onMembersChange={(members) => setEmployers((prev) => prev.map((e) => (
+              e.id === managingTeamEmployer.id ? { ...e, members } : e
+            )))}
           />
         )}
       </AnimatePresence>
@@ -1023,6 +1048,228 @@ function CreateEmployerModal({ onClose, onCreated }: {
             {saving ? <Loader2 size={18} className="animate-spin" /> : null}
             Create employer
           </button>
+        </div>
+      </motion.div>
+    </motion.div>
+  );
+}
+
+// Full team management for one employer — list, add, edit (via
+// EditMemberModal), remove. The backend refuses to remove or demote an
+// employer's only owner; that error is surfaced here as-is.
+function ManageTeamModal({ employer, onClose, onEdit, onMembersChange }: {
+  employer: Employer;
+  onClose: () => void;
+  onEdit: (member: EmployerMember) => void;
+  onMembersChange: (members: EmployerMember[]) => void;
+}) {
+  const [showAdd, setShowAdd] = useState(employer.members.length === 0);
+  const [form, setForm] = useState({ username: '', email: '', password: '', confirm_password: '', role: 'recruiter' as EmployerMember['role'] });
+  const [adding, setAdding] = useState(false);
+  const [removingId, setRemovingId] = useState<number | null>(null);
+  const [error, setError] = useState('');
+  const router = useRouter();
+
+  const usernameState = useAvailability('username', form.username);
+  const emailState = useAvailability('email', form.email);
+
+  const set = (field: keyof typeof form) => (e: React.ChangeEvent<HTMLInputElement | HTMLSelectElement>) =>
+    setForm((f) => ({ ...f, [field]: e.target.value }));
+
+  const getToken = () => {
+    const token = localStorage.getItem('admin_token');
+    if (!token) router.push('/login');
+    return token;
+  };
+
+  const canAdd = form.username.trim() && form.email.trim() && form.password && form.confirm_password
+    && usernameState !== 'taken' && emailState !== 'taken';
+
+  const handleAdd = async () => {
+    const token = getToken();
+    if (!token) return;
+    setAdding(true);
+    setError('');
+    try {
+      const res = await fetch(`${EMPLOYERS_BASE}/admin/kyc/${employer.id}/members/`, {
+        method: 'POST',
+        headers: { Authorization: `Token ${token}`, 'Content-Type': 'application/json' },
+        body: JSON.stringify(form),
+      });
+      const data = await res.json().catch(() => ({}));
+      if (res.ok) {
+        onMembersChange([...employer.members, data as EmployerMember]);
+        setForm({ username: '', email: '', password: '', confirm_password: '', role: 'recruiter' });
+        setShowAdd(false);
+      } else {
+        setError(Object.values(data).flat().join(' ') || 'Failed to add member.');
+      }
+    } catch {
+      setError('Failed to reach the server.');
+    } finally {
+      setAdding(false);
+    }
+  };
+
+  const handleRemove = async (member: EmployerMember) => {
+    if (!window.confirm(`Remove ${member.username} from ${employer.name}? This deletes their login.`)) return;
+    const token = getToken();
+    if (!token) return;
+    setRemovingId(member.id);
+    setError('');
+    try {
+      const res = await fetch(`${EMPLOYERS_BASE}/admin/members/${member.id}/`, {
+        method: 'DELETE',
+        headers: { Authorization: `Token ${token}` },
+      });
+      if (res.ok) {
+        onMembersChange(employer.members.filter((m) => m.id !== member.id));
+      } else {
+        const data = await res.json().catch(() => ({}));
+        setError(Object.values(data).flat().join(' ') || 'Failed to remove member.');
+      }
+    } catch {
+      setError('Failed to reach the server.');
+    } finally {
+      setRemovingId(null);
+    }
+  };
+
+  return (
+    <motion.div
+      initial={{ opacity: 0 }}
+      animate={{ opacity: 1 }}
+      exit={{ opacity: 0 }}
+      className="fixed inset-0 bg-black/80 backdrop-blur-sm z-50 flex items-center justify-center p-4"
+      onClick={onClose}
+    >
+      <motion.div
+        initial={{ scale: 0.95, opacity: 0 }}
+        animate={{ scale: 1, opacity: 1 }}
+        exit={{ scale: 0.95, opacity: 0 }}
+        onClick={(e) => e.stopPropagation()}
+        className="bg-white border border-black/[0.12] rounded-3xl w-full max-w-2xl shadow-2xl flex flex-col max-h-[90vh]"
+      >
+        <div className="p-6 border-b border-black/[0.12] bg-black/[0.04] rounded-t-3xl shrink-0 flex items-center justify-between gap-4">
+          <div className="min-w-0">
+            <h2 className="text-xl font-bold flex items-center gap-2">
+              <Users size={20} className="text-purple-600" /> Team
+            </h2>
+            <p className="text-sm text-[#0b0b0c]/60 truncate">
+              {employer.name} · {employer.members.length} member{employer.members.length !== 1 ? 's' : ''}
+            </p>
+          </div>
+          <button onClick={onClose} className="cursor-pointer p-2 hover:bg-black/[0.08] rounded-lg transition-colors text-[#0b0b0c]/40 hover:text-[#0b0b0c]">
+            <X size={20} />
+          </button>
+        </div>
+
+        <div className="p-6 space-y-4 overflow-y-auto">
+          {error && (
+            <div className="text-sm text-red-500 bg-red-500/10 border border-red-500/20 rounded-xl px-4 py-3">{error}</div>
+          )}
+
+          {employer.members.length === 0 ? (
+            <p className="text-sm text-[#0b0b0c]/50 text-center py-4">No team members yet.</p>
+          ) : (
+            <div className="border border-black/[0.08] rounded-2xl divide-y divide-black/[0.06] overflow-hidden">
+              {employer.members.map((m) => (
+                <div key={m.id} className="flex items-center gap-3 px-4 py-3">
+                  <div className="min-w-0 flex-1">
+                    <div className="flex items-center gap-2">
+                      <span className="font-semibold text-sm truncate">
+                        {[m.first_name, m.last_name].filter(Boolean).join(' ') || m.username}
+                      </span>
+                      <span className={`shrink-0 px-1.5 py-0.5 rounded text-[9px] font-bold uppercase tracking-wider ${ROLE_STYLES[m.role]}`}>
+                        {m.role}
+                      </span>
+                    </div>
+                    <div className="text-xs text-[#0b0b0c]/60 flex items-center gap-1 mt-0.5 truncate">
+                      <span className="truncate">@{m.username}</span>
+                      <span>·</span>
+                      <Mail size={11} className="shrink-0" /> <span className="truncate">{m.email}</span>
+                    </div>
+                  </div>
+                  <button
+                    onClick={() => onEdit(m)}
+                    className="cursor-pointer p-2 rounded-lg text-[#0b0b0c]/50 hover:text-[#0b0b0c] hover:bg-black/[0.05] transition-all"
+                    title="Edit member"
+                  >
+                    <Pencil size={14} />
+                  </button>
+                  <button
+                    onClick={() => handleRemove(m)}
+                    disabled={removingId === m.id}
+                    className="cursor-pointer p-2 rounded-lg text-[#0b0b0c]/50 hover:text-red-500 hover:bg-red-500/5 transition-all disabled:opacity-50"
+                    title="Remove member"
+                  >
+                    {removingId === m.id ? <Loader2 size={14} className="animate-spin" /> : <Trash2 size={14} />}
+                  </button>
+                </div>
+              ))}
+            </div>
+          )}
+
+          {showAdd ? (
+            <div className="border border-black/[0.08] rounded-2xl p-4 space-y-4">
+              <p className="text-[10px] font-black uppercase tracking-[0.2em] text-[#0b0b0c]/60">Add member</p>
+              <div className="grid grid-cols-2 gap-3">
+                <div>
+                  <label className={LABEL_CLASS}>Username<span className="text-purple-600"> *</span></label>
+                  <input type="text" autoComplete="off" value={form.username} onChange={set('username')}
+                    className={`${INPUT_CLASS} ${usernameState === 'taken' ? '!border-red-500' : ''}`} />
+                  <AvailabilityHint state={usernameState} takenLabel="Username already taken" />
+                </div>
+                <div>
+                  <label className={LABEL_CLASS}>Email<span className="text-purple-600"> *</span></label>
+                  <input type="email" autoComplete="off" value={form.email} onChange={set('email')}
+                    className={`${INPUT_CLASS} ${emailState === 'taken' ? '!border-red-500' : ''}`} />
+                  <AvailabilityHint state={emailState} takenLabel="Email already in use" />
+                </div>
+              </div>
+              <div className="grid grid-cols-2 gap-3">
+                <div>
+                  <label className={LABEL_CLASS}>Password<span className="text-purple-600"> *</span></label>
+                  <input type="password" autoComplete="new-password" value={form.password} onChange={set('password')} className={INPUT_CLASS} />
+                </div>
+                <div>
+                  <label className={LABEL_CLASS}>Confirm password<span className="text-purple-600"> *</span></label>
+                  <input type="password" autoComplete="new-password" value={form.confirm_password} onChange={set('confirm_password')} className={INPUT_CLASS} />
+                </div>
+              </div>
+              <div>
+                <label className={LABEL_CLASS}>Role</label>
+                <select value={form.role} onChange={set('role')} className={`${INPUT_CLASS} cursor-pointer`}>
+                  <option value="recruiter">Recruiter</option>
+                  <option value="admin">Admin</option>
+                  <option value="owner">Owner</option>
+                </select>
+                <p className="text-xs text-[#0b0b0c]/50 mt-2 leading-relaxed">{ROLE_DESCRIPTIONS[form.role]}</p>
+              </div>
+              <div className="flex gap-3">
+                {employer.members.length > 0 && (
+                  <button onClick={() => { setShowAdd(false); setError(''); }} className="cursor-pointer px-5 py-2.5 rounded-xl bg-black/[0.05] hover:bg-black/[0.10] text-sm font-bold transition-all">
+                    Cancel
+                  </button>
+                )}
+                <button
+                  onClick={handleAdd}
+                  disabled={adding || !canAdd}
+                  className="cursor-pointer flex-1 py-2.5 rounded-xl bg-purple-600 hover:bg-purple-700 text-white text-sm font-bold disabled:opacity-40 disabled:cursor-not-allowed transition-all flex items-center justify-center gap-2"
+                >
+                  {adding ? <Loader2 size={16} className="animate-spin" /> : <UserPlus size={16} />}
+                  Add member
+                </button>
+              </div>
+            </div>
+          ) : (
+            <button
+              onClick={() => setShowAdd(true)}
+              className="cursor-pointer w-full py-3 rounded-2xl border border-dashed border-purple-600/40 text-purple-600 text-sm font-semibold hover:bg-purple-600/5 transition-all flex items-center justify-center gap-2"
+            >
+              <UserPlus size={16} /> Add member
+            </button>
+          )}
         </div>
       </motion.div>
     </motion.div>

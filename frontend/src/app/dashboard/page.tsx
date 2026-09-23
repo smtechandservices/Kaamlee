@@ -178,7 +178,7 @@ export default function DashboardPage() {
                 className="mt-6 flex items-center gap-3 rounded-[18px] border border-black/[0.08] bg-white px-5 py-4"
               >
                 <span className="grid h-9 w-9 flex-none place-items-center rounded-full bg-[#16a34a]/10 text-[#16a34a]"><ShieldCheck size={17} /></span>
-                <span className="text-[14px] text-[#3d3d3d]">Subscription active — <b className="font-semibold text-[#0b0b0c]">{daysLeft} days</b> remaining.</span>
+                <span className="text-[14px] text-[#3d3d3d]">Subscription active, <b className="font-semibold text-[#0b0b0c]">{daysLeft} days</b> remaining.</span>
                 <Link href="/transactions" className="ml-auto text-[13px] font-medium text-[#16a34a] hover:text-[#15803d]" style={{ fontFamily: 'var(--font-outfit)' }}>Manage billing →</Link>
               </motion.div>
             )}
