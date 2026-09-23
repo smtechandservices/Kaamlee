@@ -2,7 +2,7 @@
 
 import React, { useState, useEffect, useCallback, useMemo } from 'react';
 import Link from 'next/link';
-import { MapPin, ExternalLink, GripVertical, Trash2, Briefcase, ArrowRight, Sparkles, X, Building2 } from 'lucide-react';
+import { MapPin, ExternalLink, GripVertical, Trash2, ArrowRight, Sparkles, X } from 'lucide-react';
 import Sidebar from '@/components/Sidebar';
 import PageHeader from '@/components/PageHeader';
 import { useAuth } from '@/context/AuthContext';
@@ -105,6 +105,47 @@ type MergedCard =
   | { kind: 'kaamlee'; key: string; app: Application }
   | { kind: 'kaamlee-saved'; key: string; app: SavedPosting }
   | { kind: 'external'; key: string; app: ExternalApplication };
+
+// Same tint palette as JobCard/PostingCard, keyed off the company name so
+// a company always gets the same colour.
+const AVATAR_TINTS = [
+  { bg: '#ecfdf5', text: '#16a34a' },
+  { bg: '#f3eeff', text: '#7c4dff' },
+  { bg: '#fff7e0', text: '#c08a12' },
+  { bg: '#eafaf0', text: '#16a34a' },
+  { bg: '#eef2ff', text: '#4f46e5' },
+];
+
+function initialsOf(name: string) {
+  const words = name.replace(/[^\p{L}\p{N}\s]/gu, ' ').trim().split(/\s+/).filter(Boolean);
+  if (words.length === 0) return '?';
+  return (words.length === 1 ? words[0].slice(0, 2) : words[0][0] + words[1][0]).toUpperCase();
+}
+
+// Company logo, falling back to tinted initials when there's no logo or it
+// fails to load (external logo URLs break fairly often).
+function CompanyAvatar({ name, logo, size = 'sm' }: { name: string; logo?: string | null; size?: 'sm' | 'lg' }) {
+  const [broken, setBroken] = useState(false);
+  const box = size === 'lg' ? 'w-11 h-11 rounded-xl text-[13px]' : 'w-8 h-8 rounded-lg text-[11px]';
+  if (logo && !broken) {
+    return (
+      // eslint-disable-next-line @next/next/no-img-element
+      <img src={logo} alt="" onError={() => setBroken(true)} className={`${box} object-contain bg-white border border-black/[0.06] shrink-0`} />
+    );
+  }
+  let h = 0;
+  for (let i = 0; i < name.length; i++) h = (h * 31 + name.charCodeAt(i)) >>> 0;
+  const tint = AVATAR_TINTS[h % AVATAR_TINTS.length];
+  return (
+    <div
+      className={`${box} flex items-center justify-center font-bold shrink-0`}
+      style={{ background: tint.bg, color: tint.text, fontFamily: 'var(--font-outfit)' }}
+      aria-hidden
+    >
+      {initialsOf(name)}
+    </div>
+  );
+}
 
 export default function ApplicationsPage() {
   const { token, logout } = useAuth();
@@ -421,13 +462,7 @@ export default function ApplicationsPage() {
                               </span>
                             </div>
                             <div className="flex items-start gap-2.5">
-                              {card.app.employer_logo ? (
-                                <img src={card.app.employer_logo} alt="" className="w-8 h-8 rounded-lg object-contain bg-white border border-black/[0.06] shrink-0" />
-                              ) : (
-                                <div className="w-8 h-8 rounded-lg bg-black/[0.04] flex items-center justify-center text-black/40 shrink-0">
-                                  <Briefcase size={13} />
-                                </div>
-                              )}
+                              <CompanyAvatar name={card.app.employer_name} logo={card.app.employer_logo} />
                               <div className="min-w-0 flex-1">
                                 <h3
                                   className="text-xs font-semibold text-[#0b0b0c] truncate group-hover:text-[#16a34a] transition-colors"
@@ -461,13 +496,7 @@ export default function ApplicationsPage() {
                               </span>
                             </div>
                             <div className="flex items-start gap-2.5">
-                              {card.app.job_posting.employer_logo ? (
-                                <img src={card.app.job_posting.employer_logo} alt="" className="w-8 h-8 rounded-lg object-contain bg-white border border-black/[0.06] shrink-0" />
-                              ) : (
-                                <div className="w-8 h-8 rounded-lg bg-black/[0.04] flex items-center justify-center text-black/40 shrink-0">
-                                  <Briefcase size={13} />
-                                </div>
-                              )}
+                              <CompanyAvatar name={card.app.job_posting.employer_name} logo={card.app.job_posting.employer_logo} />
                               <div className="min-w-0 flex-1">
                                 <h3
                                   className="text-xs font-semibold text-[#0b0b0c] truncate group-hover:text-[#16a34a] transition-colors"
@@ -494,7 +523,8 @@ export default function ApplicationsPage() {
                             } ${draggingId === card.app.job.id ? 'opacity-40' : ''}`}
                           >
                             <div className="flex items-start gap-2">
-                              <GripVertical size={13} className="text-black/25 mt-0.5 shrink-0" />
+                              <GripVertical size={13} className="text-black/25 mt-2.5 shrink-0" />
+                              <CompanyAvatar name={card.app.job.company || 'Confidential'} logo={card.app.job.company_logo} />
                               <div className="min-w-0 flex-1">
                                 <h3
                                   className="text-xs font-semibold text-[#0b0b0c] truncate"
@@ -591,14 +621,7 @@ function ApplicationDetailModal({ application, onClose }: { application: Applica
       >
         <div className="flex items-start justify-between gap-4 px-6 py-5 border-b border-black/[0.08] sticky top-0 bg-white/95 backdrop-blur">
           <div className="flex items-center gap-3 min-w-0">
-            {application.employer_logo ? (
-              // eslint-disable-next-line @next/next/no-img-element
-              <img src={application.employer_logo} alt="" className="w-11 h-11 rounded-xl object-contain bg-black/[0.04] shrink-0" />
-            ) : (
-              <div className="w-11 h-11 rounded-xl bg-black/[0.04] flex items-center justify-center text-black/40 shrink-0">
-                <Building2 size={18} />
-              </div>
-            )}
+            <CompanyAvatar name={application.employer_name} logo={application.employer_logo} size="lg" />
             <div className="min-w-0">
               <h2 className="text-base font-bold text-[#0b0b0c] truncate" style={{ fontFamily: 'var(--font-outfit)' }}>
                 {application.job_posting_title}

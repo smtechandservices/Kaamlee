@@ -3,7 +3,7 @@ from .views import (
     EmployerJobPostingListCreateView, EmployerJobPostingDetailView, EmployerJobPostingPublishView,
     EmployerJobApplicationsView, EmployerApplicationStageView, EmployerApplicationCVView,
     AdminJobPostingListView, AdminJobPostingDetailView, AdminJobApplicationsView, AdminApplicationCVView,
-    PublicJobPostingListView, PublicJobPostingDetailView, PublicCountriesView, PublicJobMapPinsView,
+    PublicJobPostingListView, SuggestedJobPostingsView, PublicJobPostingDetailView, PublicCountriesView, PublicJobMapPinsView,
     ApplyToJobView, MyApplicationsView, SavedJobView, MySavedJobsView, JobApplicationKitView,
 )
 
@@ -24,6 +24,7 @@ urlpatterns = [
 
     # Candidate side
     path('jobs/public/', PublicJobPostingListView.as_view(), name='hiring-public-jobs'),
+    path('jobs/suggested/', SuggestedJobPostingsView.as_view(), name='hiring-suggested-jobs'),
     path('jobs/public/map_pins/', PublicJobMapPinsView.as_view(), name='hiring-public-map-pins'),
     path('jobs/public/countries/', PublicCountriesView.as_view(), name='hiring-public-countries'),
     path('jobs/public/<int:pk>/', PublicJobPostingDetailView.as_view(), name='hiring-public-job-detail'),

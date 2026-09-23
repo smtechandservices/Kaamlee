@@ -1,3 +1,5 @@
+import re
+
 from django.db.models import Q, F, Count, Max, Exists, OuterRef
 from django.http import HttpResponse
 from django.shortcuts import get_object_or_404
@@ -7,6 +9,7 @@ from rest_framework.pagination import PageNumberPagination
 from rest_framework.response import Response
 
 from employers.permissions import IsEmployerMember, IsApprovedEmployer
+from api.models import Bookmark
 from api.permissions import IsSubscribed, is_user_subscribed
 from api.groq_usage import GroqQuotaExceeded, usage_summary
 from scripts.cv_export import render_cv_pdf, render_cv_docx
@@ -340,6 +343,93 @@ class PublicJobPostingListView(generics.ListAPIView):
         if not is_user_subscribed(user):
             return queryset[:FREE_PREVIEW_LIMIT]
         return queryset
+
+
+_WORD_RE = re.compile(r"[a-z][a-z0-9+#.]{1,}")
+_STOPWORDS = {
+    'and', 'the', 'for', 'with', 'senior', 'junior', 'lead', 'staff', 'intern', 'sr', 'jr',
+    'manager', 'engineer', 'associate', 'specialist', 'executive', 'officer', 'head', 'of',
+}
+
+
+def _words(text):
+    return {w for w in _WORD_RE.findall((text or '').lower()) if w not in _STOPWORDS}
+
+
+class SuggestedJobPostingsView(views.APIView):
+    """GET /hiring/jobs/suggested/ — published employer postings the
+    candidate hasn't applied to yet, ranked for them. Signals, cheapest
+    first: categories they've applied to / saved (Kaamlee postings and
+    tracked scraped jobs alike), their resume's role, and their resume
+    skills. Falls back to the newest postings when there's nothing to go on.
+    Each result carries a short match_reason for the card."""
+    permission_classes = [permissions.IsAuthenticated]
+    LIMIT = 5
+    CANDIDATE_POOL = 500
+
+    def get(self, request):
+        user = request.user
+        profile = getattr(user, 'profile', None)
+        parsed = (profile.resume_parsed if profile else None) or {}
+
+        categories = set(
+            Application.objects.filter(candidate=user).values_list('job_posting__category', flat=True)
+        ) | set(
+            SavedJob.objects.filter(user=user).values_list('job_posting__category', flat=True)
+        ) | set(
+            Bookmark.objects.filter(user=user).values_list('job__category', flat=True)
+        )
+        categories = {c.lower() for c in categories if c and c.lower() != 'other'}
+
+        role_words = _words(parsed.get('role'))
+        for exp in (parsed.get('experience') or [])[:2]:
+            if isinstance(exp, dict):
+                role_words |= _words(exp.get('role'))
+        skills = set()
+        for group in parsed.get('skills') or []:
+            if isinstance(group, dict):
+                for item in group.get('items') or []:
+                    if isinstance(item, str) and 1 < len(item) <= 30:
+                        skills.add(item.strip().lower())
+
+        pool = list(
+            JobPosting.objects.filter(status='published')
+            .exclude(applications__candidate=user)
+            .select_related('employer')
+            .annotate(
+                is_saved_annotated=Exists(SavedJob.objects.filter(user=user, job_posting_id=OuterRef('pk'))),
+                has_applied_annotated=Exists(Application.objects.filter(candidate=user, job_posting_id=OuterRef('pk'))),
+            )
+            .order_by('-published_at')[:self.CANDIDATE_POOL]
+        )
+
+        scored = []
+        for job in pool:
+            title_words = _words(job.title)
+            haystack = f"{job.title} {job.description}".lower()
+            score, reasons = 0, []
+            if job.category and job.category.lower() in categories:
+                score += 3
+                reasons.append(f"You're into {job.category}")
+            role_hits = role_words & title_words
+            if role_hits:
+                score += 2 * len(role_hits)
+                reasons.append('Fits your role')
+            skill_hits = [s for s in skills if s in haystack]
+            if skill_hits:
+                score += min(len(skill_hits), 4)
+                reasons.append(f"Matches {', '.join(skill_hits[:2])}")
+            scored.append((score, job, reasons))
+
+        # Stable sort keeps newest-first within equal scores.
+        scored.sort(key=lambda row: row[0], reverse=True)
+        results = []
+        for score, job, reasons in scored[:self.LIMIT]:
+            data = JobPostingSerializer(job, context={'request': request}).data
+            data['match_reason'] = reasons[0] if reasons else 'New on Kaamlee'
+            data['match_score'] = score
+            results.append(data)
+        return Response({'results': results, 'personalized': any(row[0] > 0 for row in scored[:self.LIMIT])})
 
 
 class PublicJobMapPinsView(views.APIView):

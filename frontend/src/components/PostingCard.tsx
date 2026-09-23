@@ -48,9 +48,11 @@ interface PostingCardProps {
   isSelected?: boolean;
   onClick?: () => void;
   onToggleBookmark?: (e: React.MouseEvent, postingId: number) => void;
+  /** Extra classes for the root, e.g. `h-full` to match sibling card heights. */
+  className?: string;
 }
 
-export const PostingCard = React.memo(function PostingCard({ posting, isSelected, onClick, onToggleBookmark }: PostingCardProps) {
+export const PostingCard = React.memo(function PostingCard({ posting, isSelected, onClick, onToggleBookmark, className = '' }: PostingCardProps) {
   const [copied, setCopied] = React.useState(false);
   const getInitial = (name: string) => (name ? name.charAt(0).toUpperCase() : '?');
   const tint = CARD_TINTS[hashSeed(String(posting.id)) % CARD_TINTS.length];
@@ -68,7 +70,7 @@ export const PostingCard = React.memo(function PostingCard({ posting, isSelected
       onClick={onClick}
       className={`cursor-default job-card p-5 sm:p-6 rounded-[20px] border bg-white group transition-all duration-300 relative overflow-hidden shadow-[0_1px_2px_rgba(16,18,26,.05),0_6px_16px_-8px_rgba(16,18,26,.10)] hover:-translate-y-0.5 hover:shadow-[0_2px_4px_rgba(16,18,26,.04),0_18px_40px_-18px_rgba(16,18,26,.22)] hover:border-[#16a34a]/40 ${
         isSelected ? 'border-[#16a34a] ring-1 ring-[#16a34a]/25 bg-[#f6fdf8]' : 'border-black/[0.08]'
-      }`}
+      } flex flex-col ${className}`}
     >
       <div className="absolute top-4 right-4 z-10">
         <span className="text-[9px] font-bold uppercase tracking-widest text-[#16a34a] bg-[#16a34a]/10 border border-[#16a34a]/20 px-2 py-1 rounded-full" style={{ fontFamily: 'var(--font-outfit)' }}>
@@ -76,7 +78,7 @@ export const PostingCard = React.memo(function PostingCard({ posting, isSelected
         </span>
       </div>
 
-      <div className="flex gap-5 items-start">
+      <div className="flex gap-5 items-start flex-1">
         <div className="flex flex-col items-center shrink-0 gap-2.5">
           <div
             className="w-13 h-13 sm:w-14 sm:h-14 rounded-[14px] flex items-center justify-center border border-black/[0.06] overflow-hidden transition-colors"
@@ -117,7 +119,9 @@ export const PostingCard = React.memo(function PostingCard({ posting, isSelected
           </button>
         </div>
 
-        <div className="flex-1 min-w-0">
+        {/* Column stretches to the card's height so the footer below can
+            sit at the bottom when the card is stretched (className="h-full"). */}
+        <div className="flex-1 min-w-0 self-stretch flex flex-col">
           <h3
             className="max-w-[85%] text-sm sm:text-base font-semibold text-[#0b0b0c] group-hover:text-[#16a34a] transition-colors truncate tracking-[-0.01em]"
             style={{ fontFamily: 'var(--font-outfit)' }}
@@ -160,7 +164,7 @@ export const PostingCard = React.memo(function PostingCard({ posting, isSelected
             {posting.description || 'No description provided...'}
           </p>
 
-          <div className="flex justify-between items-center mb-1">
+          <div className="flex justify-between items-center mb-1 mt-auto">
             <Link
               href={`/apply/${posting.id}`}
               className="text-xs text-[#16a34a] hover:underline font-medium"
