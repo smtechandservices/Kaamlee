@@ -310,7 +310,7 @@ export default function CompaniesPage() {
   };
 
   const handleDelete = async (company: Company) => {
-    if (!window.confirm(`Delete ${company.name}? This won't delete its jobs.`)) return;
+    if (!window.confirm(`Delete ${company.name} and all ${company.job_count ?? 'its'} of its scraped jobs? This can't be undone.`)) return;
     const token = localStorage.getItem('admin_token');
     try {
       const res = await fetch(`${API_BASE}/admin/companies/${company.id}/`, {
@@ -339,7 +339,7 @@ export default function CompaniesPage() {
 
   const handleBulkDelete = async () => {
     if (selectedIds.size === 0) return;
-    if (!window.confirm(`Delete ${selectedIds.size} compan${selectedIds.size !== 1 ? 'ies' : 'y'}? This won't delete their jobs.`)) return;
+    if (!window.confirm(`Delete ${selectedIds.size} compan${selectedIds.size !== 1 ? 'ies' : 'y'} and all their scraped jobs? This can't be undone.`)) return;
     const token = localStorage.getItem('admin_token');
     setBulkDeleting(true);
     try {

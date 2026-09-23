@@ -1,3 +1,4 @@
+from django.contrib.auth.models import User
 from django.db.models import Q
 from django.shortcuts import get_object_or_404
 from rest_framework import generics, views, permissions
@@ -141,11 +142,27 @@ class AdminEmployerKYCListView(generics.ListCreateAPIView):
         return queryset
 
 
-class AdminEmployerKYCDetailView(generics.RetrieveUpdateAPIView):
-    """GET full employer + documents + team; PATCH to approve/reject."""
+class AdminEmployerKYCDetailView(generics.RetrieveUpdateDestroyAPIView):
+    """GET full employer + documents + team; PATCH to approve/reject;
+    DELETE to remove the employer entirely (see perform_destroy)."""
     queryset = Employer.objects.all().prefetch_related('kyc_documents', 'members__user')
     permission_classes = [permissions.IsAdminUser]
-    http_method_names = ['get', 'patch']
+    http_method_names = ['get', 'patch', 'delete']
+
+    def perform_destroy(self, instance):
+        """Deleting the Employer cascades its job postings (and their
+        applications / stage history / saved-by rows) and KYC document
+        rows. On top of that: the stored KYC files and logo are removed
+        from storage, and every team member's login is deleted — otherwise
+        those accounts would linger with no employer and show up as
+        candidates in the admin Users list."""
+        for doc in instance.kyc_documents.all():
+            doc.file.delete(save=False)
+        if instance.logo:
+            instance.logo.delete(save=False)
+        member_user_ids = list(instance.members.values_list('user_id', flat=True))
+        instance.delete()
+        User.objects.filter(id__in=member_user_ids, is_superuser=False, is_staff=False).delete()
 
     def get_serializer_class(self):
         if self.request.method == 'PATCH':

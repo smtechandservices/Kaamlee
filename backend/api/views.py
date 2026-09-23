@@ -794,6 +794,16 @@ class CompaniesPagination(PageNumberPagination):
     page_size_query_param = 'page_size'
     max_page_size = 2000
 
+def _delete_company_jobs(names):
+    """Scraped jobs reference their company by name (Job.company is a plain
+    CharField, not a FK), so they don't cascade on their own — delete them
+    explicitly when their company goes. Returns how many were removed."""
+    if not names:
+        return 0
+    deleted, _ = Job.objects.filter(company__in=names).delete()
+    return deleted
+
+
 class CompanyViewSet(viewsets.ModelViewSet):
     """Full CRUD for managing configured companies (add/edit/delete/activate)."""
     serializer_class = CompanySerializer
@@ -874,9 +884,17 @@ class CompanyViewSet(viewsets.ModelViewSet):
         ids = request.data.get('ids')
         if not isinstance(ids, list) or not ids:
             return Response({'error': 'ids must be a non-empty list.'}, status=400)
-        deleted_count, _ = Company.objects.filter(id__in=ids).delete()
+        companies = Company.objects.filter(id__in=ids)
+        jobs_deleted = _delete_company_jobs(list(companies.values_list('name', flat=True)))
+        deleted_count, _ = companies.delete()
         cache.delete(_STATS_CACHE_KEY)
-        return Response({'deleted': deleted_count})
+        return Response({'deleted': deleted_count, 'jobs_deleted': jobs_deleted})
+
+    def perform_destroy(self, instance):
+        # Deleting a company takes its scraped jobs with it.
+        _delete_company_jobs([instance.name])
+        instance.delete()
+        cache.delete(_STATS_CACHE_KEY)
 
 class CompaniesView(views.APIView):
     """Paginated companies + their 10 most recent jobs each, for the admin

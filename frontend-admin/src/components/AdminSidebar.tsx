@@ -6,20 +6,45 @@ import Image from 'next/image';
 import { usePathname, useRouter } from 'next/navigation';
 import { LayoutDashboard, Building2, ShieldCheck, CreditCard, Users, MessageSquare, LogOut, Briefcase, GraduationCap, Radio, FileText, KeyRound } from 'lucide-react';
 
-const NAV_ITEMS = [
-  { href: '/', label: 'Dashboard', icon: LayoutDashboard },
-  { href: '/companies', label: 'Companies', icon: Building2 },
-  { href: '/jobs', label: 'Jobs', icon: Briefcase },
-  { href: '/scraper', label: 'Scraper', icon: Radio },
-  { href: '/revenue', label: 'Finance', icon: CreditCard },
-  { href: '/users', label: 'Users', icon: Users },
-  { href: '/feedback', label: 'Feedback', icon: MessageSquare },
-  { href: '/sessions', label: 'Sessions', icon: KeyRound },
+// Grouped by what the admin is looking after. The Dashboard sits on its
+// own above the groups.
+const NAV_GROUPS = [
+  {
+    title: 'Job data',
+    items: [
+      { href: '/companies', label: 'Companies', icon: Building2 },
+      { href: '/jobs', label: 'Scraped jobs', icon: Briefcase },
+      { href: '/scraper', label: 'Scraper', icon: Radio },
+    ],
+  },
+  {
+    title: 'Hiring',
+    items: [
+      { href: '/employers', label: 'Employers', icon: ShieldCheck },
+      { href: '/postings', label: 'Postings', icon: FileText },
+    ],
+  },
+  {
+    title: 'People',
+    items: [
+      { href: '/users', label: 'Users', icon: Users },
+      { href: '/ambassadors', label: 'Ambassadors', icon: GraduationCap },
+      { href: '/feedback', label: 'Feedback', icon: MessageSquare },
+    ],
+  },
+  {
+    title: 'Business',
+    items: [
+      { href: '/revenue', label: 'Finance', icon: CreditCard },
+    ],
+  },
+  {
+    title: 'Security',
+    items: [
+      { href: '/sessions', label: 'Sessions', icon: KeyRound },
+    ],
+  },
 ];
-
-const EMPLOYER_ITEM = { href: '/employers', label: 'Employers', icon: ShieldCheck };
-const POSTINGS_ITEM = { href: '/postings', label: 'Postings', icon: FileText };
-const AMBASSADOR_ITEM = { href: '/ambassadors', label: 'Ambassadors', icon: GraduationCap };
 
 const itemCls = (active: boolean) =>
   `w-full flex flex-row items-center gap-3 px-3 py-2.5 rounded-full transition-all text-[13.5px] font-medium ${
@@ -94,47 +119,23 @@ export default function AdminSidebar() {
         <span className="text-[15px] font-bold uppercase tracking-[0.1em] text-[#0b0b0c] truncate">Admin</span>
       </Link>
 
-      <nav className="flex-1 flex flex-col gap-1 w-full px-3 overflow-y-auto no-scrollbar">
-        {NAV_ITEMS.map(({ href, label, icon: Icon }) => {
-          const active = pathname === href;
-          return (
-            <Link key={href} href={href} title={label} className={itemCls(active)}>
-              <Icon size={17} className="shrink-0" strokeWidth={1.8} />
-              <span className="leading-none truncate">{label}</span>
-            </Link>
-          );
-        })}
-
-        <div className="my-2 border-t border-black/[0.08]" />
-
-        <Link
-          href={EMPLOYER_ITEM.href}
-          title={EMPLOYER_ITEM.label}
-          className={itemCls(pathname === EMPLOYER_ITEM.href)}
-        >
-          <EMPLOYER_ITEM.icon size={17} className="shrink-0" strokeWidth={1.8} />
-          <span className="leading-none truncate">{EMPLOYER_ITEM.label}</span>
+      <nav className="flex-1 flex flex-col w-full px-3 overflow-y-auto no-scrollbar">
+        <Link href="/" title="Dashboard" className={itemCls(pathname === '/')}>
+          <LayoutDashboard size={17} className="shrink-0" strokeWidth={1.8} />
+          <span className="leading-none truncate">Dashboard</span>
         </Link>
 
-        <Link
-          href={POSTINGS_ITEM.href}
-          title={POSTINGS_ITEM.label}
-          className={itemCls(pathname === POSTINGS_ITEM.href)}
-        >
-          <POSTINGS_ITEM.icon size={17} className="shrink-0" strokeWidth={1.8} />
-          <span className="leading-none truncate">{POSTINGS_ITEM.label}</span>
-        </Link>
-
-        <div className="my-2 border-t border-black/[0.08]" />
-
-        <Link
-          href={AMBASSADOR_ITEM.href}
-          title={AMBASSADOR_ITEM.label}
-          className={itemCls(pathname === AMBASSADOR_ITEM.href)}
-        >
-          <AMBASSADOR_ITEM.icon size={17} className="shrink-0" strokeWidth={1.8} />
-          <span className="leading-none truncate">{AMBASSADOR_ITEM.label}</span>
-        </Link>
+        {NAV_GROUPS.map((group) => (
+          <div key={group.title} className="mt-4 flex flex-col gap-1">
+            <p className="px-3 mb-0.5 text-[10px] font-bold uppercase tracking-[0.16em] text-black/35">{group.title}</p>
+            {group.items.map(({ href, label, icon: Icon }) => (
+              <Link key={href} href={href} title={label} className={itemCls(pathname === href)}>
+                <Icon size={17} className="shrink-0" strokeWidth={1.8} />
+                <span className="leading-none truncate">{label}</span>
+              </Link>
+            ))}
+          </div>
+        ))}
       </nav>
 
       <div className="w-full px-3 pt-3 mt-2 shrink-0 border-t border-black/[0.08] flex flex-col gap-1.5">

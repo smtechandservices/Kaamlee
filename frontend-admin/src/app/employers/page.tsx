@@ -107,6 +107,7 @@ export default function EmployersKYCPage() {
   const [rejectingEmployer, setRejectingEmployer] = useState<Employer | null>(null);
   const [editingMember, setEditingMember] = useState<{ employerId: number; member: EmployerMember } | null>(null);
   const [managingTeamId, setManagingTeamId] = useState<number | null>(null);
+  const [deletingEmployer, setDeletingEmployer] = useState<Employer | null>(null);
   const managingTeamEmployer = employers.find((e) => e.id === managingTeamId) ?? null;
   const [removingDocId, setRemovingDocId] = useState<number | null>(null);
   const [isCreating, setIsCreating] = useState(false);
@@ -204,6 +205,30 @@ export default function EmployersKYCPage() {
       }
     } catch (error) {
       console.error('Failed to reject employer:', error);
+    } finally {
+      setUpdatingId(null);
+    }
+  };
+
+  // Called from DeleteEmployerModal once the admin has typed the name.
+  const deleteEmployer = async (employer: Employer) => {
+    const token = getToken();
+    if (!token) return;
+    setUpdatingId(employer.id);
+    try {
+      const res = await fetch(`${EMPLOYERS_BASE}/admin/kyc/${employer.id}/`, {
+        method: 'DELETE',
+        headers: { Authorization: `Token ${token}` },
+      });
+      if (res.ok) {
+        setEmployers((prev) => prev.filter((e) => e.id !== employer.id));
+        setCount((c) => c - 1);
+        setDeletingEmployer(null);
+      } else {
+        alert('Failed to delete employer');
+      }
+    } catch {
+      alert('Failed to delete employer');
     } finally {
       setUpdatingId(null);
     }
@@ -461,6 +486,14 @@ export default function EmployersKYCPage() {
                             Revoke
                           </button>
                         )}
+                        <button
+                          onClick={() => setDeletingEmployer(e)}
+                          disabled={updatingId === e.id}
+                          className="cursor-pointer mt-2 flex items-center gap-1 text-xs font-semibold text-red-500/80 hover:text-red-600 transition-colors disabled:opacity-50"
+                          title="Delete employer"
+                        >
+                          <Trash2 size={12} /> Delete
+                        </button>
                       </td>
                     </motion.tr>
                   ))}
@@ -533,6 +566,17 @@ export default function EmployersKYCPage() {
       </AnimatePresence>
 
       <AnimatePresence>
+        {deletingEmployer && (
+          <DeleteEmployerModal
+            employer={deletingEmployer}
+            deleting={updatingId === deletingEmployer.id}
+            onClose={() => setDeletingEmployer(null)}
+            onConfirm={() => deleteEmployer(deletingEmployer)}
+          />
+        )}
+      </AnimatePresence>
+
+      <AnimatePresence>
         {managingTeamEmployer && (
           <ManageTeamModal
             employer={managingTeamEmployer}
@@ -562,6 +606,90 @@ export default function EmployersKYCPage() {
         )}
       </AnimatePresence>
     </div>
+  );
+}
+
+// Deleting an employer wipes a lot at once, so spell out exactly what goes
+// and make the admin type the employer's name before the button unlocks.
+function DeleteEmployerModal({ employer, deleting, onClose, onConfirm }: {
+  employer: Employer;
+  deleting: boolean;
+  onClose: () => void;
+  onConfirm: () => void;
+}) {
+  const [typed, setTyped] = useState('');
+  const matches = typed.trim().toLowerCase() === employer.name.trim().toLowerCase();
+  const members = employer.members.length;
+
+  return (
+    <motion.div
+      initial={{ opacity: 0 }}
+      animate={{ opacity: 1 }}
+      exit={{ opacity: 0 }}
+      className="fixed inset-0 bg-black/80 backdrop-blur-sm z-50 flex items-center justify-center p-4"
+      onClick={() => !deleting && onClose()}
+    >
+      <motion.div
+        initial={{ scale: 0.95, opacity: 0 }}
+        animate={{ scale: 1, opacity: 1 }}
+        exit={{ scale: 0.95, opacity: 0 }}
+        onClick={(e) => e.stopPropagation()}
+        role="alertdialog"
+        aria-modal="true"
+        aria-labelledby="delete-employer-title"
+        className="bg-white border border-black/[0.12] rounded-3xl w-full max-w-md shadow-2xl flex flex-col"
+      >
+        <div className="p-6 border-b border-black/[0.12] bg-red-500/[0.04] rounded-t-3xl shrink-0 flex items-center justify-between">
+          <h2 id="delete-employer-title" className="text-xl font-bold flex items-center gap-2 min-w-0">
+            <Trash2 size={20} className="text-red-500 shrink-0" />
+            <span className="truncate">Delete {employer.name}?</span>
+          </h2>
+          <button onClick={onClose} disabled={deleting} className="cursor-pointer p-2 hover:bg-black/[0.08] rounded-lg transition-colors text-[#0b0b0c]/40 hover:text-[#0b0b0c] disabled:opacity-40">
+            <X size={20} />
+          </button>
+        </div>
+
+        <div className="p-6 space-y-4">
+          <p className="text-sm text-[#0b0b0c]/70">This permanently deletes:</p>
+          <ul className="text-sm text-[#0b0b0c]/80 space-y-1.5 list-disc pl-5">
+            <li>The employer account and its profile</li>
+            <li>All of its job postings, and every application to them</li>
+            <li>Its KYC documents{employer.kyc_documents.length ? ` (${employer.kyc_documents.length})` : ''} and logo</li>
+            <li>The login{members !== 1 ? 's' : ''} of {members === 0 ? 'its team (none yet)' : `all ${members} team member${members !== 1 ? 's' : ''}`}</li>
+          </ul>
+          <p className="text-sm font-semibold text-red-600">This can&apos;t be undone.</p>
+
+          <div>
+            <label className="text-xs font-bold uppercase tracking-wider text-[#0b0b0c]/60 mb-1.5 block">
+              Type <span className="normal-case tracking-normal font-mono text-[#0b0b0c]">{employer.name}</span> to confirm
+            </label>
+            <input
+              type="text"
+              autoFocus
+              autoComplete="off"
+              value={typed}
+              onChange={(e) => setTyped(e.target.value)}
+              onKeyDown={(e) => { if (e.key === 'Enter' && matches && !deleting) onConfirm(); }}
+              className="w-full bg-black/[0.03] border border-black/[0.08] rounded-xl px-4 py-2.5 text-sm outline-none focus:border-red-500 transition-all"
+            />
+          </div>
+        </div>
+
+        <div className="p-6 bg-black/[0.04] border-t border-black/[0.12] flex gap-3 shrink-0 rounded-b-3xl">
+          <button onClick={onClose} disabled={deleting} className="cursor-pointer flex-1 py-3 rounded-xl bg-black/[0.05] hover:bg-black/[0.10] font-bold transition-all disabled:opacity-40">
+            Cancel
+          </button>
+          <button
+            onClick={onConfirm}
+            disabled={!matches || deleting}
+            className="cursor-pointer flex-1 py-3 rounded-xl bg-red-500 hover:bg-red-600 text-white disabled:opacity-40 disabled:cursor-not-allowed font-bold transition-all flex items-center justify-center gap-2"
+          >
+            {deleting ? <Loader2 size={18} className="animate-spin" /> : <Trash2 size={16} />}
+            Delete employer
+          </button>
+        </div>
+      </motion.div>
+    </motion.div>
   );
 }
 
