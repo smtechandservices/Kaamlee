@@ -110,7 +110,7 @@ export default function TransactionsPage() {
         <PageHeader backHref="/profile" title="Billing" wordmark />
 
         <div className="flex-1 overflow-y-auto p-6 relative bg-[#f2f3f5]">
-      <div className="absolute top-0 left-1/2 -translate-x-1/2 w-[800px] h-[500px] bg-[#16a34a]/5 blur-[120px] rounded-full pointer-events-none" />
+      <div className="absolute top-0 left-1/2 -translate-x-1/2 w-full max-w-[800px] h-[500px] bg-[#16a34a]/5 blur-[120px] rounded-full pointer-events-none" />
 
       <div className="mx-auto z-10 relative">
         <div className="grid grid-cols-1 lg:grid-cols-3 gap-8">

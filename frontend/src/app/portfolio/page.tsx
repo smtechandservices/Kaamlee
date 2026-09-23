@@ -159,7 +159,7 @@ export default function PortfolioSettingsPage() {
         )}
 
         <div className="flex-1 overflow-y-auto p-6 relative">
-          <div className="absolute top-0 left-1/2 -translate-x-1/2 w-[800px] h-[500px] bg-[#16a34a]/5 blur-[120px] rounded-full pointer-events-none" />
+          <div className="absolute top-0 left-1/2 -translate-x-1/2 w-full max-w-[800px] h-[500px] bg-[#16a34a]/5 blur-[120px] rounded-full pointer-events-none" />
 
           <div className="mx-auto z-10 relative">
             <div className={`${CARD_CLS} p-6 sm:p-8 md:p-10`}>

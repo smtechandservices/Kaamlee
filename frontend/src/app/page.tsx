@@ -420,7 +420,7 @@ function WhatsAppFloat() {
 
 /* ============ DATA ============ */
 const SOLUTIONS = [
-  { icon: Map, t: 'Unified job map', d: 'Every open role from twelve boards, plotted on one map. No tab-hopping between sites.' },
+  { icon: Map, t: 'Unified job map', d: 'Every open role from ATS platforms and partner feeds, plotted on one map. No tab-hopping between sites.' },
   { icon: Rocket, t: 'Instant portfolio', d: 'Turn your resume into a public site with a real, shareable link.' },
   { icon: Sparkles, t: 'AI resume matching', d: 'Upload once. We score every live listing against your experience, in real time.' },
   { icon: Layers, t: 'Application tracker', d: 'Move roles across Saved, Applied, Interviewing and Offered on one board.' },
@@ -431,7 +431,7 @@ const SOLUTIONS = [
 const ABOUT_LINKS = [
   { href: '#solutions', icon: Sparkles, label: 'Solutions', desc: 'Every tool built to close the gap between search and offer.', subKey: 'solutions' as const },
   { href: '#features', icon: Layers, label: 'Features', desc: 'Portfolio builder, tailored CVs, application tracker and more.', subKey: 'features' as const },
-  { href: '#sources', icon: Search, label: 'Sources', desc: 'Twelve job boards, crawled every fifteen minutes.', subKey: null },
+  { href: '#sources', icon: Search, label: 'Sources', desc: 'ATS platforms and B2B partners, refreshed every fifteen minutes.', subKey: null },
 ];
 
 const ABOUT_SUB_DETAILS: Record<'solutions' | 'features', { t: string; d: string }[]> = {
@@ -471,12 +471,12 @@ const WHO_CAN_APPLY = [
 ];
 
 const SOURCES = [
-  { name: 'LinkedIn', color: '#0a66c2', letter: 'in', count: '184,392 live', d: 'The largest single source on the map refreshed every fifteen minutes.' },
-  { name: 'Indeed', color: '#003a9b', letter: 'I', count: '92,118 live', d: 'Broad coverage across every level, from internships to leadership roles.' },
-  { name: 'Google', color: '#4285f4', letter: 'G', count: '61,540 live', d: 'Aggregated listings pulled straight from Google for Jobs.' },
-  { name: 'Wellfound', color: '#0a0a0a', letter: 'W', count: '21,008 live', d: 'Startup and early-stage roles with equity and stage data attached.' },
-  { name: 'Zip Recruiter', color: '#3fa129', letter: 'Z', count: '14,776 live', d: 'Fast-moving listings, often filled within days of posting.' },
-  { name: 'YC', color: '#ff6600', letter: 'Y', count: '3,201 live', d: 'Every open role across the current Y Combinator company batch.' },
+  { name: 'Greenhouse', color: '#24a47f', letter: 'G', count: 'ATS platform', d: 'Roles pulled straight from the Greenhouse boards of fast-growing tech companies.' },
+  { name: 'Lever', color: '#1d1d1b', letter: 'L', count: 'ATS platform', d: 'Direct from company Lever pages, so the posting you see is the one they are hiring on.' },
+  { name: 'Ashby', color: '#5b4dff', letter: 'A', count: 'ATS platform', d: 'Startup and scale-up roles from teams that run hiring on Ashby.' },
+  { name: 'Workable', color: '#1c9bd1', letter: 'W', count: 'ATS platform', d: 'Listings across every level, from internships to leadership roles.' },
+  { name: 'Recruitee', color: '#1999e3', letter: 'R', count: 'ATS platform', d: 'Open roles from European and global employers hiring through Recruitee.' },
+  { name: 'Partner feeds', color: '#16a34a', letter: 'B', count: 'B2B integrations', d: 'Roles shared with us directly by employers and enterprise hiring partners.' },
 ];
 
 const TESTIMONIAL_TINTS = ['#16a34a', '#0f9d76', '#e0714a', '#7c4dff', '#0e7490', '#c026d3', '#d946a8', '#16a34a'];
@@ -487,14 +487,14 @@ const TESTIMONIALS: [string, string, string][] = [
   ['Karan Mehta', 'Backend Engineer', 'Tailored CVs for each application my ATS score went from 61% to 94% on the same resume.'],
   ['Priya Nair', 'UX Designer', 'No fake urgency, no "12 people applied" banners. Just the job and the apply button.'],
   ['Omar Khan', 'DevOps Engineer, Abu Dhabi', 'The tracker is the only reason I actually know where I stand with each application.'],
-  ['Ishaan Kapoor', 'Frontend Lead', 'Twelve boards, one map. I found a role that Indeed never even showed me.'],
+  ['Ishaan Kapoor', 'Frontend Lead', 'Every role straight from the company, on one map. I found openings no job board ever showed me.'],
   ['Sana Sheikh', 'Growth Marketer', 'The fifteen-minute refresh matters I applied to a listing that was six minutes old.'],
 ];
 
 const FAQS: { q: string; a: string }[] = [
-  { q: 'Where do these jobs actually come from?', a: "We crawl twelve major job boards (LinkedIn, Indeed, ZipRecruiter, etc.) and direct company career pages every fifteen minutes. If it's live on the internet, it's on the map." },
+  { q: 'Where do these jobs actually come from?', a: "We pull roles straight from the ATS platforms companies hire through (Greenhouse, Lever, Ashby, Workable, Recruitee and more) plus direct B2B partner feeds, every fifteen minutes. If a company is hiring, it's on the map." },
   { q: 'Will the price change later?', a: "Kaamlee is priced at ₹49/mo or ₹139 for 3 months. There are no hidden tiers or surprise upgrades the plan you pick unlocks everything, and you can cancel anytime." },
-  { q: 'How does full access work right now?', a: "Every feature is unlocked for all users on either the ₹49/mo or ₹249/3mo plan. As we roll out premium features (AI matching, Auto-apply, Resume builder, and more), they'll be included at no extra cost." },
+  { q: 'How does full access work right now?', a: "Every feature is unlocked for all users on either the ₹49/mo or ₹139/3mo plan. As we roll out premium features (AI matching, Auto-apply, Resume builder, and more), they'll be included at no extra cost." },
   { q: 'How does the AI resume matching work?', a: "Once you upload your resume in your profile, our AI engine parses your technical skills, experience, and career history. It then performs a real-time semantic comparison against every job listing to give you a personalized match percentage." },
   { q: 'How fresh is the data on the map?', a: "Our crawlers operate on a 15-minute refresh cycle. When a job is taken down or filled, it's purged from our system within the hour so you're never applying to ghost listings." },
   { q: 'Can I use Kaamlee on my phone?', a: 'Yes. The platform is fully responsive and optimized for mobile browsers. You can scout the map on the go, with everything synced to your desktop account.' },
@@ -922,7 +922,7 @@ export default function LandingPage() {
 
           <Reveal delay={180}>
             <p className="max-w-[60ch] text-[16px] leading-relaxed text-[rgba(61,61,61,0.72)] sm:text-[18.5px]">
-              We aggregates role from twelve job boards into one map, scores each one against your resume, and gives you a tracker, tailored CVs and a portfolio to show for it.
+              We pull roles from ATS platforms and B2B partners into one map, scores each one against your resume, and gives you a tracker, tailored CVs and a portfolio to show for it.
             </p>
           </Reveal>
 
@@ -1321,8 +1321,8 @@ export default function LandingPage() {
         <div className="mx-auto w-[min(1400px,calc(100%-40px))] rounded-[34px] border border-black/[0.08] bg-white px-6 py-12 sm:px-10 sm:py-16">
           <div className="mx-auto flex flex-col items-center gap-4.5 text-center">
             <Reveal><span className="inline-flex items-center gap-2.5 rounded-full border border-dashed border-[#16a34a]/35 bg-[#16a34a]/5 py-2 pl-3 pr-4 text-[13.5px] font-medium text-[#16a34a]"><i className="h-[7px] w-[7px] rounded-full bg-[#16a34a] animate-pulse" />Sources</span></Reveal>
-            <Reveal delay={80}><h2 className="text-[30px] tracking-[-0.035em]">Twelve job boards. One map.</h2></Reveal>
-            <Reveal delay={160}><p className="max-w-[52ch] leading-relaxed text-[rgba(61,61,61,0.72)]">These are the busiest of the twelve boards <br className="hidden sm:block" /> we crawl every fifteen minutes no account needed to browse.</p></Reveal>
+            <Reveal delay={80}><h2 className="text-[30px] tracking-[-0.035em]">Straight from the source. One map.</h2></Reveal>
+            <Reveal delay={160}><p className="max-w-[52ch] leading-relaxed text-[rgba(61,61,61,0.72)]">We pull roles directly from the ATS platforms companies hire through <br className="hidden sm:block" /> and from our B2B partners, refreshed every fifteen minutes. No account needed to browse.</p></Reveal>
           </div>
           <div className="mt-12 grid grid-cols-1 gap-4.5 sm:grid-cols-2 lg:grid-cols-3">
             {SOURCES.map((o, n) => (
@@ -1348,12 +1348,12 @@ export default function LandingPage() {
         <div className="relative mx-auto w-[min(1400px,calc(100%-40px))]">
           <div className="mx-auto flex flex-col items-center gap-4.5 text-center">
             <Reveal><span className="inline-flex items-center gap-2.5 rounded-full border border-dashed border-[#16a34a]/35 bg-[#16a34a]/5 py-2 pl-3 pr-4 text-[13.5px] font-medium text-[#16a34a]"><i className="h-[7px] w-[7px] rounded-full bg-[#16a34a] animate-pulse" />How it works</span></Reveal>
-            <Reveal delay={80}><h2 className="text-[30px] tracking-[-0.035em]">From twelve tabs to one, in about ninety seconds</h2></Reveal>
+            <Reveal delay={80}><h2 className="text-[30px] tracking-[-0.035em]">From a dozen tabs to one, in about ninety seconds</h2></Reveal>
             <Reveal delay={160}><p className="leading-relaxed text-[rgba(61,61,61,0.72)]">No setup, no account required to look around connect a resume only when you&apos;re ready for match scores.</p></Reveal>
           </div>
           <div className="mt-12 grid grid-cols-1 gap-4.5 sm:grid-cols-3">
             {[
-              { n: '01', t: 'We crawl, so you sleep', d: 'Twelve job boards, polled every fifteen minutes. Listings fingerprinted the moment they go live.', w: 100 },
+              { n: '01', t: 'We crawl, so you sleep', d: 'ATS platforms and partner feeds, polled every fifteen minutes. Listings fingerprinted the moment they go live.', w: 100 },
               { n: '02', t: 'Open the map', d: 'No infinite scroll, no fifteen filters. Pan, zoom, see roles plotted where they actually live.', w: 66 },
               { n: '03', t: 'Apply before noon', d: "One click takes you to the source posting. We don't middleman it we just made the haystack smaller.", w: 34 },
             ].map((s, i) => (
@@ -1613,7 +1613,7 @@ export default function LandingPage() {
               <Link href="#top" className="flex items-center gap-2.5 text-[19px] font-semibold tracking-[-0.03em]">
                 <BrandMark size={38} /> <span className="uppercase tracking-[0.15em]">Kaamlee</span>
               </Link>
-              <p className="mt-4 max-w-[32ch] text-[15px] text-[rgba(61,61,61,0.72)]">Kaamlee aggregates every job board into one map, matches it to your resume, and gives you a portfolio to show for it.</p>
+              <p className="mt-4 max-w-[32ch] text-[15px] text-[rgba(61,61,61,0.72)]">Kaamlee pulls roles straight from company hiring systems into one map, matches it to your resume, and gives you a portfolio to show for it.</p>
             </Reveal>
             <Reveal delay={80}>
               <h5 className="mb-4 text-[13px] font-medium uppercase tracking-[0.1em] text-black/45">Company</h5>

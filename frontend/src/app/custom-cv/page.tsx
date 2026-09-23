@@ -207,7 +207,7 @@ export default function CustomCVListPage() {
         <PageHeader backHref="/profile" title="Custom CVs" wordmark />
 
         <div className="flex-1 overflow-y-auto p-6 relative">
-      <div className="absolute top-0 left-1/2 -translate-x-1/2 w-[800px] h-[500px] bg-[#16a34a]/[0.06] blur-[120px] rounded-full pointer-events-none" />
+      <div className="absolute top-0 left-1/2 -translate-x-1/2 w-full max-w-[800px] h-[500px] bg-[#16a34a]/[0.06] blur-[120px] rounded-full pointer-events-none" />
 
       <div className="mx-auto z-10 relative">
       <div className="grid grid-cols-1 lg:grid-cols-2 gap-4 items-start">

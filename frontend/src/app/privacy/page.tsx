@@ -8,7 +8,7 @@ import { motion } from 'framer-motion';
 export default function PrivacyPage() {
   return (
     <main className="min-h-screen bg-[#f2f3f5] text-[#0b0b0c] p-6 sm:p-12 relative overflow-hidden" style={{ fontFamily: 'Georgia, "Times New Roman", Times, serif' }}>
-      <div className="absolute top-0 left-1/2 -translate-x-1/2 w-[800px] h-[500px] bg-[#16a34a]/[0.06] blur-[120px] rounded-full pointer-events-none" />
+      <div className="absolute top-0 left-1/2 -translate-x-1/2 w-full max-w-[800px] h-[500px] bg-[#16a34a]/[0.06] blur-[120px] rounded-full pointer-events-none" />
 
       <Link href="/" className="absolute top-6 left-6 sm:top-8 sm:left-8 text-black/45 hover:text-[#0b0b0c] transition-colors flex items-center gap-2 text-xs sm:text-sm font-medium z-20" style={{ fontFamily: 'var(--font-outfit)' }}>
         <ArrowLeft className="w-3.5 h-3.5 sm:w-4 sm:h-4" />

@@ -143,7 +143,7 @@ export default function DashboardPage() {
         <PageHeader backHref="/" title="Dashboard" wordmark />
 
         <div className="flex-1 overflow-y-auto p-6 relative">
-          <div className="pointer-events-none absolute top-0 left-1/2 -translate-x-1/2 w-[800px] h-[500px] bg-[#16a34a]/[0.06] blur-[120px] rounded-full" />
+          <div className="pointer-events-none absolute top-0 left-1/2 -translate-x-1/2 w-full max-w-[800px] h-[500px] bg-[#16a34a]/[0.06] blur-[120px] rounded-full" />
 
           <div className="mx-auto max-w-[1200px] relative z-10">
             <motion.div initial={{ opacity: 0, y: 12 }} animate={{ opacity: 1, y: 0 }}>
