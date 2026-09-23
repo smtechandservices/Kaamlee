@@ -38,7 +38,7 @@ function StarDisplay({ rating }: { rating: number }) {
         <Star
           key={s}
           size={14}
-          className={s <= rating ? 'fill-yellow-400 text-yellow-400' : 'text-[#333]'}
+          className={s <= rating ? 'fill-yellow-400 text-yellow-600' : 'text-[#0b0b0c]/75'}
         />
       ))}
     </div>
@@ -127,26 +127,26 @@ export default function FeedbackPage() {
   }));
 
   function SortIcon({ col }: { col: SortKey }) {
-    if (sortKey !== col) return <ChevronDown size={14} className="text-[#333]" />;
+    if (sortKey !== col) return <ChevronDown size={14} className="text-[#0b0b0c]/75" />;
     return sortAsc ? (
-      <ChevronUp size={14} className="text-blue-400" />
+      <ChevronUp size={14} className="text-green-600" />
     ) : (
-      <ChevronDown size={14} className="text-blue-400" />
+      <ChevronDown size={14} className="text-green-600" />
     );
   }
 
   return (
-    <div className="min-h-screen bg-[#0a0a0a] text-white p-8 font-sans">
-      <div className="mx-auto max-w-6xl">
+    <div className="min-h-screen bg-[#f2f3f5] text-[#0b0b0c] p-8 font-sans">
+      <div className="mx-auto">
         {/* Header */}
         <header className="flex flex-col md:flex-row md:items-center justify-between gap-6 mb-10">
           <div className="flex items-center gap-6">
             <div>
               <h1 className="text-3xl font-bold tracking-tight mb-1 flex items-center gap-3">
-                {/* <MessageSquare size={28} className="text-blue-500" /> */}
+                {/* <MessageSquare size={28} className="text-green-600" /> */}
                 User Feedback
               </h1>
-              <p className="text-[#555] font-medium">
+              <p className="text-[#0b0b0c]/60 font-medium">
                 {feedbacks.length} review{feedbacks.length !== 1 ? 's' : ''} submitted
               </p>
             </div>
@@ -154,18 +154,18 @@ export default function FeedbackPage() {
 
           <div className="flex items-center gap-3">
             <div className="relative">
-              <Search className="absolute left-4 top-1/2 -translate-y-1/2 text-[#555]" size={18} />
+              <Search className="absolute left-4 top-1/2 -translate-y-1/2 text-[#0b0b0c]/60" size={18} />
               <input
                 type="text"
                 placeholder="Search by user or message..."
                 value={searchTerm}
                 onChange={(e) => setSearchTerm(e.target.value)}
-                className="w-72 bg-[#111] border border-[#222] rounded-2xl py-3 pl-11 pr-4 focus:outline-none focus:border-blue-500 transition-all text-sm"
+                className="w-72 bg-white border border-black/[0.08] rounded-2xl py-3 pl-11 pr-4 focus:outline-none focus:border-green-600 transition-all text-sm"
               />
             </div>
             <button
               onClick={fetchFeedbacks}
-              className="cursor-pointer p-3 rounded-xl bg-[#111] border border-[#222] hover:bg-[#161616] transition-all"
+              className="cursor-pointer p-3 rounded-xl bg-white border border-black/[0.08] hover:bg-black/[0.03] transition-all"
               title="Refresh"
             >
               <RefreshCcw size={18} className={loading ? 'animate-spin' : ''} />
@@ -175,20 +175,20 @@ export default function FeedbackPage() {
 
         {/* Summary Cards */}
         <div className="grid grid-cols-2 md:grid-cols-4 gap-4 mb-8">
-          <div className="bg-[#111] border border-[#222] rounded-2xl p-5">
-            <div className="text-[10px] text-[#555] font-bold uppercase tracking-widest mb-1">Total Reviews</div>
+          <div className="bg-white border border-black/[0.08] rounded-2xl p-5">
+            <div className="text-[10px] text-[#0b0b0c]/60 font-bold uppercase tracking-widest mb-1">Total Reviews</div>
             <div className="text-3xl font-black">{feedbacks.length}</div>
           </div>
-          <div className="bg-[#111] border border-[#222] rounded-2xl p-5">
-            <div className="text-[10px] text-[#555] font-bold uppercase tracking-widest mb-1">Avg Rating</div>
+          <div className="bg-white border border-black/[0.08] rounded-2xl p-5">
+            <div className="text-[10px] text-[#0b0b0c]/60 font-bold uppercase tracking-widest mb-1">Avg Rating</div>
             <div className="text-3xl font-black flex items-center gap-2">
               {avgRating}
-              <Star size={20} className="fill-yellow-400 text-yellow-400" />
+              <Star size={20} className="fill-yellow-400 text-yellow-600" />
             </div>
           </div>
           {/* Rating breakdown */}
-          <div className="bg-[#111] border border-[#222] rounded-2xl p-5 col-span-2">
-            <div className="text-[10px] text-[#555] font-bold uppercase tracking-widest mb-3">Rating Breakdown</div>
+          <div className="bg-white border border-black/[0.08] rounded-2xl p-5 col-span-2">
+            <div className="text-[10px] text-[#0b0b0c]/60 font-bold uppercase tracking-widest mb-3">Rating Breakdown</div>
             <div className="flex items-end gap-2 h-8">
               {ratingCounts.map(({ rating, count }) => {
                 const pct = feedbacks.length ? (count / feedbacks.length) * 100 : 0;
@@ -198,20 +198,20 @@ export default function FeedbackPage() {
                     onClick={() => setRatingFilter(ratingFilter === rating ? null : rating)}
                     title={`${ratingLabels[rating]} (${count})`}
                     className={`flex-1 rounded-sm transition-all cursor-pointer relative group ${
-                      ratingFilter === rating ? 'ring-2 ring-blue-500' : ''
+                      ratingFilter === rating ? 'ring-2 ring-green-600' : ''
                     }`}
                     style={{ height: `${Math.max(pct, 8)}%` }}
                   >
                     <div
                       className={`w-full h-full rounded-sm ${
                         rating >= 4
-                          ? 'bg-green-500/70 hover:bg-green-500'
+                          ? 'bg-green-500/70 hover:bg-green-600'
                           : rating === 3
-                          ? 'bg-yellow-500/70 hover:bg-yellow-500'
-                          : 'bg-red-500/70 hover:bg-red-500'
+                          ? 'bg-yellow-500/70 hover:bg-yellow-600'
+                          : 'bg-red-500/70 hover:bg-red-600'
                       }`}
                     />
-                    <span className="absolute -bottom-5 left-1/2 -translate-x-1/2 text-[9px] text-[#555]">{rating}★</span>
+                    <span className="absolute -bottom-5 left-1/2 -translate-x-1/2 text-[9px] text-[#0b0b0c]/60">{rating}★</span>
                   </button>
                 );
               })}
@@ -220,7 +220,7 @@ export default function FeedbackPage() {
             {ratingFilter !== null && (
               <button
                 onClick={() => setRatingFilter(null)}
-                className="text-[10px] text-blue-400 hover:text-blue-300 mt-1 cursor-pointer"
+                className="text-[10px] text-green-600 hover:text-green-500 mt-1 cursor-pointer"
               >
                 Clear filter
               </button>
@@ -231,18 +231,18 @@ export default function FeedbackPage() {
         {/* Table */}
         {loading ? (
           <div className="flex flex-col items-center justify-center py-40">
-            <Loader2 className="w-10 h-10 text-blue-500 animate-spin mb-4" />
-            <p className="text-[#555] text-xs font-bold uppercase tracking-widest">Loading reviews</p>
+            <Loader2 className="w-10 h-10 text-green-600 animate-spin mb-4" />
+            <p className="text-[#0b0b0c]/60 text-xs font-bold uppercase tracking-widest">Loading reviews</p>
           </div>
         ) : (
-          <div className="bg-[#111] border border-[#222] rounded-3xl overflow-hidden">
+          <div className="bg-white border border-black/[0.08] rounded-3xl overflow-hidden">
             <table className="w-full border-collapse">
               <thead>
-                <tr className="border-b border-[#222] bg-[#161616]/50">
+                <tr className="border-b border-black/[0.08] bg-black/[0.02]">
                   <th className="text-left px-6 py-5">
                     <button
                       onClick={() => handleSort('username')}
-                      className="cursor-pointer flex items-center gap-1 text-[10px] font-black uppercase tracking-[0.2em] text-[#555] hover:text-white transition-colors"
+                      className="cursor-pointer flex items-center gap-1 text-[10px] font-black uppercase tracking-[0.2em] text-[#0b0b0c]/60 hover:text-[#0b0b0c] transition-colors"
                     >
                       User <SortIcon col="username" />
                     </button>
@@ -250,25 +250,25 @@ export default function FeedbackPage() {
                   <th className="text-left px-6 py-5">
                     <button
                       onClick={() => handleSort('rating')}
-                      className="cursor-pointer flex items-center gap-1 text-[10px] font-black uppercase tracking-[0.2em] text-[#555] hover:text-white transition-colors"
+                      className="cursor-pointer flex items-center gap-1 text-[10px] font-black uppercase tracking-[0.2em] text-[#0b0b0c]/60 hover:text-[#0b0b0c] transition-colors"
                     >
                       Rating <SortIcon col="rating" />
                     </button>
                   </th>
-                  <th className="text-left px-6 py-5 text-[10px] font-black uppercase tracking-[0.2em] text-[#555]">
+                  <th className="text-left px-6 py-5 text-[10px] font-black uppercase tracking-[0.2em] text-[#0b0b0c]/60">
                     Message
                   </th>
                   <th className="text-left px-6 py-5">
                     <button
                       onClick={() => handleSort('created_at')}
-                      className="cursor-pointer flex items-center gap-1 text-[10px] font-black uppercase tracking-[0.2em] text-[#555] hover:text-white transition-colors"
+                      className="cursor-pointer flex items-center gap-1 text-[10px] font-black uppercase tracking-[0.2em] text-[#0b0b0c]/60 hover:text-[#0b0b0c] transition-colors"
                     >
                       Submitted <SortIcon col="created_at" />
                     </button>
                   </th>
                 </tr>
               </thead>
-              <tbody className="divide-y divide-[#222]/50">
+              <tbody className="divide-y divide-black/[0.06]">
                 <AnimatePresence mode="popLayout">
                   {filtered.map((fb) => (
                     <motion.tr
@@ -276,24 +276,24 @@ export default function FeedbackPage() {
                       initial={{ opacity: 0 }}
                       animate={{ opacity: 1 }}
                       exit={{ opacity: 0 }}
-                      className="hover:bg-[#161616]/30 transition-colors"
+                      className="hover:bg-black/[0.02] transition-colors"
                     >
                       <td className="px-6 py-5">
                         <div className="flex items-center gap-3">
-                          <div className="w-10 h-10 rounded-xl bg-blue-500/10 flex items-center justify-center text-blue-500 font-bold text-sm shrink-0">
+                          <div className="w-10 h-10 rounded-xl bg-green-600/10 flex items-center justify-center text-green-600 font-bold text-sm shrink-0">
                             {fb.first_name ? fb.first_name[0].toUpperCase() : fb.username[0].toUpperCase()}
                           </div>
                           <div>
-                            <div className="font-bold text-white text-sm leading-tight">
+                            <div className="font-bold text-[#0b0b0c] text-sm leading-tight">
                               {fb.first_name || fb.last_name
                                 ? `${fb.first_name} ${fb.last_name}`.trim()
                                 : fb.username}
                             </div>
-                            <div className="text-xs text-[#555] flex items-center gap-1 mt-0.5">
+                            <div className="text-xs text-[#0b0b0c]/60 flex items-center gap-1 mt-0.5">
                               <UserIcon size={11} />
                               @{fb.username}
                             </div>
-                            <div className="text-xs text-[#555] flex items-center gap-1">
+                            <div className="text-xs text-[#0b0b0c]/60 flex items-center gap-1">
                               <Mail size={11} />
                               {fb.email}
                             </div>
@@ -303,16 +303,16 @@ export default function FeedbackPage() {
                       <td className="px-6 py-5">
                         <div className="flex flex-col gap-1">
                           <StarDisplay rating={fb.rating} />
-                          <span className="text-[10px] text-[#555] font-bold uppercase tracking-wider">
+                          <span className="text-[10px] text-[#0b0b0c]/60 font-bold uppercase tracking-wider">
                             {ratingLabels[fb.rating]}
                           </span>
                         </div>
                       </td>
                       <td className="px-6 py-5 max-w-xs">
-                        <p className="text-sm text-[#aaa] leading-relaxed line-clamp-3">{fb.message}</p>
+                        <p className="text-sm text-[#0b0b0c]/40 leading-relaxed line-clamp-3">{fb.message}</p>
                       </td>
                       <td className="px-6 py-5">
-                        <div className="text-sm text-[#666] font-mono whitespace-nowrap">
+                        <div className="text-sm text-[#0b0b0c]/55 font-mono whitespace-nowrap">
                           {new Date(fb.created_at).toLocaleDateString('en-IN', {
                             day: '2-digit',
                             month: 'short',
@@ -320,7 +320,7 @@ export default function FeedbackPage() {
                           })}
                         </div>
                         {fb.updated_at !== fb.created_at && (
-                          <div className="text-[10px] text-[#444] mt-0.5">edited</div>
+                          <div className="text-[10px] text-[#0b0b0c]/70 mt-0.5">edited</div>
                         )}
                       </td>
                     </motion.tr>
@@ -331,8 +331,8 @@ export default function FeedbackPage() {
 
             {filtered.length === 0 && (
               <div className="py-24 text-center">
-                <MessageSquare className="w-12 h-12 text-[#222] mx-auto mb-4" />
-                <p className="text-[#555] font-medium">
+                <MessageSquare className="w-12 h-12 text-[#0b0b0c]/80 mx-auto mb-4" />
+                <p className="text-[#0b0b0c]/60 font-medium">
                   {feedbacks.length === 0 ? 'No feedback submitted yet.' : 'No results match your search.'}
                 </p>
               </div>

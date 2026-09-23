@@ -44,23 +44,28 @@ SECURE_PROXY_SSL_HEADER = ('HTTP_X_FORWARDED_PROTO', 'https')
 # Application definition
 
 INSTALLED_APPS = [
+    'daphne',
     'django.contrib.admin',
     'django.contrib.auth',
     'django.contrib.contenttypes',
     'django.contrib.sessions',
     'django.contrib.messages',
     'django.contrib.staticfiles',
+    'channels',
     'rest_framework',
     'rest_framework.authtoken',
     'corsheaders',
     'api',
     'payments',
     'ambassador',
+    'employers',
+    'hiring',
 ]
 
 REST_FRAMEWORK = {
     'DEFAULT_AUTHENTICATION_CLASSES': [
-        'rest_framework.authentication.TokenAuthentication',
+        # Stock TokenAuthentication plus an expiry — see api/tokens.py.
+        'api.tokens.ExpiringTokenAuthentication',
         'rest_framework.authentication.SessionAuthentication',
     ],
     'DEFAULT_PERMISSION_CLASSES': [
@@ -70,6 +75,8 @@ REST_FRAMEWORK = {
         # CheckExistenceView must stay unauthenticated (used pre-signup), so it's
         # throttled per-IP instead to make username/email/phone enumeration impractical.
         'check-existence': '20/minute',
+        # Same enumeration concern for the ambassador form's pre-check.
+        'ambassador-email-check': '20/minute',
         'email-otp-request': '5/minute',
         'email-otp-verify': '10/minute',
     },
@@ -80,7 +87,6 @@ MIDDLEWARE = [
     'core.middleware.DisableGzipForStreamingMiddleware',
     'django.middleware.gzip.GZipMiddleware',
     'corsheaders.middleware.CorsMiddleware',
-    'core.middleware.RequestLogMiddleware',
     'django.contrib.sessions.middleware.SessionMiddleware',
     'django.middleware.common.CommonMiddleware',
     'django.middleware.csrf.CsrfViewMiddleware',
@@ -108,6 +114,27 @@ TEMPLATES = [
 ]
 
 WSGI_APPLICATION = 'core.wsgi.application'
+ASGI_APPLICATION = 'core.asgi.application'
+
+# Backs the scraper's live-status WebSocket (see api/consumers.py). Redis is
+# required once more than one process/instance needs to share state — set
+# REDIS_URL in production (e.g. a Render Key Value instance). Falls back to
+# an in-memory layer for local dev / a single-process deployment, which is
+# fine as long as nothing but this one process needs to see the events.
+REDIS_URL = os.getenv('REDIS_URL')
+if REDIS_URL:
+    CHANNEL_LAYERS = {
+        'default': {
+            'BACKEND': 'channels_redis.core.RedisChannelLayer',
+            'CONFIG': {'hosts': [REDIS_URL]},
+        }
+    }
+else:
+    CHANNEL_LAYERS = {
+        'default': {
+            'BACKEND': 'channels.layers.InMemoryChannelLayer',
+        }
+    }
 
 
 # Database
@@ -214,7 +241,6 @@ GOOGLE_CLIENT_ID = os.getenv('GOOGLE_CLIENT_ID', '')
 # frontend's server-only env.
 OTP_INTERNAL_SECRET = os.getenv('OTP_INTERNAL_SECRET', '')
 
-# Request Logging — 5 MB per file, keep last 5 files (25 MB max on disk)
 LOGS_DIR = BASE_DIR / 'logs'
 LOGS_DIR.mkdir(exist_ok=True)
 
@@ -222,35 +248,16 @@ LOGGING = {
     'version': 1,
     'disable_existing_loggers': False,
     'formatters': {
-        'request': {
-            'format': '[{asctime}] {levelname} {message} status={status_code}',
-            'style': '{',
-            'datefmt': '%Y-%m-%d %H:%M:%S',
-        },
         'simple': {
             'format': '[{asctime}] {levelname} {message}',
             'style': '{',
             'datefmt': '%Y-%m-%d %H:%M:%S',
         },
     },
-    'filters': {
-        'default_status_code': {
-            '()': 'core.middleware.DefaultStatusCodeFilter',
-        },
-    },
     'handlers': {
         'console': {
             'class': 'logging.StreamHandler',
-            'formatter': 'request',
-            'filters': ['default_status_code'],
-        },
-        'file': {
-            'class': 'logging.handlers.RotatingFileHandler',
-            'filename': LOGS_DIR / 'requests.log',
-            'maxBytes': int(2.5 * 1024 * 1024),  # 2.5 MB
-            'backupCount': 1,
-            'formatter': 'request',
-            'filters': ['default_status_code'],
+            'formatter': 'simple',
         },
         'scheduler_console': {
             'class': 'logging.StreamHandler',
@@ -266,13 +273,8 @@ LOGGING = {
     },
     'loggers': {
         'django.request': {
-            'handlers': ['console', 'file'],
+            'handlers': ['console'],
             'level': 'DEBUG',
-            'propagate': False,
-        },
-        'request_log': {
-            'handlers': ['console', 'file'],
-            'level': 'INFO',
             'propagate': False,
         },
         'api.scheduler': {

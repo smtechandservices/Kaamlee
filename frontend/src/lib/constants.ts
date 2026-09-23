@@ -18,3 +18,8 @@ export const PLANS: Plan[] = [
 ];
 
 export const DEFAULT_PLAN: PlanId = 'quarterly';
+
+// Where candidates go for help — the sidebar's support card and the landing
+// page's floating WhatsApp button both use these.
+export const SUPPORT_EMAIL = 'kaamlee2026@gmail.com';
+export const COMMUNITY_URL = 'https://chat.whatsapp.com/HtJ3XG4RgwAAZiYYN79rOb?s=cl&p=i&ilr=0';

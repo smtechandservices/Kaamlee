@@ -22,7 +22,7 @@ import { getCached, setCache, invalidatePrefix } from '@/lib/cache';
 import Checkbox from '@/components/Checkbox';
 
 const API_BASE = `${process.env.NEXT_PUBLIC_API_URL}/api`;
-const PAGE_SIZE = 20;
+const PAGE_SIZE_OPTIONS = [20, 50, 100];
 
 interface Job {
   id: number;
@@ -99,9 +99,9 @@ function buildMapSrcDoc(lat: number, lon: number) {
 <html><head><meta name="viewport" content="width=device-width, initial-scale=1.0">
 <link rel="stylesheet" href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css" />
 <style>
-  html, body, #map { margin: 0; padding: 0; height: 100%; width: 100%; background: #1a1a1a; }
-  .leaflet-control-attribution { font-size: 8px; background: rgba(17,17,17,0.7); color: #888; }
-  .leaflet-control-attribution a { color: #aaa; }
+  html, body, #map { margin: 0; padding: 0; height: 100%; width: 100%; background: #f2f3f5; }
+  .leaflet-control-attribution { font-size: 8px; background: rgba(255,255,255,0.7); color: #666; }
+  .leaflet-control-attribution a { color: #444; }
 </style></head>
 <body>
 <div id="map"></div>
@@ -112,21 +112,21 @@ function buildMapSrcDoc(lat: number, lon: number) {
     maxZoom: 19,
     attribution: '&copy; OpenStreetMap &copy; CARTO'
   }).addTo(map);
-  L.circleMarker([${lat}, ${lon}], { radius: 7, color: '#3b82f6', weight: 2, fillColor: '#3b82f6', fillOpacity: 0.9 }).addTo(map);
+  L.circleMarker([${lat}, ${lon}], { radius: 7, color: '#16a34a', weight: 2, fillColor: '#16a34a', fillOpacity: 0.9 }).addTo(map);
 </script>
 </body></html>`;
 }
 
 function JobStatTile({ icon, label, value, sub }: { icon: React.ReactNode; label: string; value: string; sub?: string }) {
   return (
-    <div className="bg-[#111] border border-[#222] rounded-2xl p-5 flex items-center gap-4">
-      <div className="w-10 h-10 rounded-xl bg-[#1a1a1a] flex items-center justify-center shrink-0">
+    <div className="bg-white border border-black/[0.08] rounded-2xl p-5 flex items-center gap-4">
+      <div className="w-10 h-10 rounded-xl bg-black/[0.04] flex items-center justify-center shrink-0">
         {icon}
       </div>
       <div className="min-w-0">
-        <div className="text-[10px] text-[#555] font-black uppercase tracking-[0.2em] mb-0.5">{label}</div>
+        <div className="text-[10px] text-[#0b0b0c]/60 font-black uppercase tracking-[0.2em] mb-0.5">{label}</div>
         <div className="text-lg font-bold truncate">{value}</div>
-        {sub && <div className="text-xs text-[#666] truncate">{sub}</div>}
+        {sub && <div className="text-xs text-[#0b0b0c]/55 truncate">{sub}</div>}
       </div>
     </div>
   );
@@ -135,9 +135,9 @@ function JobStatTile({ icon, label, value, sub }: { icon: React.ReactNode; label
 function DetailField({ label, value, mono = false }: { label: string; value: React.ReactNode; mono?: boolean }) {
   return (
     <div>
-      <div className="text-[10px] font-black uppercase tracking-[0.2em] text-[#555] mb-1">{label}</div>
-      <div className={`text-sm text-white break-words ${mono ? 'font-mono text-xs' : ''}`}>
-        {value ?? <span className="text-[#3a3a3a]">—</span>}
+      <div className="text-[10px] font-black uppercase tracking-[0.2em] text-[#0b0b0c]/60 mb-1">{label}</div>
+      <div className={`text-sm text-[#0b0b0c] break-words ${mono ? 'font-mono text-xs' : ''}`}>
+        {value ?? <span className="text-[#0b0b0c]/70">—</span>}
       </div>
     </div>
   );
@@ -168,6 +168,8 @@ export default function JobsPage() {
   const [count, setCount] = useState(0);
   const [stats, setStats] = useState<JobStats | null>(null);
   const [page, setPage] = useState(1);
+  const [pageSize, setPageSize] = useState(PAGE_SIZE_OPTIONS[0]);
+  const [pageInput, setPageInput] = useState('1');
   const [loading, setLoading] = useState(true);
   const [companies, setCompanies] = useState<CompanyOption[]>([]);
   const [selectedCompany, setSelectedCompany] = useState('');
@@ -187,7 +189,11 @@ export default function JobsPage() {
   const [loadingMissingCoords, setLoadingMissingCoords] = useState(false);
   const router = useRouter();
 
-  const totalPages = Math.max(1, Math.ceil(count / PAGE_SIZE));
+  const totalPages = Math.max(1, Math.ceil(count / pageSize));
+
+  useEffect(() => {
+    setPageInput(String(page));
+  }, [page]);
 
   const fetchJobs = useCallback(async (force = false) => {
     const token = localStorage.getItem('admin_token');
@@ -195,7 +201,7 @@ export default function JobsPage() {
       router.push('/login');
       return;
     }
-    const params = new URLSearchParams({ page: String(page) });
+    const params = new URLSearchParams({ page: String(page), page_size: String(pageSize) });
     if (selectedCompany) params.set('company', selectedCompany);
     if (search) params.set('search', search);
     const cacheKey = `job-data:list:${params.toString()}`;
@@ -207,6 +213,7 @@ export default function JobsPage() {
         setCount(cached.count);
         setStats(cached.stats ?? null);
         setSelectedIds(new Set());
+        setLoading(false);
         return;
       }
     }
@@ -233,7 +240,7 @@ export default function JobsPage() {
     } finally {
       setLoading(false);
     }
-  }, [page, selectedCompany, search, router]);
+  }, [page, pageSize, selectedCompany, search, router]);
 
   useEffect(() => {
     fetchJobs();
@@ -267,6 +274,17 @@ export default function JobsPage() {
   const handleCompanyChange = (name: string) => {
     setPage(1);
     setSelectedCompany(name);
+  };
+
+  const handlePageSizeChange = (size: number) => {
+    setPage(1);
+    setPageSize(size);
+  };
+
+  const jumpToPage = () => {
+    const n = Math.round(Number(pageInput));
+    if (Number.isFinite(n)) setPage(Math.min(totalPages, Math.max(1, n)));
+    else setPageInput(String(page));
   };
 
   const openMapPreview = (job: Job, e: React.MouseEvent<HTMLButtonElement>) => {
@@ -422,36 +440,36 @@ export default function JobsPage() {
   };
 
   return (
-    <div className="min-h-screen bg-[#0a0a0a] text-white p-8 font-sans">
+    <div className="min-h-screen bg-[#f2f3f5] text-[#0b0b0c] p-8 font-sans">
       <div className="mx-auto">
         <header className="flex flex-col md:flex-row md:items-center justify-between gap-6 mb-10">
           <div>
             <h1 className="text-3xl font-bold tracking-tight mb-1 flex items-center gap-3">
               Jobs
             </h1>
-            <p className="text-[#555] font-medium">
+            <p className="text-[#0b0b0c]/60 font-medium">
               {count.toLocaleString()} job{count !== 1 ? 's' : ''}
-              {selectedCompany && <> at <span className="text-white">{selectedCompany}</span></>}
+              {selectedCompany && <> at <span className="text-[#0b0b0c]">{selectedCompany}</span></>}
             </p>
           </div>
 
           <div className="flex flex-wrap items-center gap-3">
             <div className="relative">
-              <Search className="absolute left-4 top-1/2 -translate-y-1/2 text-[#555]" size={18} />
+              <Search className="absolute left-4 top-1/2 -translate-y-1/2 text-[#0b0b0c]/60" size={18} />
               <input
                 type="text"
                 placeholder="Search title or company..."
                 value={searchInput}
                 onChange={(e) => setSearchInput(e.target.value)}
                 onKeyDown={(e) => e.key === 'Enter' && applySearch()}
-                className="w-64 bg-[#111] border border-[#222] rounded-2xl py-3 pl-11 pr-4 focus:outline-none focus:border-blue-500 transition-all text-sm"
+                className="w-64 bg-white border border-black/[0.08] rounded-2xl py-3 pl-11 pr-4 focus:outline-none focus:border-green-600 transition-all text-sm"
               />
             </div>
 
             <select
               value={selectedCompany}
               onChange={(e) => handleCompanyChange(e.target.value)}
-              className="bg-[#111] border border-[#222] rounded-2xl py-3 px-4 focus:outline-none focus:border-blue-500 transition-all text-sm cursor-pointer max-w-[200px]"
+              className="bg-white border border-black/[0.08] rounded-2xl py-3 px-4 focus:outline-none focus:border-green-600 transition-all text-sm cursor-pointer max-w-[200px]"
             >
               <option value="">All companies</option>
               {companies.map(c => (
@@ -462,7 +480,7 @@ export default function JobsPage() {
             {selectedCompany && (
               <button
                 onClick={() => handleCompanyChange('')}
-                className="cursor-pointer p-3 rounded-xl bg-[#111] border border-[#222] hover:bg-[#161616] transition-all text-[#888] hover:text-white"
+                className="cursor-pointer p-3 rounded-xl bg-white border border-black/[0.08] hover:bg-black/[0.03] transition-all text-[#0b0b0c]/40 hover:text-[#0b0b0c]"
                 title="Clear company filter"
               >
                 <X size={18} />
@@ -471,7 +489,7 @@ export default function JobsPage() {
 
             <button
               onClick={() => fetchJobs(true)}
-              className="cursor-pointer p-3 rounded-xl bg-[#111] border border-[#222] hover:bg-[#161616] transition-all"
+              className="cursor-pointer p-3 rounded-xl bg-white border border-black/[0.08] hover:bg-black/[0.03] transition-all"
               title="Refresh"
             >
               <RefreshCcw size={18} className={loading ? 'animate-spin' : ''} />
@@ -481,7 +499,7 @@ export default function JobsPage() {
               <button
                 onClick={openGeocodeMenu}
                 disabled={geocoding}
-                className="cursor-pointer bg-purple-600 hover:bg-purple-500 disabled:opacity-40 disabled:cursor-not-allowed px-4 py-3 rounded-2xl text-sm font-semibold flex items-center gap-2 transition-all"
+                className="cursor-pointer bg-purple-600 hover:bg-purple-700 text-white disabled:opacity-40 disabled:cursor-not-allowed px-4 py-3 rounded-2xl text-sm font-semibold flex items-center gap-2 transition-all"
               >
                 {geocoding ? <Loader2 size={16} className="animate-spin" /> : <Crosshair size={16} />}
                 Run Geocode
@@ -490,26 +508,26 @@ export default function JobsPage() {
               {geocodeMenuOpen && (
                 <>
                   <div className="fixed inset-0 z-40" onClick={() => setGeocodeMenuOpen(false)} />
-                  <div className="absolute right-0 top-full mt-2 w-80 z-50 bg-[#161616] border border-[#2a2a2a] rounded-2xl shadow-2xl overflow-hidden">
-                    <div className="px-4 py-3 border-b border-[#2a2a2a] text-[10px] font-black uppercase tracking-[0.2em] text-[#666]">
+                  <div className="absolute right-0 top-full mt-2 w-80 z-50 bg-black/[0.03] border border-black/[0.12] rounded-2xl overflow-hidden">
+                    <div className="px-4 py-3 border-b border-black/[0.12] text-[10px] font-black uppercase tracking-[0.2em] text-[#0b0b0c]/55">
                       Companies missing coordinates
                     </div>
                     <div className="max-h-72 overflow-y-auto">
                       {loadingMissingCoords ? (
                         <div className="px-4 py-6 flex justify-center">
-                          <Loader2 size={18} className="animate-spin text-[#555]" />
+                          <Loader2 size={18} className="animate-spin text-[#0b0b0c]/60" />
                         </div>
                       ) : !missingCoordsCompanies || missingCoordsCompanies.length === 0 ? (
-                        <p className="px-4 py-6 text-xs text-[#555] text-center">Every company is fully geocoded.</p>
+                        <p className="px-4 py-6 text-xs text-[#0b0b0c]/60 text-center">Every company is fully geocoded.</p>
                       ) : (
                         missingCoordsCompanies.map(c => (
                           <button
                             key={c.company}
                             onClick={() => runGeocode(c.company)}
-                            className="cursor-pointer w-full flex items-center justify-between gap-3 px-4 py-3 text-left hover:bg-[#1f1f1f] transition-colors border-b border-[#222] last:border-0"
+                            className="cursor-pointer w-full flex items-center justify-between gap-3 px-4 py-3 text-left hover:bg-black/[0.05] transition-colors border-b border-black/[0.08] last:border-0"
                           >
                             <span className="text-sm font-semibold truncate">{c.company}</span>
-                            <span className="shrink-0 text-[10px] font-bold px-2 py-1 rounded-full bg-orange-500/10 text-orange-400">
+                            <span className="shrink-0 text-[10px] font-bold px-2 py-1 rounded-full bg-orange-500/10 text-orange-600">
                               {c.missing.toLocaleString()} / {c.total.toLocaleString()} missing
                             </span>
                           </button>
@@ -518,7 +536,7 @@ export default function JobsPage() {
                     </div>
                     <button
                       onClick={() => runGeocode(null)}
-                      className="cursor-pointer w-full px-4 py-3 text-left text-sm font-semibold text-purple-400 hover:bg-[#1f1f1f] transition-colors border-t border-[#2a2a2a]"
+                      className="cursor-pointer w-full px-4 py-3 text-left text-sm font-semibold text-purple-600 hover:bg-black/[0.05] transition-colors border-t border-black/[0.12]"
                     >
                       Run on all companies
                     </button>
@@ -531,7 +549,7 @@ export default function JobsPage() {
               <button
                 onClick={handleBulkDeleteJobs}
                 disabled={bulkDeleting}
-                className="cursor-pointer bg-red-500/10 border border-red-500/30 text-red-400 hover:bg-red-500/20 px-4 py-3 rounded-xl text-sm font-semibold flex items-center gap-2 transition-all disabled:opacity-50 disabled:cursor-not-allowed"
+                className="cursor-pointer bg-red-500/10 border border-red-500/30 text-red-500 hover:bg-red-600/20 px-4 py-3 rounded-xl text-sm font-semibold flex items-center gap-2 transition-all disabled:opacity-50 disabled:cursor-not-allowed"
               >
                 {bulkDeleting ? <Loader2 size={14} className="animate-spin" /> : <Trash2 size={14} />}
                 Delete Selected ({selectedIds.size})
@@ -543,7 +561,7 @@ export default function JobsPage() {
         {stats && (
           <div className="grid grid-cols-2 lg:grid-cols-4 gap-4 mb-8">
             <JobStatTile
-              icon={<Briefcase size={16} className="text-blue-500" />}
+              icon={<Briefcase size={16} className="text-green-600" />}
               label="Total Jobs"
               value={count.toLocaleString()}
             />
@@ -569,7 +587,7 @@ export default function JobsPage() {
         )}
 
         {(geocoding || geocodeLogs.length > 0 || geocodeResult) && (
-          <div className="bg-[#111] border border-[#222] rounded-3xl p-6 mb-8">
+          <div className="bg-white border border-black/[0.08] rounded-3xl p-6 mb-8">
             <div className="flex items-center justify-between mb-4">
               <h2 className="text-sm font-bold flex items-center gap-2">
                 <Crosshair size={16} className="text-purple-500" />
@@ -578,7 +596,7 @@ export default function JobsPage() {
               {!geocoding && (
                 <button
                   onClick={() => { setGeocodeLogs([]); setGeocodeResult(null); }}
-                  className="cursor-pointer text-[#666] hover:text-white transition-colors"
+                  className="cursor-pointer text-[#0b0b0c]/55 hover:text-[#0b0b0c] transition-colors"
                 >
                   <X size={16} />
                 </button>
@@ -586,22 +604,22 @@ export default function JobsPage() {
             </div>
 
             {geocodeLogs.length > 0 && (
-              <div className="h-48 overflow-y-auto rounded-xl border border-[#222] bg-[#0a0a0a] p-4 font-mono text-xs text-[#888] space-y-1">
+              <div className="h-48 overflow-y-auto rounded-xl border border-black/[0.08] bg-black/[0.03] p-4 font-mono text-xs text-[#0b0b0c]/40 space-y-1">
                 {geocodeLogs.map((line, i) => <div key={i}>{line}</div>)}
               </div>
             )}
 
             {geocodeResult && (
-              <div className={`mt-4 rounded-xl border p-4 text-sm ${geocodeResult.ok ? 'border-[#222] bg-[#0a0a0a]' : 'border-red-500/30 bg-red-500/5'}`}>
+              <div className={`mt-4 rounded-xl border p-4 text-sm ${geocodeResult.ok ? 'border-black/[0.08] bg-black/[0.03]' : 'border-red-500/30 bg-red-500/5'}`}>
                 {geocodeResult.ok ? (
-                  <div className="text-[#ccc] space-y-1">
+                  <div className="text-[#0b0b0c]/70 space-y-1">
                     <div>{geocodeResult.geocoded} geocoded · {geocodeResult.borrowed} borrowed from a company sibling · {geocodeResult.remaining} still missing</div>
                     {geocodeResult.rate_limited && (
-                      <div className="text-orange-400">Nominatim started rate-limiting requests — stopped early. Retry later to pick up where this left off.</div>
+                      <div className="text-orange-600">Nominatim started rate-limiting requests — stopped early. Retry later to pick up where this left off.</div>
                     )}
                   </div>
                 ) : (
-                  <div className="text-red-400">{geocodeResult.error}</div>
+                  <div className="text-red-500">{geocodeResult.error}</div>
                 )}
               </div>
             )}
@@ -610,16 +628,16 @@ export default function JobsPage() {
 
         {loading ? (
           <div className="flex flex-col items-center justify-center py-40">
-            <Loader2 className="w-10 h-10 text-blue-500 animate-spin mb-4" />
-            <p className="text-[#555] text-xs font-bold uppercase tracking-widest">Loading jobs</p>
+            <Loader2 className="w-10 h-10 text-green-600 animate-spin mb-4" />
+            <p className="text-[#0b0b0c]/60 text-xs font-bold uppercase tracking-widest">Loading jobs</p>
           </div>
         ) : (
           <>
-            <div className="bg-[#111] border border-[#222] rounded-3xl overflow-hidden shadow-2xl">
+            <div className="bg-white border border-black/[0.08] rounded-3xl overflow-hidden">
               <div className="overflow-x-auto">
                 <table className="w-full min-w-[1100px] border-collapse">
                   <thead>
-                    <tr className="border-b border-[#222] bg-[#161616]/50">
+                    <tr className="border-b border-black/[0.08] bg-black/[0.02]">
                       <th className="text-left px-6 py-5 w-10">
                         <Checkbox
                           checked={jobs.length > 0 && jobs.every(j => selectedIds.has(j.id))}
@@ -629,16 +647,16 @@ export default function JobsPage() {
                           title={selectedIds.size > 0 ? 'Deselect all' : 'Select all'}
                         />
                       </th>
-                      <th className="text-left px-6 py-5 text-[10px] font-black uppercase tracking-[0.2em] text-[#555]">Job</th>
-                      <th className="text-left px-6 py-5 text-[10px] font-black uppercase tracking-[0.2em] text-[#555]">Company</th>
-                      <th className="text-left px-6 py-5 text-[10px] font-black uppercase tracking-[0.2em] text-[#555]">Location</th>
-                      <th className="text-left px-6 py-5 text-[10px] font-black uppercase tracking-[0.2em] text-[#555]">Coordinates</th>
-                      <th className="text-left px-6 py-5 text-[10px] font-black uppercase tracking-[0.2em] text-[#555]">Category</th>
-                      <th className="text-left px-6 py-5 text-[10px] font-black uppercase tracking-[0.2em] text-[#555]">Posted</th>
-                      <th className="text-right px-6 py-5 text-[10px] font-black uppercase tracking-[0.2em] text-[#555]">Actions</th>
+                      <th className="text-left px-6 py-5 text-[10px] font-black uppercase tracking-[0.2em] text-[#0b0b0c]/60">Job</th>
+                      <th className="text-left px-6 py-5 text-[10px] font-black uppercase tracking-[0.2em] text-[#0b0b0c]/60">Company</th>
+                      <th className="text-left px-6 py-5 text-[10px] font-black uppercase tracking-[0.2em] text-[#0b0b0c]/60">Location</th>
+                      <th className="text-left px-6 py-5 text-[10px] font-black uppercase tracking-[0.2em] text-[#0b0b0c]/60">Coordinates</th>
+                      <th className="text-left px-6 py-5 text-[10px] font-black uppercase tracking-[0.2em] text-[#0b0b0c]/60">Category</th>
+                      <th className="text-left px-6 py-5 text-[10px] font-black uppercase tracking-[0.2em] text-[#0b0b0c]/60">Posted</th>
+                      <th className="text-right px-6 py-5 text-[10px] font-black uppercase tracking-[0.2em] text-[#0b0b0c]/60">Actions</th>
                     </tr>
                   </thead>
-                  <tbody className="divide-y divide-[#222]/50">
+                  <tbody className="divide-y divide-black/[0.06]">
                     <AnimatePresence mode="popLayout">
                       {jobs.map((job) => (
                         <motion.tr
@@ -647,7 +665,7 @@ export default function JobsPage() {
                           animate={{ opacity: 1 }}
                           exit={{ opacity: 0 }}
                           onClick={() => setSelectedJob(job)}
-                          className={`cursor-pointer hover:bg-[#161616]/30 transition-colors ${selectedIds.has(job.id) ? 'bg-blue-500/5' : ''}`}
+                          className={`cursor-pointer hover:bg-black/[0.02] transition-colors ${selectedIds.has(job.id) ? 'bg-green-600/5' : ''}`}
                         >
                           <td className="px-6 py-5" onClick={(e) => e.stopPropagation()}>
                             <Checkbox
@@ -658,20 +676,20 @@ export default function JobsPage() {
                             />
                           </td>
                           <td className="px-6 py-5">
-                            <div className="font-semibold text-white truncate max-w-[260px]">{job.title}</div>
-                            {job.job_type && <div className="text-xs text-[#555] mt-0.5">{job.job_type}</div>}
+                            <div className="font-semibold text-[#0b0b0c] leading-snug line-clamp-2 max-w-[340px]" title={job.title}>{job.title}</div>
+                            {job.job_type && <div className="text-xs text-[#0b0b0c]/60 mt-0.5">{job.job_type}</div>}
                           </td>
                           <td className="px-6 py-5" onClick={(e) => e.stopPropagation()}>
                             <button
                               onClick={() => handleCompanyChange(job.company)}
-                              className="cursor-pointer text-[#888] hover:text-blue-400 transition-colors truncate max-w-[160px] text-left"
+                              className="cursor-pointer text-[#0b0b0c]/40 hover:text-green-600 transition-colors truncate max-w-[160px] text-left"
                               title={`Filter by ${job.company}`}
                             >
                               {job.company}
                             </button>
                           </td>
                           <td className="px-6 py-5">
-                            <div className="flex items-center gap-1.5 text-sm text-[#888]">
+                            <div className="flex items-center gap-1.5 text-sm text-[#0b0b0c]/40">
                               <MapPin size={13} className="shrink-0" />
                               <span className="truncate max-w-[180px]">
                                 {job.is_remote ? 'Remote' : (job.location_name || 'Unspecified')}
@@ -682,21 +700,21 @@ export default function JobsPage() {
                             {job.latitude != null && job.longitude != null ? (
                               <button
                                 onClick={(e) => openMapPreview(job, e)}
-                                className="cursor-pointer font-mono text-xs text-[#888] hover:text-blue-400 transition-colors underline decoration-dotted underline-offset-2"
+                                className="cursor-pointer font-mono text-xs text-[#0b0b0c]/40 hover:text-green-600 transition-colors underline decoration-dotted underline-offset-2"
                                 title="Preview on map"
                               >
                                 {job.latitude.toFixed(4)}, {job.longitude.toFixed(4)}
                               </button>
                             ) : (
-                              <span className="text-xs text-[#3a3a3a]">—</span>
+                              <span className="text-xs text-[#0b0b0c]/70">—</span>
                             )}
                           </td>
                           <td className="px-6 py-5">
-                            <span className="px-2.5 py-1 rounded-full bg-[#1a1a1a] text-[#888] text-[10px] font-bold uppercase tracking-wider whitespace-nowrap">
+                            <span className="px-2.5 py-1 rounded-full bg-black/[0.04] text-[#0b0b0c]/40 text-[10px] font-bold uppercase tracking-wider whitespace-nowrap">
                               {job.category}
                             </span>
                           </td>
-                          <td className="px-6 py-5 text-sm text-[#666]">
+                          <td className="px-6 py-5 text-sm text-[#0b0b0c]/55">
                             {job.date_posted
                               ? new Date(job.date_posted).toLocaleDateString('en-IN', { day: '2-digit', month: 'short', year: 'numeric' })
                               : new Date(job.created_at).toLocaleDateString('en-IN', { day: '2-digit', month: 'short', year: 'numeric' })}
@@ -707,7 +725,7 @@ export default function JobsPage() {
                                 href={job.job_url}
                                 target="_blank"
                                 rel="noreferrer"
-                                className="inline-flex items-center gap-1 text-[#888] hover:text-blue-400 transition-colors"
+                                className="inline-flex items-center gap-1 text-[#0b0b0c]/40 hover:text-green-600 transition-colors"
                                 title="Open posting"
                               >
                                 <ExternalLink size={16} />
@@ -715,7 +733,7 @@ export default function JobsPage() {
                               <button
                                 onClick={() => handleDeleteJob(job)}
                                 disabled={deletingId === job.id}
-                                className="cursor-pointer inline-flex items-center gap-1 text-[#888] hover:text-red-400 transition-colors disabled:opacity-50 disabled:cursor-not-allowed"
+                                className="cursor-pointer inline-flex items-center gap-1 text-[#0b0b0c]/40 hover:text-red-500 transition-colors disabled:opacity-50 disabled:cursor-not-allowed"
                                 title="Delete job"
                               >
                                 {deletingId === job.id ? <Loader2 size={16} className="animate-spin" /> : <Trash2 size={16} />}
@@ -731,8 +749,8 @@ export default function JobsPage() {
 
               {jobs.length === 0 && (
                 <div className="py-24 text-center">
-                  <Briefcase className="w-12 h-12 text-[#222] mx-auto mb-4" />
-                  <p className="text-[#555] font-medium">
+                  <Briefcase className="w-12 h-12 text-[#0b0b0c]/80 mx-auto mb-4" />
+                  <p className="text-[#0b0b0c]/60 font-medium">
                     {selectedCompany || search ? 'No jobs match your filters.' : 'No jobs yet.'}
                   </p>
                 </div>
@@ -740,24 +758,70 @@ export default function JobsPage() {
             </div>
 
             {count > 0 && (
-              <div className="flex items-center justify-between mt-6">
-                <p className="text-xs text-[#555] font-medium">
-                  Page {page} of {totalPages}
-                </p>
+              <div className="flex flex-wrap items-center justify-between gap-4 mt-6">
+                <div className="flex items-center gap-3">
+                  <p className="text-xs text-[#0b0b0c]/60 font-medium">
+                    Page {page} of {totalPages.toLocaleString()}
+                  </p>
+                  <div className="flex items-center gap-1.5">
+                    <span className="text-xs text-[#0b0b0c]/40">Rows:</span>
+                    {PAGE_SIZE_OPTIONS.map((size) => (
+                      <button
+                        key={size}
+                        onClick={() => handlePageSizeChange(size)}
+                        className={`cursor-pointer px-2.5 py-1 rounded-lg text-xs font-semibold transition-all ${
+                          pageSize === size ? 'bg-green-600/10 text-green-600' : 'text-[#0b0b0c]/40 hover:text-[#0b0b0c] hover:bg-black/[0.04]'
+                        }`}
+                      >
+                        {size}
+                      </button>
+                    ))}
+                  </div>
+                </div>
+
                 <div className="flex items-center gap-2">
+                  <button
+                    onClick={() => setPage(1)}
+                    disabled={page <= 1}
+                    className="cursor-pointer px-3 py-2.5 rounded-xl bg-white border border-black/[0.08] hover:bg-black/[0.03] disabled:opacity-30 disabled:cursor-not-allowed transition-all text-xs font-semibold"
+                  >
+                    First
+                  </button>
                   <button
                     onClick={() => setPage(p => Math.max(1, p - 1))}
                     disabled={page <= 1}
-                    className="cursor-pointer p-2.5 rounded-xl bg-[#111] border border-[#222] hover:bg-[#161616] disabled:opacity-30 disabled:cursor-not-allowed transition-all"
+                    className="cursor-pointer p-2.5 rounded-xl bg-white border border-black/[0.08] hover:bg-black/[0.03] disabled:opacity-30 disabled:cursor-not-allowed transition-all"
                   >
                     <ChevronLeft size={18} />
                   </button>
+
+                  <div className="flex items-center gap-1.5 px-1">
+                    <input
+                      type="number"
+                      min={1}
+                      max={totalPages}
+                      value={pageInput}
+                      onChange={(e) => setPageInput(e.target.value)}
+                      onKeyDown={(e) => e.key === 'Enter' && jumpToPage()}
+                      onBlur={jumpToPage}
+                      className="w-14 bg-white border border-black/[0.08] rounded-lg py-2 px-2 text-center text-sm focus:outline-none focus:border-green-600 transition-all"
+                    />
+                    <span className="text-xs text-[#0b0b0c]/40 whitespace-nowrap">of {totalPages.toLocaleString()}</span>
+                  </div>
+
                   <button
                     onClick={() => setPage(p => Math.min(totalPages, p + 1))}
                     disabled={page >= totalPages}
-                    className="cursor-pointer p-2.5 rounded-xl bg-[#111] border border-[#222] hover:bg-[#161616] disabled:opacity-30 disabled:cursor-not-allowed transition-all"
+                    className="cursor-pointer p-2.5 rounded-xl bg-white border border-black/[0.08] hover:bg-black/[0.03] disabled:opacity-30 disabled:cursor-not-allowed transition-all"
                   >
                     <ChevronRight size={18} />
+                  </button>
+                  <button
+                    onClick={() => setPage(totalPages)}
+                    disabled={page >= totalPages}
+                    className="cursor-pointer px-3 py-2.5 rounded-xl bg-white border border-black/[0.08] hover:bg-black/[0.03] disabled:opacity-30 disabled:cursor-not-allowed transition-all text-xs font-semibold"
+                  >
+                    Last
                   </button>
                 </div>
               </div>
@@ -776,15 +840,15 @@ export default function JobsPage() {
               exit={{ opacity: 0, scale: 0.95 }}
               transition={{ duration: 0.15 }}
               style={{ top: mapPreview.top, left: mapPreview.left, width: MAP_PREVIEW_WIDTH }}
-              className="fixed z-50 bg-[#111] border border-[#333] rounded-2xl shadow-2xl overflow-hidden"
+              className="fixed z-50 bg-white border border-black/[0.12] rounded-2xl overflow-hidden"
             >
-              <div className="flex items-center justify-between px-3 py-2 bg-[#1a1a1a] border-b border-[#333]">
-                <span className="text-[10px] font-mono text-[#888] truncate">
+              <div className="flex items-center justify-between px-3 py-2 bg-black/[0.04] border-b border-black/[0.12]">
+                <span className="text-[10px] font-mono text-[#0b0b0c]/40 truncate">
                   {mapPreview.job.latitude?.toFixed(5)}, {mapPreview.job.longitude?.toFixed(5)}
                 </span>
                 <button
                   onClick={() => setMapPreview(null)}
-                  className="cursor-pointer text-[#666] hover:text-white transition-colors shrink-0 ml-2"
+                  className="cursor-pointer text-[#0b0b0c]/55 hover:text-[#0b0b0c] transition-colors shrink-0 ml-2"
                 >
                   <X size={14} />
                 </button>
@@ -818,30 +882,30 @@ export default function JobsPage() {
               animate={{ opacity: 1, scale: 1, y: 0 }}
               exit={{ opacity: 0, scale: 0.97, y: 10 }}
               transition={{ duration: 0.15 }}
-              className="fixed z-50 inset-0 m-auto h-fit max-h-[85vh] w-full max-w-2xl overflow-y-auto bg-[#111] border border-[#222] rounded-3xl shadow-2xl"
+              className="fixed z-50 inset-0 m-auto h-fit max-h-[85vh] w-full max-w-2xl overflow-y-auto bg-white border border-black/[0.08] rounded-3xl"
             >
-              <div className="flex items-start justify-between gap-4 px-8 py-6 border-b border-[#222] sticky top-0 bg-[#111]/95 backdrop-blur">
+              <div className="flex items-start justify-between gap-4 px-8 py-6 border-b border-black/[0.08] sticky top-0 bg-white/95 backdrop-blur">
                 <div className="flex items-center gap-4 min-w-0">
                   {selectedJob.company_logo ? (
                     // eslint-disable-next-line @next/next/no-img-element
                     <img
                       src={selectedJob.company_logo}
                       alt={selectedJob.company}
-                      className="w-12 h-12 rounded-xl object-cover bg-[#1a1a1a] shrink-0"
+                      className="w-12 h-12 rounded-xl object-cover bg-black/[0.04] shrink-0"
                     />
                   ) : (
-                    <div className="w-12 h-12 rounded-xl bg-[#1a1a1a] flex items-center justify-center shrink-0">
-                      <Briefcase size={20} className="text-[#555]" />
+                    <div className="w-12 h-12 rounded-xl bg-black/[0.04] flex items-center justify-center shrink-0">
+                      <Briefcase size={20} className="text-[#0b0b0c]/60" />
                     </div>
                   )}
                   <div className="min-w-0">
-                    <h2 className="text-lg font-bold text-white truncate">{selectedJob.title}</h2>
-                    <p className="text-sm text-[#888] truncate">{selectedJob.company}</p>
+                    <h2 className="text-lg font-bold text-[#0b0b0c] truncate">{selectedJob.title}</h2>
+                    <p className="text-sm text-[#0b0b0c]/40 truncate">{selectedJob.company}</p>
                   </div>
                 </div>
                 <button
                   onClick={() => setSelectedJob(null)}
-                  className="cursor-pointer p-2 rounded-xl bg-[#1a1a1a] hover:bg-[#222] transition-all text-[#888] hover:text-white shrink-0"
+                  className="cursor-pointer p-2 rounded-xl bg-black/[0.04] hover:bg-black/[0.05] transition-all text-[#0b0b0c]/40 hover:text-[#0b0b0c] shrink-0"
                 >
                   <X size={18} />
                 </button>
@@ -877,7 +941,7 @@ export default function JobsPage() {
                   <DetailField
                     label="Site"
                     value={selectedJob.site && (
-                      <a href={selectedJob.site} target="_blank" rel="noreferrer" className="text-blue-400 hover:underline break-all">
+                      <a href={selectedJob.site} target="_blank" rel="noreferrer" className="text-green-600 hover:underline break-all">
                         {selectedJob.site}
                       </a>
                     )}
@@ -885,7 +949,7 @@ export default function JobsPage() {
                   <DetailField
                     label="Job URL"
                     value={selectedJob.job_url && (
-                      <a href={selectedJob.job_url} target="_blank" rel="noreferrer" className="inline-flex items-center gap-1 text-blue-400 hover:underline break-all">
+                      <a href={selectedJob.job_url} target="_blank" rel="noreferrer" className="inline-flex items-center gap-1 text-green-600 hover:underline break-all">
                         Open posting <ExternalLink size={12} className="shrink-0" />
                       </a>
                     )}
@@ -893,9 +957,9 @@ export default function JobsPage() {
                 </div>
 
                 <div>
-                  <div className="text-[10px] font-black uppercase tracking-[0.2em] text-[#555] mb-2">Description</div>
-                  <div className="text-sm text-[#ccc] whitespace-pre-wrap leading-relaxed bg-[#161616] border border-[#222] rounded-2xl p-4 max-h-72 overflow-y-auto">
-                    {selectedJob.description || <span className="text-[#3a3a3a]">No description saved.</span>}
+                  <div className="text-[10px] font-black uppercase tracking-[0.2em] text-[#0b0b0c]/60 mb-2">Description</div>
+                  <div className="text-sm text-[#0b0b0c]/70 whitespace-pre-wrap leading-relaxed bg-black/[0.03] border border-black/[0.08] rounded-2xl p-4 max-h-72 overflow-y-auto">
+                    {selectedJob.description || <span className="text-[#0b0b0c]/70">No description saved.</span>}
                   </div>
                 </div>
               </div>

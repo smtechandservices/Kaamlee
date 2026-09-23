@@ -2,12 +2,13 @@ from rest_framework import viewsets, views, generics, permissions
 from rest_framework.pagination import PageNumberPagination
 from rest_framework.throttling import ScopedRateThrottle
 from .permissions import IsSubscribed, is_user_subscribed
+from .groq_usage import GroqQuotaExceeded, usage_summary
 
 from rest_framework.decorators import action
 from rest_framework.authtoken.views import ObtainAuthToken
 from rest_framework.response import Response
 from rest_framework.authtoken.models import Token
-from .models import Job, Bookmark, Feedback, Portfolio, PortfolioView, Profile, CustomCV, JobApplicationKit, Company, ScraperRun
+from .models import Job, Bookmark, Feedback, Portfolio, PortfolioView, Profile, CustomCV, JobApplicationKit, Company, ScraperRun, ScraperPauseState
 from .serializers import (
     JobSerializer, JobMapPinSerializer,
     UserSerializer, RegisterSerializer, RecentJobSerializer,
@@ -15,9 +16,13 @@ from .serializers import (
     PortfolioViewSerializer, CustomCVSerializer, CustomCVCreateSerializer, tailor_resume_with_groq,
     JobApplicationKitSerializer, generate_application_kit_with_groq, CompanySerializer,
     BookmarkSerializer, AdminJobSerializer, ChangePasswordSerializer, AdminSetPasswordSerializer,
+    AdminChangeOwnPasswordSerializer,
 )
 from .google_auth import get_or_create_google_user, _unique_username_from_email
 from .email_otp import create_otp, verify_otp
+from .constants import JOB_CATEGORIES
+from .scraper_events import publish_scraper_event
+from .tokens import issue_token, is_expired, expires_at, purge_expired_tokens, TOKEN_TTL
 from django.core.validators import validate_email
 from django.core.exceptions import ValidationError as DjangoValidationError
 from scripts.ats_scoring import score_cv, get_profession_keywords, get_all_profession_keywords
@@ -26,7 +31,7 @@ from django.http import HttpResponse, StreamingHttpResponse
 from django.shortcuts import get_object_or_404
 from django.db import models
 from django.db.models import Exists, OuterRef, Q, Count
-from django.db.models.functions import TruncMonth
+from django.db.models.functions import TruncMonth, RowNumber
 from django.core.cache import cache
 from django.contrib.auth.models import User
 from django.utils import timezone
@@ -71,16 +76,20 @@ class _RunRegistry:
         already running (a previous run that finished is fair game to
         reserve again — its stale logs/result get overwritten here)."""
         key = board.strip().lower()
+        started_at = time.time()
         with self._lock:
             existing = self._runs.get(key)
             if existing and not existing['done']:
                 return None
             stop_event = threading.Event()
             self._runs[key] = {
-                'board': board, 'script': script, 'started_at': time.time(),
+                'board': board, 'script': script, 'started_at': started_at,
                 'stop_event': stop_event, 'done': False, 'logs': [], 'result': None,
             }
-            return stop_event
+        publish_scraper_event({
+            'type': 'run_started', 'board': board, 'script': script, 'started_at': started_at,
+        })
+        return stop_event
 
     def cancel(self, board):
         """Pops a reservation that never actually started running — used to
@@ -89,12 +98,15 @@ class _RunRegistry:
         run's completion and keeps its result around for polling.)"""
         with self._lock:
             self._runs.pop(board.strip().lower(), None)
+        publish_scraper_event({'type': 'run_canceled', 'board': board})
 
     def log(self, board, message):
         with self._lock:
             run = self._runs.get(board.strip().lower())
             if run:
                 run['logs'].append(message)
+        if run:
+            publish_scraper_event({'type': 'log', 'board': run['board'], 'message': message})
 
     def finish(self, board, result=None):
         with self._lock:
@@ -103,6 +115,8 @@ class _RunRegistry:
                 run['done'] = True
                 if result is not None:
                     run['result'] = result
+        if run:
+            publish_scraper_event({'type': 'run_finished', 'board': run['board'], 'result': run['result']})
 
     def is_running(self, board):
         with self._lock:
@@ -113,6 +127,22 @@ class _RunRegistry:
         with self._lock:
             return [
                 {'board': r['board'], 'script': r['script'], 'started_at': r['started_at']}
+                for r in self._runs.values() if not r['done']
+            ]
+
+    def snapshot(self):
+        """Like list(), but for a fresh WebSocket connection (a page
+        load/refresh, or a reconnect after a network blip) catching up on
+        a board that was already running before it connected — also
+        includes that board's log lines *so far*, so the console doesn't
+        come up blank until the next line happens to arrive. A copy, not a
+        drain: unlike status() (which polling reads and clears so a line
+        isn't redelivered), nothing here needs "already delivered"
+        bookkeeping, since every connected socket gets every future line
+        anyway via the live 'log' event."""
+        with self._lock:
+            return [
+                {'board': r['board'], 'script': r['script'], 'started_at': r['started_at'], 'logs': list(r['logs'])}
                 for r in self._runs.values() if not r['done']
             ]
 
@@ -138,6 +168,7 @@ class _RunRegistry:
         if not run:
             return False
         run['stop_event'].set()
+        publish_scraper_event({'type': 'run_stop_requested', 'board': run['board']})
         return True
 
     def stop_all(self):
@@ -145,6 +176,8 @@ class _RunRegistry:
             runs = [r for r in self._runs.values() if not r['done']]
         for run in runs:
             run['stop_event'].set()
+        for run in runs:
+            publish_scraper_event({'type': 'run_stop_requested', 'board': run['board']})
         return [r['board'] for r in runs]
 
 _run_registry = _RunRegistry()
@@ -161,7 +194,7 @@ class SignupView(generics.CreateAPIView):
         serializer = self.get_serializer(data=request.data)
         serializer.is_valid(raise_exception=True)
         user = serializer.save()
-        token, created = Token.objects.get_or_create(user=user)
+        token = issue_token(user)
         return Response({
             "user": UserSerializer(user).data,
             "token": token.key
@@ -180,7 +213,7 @@ class GoogleAuthView(views.APIView):
         except ValueError as e:
             return Response({"error": str(e)}, status=400)
 
-        token, created = Token.objects.get_or_create(user=user)
+        token = issue_token(user)
         return Response({
             "user": UserSerializer(user).data,
             "token": token.key
@@ -243,7 +276,7 @@ class VerifyEmailOtpView(views.APIView):
             user.save()
             created = True
 
-        token, _ = Token.objects.get_or_create(user=user)
+        token = issue_token(user)
         return Response({
             "user": UserSerializer(user).data,
             "token": token.key,
@@ -291,6 +324,134 @@ class ChangePasswordView(views.APIView):
         serializer.is_valid(raise_exception=True)
         serializer.save()
         return Response({'detail': 'Password updated successfully.'})
+
+class AdminChangeOwnPasswordView(views.APIView):
+    """POST /api/admin/me/change-password/ — see AdminChangeOwnPasswordSerializer."""
+    permission_classes = [permissions.IsAdminUser]
+
+    def post(self, request):
+        serializer = AdminChangeOwnPasswordSerializer(data=request.data, context={'request': request})
+        serializer.is_valid(raise_exception=True)
+        serializer.save()
+        return Response({'detail': 'Password updated successfully.'})
+
+class AdminSessionPagination(PageNumberPagination):
+    page_size = 25
+    page_size_query_param = 'page_size'
+    max_page_size = 100
+
+
+def _session_account_type(user):
+    if user.is_superuser or user.is_staff:
+        return 'admin'
+    if hasattr(user, 'employer_membership'):
+        return 'employer'
+    return 'candidate'
+
+
+class AdminSessionListView(views.APIView):
+    """GET /api/admin/sessions/ — every issued login token (one per user,
+    see api/tokens.py), newest first. ?type=candidate|employer|admin,
+    ?status=active|expired, ?search= (username/email/name). Token keys are
+    never returned — a session is identified by its user."""
+    permission_classes = [permissions.IsAdminUser]
+
+    def get(self, request):
+        # Expired tokens are deleted hourly by the scheduler; do it here too
+        # so the list is never showing sessions that are already dead.
+        purge_expired_tokens()
+        now = timezone.now()
+        cutoff = now - TOKEN_TTL
+        queryset = (
+            Token.objects.select_related('user', 'user__employer_membership__employer')
+            .order_by('-created')
+        )
+        account_type = request.query_params.get('type')
+        if account_type == 'admin':
+            queryset = queryset.filter(Q(user__is_superuser=True) | Q(user__is_staff=True))
+        elif account_type == 'employer':
+            queryset = queryset.filter(user__is_superuser=False, user__is_staff=False, user__employer_membership__isnull=False)
+        elif account_type == 'candidate':
+            queryset = queryset.filter(user__is_superuser=False, user__is_staff=False, user__employer_membership__isnull=True)
+
+        status_param = request.query_params.get('status')
+        if status_param == 'active':
+            queryset = queryset.filter(created__gt=cutoff)
+        elif status_param == 'expired':
+            queryset = queryset.filter(created__lte=cutoff)
+
+        search = (request.query_params.get('search') or '').strip()
+        if search:
+            queryset = queryset.filter(
+                Q(user__username__icontains=search) | Q(user__email__icontains=search)
+                | Q(user__first_name__icontains=search) | Q(user__last_name__icontains=search)
+            )
+
+        all_tokens = Token.objects.all()
+        stats = {
+            'active': all_tokens.filter(created__gt=cutoff).count(),
+            'expired': all_tokens.filter(created__lte=cutoff).count(),
+            'ttl_hours': int(TOKEN_TTL.total_seconds() // 3600),
+        }
+
+        paginator = AdminSessionPagination()
+        page = paginator.paginate_queryset(queryset, request, view=self)
+        results = []
+        for token in page:
+            user = token.user
+            membership = getattr(user, 'employer_membership', None)
+            results.append({
+                'user_id': user.id,
+                'username': user.username,
+                'email': user.email,
+                'name': f"{user.first_name} {user.last_name}".strip(),
+                'account_type': _session_account_type(user),
+                'employer_name': membership.employer.name if membership else None,
+                'employer_role': membership.role if membership else None,
+                'issued_at': token.created,
+                'expires_at': expires_at(token),
+                'is_expired': is_expired(token),
+                'is_you': user.id == request.user.id,
+            })
+        response = paginator.get_paginated_response(results)
+        response.data['stats'] = stats
+        return response
+
+
+class AdminSessionRevokeView(views.APIView):
+    """DELETE /api/admin/sessions/<user_id>/ — force-log-out one user by
+    deleting their token (they're signed out on every device). Your own
+    session can't be revoked here — use Logout."""
+    permission_classes = [permissions.IsAdminUser]
+
+    def delete(self, request, user_id):
+        if user_id == request.user.id:
+            return Response({'error': "That's your own session — use Logout instead."}, status=400)
+        deleted, _ = Token.objects.filter(user_id=user_id).delete()
+        if not deleted:
+            return Response({'error': 'No session for this user.'}, status=404)
+        return Response(status=204)
+
+
+class AdminSessionBulkView(views.APIView):
+    """POST /api/admin/sessions/bulk/ — {"action": "purge_expired"} deletes
+    every expired token; {"action": "revoke", "user_ids": [...]} force-logs-
+    out those users. Your own session is always skipped."""
+    permission_classes = [permissions.IsAdminUser]
+
+    def post(self, request):
+        action_name = request.data.get('action')
+        if action_name == 'purge_expired':
+            deleted, _ = Token.objects.filter(created__lte=timezone.now() - TOKEN_TTL).delete()
+            return Response({'deleted': deleted})
+        if action_name == 'revoke':
+            user_ids = request.data.get('user_ids')
+            if not isinstance(user_ids, list) or not user_ids:
+                return Response({'error': 'user_ids must be a non-empty list.'}, status=400)
+            deleted, _ = Token.objects.filter(user_id__in=user_ids).exclude(user_id=request.user.id).delete()
+            return Response({'deleted': deleted})
+        return Response({'error': 'action must be purge_expired or revoke.'}, status=400)
+
 
 class RecentJobsView(generics.ListAPIView):
     serializer_class = RecentJobSerializer
@@ -385,6 +546,8 @@ class JobViewSet(viewsets.ModelViewSet):
         is_remote = self.request.query_params.get('is_remote')
         if is_remote == 'true':
             queryset = queryset.filter(is_remote=True)
+        elif is_remote == 'false':
+            queryset = queryset.filter(is_remote=False)
 
         return queryset
 
@@ -501,7 +664,9 @@ class JobViewSet(viewsets.ModelViewSet):
         # Tier goes in the prefix so a free-preview response never leaks into a
         # subscriber's cache entry (or vice versa) for the same filter params.
         cache_prefix = 'api_map_pins' if subscribed else 'api_map_pins_free'
-        cache_key = self._cache_key(request, cache_prefix, scoped_to_user=bookmarked_only)
+        # The free preview is a per-user random pool (hiring.feed), so free
+        # pins are always cached per user.
+        cache_key = self._cache_key(request, cache_prefix, scoped_to_user=bookmarked_only or not subscribed)
         pins = cache.get(cache_key)
         if pins is not None:
             return Response(pins)
@@ -513,9 +678,12 @@ class JobViewSet(viewsets.ModelViewSet):
             queryset = queryset.filter(bookmarked_by__user=request.user)
 
         if not subscribed:
-            # Free preview: most-recent jobs only, so non-subscribers still see
-            # activity on the map without giving away the full unlimited set.
-            queryset = queryset.order_by('-created_at')[:FREE_PREVIEW_LIMIT]
+            # Free preview: only the scraped share of the shared 200-job
+            # preview (hiring.feed.preview_ids), so the map shows exactly
+            # what the combined list does.
+            from hiring.feed import preview_ids
+            _, scraped_ids = preview_ids(request)
+            queryset = queryset.filter(id__in=scraped_ids)
 
         rows = queryset.values(
             'id', 'title', 'company', 'location_name', 'job_type', 'job_url',
@@ -581,35 +749,6 @@ class CheckExistenceView(views.APIView):
         return Response({'exists': exists})
 
 
-class RequestLogsView(views.APIView):
-    permission_classes = [permissions.IsAdminUser]
-
-    def get(self, request):
-        log_file = settings.LOGS_DIR / 'requests.log'
-        try:
-            raw = log_file.read_text(encoding='utf-8', errors='replace')
-        except FileNotFoundError:
-            raw = ''
-
-        query = request.query_params.get('q', '').strip()
-        try:
-            max_lines = int(request.query_params.get('lines', 2000))
-        except ValueError:
-            max_lines = 2000
-        max_lines = max(1, min(max_lines, 20000))
-
-        all_lines = raw.splitlines()
-        if query:
-            all_lines = [line for line in all_lines if query.lower() in line.lower()]
-
-        shown = all_lines[-max_lines:]
-
-        return Response({
-            'lines': shown,
-            'total_matches': len(all_lines),
-            'shown_count': len(shown),
-        })
-
 _COUNTRIES_CACHE_KEY = 'api_countries'
 _COUNTRIES_CACHE_TTL = 300  # 5 minutes
 
@@ -637,9 +776,15 @@ class StatsView(views.APIView):
     def get(self, request):
         data = cache.get(_STATS_CACHE_KEY)
         if data is None:
-            total_jobs = Job.objects.count()
+            # Scraped jobs + employer-posted jobs live on Kaamlee — the
+            # user-facing "total jobs" figure counts both.
+            from hiring.models import JobPosting
+            scraped_jobs = Job.objects.count()
+            published_postings = JobPosting.objects.filter(status='published').count()
             data = {
-                'total_jobs': total_jobs,
+                'total_jobs': scraped_jobs + published_postings,
+                'scraped_jobs': scraped_jobs,
+                'published_postings': published_postings,
             }
             cache.set(_STATS_CACHE_KEY, data, _STATS_CACHE_TTL)
         return Response(data)
@@ -649,6 +794,16 @@ class CompaniesPagination(PageNumberPagination):
     page_size_query_param = 'page_size'
     max_page_size = 2000
 
+def _delete_company_jobs(names):
+    """Scraped jobs reference their company by name (Job.company is a plain
+    CharField, not a FK), so they don't cascade on their own — delete them
+    explicitly when their company goes. Returns how many were removed."""
+    if not names:
+        return 0
+    deleted, _ = Job.objects.filter(company__in=names).delete()
+    return deleted
+
+
 class CompanyViewSet(viewsets.ModelViewSet):
     """Full CRUD for managing configured companies (add/edit/delete/activate)."""
     serializer_class = CompanySerializer
@@ -656,11 +811,45 @@ class CompanyViewSet(viewsets.ModelViewSet):
     pagination_class = CompaniesPagination
 
     def get_queryset(self):
-        queryset = Company.objects.all().order_by('-created_at')
+        # Most recently scraped first; never-scraped companies sort last.
+        queryset = Company.objects.all().order_by(
+            models.F('last_scraped_at').desc(nulls_last=True), '-created_at',
+        )
         search = self.request.query_params.get('search')
         if search:
             queryset = queryset.filter(models.Q(name__icontains=search) | models.Q(domain__icontains=search))
         return queryset
+
+    RECENT_JOBS_PER_COMPANY = 10
+
+    def list(self, request, *args, **kwargs):
+        """Adds job_count + the most recent jobs to each company on the page,
+        so the Companies page cards match the dashboard's (see CompaniesView)."""
+        response = super().list(request, *args, **kwargs)
+        rows = response.data['results'] if isinstance(response.data, dict) else response.data
+        names = [row['name'] for row in rows]
+        jobs_qs = Job.objects.filter(site__startswith='http', company__in=names)
+        counts = dict(
+            jobs_qs.values('company').annotate(count=Count('id')).values_list('company', 'count')
+        )
+        # One query for every company's latest N jobs, ranked per company.
+        recent = (
+            jobs_qs.annotate(rank=models.Window(
+                expression=RowNumber(),
+                partition_by=[models.F('company')],
+                order_by=[models.F('date_posted').desc(nulls_last=True), models.F('created_at').desc()],
+            ))
+            .filter(rank__lte=self.RECENT_JOBS_PER_COMPANY)
+            .values('id', 'company', 'title', 'location_name', 'is_remote', 'job_url',
+                    'date_posted', 'experience_required', 'salary')
+        )
+        jobs_by_company = {}
+        for job in recent:
+            jobs_by_company.setdefault(job.pop('company'), []).append(job)
+        for row in rows:
+            row['job_count'] = counts.get(row['name'], 0)
+            row['jobs'] = jobs_by_company.get(row['name'], [])
+        return response
 
     @action(detail=False, methods=['post'], url_path='bulk')
     def bulk_create(self, request):
@@ -695,9 +884,17 @@ class CompanyViewSet(viewsets.ModelViewSet):
         ids = request.data.get('ids')
         if not isinstance(ids, list) or not ids:
             return Response({'error': 'ids must be a non-empty list.'}, status=400)
-        deleted_count, _ = Company.objects.filter(id__in=ids).delete()
+        companies = Company.objects.filter(id__in=ids)
+        jobs_deleted = _delete_company_jobs(list(companies.values_list('name', flat=True)))
+        deleted_count, _ = companies.delete()
         cache.delete(_STATS_CACHE_KEY)
-        return Response({'deleted': deleted_count})
+        return Response({'deleted': deleted_count, 'jobs_deleted': jobs_deleted})
+
+    def perform_destroy(self, instance):
+        # Deleting a company takes its scraped jobs with it.
+        _delete_company_jobs([instance.name])
+        instance.delete()
+        cache.delete(_STATS_CACHE_KEY)
 
 class CompaniesView(views.APIView):
     """Paginated companies + their 10 most recent jobs each, for the admin
@@ -851,6 +1048,9 @@ class RunScraperScriptView(views.APIView):
     SCRIPTS = {'ashbyhq': 'Ashby', 'greenhouse': 'Greenhouse', 'recruitee': 'Recruitee', 'lever': 'Lever', 'workable': 'Workable', 'epam': 'EPAM'}
 
     def post(self, request):
+        if ScraperPauseState.get_solo().is_paused:
+            return Response({'error': 'Scraping is paused — resume it from the Scraper page before starting a run.'}, status=409)
+
         script = request.data.get('script')
         if script not in self.SCRIPTS:
             return Response({'error': f"Unknown script '{script}'. Choose one of: {', '.join(self.SCRIPTS)}"}, status=400)
@@ -961,20 +1161,83 @@ class StopScriptView(views.APIView):
     or all of them (`{"all": true}`). The board's own sync loop checks a
     shared flag between steps and exits early on its own — a real OS
     thread can't be killed from outside — so stopping isn't instant and
-    whatever's already been fetched/geocoded up to that point stays saved."""
+    whatever's already been fetched/geocoded up to that point stays saved.
+
+    `{"force": true}` alongside either shape additionally force-clears the
+    run from tracking right away, for a board that isn't responding to the
+    cooperative flag at all — stuck on a hung network call, a bug in the
+    loop, or just taking far longer than an admin is willing to wait. This
+    frees the board to be started again immediately and clears it from the
+    dashboard, but — same caveat as above, just more so — it can't actually
+    kill the underlying thread. If that thread really is wedged, it keeps
+    running in the background until it finishes on its own or the process
+    restarts; if it does eventually finish, whatever it reports then will
+    overwrite this force-stop's 'stopped' status on that ScraperRun row.
+    """
     permission_classes = [permissions.IsAdminUser]
 
     def post(self, request):
+        force = bool(request.data.get('force'))
+
         if request.data.get('all'):
             stopped = _run_registry.stop_all()
-            return Response({'stopped': stopped})
+            if force:
+                for board in stopped:
+                    self._force_clear(board)
+            return Response({'stopped': stopped, 'forced': force})
 
         board = (request.data.get('board') or '').strip()
         if not board:
             return Response({'error': 'Provide a board name or {"all": true}.'}, status=400)
         if not _run_registry.stop(board):
             return Response({'error': f"'{board}' isn't currently running."}, status=404)
-        return Response({'stopped': [board]})
+        if force:
+            self._force_clear(board)
+        return Response({'stopped': [board], 'forced': force})
+
+    @staticmethod
+    def _force_clear(board):
+        _run_registry.finish(board, {
+            'ok': False, 'stopped': True,
+            'error': 'Force-stopped by admin.',
+        })
+        ScraperRun.objects.filter(board__iexact=board, status='running').update(
+            status='stopped', finished_at=timezone.now(),
+            error='Force-stopped by admin before it reported a result.',
+        )
+
+class ScraperPauseView(views.APIView):
+    """Global on/off switch for starting new scraper runs (see
+    ScraperPauseState's docstring) — checked by RunScraperScriptView and
+    the auto-scrape scheduler, not by this view itself. A run already in
+    flight isn't affected by pausing; use StopScriptView for that.
+
+    GET returns the current state; POST {"paused": true|false} sets it and
+    broadcasts the change to the scraper WebSocket immediately, so every
+    connected admin sees it live rather than on their next poll/reload.
+    """
+    permission_classes = [permissions.IsAdminUser]
+
+    def get(self, request):
+        state = ScraperPauseState.get_solo()
+        return Response({
+            'paused': state.is_paused,
+            'paused_at': state.paused_at,
+            'paused_by': state.paused_by.username if state.paused_by else None,
+        })
+
+    def post(self, request):
+        paused = bool(request.data.get('paused'))
+        state = ScraperPauseState.get_solo()
+        state.is_paused = paused
+        state.paused_at = timezone.now() if paused else None
+        state.paused_by = request.user if paused else None
+        state.save()
+        publish_scraper_event({
+            'type': 'pause_state', 'paused': paused,
+            'paused_by': request.user.username if paused else None,
+        })
+        return Response({'paused': paused})
 
 class RunGeocodeView(views.APIView):
     """Lets an admin trigger the coordinate backfill (scripts/geocode_jobs.py)
@@ -1012,6 +1275,27 @@ class RunGeocodeView(views.APIView):
 
         return StreamingHttpResponse(event_stream(), content_type='application/x-ndjson')
 
+class LoginView(ObtainAuthToken):
+    """POST /api/login/ — username/password login for candidates and
+    employer members. Same as DRF's obtain_auth_token, but issues through
+    issue_token so an expired token is replaced rather than handed back."""
+    def post(self, request, *args, **kwargs):
+        serializer = self.serializer_class(data=request.data, context={'request': request})
+        serializer.is_valid(raise_exception=True)
+        return Response({'token': issue_token(serializer.validated_data['user']).key})
+
+
+class LogoutView(views.APIView):
+    """POST /api/logout/ — deletes the caller's token on the server, so it
+    stops working immediately (not just when the browser forgets it)."""
+    permission_classes = [permissions.IsAuthenticated]
+
+    def post(self, request):
+        if isinstance(request.auth, Token):
+            request.auth.delete()
+        return Response(status=204)
+
+
 class AdminLoginView(ObtainAuthToken):
     def post(self, request, *args, **kwargs):
         serializer = self.serializer_class(data=request.data, context={'request': request})
@@ -1019,18 +1303,25 @@ class AdminLoginView(ObtainAuthToken):
         user = serializer.validated_data['user']
         if not user.is_superuser:
             return Response({"error": "Only superusers can access the admin dashboard."}, status=403)
-        token, created = Token.objects.get_or_create(user=user)
+        token = issue_token(user)
         return Response({
             'token': token.key,
             'user': UserSerializer(user).data
         })
 
 class AdminUserViewSet(viewsets.ModelViewSet):
+    """Candidate accounts only — employer owners/admins/recruiters have their
+    own login too (see employers.EmployerMember) but are managed from the
+    Employers page instead, not mixed in here."""
     serializer_class = UserSerializer
     permission_classes = [permissions.IsAdminUser]
 
     def get_queryset(self):
-        return User.objects.select_related('profile', 'portfolio').order_by('-date_joined')
+        return (
+            User.objects.filter(employer_membership__isnull=True)
+            .select_related('profile', 'portfolio')
+            .order_by('-date_joined')
+        )
 
     @action(detail=True, methods=['post'], url_path='set-password')
     def set_password(self, request, pk=None):
@@ -1045,8 +1336,7 @@ class CategoriesView(views.APIView):
     permission_classes = [permissions.AllowAny]
 
     def get(self, request):
-        from scripts.job_categorizer import CATEGORIES
-        return Response(CATEGORIES)
+        return Response(JOB_CATEGORIES)
 
 class FeedbackView(views.APIView):
     permission_classes = [permissions.IsAuthenticated]
@@ -1426,16 +1716,26 @@ class CustomCVTailorView(views.APIView):
         if not target_role:
             return Response({'error': 'target_role is required.'}, status=400)
 
+        profile = request.user.profile
         keywords = get_profession_keywords(target_role)
-        tailored = tailor_resume_with_groq(cv.content, target_role, keywords)
+        try:
+            tailored = tailor_resume_with_groq(cv.content, target_role, keywords, profile)
+        except GroqQuotaExceeded:
+            return Response(
+                {'error': "You've hit your daily AI usage limit. It resets 24 hours after your first use today.",
+                 'groq_usage': usage_summary(profile)},
+                status=429,
+            )
         if not tailored:
-            return Response({'error': 'Failed to tailor resume. Please try again.'}, status=502)
+            return Response({'error': 'Failed to tailor resume. Please try again.', 'groq_usage': usage_summary(profile)}, status=502)
 
         cv.content = tailored
         cv.target_role = target_role
         cv.ats_score, cv.ats_breakdown = score_cv(cv.content, target_role)
         cv.save()
-        return Response(CustomCVSerializer(cv).data)
+        data = CustomCVSerializer(cv).data
+        data['groq_usage'] = usage_summary(profile)
+        return Response(data)
 
 
 class CustomCVExportView(views.APIView):
@@ -1507,12 +1807,21 @@ class JobApplicationKitView(views.APIView):
                 status=502,
             )
 
-        generated = generate_application_kit_with_groq(content, job.title, job.company, job.description)
+        try:
+            generated = generate_application_kit_with_groq(content, job.title, job.company, job.description, profile)
+        except GroqQuotaExceeded:
+            return Response(
+                {'error': "You've hit your daily AI usage limit. It resets 24 hours after your first use today.",
+                 'groq_usage': usage_summary(profile)},
+                status=429,
+            )
         if not generated or not generated.get('cover_letter'):
-            return Response({'error': 'Failed to generate. Please try again.'}, status=502)
+            return Response({'error': 'Failed to generate. Please try again.', 'groq_usage': usage_summary(profile)}, status=502)
 
         kit, _ = JobApplicationKit.objects.update_or_create(
             user=request.user, job=job,
             defaults={'cover_letter': generated.get('cover_letter', ''), 'qa': generated.get('qa', [])},
         )
-        return Response(JobApplicationKitSerializer(kit).data)
+        data = JobApplicationKitSerializer(kit).data
+        data['groq_usage'] = usage_summary(profile)
+        return Response(data)

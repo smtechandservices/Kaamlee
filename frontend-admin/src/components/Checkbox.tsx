@@ -5,7 +5,7 @@ import { Check, Minus } from 'lucide-react';
 
 const ACCENT_ACTIVE: Record<'purple' | 'blue', string> = {
   purple: 'bg-purple-600 border-purple-600',
-  blue: 'bg-blue-600 border-blue-600',
+  blue: 'bg-green-600 border-green-600',
 };
 
 interface CheckboxProps {
@@ -45,7 +45,7 @@ export default function Checkbox({
         className={`absolute inset-0 rounded-[6px] border transition-all duration-150 ${
           active
             ? ACCENT_ACTIVE[accent]
-            : 'bg-[#161616] border-[#333] group-hover:border-[#555]'
+            : 'bg-black/[0.03] border-black/[0.15] group-hover:border-black/30'
         }`}
       />
       <AnimatePresence>

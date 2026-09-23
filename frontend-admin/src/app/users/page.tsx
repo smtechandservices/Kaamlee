@@ -214,14 +214,14 @@ export default function UserManagement() {
   );
 
   return (
-    <div className="min-h-screen bg-[#0a0a0a] text-white p-8 font-sans">
+    <div className="min-h-screen bg-[#f2f3f5] text-[#0b0b0c] p-8 font-sans">
       <div className="mx-auto">
         {/* Header */}
         <header className="flex items-center justify-between mb-12">
           <div className="flex items-center gap-6">
             <div>
               <h1 className="text-3xl font-bold tracking-tight mb-1">User Management</h1>
-              <p className="text-[#555] font-medium flex items-center gap-2">
+              <p className="text-[#0b0b0c]/60 font-medium flex items-center gap-2">
                 <Users size={16} />
                 {users.length} total users registered
               </p>
@@ -229,40 +229,40 @@ export default function UserManagement() {
           </div>
 
           <div className="relative w-full max-w-md">
-            <Search className="absolute left-4 top-1/2 -translate-y-1/2 text-[#555]" size={20} />
+            <Search className="absolute left-4 top-1/2 -translate-y-1/2 text-[#0b0b0c]/60" size={20} />
             <input 
               type="text"
               placeholder="Search by name, email or username..."
               value={searchTerm}
               onChange={(e) => setSearchTerm(e.target.value)}
-              className="w-full bg-[#111] border border-[#222] rounded-2xl py-3 pl-12 pr-4 focus:outline-none focus:border-blue-500 transition-all text-sm"
+              className="w-full bg-white border border-black/[0.08] rounded-2xl py-3 pl-12 pr-4 focus:outline-none focus:border-green-600 transition-all text-sm"
             />
           </div>
         </header>
 
         {loading ? (
           <div className="flex flex-col items-center justify-center py-40">
-            <Loader2 className="w-12 h-12 text-blue-500 animate-spin mb-4" />
-            <p className="text-[#555] font-medium uppercase tracking-widest text-xs">Loading Directory</p>
+            <Loader2 className="w-12 h-12 text-green-600 animate-spin mb-4" />
+            <p className="text-[#0b0b0c]/60 font-medium uppercase tracking-widest text-xs">Loading Directory</p>
           </div>
         ) : (
           <div className="grid grid-cols-1 gap-4">
-            <div className="bg-[#111] border border-[#222] rounded-3xl overflow-hidden shadow-2xl">
+            <div className="bg-white border border-black/[0.08] rounded-3xl overflow-hidden">
               <div className="overflow-x-auto">
               <table className="w-full min-w-[1100px] border-collapse">
                 <thead>
-                  <tr className="border-b border-[#222] bg-[#161616]/50">
-                    <th className="text-left px-6 py-5 text-[10px] font-black uppercase tracking-[0.2em] text-[#555]">User Details</th>
-                    <th className="text-left px-6 py-5 text-[10px] font-black uppercase tracking-[0.2em] text-[#555]">Status</th>
-                    <th className="text-left px-6 py-5 text-[10px] font-black uppercase tracking-[0.2em] text-[#555]">Sign-in</th>
-                    <th className="text-left px-6 py-5 text-[10px] font-black uppercase tracking-[0.2em] text-[#555]">Subscription</th>
-                    <th className="text-left px-6 py-5 text-[10px] font-black uppercase tracking-[0.2em] text-[#555]">Contact</th>
-                    <th className="text-left px-6 py-5 text-[10px] font-black uppercase tracking-[0.2em] text-[#555]">Resume</th>
-                    <th className="text-left px-6 py-5 text-[10px] font-black uppercase tracking-[0.2em] text-[#555]">Portfolio</th>
-                    <th className="text-right px-6 py-5 text-[10px] font-black uppercase tracking-[0.2em] text-[#555]">Actions</th>
+                  <tr className="border-b border-black/[0.08] bg-black/[0.02] text-nowrap">
+                    <th className="text-left px-6 py-5 text-[10px] font-black uppercase tracking-[0.2em] text-[#0b0b0c]/60">User Details</th>
+                    <th className="text-left px-6 py-5 text-[10px] font-black uppercase tracking-[0.2em] text-[#0b0b0c]/60">Status</th>
+                    <th className="text-left px-6 py-5 text-[10px] font-black uppercase tracking-[0.2em] text-[#0b0b0c]/60">Sign-in</th>
+                    <th className="text-left px-6 py-5 text-[10px] font-black uppercase tracking-[0.2em] text-[#0b0b0c]/60">Subscription</th>
+                    <th className="text-left px-6 py-5 text-[10px] font-black uppercase tracking-[0.2em] text-[#0b0b0c]/60">Contact</th>
+                    <th className="text-left px-6 py-5 text-[10px] font-black uppercase tracking-[0.2em] text-[#0b0b0c]/60">Resume</th>
+                    <th className="text-left px-6 py-5 text-[10px] font-black uppercase tracking-[0.2em] text-[#0b0b0c]/60">Portfolio</th>
+                    <th className="text-right px-6 py-5 text-[10px] font-black uppercase tracking-[0.2em] text-[#0b0b0c]/60">Actions</th>
                   </tr>
                 </thead>
-                <tbody className="divide-y divide-[#222]/50">
+                <tbody className="divide-y divide-black/[0.06] text-nowrap">
                   <AnimatePresence mode='popLayout'>
                     {filteredUsers.map((user) => (
                       <motion.tr 
@@ -270,38 +270,38 @@ export default function UserManagement() {
                         initial={{ opacity: 0 }}
                         animate={{ opacity: 1 }}
                         exit={{ opacity: 0 }}
-                        className="hover:bg-[#161616]/30 transition-colors group"
+                        className="hover:bg-black/[0.02] transition-colors group"
                       >
                         <td className="px-6 py-6">
                           <div className="flex items-center gap-4">
-                            {/* <div className={`w-12 h-12 rounded-2xl flex items-center justify-center text-lg font-bold shadow-inner ${user.is_superuser ? 'bg-amber-500/10 text-amber-500' : 'bg-blue-500/10 text-blue-500'}`}>
+                            {/* <div className={`w-12 h-12 rounded-2xl flex items-center justify-center text-lg font-bold ${user.is_superuser ? 'bg-amber-500/10 text-amber-500' : 'bg-green-600/10 text-green-600'}`}>
                               {user.first_name ? user.first_name[0] : user.username[0].toUpperCase()}
                             </div> */}
                             <div>
                               <div className="flex items-center gap-2">
-                                <span className="font-bold text-white leading-tight">{user.first_name} {user.last_name}</span>
+                                <span className="font-bold text-[#0b0b0c] leading-tight">{user.first_name} {user.last_name}</span>
                                 {user.is_superuser && <Crown size={14} className="text-amber-500" />}
-                                {user.is_staff && !user.is_superuser && <ShieldCheck size={14} className="text-blue-500" />}
+                                {user.is_staff && !user.is_superuser && <ShieldCheck size={14} className="text-green-600" />}
                               </div>
-                              <div className="text-sm text-[#555] font-medium">@{user.username}</div>
+                              <div className="text-sm text-[#0b0b0c]/60 font-medium">@{user.username}</div>
                             </div>
                           </div>
                         </td>
                         <td className="px-6 py-6">
                           <div className="flex items-center gap-2">
                              {user.is_staff ? (
-                               <span className="px-3 py-1 rounded-full bg-blue-500/10 text-blue-500 text-[10px] font-black uppercase tracking-wider">Admin</span>
+                               <span className="px-3 py-1 rounded-full bg-green-600/10 text-green-600 text-[10px] font-black uppercase tracking-wider">Admin</span>
                              ) : (
-                               <span className="px-3 py-1 rounded-full bg-[#222] text-[#555] text-[10px] font-black uppercase tracking-wider">Member</span>
+                               <span className="px-3 py-1 rounded-full bg-black/[0.05] text-[#0b0b0c]/60 text-[10px] font-black uppercase tracking-wider">Member</span>
                              )}
                           </div>
                         </td>
                         <td className="px-6 py-6">
                           <div className="flex items-center gap-2">
                              {user.signed_in_with_google ? (
-                               <span className="px-3 py-1 rounded-full bg-blue-500/10 text-blue-500 text-[10px] font-black uppercase tracking-wider">Google</span>
+                               <span className="px-3 py-1 rounded-full bg-green-600/10 text-green-600 text-[10px] font-black uppercase tracking-wider">Google</span>
                              ) : (
-                               <span className="px-3 py-1 rounded-full bg-[#222] text-[#555] text-[10px] font-black uppercase tracking-wider">Password</span>
+                               <span className="px-3 py-1 rounded-full bg-black/[0.05] text-[#0b0b0c]/60 text-[10px] font-black uppercase tracking-wider">Password</span>
                              )}
                           </div>
                         </td>
@@ -313,7 +313,7 @@ export default function UserManagement() {
                                     <CheckCircle2 size={16} />
                                     Active Access
                                   </div>
-                                  <div className="text-[14px] text-[#555] font-medium text-nowrap">
+                                  <div className="text-[14px] text-[#0b0b0c]/60 font-medium text-nowrap">
                                     Expires: {user.subscription_expires_at ? (() => {
                                       const d = new Date(user.subscription_expires_at);
                                       return `${d.getDate().toString().padStart(2, '0')}/${(d.getMonth() + 1).toString().padStart(2, '0')}/${d.getFullYear()}`;
@@ -321,7 +321,7 @@ export default function UserManagement() {
                                   </div>
                                 </>
                               ) : (
-                                <div className="flex items-center gap-2 text-[#444] font-bold text-sm">
+                                <div className="flex items-center gap-2 text-[#0b0b0c]/70 font-bold text-sm">
                                   <XCircle size={16} />
                                   No Access
                                 </div>
@@ -330,12 +330,12 @@ export default function UserManagement() {
                         </td>
                         <td className="px-6 py-6">
                            <div className="space-y-1">
-                              <div className="flex items-center gap-2 text-[#888] text-sm hover:text-white transition-colors cursor-pointer">
+                              <div className="flex items-center gap-2 text-[#0b0b0c]/40 text-sm hover:text-[#0b0b0c] transition-colors cursor-pointer">
                                 <Mail size={14} />
                                 {user.email}
                               </div>
                               {user.phone && (
-                                <div className="flex items-center gap-2 text-[#888] text-sm">
+                                <div className="flex items-center gap-2 text-[#0b0b0c]/40 text-sm">
                                   <Phone size={14} />
                                   {user.phone}
                                 </div>
@@ -349,7 +349,7 @@ export default function UserManagement() {
                                Uploaded
                              </div>
                            ) : (
-                             <div className="flex items-center gap-2 text-[#444] font-bold text-sm">
+                             <div className="flex items-center gap-2 text-[#0b0b0c]/70 font-bold text-sm">
                                <XCircle size={16} />
                                None
                              </div>
@@ -358,7 +358,7 @@ export default function UserManagement() {
                         <td className="px-6 py-6">
                            <div className="space-y-1.5">
                               <div className={`inline-flex items-center gap-1.5 px-3 py-1 rounded-full text-[10px] font-black uppercase tracking-wider ${
-                                user.portfolio_is_public ? 'bg-green-500/10 text-green-500' : 'bg-[#222] text-[#555]'
+                                user.portfolio_is_public ? 'bg-green-500/10 text-green-500' : 'bg-black/[0.05] text-[#0b0b0c]/60'
                               }`}>
                                 {user.portfolio_is_public ? <Globe size={12} /> : <Lock size={12} />}
                                 {user.portfolio_is_public ? 'Public' : 'Private'}
@@ -368,7 +368,7 @@ export default function UserManagement() {
                                   href={`https://kaamlee.in/portfolio/${user.username}`}
                                   target="_blank"
                                   rel="noopener noreferrer"
-                                  className="flex items-center gap-1 text-[10px] text-[#888] hover:text-white font-mono truncate max-w-[140px]"
+                                  className="flex items-center gap-1 text-[10px] text-[#0b0b0c]/40 hover:text-[#0b0b0c] font-mono truncate max-w-[140px]"
                                   title={`kaamlee.in/portfolio/${user.username}`}
                                 >
                                   <ExternalLink size={10} className="shrink-0" />
@@ -376,7 +376,7 @@ export default function UserManagement() {
                                 </a>
                                 <button
                                   onClick={() => copyPortfolioLink(user)}
-                                  className="cursor-pointer shrink-0 text-[#555] hover:text-white transition-colors"
+                                  className="cursor-pointer shrink-0 text-[#0b0b0c]/60 hover:text-[#0b0b0c] transition-colors"
                                   title="Copy portfolio link"
                                 >
                                   {copiedUserId === user.id ? <CheckCircle2 size={12} className="text-green-500" /> : <LinkIcon size={12} />}
@@ -388,7 +388,7 @@ export default function UserManagement() {
                            <div className="flex items-center justify-end gap-3 transition-opacity">
                               <button 
                                 onClick={() => toggleSubscription(user.id)}
-                                className={`text-nowrap cursor-pointer px-4 py-2 rounded-xl text-xs font-bold transition-all ${user.is_subscribed ? 'bg-red-500/10 text-red-500 hover:bg-red-500/20' : 'bg-green-500/10 text-green-500 hover:bg-green-500/20'}`}
+                                className={`text-nowrap cursor-pointer px-4 py-2 rounded-xl text-xs font-bold transition-all ${user.is_subscribed ? 'bg-red-500/10 text-red-500 hover:bg-red-600/20' : 'bg-green-500/10 text-green-500 hover:bg-green-600/20'}`}
                               >
                                 {user.is_subscribed ? 'Revoke' : 'Grant'} Access
                               </button>
@@ -397,21 +397,21 @@ export default function UserManagement() {
                                   setViewingTransactions(user);
                                   fetchUserTransactions(user.id);
                                 }}
-                                className="cursor-pointer p-2 rounded-lg bg-[#222] hover:bg-[#333] transition-colors text-[#888] hover:text-white"
+                                className="cursor-pointer p-2 rounded-lg bg-black/[0.05] hover:bg-black/[0.08] transition-colors text-[#0b0b0c]/40 hover:text-[#0b0b0c]"
                                 title="View Transactions"
                               >
                                 <CreditCard size={18} />
                               </button>
                               <button
                                 onClick={() => setEditingUser(user)}
-                                className="cursor-pointer p-2 rounded-lg bg-[#222] hover:bg-[#333] transition-colors text-[#888] hover:text-white"
+                                className="cursor-pointer p-2 rounded-lg bg-black/[0.05] hover:bg-black/[0.08] transition-colors text-[#0b0b0c]/40 hover:text-[#0b0b0c]"
                                 title="Edit User"
                               >
                                 <MoreHorizontal size={18} />
                               </button>
                               <button
                                 onClick={() => setSettingPasswordUser(user)}
-                                className="cursor-pointer p-2 rounded-lg bg-[#222] hover:bg-[#333] transition-colors text-[#888] hover:text-white"
+                                className="cursor-pointer p-2 rounded-lg bg-black/[0.05] hover:bg-black/[0.08] transition-colors text-[#0b0b0c]/40 hover:text-[#0b0b0c]"
                                 title="Reset Password"
                               >
                                 <KeyRound size={18} />
@@ -419,7 +419,7 @@ export default function UserManagement() {
                               <button
                                 onClick={() => handleDeleteUser(user)}
                                 disabled={user.is_superuser}
-                                className="cursor-pointer p-2 rounded-lg bg-[#222] hover:bg-red-500/20 transition-colors text-[#888] hover:text-red-400 disabled:opacity-30 disabled:cursor-not-allowed disabled:hover:bg-[#222] disabled:hover:text-[#888]"
+                                className="cursor-pointer p-2 rounded-lg bg-black/[0.05] hover:bg-red-600/20 transition-colors text-[#0b0b0c]/40 hover:text-red-500 disabled:opacity-30 disabled:cursor-not-allowed disabled:hover:bg-black/[0.05] disabled:hover:text-[#0b0b0c]/40"
                                 title={user.is_superuser ? "Superusers can't be deleted" : "Delete User"}
                               >
                                 <Trash2 size={18} />
@@ -435,8 +435,8 @@ export default function UserManagement() {
 
               {filteredUsers.length === 0 && (
                 <div className="py-20 text-center">
-                  <AlertCircle className="w-12 h-12 text-[#222] mx-auto mb-4" />
-                  <p className="text-[#555] font-medium">No users match your criteria</p>
+                  <AlertCircle className="w-12 h-12 text-[#0b0b0c]/80 mx-auto mb-4" />
+                  <p className="text-[#0b0b0c]/60 font-medium">No users match your criteria</p>
                 </div>
               )}
             </div>
@@ -479,11 +479,11 @@ export default function UserManagement() {
 
 function EditUserModal({ user, onClose, onSave }: { user: UserProfile, onClose: () => void, onSave: (data: any) => Promise<string | null> }) {
   const [formData, setFormData] = useState({
-    username: user.username,
-    first_name: user.first_name,
-    last_name: user.last_name,
-    phone: user.phone,
-    linkedin_url: user.linkedin_url,
+    username: user.username ?? '',
+    first_name: user.first_name ?? '',
+    last_name: user.last_name ?? '',
+    phone: user.phone ?? '',
+    linkedin_url: user.linkedin_url ?? '',
     is_subscribed: user.is_subscribed,
     subscription_expires_at: user.subscription_expires_at ? (() => {
       const d = new Date(user.subscription_expires_at);
@@ -500,6 +500,8 @@ function EditUserModal({ user, onClose, onSave }: { user: UserProfile, onClose: 
       if (day && month && year) {
         data.subscription_expires_at = new Date(`${year}-${month}-${day}`).toISOString();
       }
+    } else {
+      data.subscription_expires_at = null;
     }
     setSaving(true);
     setError(null);
@@ -514,104 +516,104 @@ function EditUserModal({ user, onClose, onSave }: { user: UserProfile, onClose: 
         initial={{ opacity: 0, scale: 0.95 }}
         animate={{ opacity: 1, scale: 1 }}
         exit={{ opacity: 0, scale: 0.95 }}
-        className="bg-[#111] border border-[#222] rounded-3xl w-full lg:max-w-xl overflow-hidden shadow-2xl"
+        className="bg-white border border-black/[0.08] rounded-3xl w-full lg:max-w-xl overflow-hidden"
       >
-        <div className="p-8 border-b border-[#222] flex items-center justify-between">
+        <div className="p-8 border-b border-black/[0.08] flex items-center justify-between">
           <h2 className="text-2xl font-bold">Edit User Details</h2>
-          <button onClick={onClose} className="cursor-pointer p-2 hover:bg-[#222] rounded-xl text-[#555] hover:text-white transition-colors">
+          <button onClick={onClose} className="cursor-pointer p-2 hover:bg-black/[0.05] rounded-xl text-[#0b0b0c]/60 hover:text-[#0b0b0c] transition-colors">
             <ArrowRight size={20} className="rotate-180" />
           </button>
         </div>
 
         <div className="p-8 space-y-6">
           {error && (
-            <div className="bg-red-500/10 border border-red-500/20 text-red-400 text-sm py-3 px-4 rounded-xl">
+            <div className="bg-red-500/10 border border-red-500/20 text-red-500 text-sm py-3 px-4 rounded-xl">
               {error}
             </div>
           )}
 
           <div>
-            <label className="block text-[10px] font-black uppercase tracking-widest text-[#555] mb-2 px-1">Username</label>
+            <label className="block text-[10px] font-black uppercase tracking-widest text-[#0b0b0c]/60 mb-2 px-1">Username</label>
             <input
               type="text"
               value={formData.username}
               onChange={(e) => setFormData({...formData, username: e.target.value})}
-              className="w-full bg-black border border-[#222] rounded-xl py-3 px-4 focus:outline-none focus:border-blue-500 transition-all"
+              className="w-full bg-white border border-black/[0.08] rounded-xl py-3 px-4 focus:outline-none focus:border-green-600 transition-all"
             />
           </div>
 
           <div className="grid grid-cols-2 gap-4">
             <div>
-              <label className="block text-[10px] font-black uppercase tracking-widest text-[#555] mb-2 px-1">First Name</label>
+              <label className="block text-[10px] font-black uppercase tracking-widest text-[#0b0b0c]/60 mb-2 px-1">First Name</label>
               <input 
                 type="text"
                 value={formData.first_name}
                 onChange={(e) => setFormData({...formData, first_name: e.target.value})}
-                className="w-full bg-black border border-[#222] rounded-xl py-3 px-4 focus:outline-none focus:border-blue-500 transition-all"
+                className="w-full bg-white border border-black/[0.08] rounded-xl py-3 px-4 focus:outline-none focus:border-green-600 transition-all"
               />
             </div>
             <div>
-              <label className="block text-[10px] font-black uppercase tracking-widest text-[#555] mb-2 px-1">Last Name</label>
+              <label className="block text-[10px] font-black uppercase tracking-widest text-[#0b0b0c]/60 mb-2 px-1">Last Name</label>
               <input 
                 type="text"
                 value={formData.last_name}
                 onChange={(e) => setFormData({...formData, last_name: e.target.value})}
-                className="w-full bg-black border border-[#222] rounded-xl py-3 px-4 focus:outline-none focus:border-blue-500 transition-all"
+                className="w-full bg-white border border-black/[0.08] rounded-xl py-3 px-4 focus:outline-none focus:border-green-600 transition-all"
               />
             </div>
           </div>
 
           <div>
-            <label className="block text-[10px] font-black uppercase tracking-widest text-[#555] mb-2 px-1">Phone Number</label>
+            <label className="block text-[10px] font-black uppercase tracking-widest text-[#0b0b0c]/60 mb-2 px-1">Phone Number</label>
             <input 
               type="text"
               value={formData.phone}
               onChange={(e) => setFormData({...formData, phone: e.target.value})}
-              className="w-full bg-black border border-[#222] rounded-xl py-3 px-4 focus:outline-none focus:border-blue-500 transition-all"
+              className="w-full bg-white border border-black/[0.08] rounded-xl py-3 px-4 focus:outline-none focus:border-green-600 transition-all"
             />
           </div>
 
           <div>
-            <label className="block text-[10px] font-black uppercase tracking-widest text-[#555] mb-2 px-1">LinkedIn URL</label>
+            <label className="block text-[10px] font-black uppercase tracking-widest text-[#0b0b0c]/60 mb-2 px-1">LinkedIn URL</label>
             <input 
               type="text"
               value={formData.linkedin_url}
               onChange={(e) => setFormData({...formData, linkedin_url: e.target.value})}
-              className="w-full bg-black border border-[#222] rounded-xl py-3 px-4 focus:outline-none focus:border-blue-500 transition-all"
+              className="w-full bg-white border border-black/[0.08] rounded-xl py-3 px-4 focus:outline-none focus:border-green-600 transition-all"
             />
           </div>
 
           <div className="grid grid-cols-2 gap-4">
             <div>
-              <label className="block text-[10px] font-black uppercase tracking-widest text-[#555] mb-2 px-1">Subscription Status</label>
+              <label className="block text-[10px] font-black uppercase tracking-widest text-[#0b0b0c]/60 mb-2 px-1">Subscription Status</label>
               <select 
                 value={formData.is_subscribed ? 'true' : 'false'}
                 onChange={(e) => setFormData({...formData, is_subscribed: e.target.value === 'true'})}
-                className="w-full bg-black border border-[#222] rounded-xl py-3 px-4 focus:outline-none focus:border-blue-500 transition-all text-sm"
+                className="w-full bg-white border border-black/[0.08] rounded-xl py-3 px-4 focus:outline-none focus:border-green-600 transition-all text-sm"
               >
                 <option value="true">Active Access</option>
                 <option value="false">No Access</option>
               </select>
             </div>
             <div>
-              <label className="block text-[10px] font-black uppercase tracking-widest text-[#555] mb-2 px-1">Expiry Date (DD/MM/YYYY)</label>
+              <label className="block text-[10px] font-black uppercase tracking-widest text-[#0b0b0c]/60 mb-2 px-1">Expiry Date (DD/MM/YYYY)</label>
               <input 
                 type="text"
                 placeholder="DD/MM/YYYY"
                 value={formData.subscription_expires_at}
                 onChange={(e) => setFormData({...formData, subscription_expires_at: e.target.value})}
-                className="w-full bg-black border border-[#222] rounded-xl py-3 px-4 focus:outline-none focus:border-blue-500 transition-all text-sm"
+                className="w-full bg-white border border-black/[0.08] rounded-xl py-3 px-4 focus:outline-none focus:border-green-600 transition-all text-sm"
               />
             </div>
           </div>
         </div>
 
-        <div className="p-8 bg-[#161616]/50 border-t border-[#222] flex items-center justify-end gap-4">
-          <button onClick={onClose} className="cursor-pointer px-6 py-3 font-bold text-[#555] hover:text-white transition-colors">Cancel</button>
+        <div className="p-8 bg-black/[0.02] border-t border-black/[0.08] flex items-center justify-end gap-4">
+          <button onClick={onClose} className="cursor-pointer px-6 py-3 font-bold text-[#0b0b0c]/60 hover:text-[#0b0b0c] transition-colors">Cancel</button>
           <button
             onClick={handleSave}
             disabled={saving}
-            className="cursor-pointer bg-white text-black hover:bg-gray-200 px-8 py-3 rounded-xl font-bold transition-all shadow-lg shadow-blue-600/20 disabled:opacity-50"
+            className="cursor-pointer bg-green-600 text-white hover:bg-green-700 px-8 py-3 rounded-xl font-bold transition-all shadow-lg shadow-green-600/20 disabled:opacity-50"
           >
             {saving ? 'Saving...' : 'Save Changes'}
           </button>
@@ -665,60 +667,60 @@ function SetPasswordModal({ user, onClose }: { user: UserProfile, onClose: () =>
         initial={{ opacity: 0, scale: 0.95 }}
         animate={{ opacity: 1, scale: 1 }}
         exit={{ opacity: 0, scale: 0.95 }}
-        className="bg-[#111] border border-[#222] rounded-3xl w-full lg:max-w-md overflow-hidden shadow-2xl"
+        className="bg-white border border-black/[0.08] rounded-3xl w-full lg:max-w-md overflow-hidden"
       >
-        <div className="p-8 border-b border-[#222] flex items-center justify-between">
+        <div className="p-8 border-b border-black/[0.08] flex items-center justify-between">
           <div>
             <h2 className="text-2xl font-bold">Reset Password</h2>
-            <p className="text-sm text-[#555]">@{user.username}</p>
+            <p className="text-sm text-[#0b0b0c]/60">@{user.username}</p>
           </div>
-          <button onClick={onClose} className="cursor-pointer p-2 hover:bg-[#222] rounded-xl text-[#555] hover:text-white transition-colors">
+          <button onClick={onClose} className="cursor-pointer p-2 hover:bg-black/[0.05] rounded-xl text-[#0b0b0c]/60 hover:text-[#0b0b0c] transition-colors">
             <ArrowRight size={20} className="rotate-180" />
           </button>
         </div>
 
         <div className="p-8 space-y-6">
-          <p className="text-xs text-[#555]">Sets a new password for this account directly — the user isn&apos;t asked for their current one.</p>
+          <p className="text-xs text-[#0b0b0c]/60">Sets a new password for this account directly — the user isn&apos;t asked for their current one.</p>
 
           {error && (
-            <div className="bg-red-500/10 border border-red-500/20 text-red-400 text-sm py-3 px-4 rounded-xl">
+            <div className="bg-red-500/10 border border-red-500/20 text-red-500 text-sm py-3 px-4 rounded-xl">
               {error}
             </div>
           )}
           {success && (
-            <div className="bg-green-500/10 border border-green-500/20 text-green-400 text-sm py-3 px-4 rounded-xl">
+            <div className="bg-green-500/10 border border-green-500/20 text-green-700 text-sm py-3 px-4 rounded-xl">
               Password updated successfully.
             </div>
           )}
 
           <div>
-            <label className="block text-[10px] font-black uppercase tracking-widest text-[#555] mb-2 px-1">New Password</label>
+            <label className="block text-[10px] font-black uppercase tracking-widest text-[#0b0b0c]/60 mb-2 px-1">New Password</label>
             <input
               type="password"
               autoComplete="new-password"
               value={newPassword}
               onChange={(e) => setNewPassword(e.target.value)}
-              className="w-full bg-black border border-[#222] rounded-xl py-3 px-4 focus:outline-none focus:border-blue-500 transition-all"
+              className="w-full bg-white border border-black/[0.08] rounded-xl py-3 px-4 focus:outline-none focus:border-green-600 transition-all"
             />
           </div>
           <div>
-            <label className="block text-[10px] font-black uppercase tracking-widest text-[#555] mb-2 px-1">Confirm Password</label>
+            <label className="block text-[10px] font-black uppercase tracking-widest text-[#0b0b0c]/60 mb-2 px-1">Confirm Password</label>
             <input
               type="password"
               autoComplete="new-password"
               value={confirmPassword}
               onChange={(e) => setConfirmPassword(e.target.value)}
-              className="w-full bg-black border border-[#222] rounded-xl py-3 px-4 focus:outline-none focus:border-blue-500 transition-all"
+              className="w-full bg-white border border-black/[0.08] rounded-xl py-3 px-4 focus:outline-none focus:border-green-600 transition-all"
             />
           </div>
         </div>
 
-        <div className="p-8 bg-[#161616]/50 border-t border-[#222] flex items-center justify-end gap-4">
-          <button onClick={onClose} className="cursor-pointer px-6 py-3 font-bold text-[#555] hover:text-white transition-colors">Cancel</button>
+        <div className="p-8 bg-black/[0.02] border-t border-black/[0.08] flex items-center justify-end gap-4">
+          <button onClick={onClose} className="cursor-pointer px-6 py-3 font-bold text-[#0b0b0c]/60 hover:text-[#0b0b0c] transition-colors">Cancel</button>
           <button
             onClick={handleSubmit}
             disabled={saving || !newPassword || !confirmPassword}
-            className="cursor-pointer bg-white text-black hover:bg-gray-200 px-8 py-3 rounded-xl font-bold transition-all shadow-lg shadow-blue-600/20 disabled:opacity-50"
+            className="cursor-pointer bg-green-600 text-white hover:bg-green-700 px-8 py-3 rounded-xl font-bold transition-all shadow-lg shadow-green-600/20 disabled:opacity-50"
           >
             {saving ? 'Saving...' : 'Set Password'}
           </button>
@@ -763,14 +765,14 @@ function TransactionsModal({ user, transactions, loading, onClose, onRefresh }: 
         initial={{ opacity: 0, scale: 0.95 }}
         animate={{ opacity: 1, scale: 1 }}
         exit={{ opacity: 0, scale: 0.95 }}
-        className="bg-[#111] border border-[#222] rounded-3xl w-full lg:max-w-2xl overflow-hidden shadow-2xl flex flex-col max-h-[80vh]"
+        className="bg-white border border-black/[0.08] rounded-3xl w-full lg:max-w-2xl overflow-hidden flex flex-col max-h-[80vh]"
       >
-        <div className="p-8 border-b border-[#222] flex items-center justify-between shrink-0">
+        <div className="p-8 border-b border-black/[0.08] flex items-center justify-between shrink-0">
           <div>
             <h2 className="text-2xl font-bold">Billing History</h2>
-            <p className="text-sm text-[#555]">Transactions for @{user.username}</p>
+            <p className="text-sm text-[#0b0b0c]/60">Transactions for @{user.username}</p>
           </div>
-          <button onClick={onClose} className="cursor-pointer p-2 hover:bg-[#222] rounded-xl text-[#555] hover:text-white transition-colors">
+          <button onClick={onClose} className="cursor-pointer p-2 hover:bg-black/[0.05] rounded-xl text-[#0b0b0c]/60 hover:text-[#0b0b0c] transition-colors">
             <XCircle size={24} />
           </button>
         </div>
@@ -778,51 +780,51 @@ function TransactionsModal({ user, transactions, loading, onClose, onRefresh }: 
         <div className="p-8 overflow-y-auto flex-1">
           {loading ? (
             <div className="flex flex-col items-center justify-center py-12">
-              <Loader2 className="w-8 h-8 text-blue-500 animate-spin mb-4" />
-              <p className="text-[#555] text-xs font-bold uppercase tracking-widest">Retrieving logs</p>
+              <Loader2 className="w-8 h-8 text-green-600 animate-spin mb-4" />
+              <p className="text-[#0b0b0c]/60 text-xs font-bold uppercase tracking-widest">Retrieving logs</p>
             </div>
           ) : transactions.length === 0 ? (
             <div className="text-center py-12">
-              <CreditCard className="w-12 h-12 text-[#222] mx-auto mb-4" />
-              <p className="text-[#555] font-medium">No transactions found for this user.</p>
+              <CreditCard className="w-12 h-12 text-[#0b0b0c]/80 mx-auto mb-4" />
+              <p className="text-[#0b0b0c]/60 font-medium">No transactions found for this user.</p>
             </div>
           ) : (
             <div className="space-y-3">
               {transactions.map((tx) => (
-                <div key={tx.id} className="bg-black/40 border border-[#222] rounded-2xl p-5 flex items-center justify-between gap-4">
+                <div key={tx.id} className="bg-black/[0.03] border border-black/[0.08] rounded-2xl p-5 flex items-center justify-between gap-4">
                   <div className="flex items-center gap-4">
                     <div className={`w-10 h-10 rounded-xl flex items-center justify-center ${
                       tx.status === 'success' ? 'bg-green-500/10 text-green-500' : 
-                      tx.status === 'failed' ? 'bg-red-500/10 text-red-500' : 'bg-blue-500/10 text-blue-500'
+                      tx.status === 'failed' ? 'bg-red-500/10 text-red-500' : 'bg-amber-500/10 text-amber-600'
                     }`}>
                       {tx.status === 'success' ? <CheckCircle2 size={18} /> : 
                        tx.status === 'failed' ? <XCircle size={18} /> : <Clock size={18} />}
                     </div>
                     <div>
                       <div className="font-bold">₹{tx.amount / 100}</div>
-                      <div className="text-[10px] text-[#555] uppercase tracking-wider font-mono">
+                      <div className="text-[10px] text-[#0b0b0c]/60 uppercase tracking-wider font-mono">
                         {new Date(tx.created_at).toLocaleString()}
                       </div>
                     </div>
                   </div>
                   <div className="text-right">
-                    <div className="text-[10px] font-black uppercase tracking-widest text-[#333]">Order ID</div>
+                    <div className="text-[10px] font-black uppercase tracking-widest text-[#0b0b0c]/75">Order ID</div>
                     <div className="flex items-center gap-2 justify-end">
                       {tx.status === 'pending' && (
                         <button 
                           onClick={() => handleCheckStatus(tx.razorpay_order_id)}
                           disabled={checkingStatus === tx.razorpay_order_id}
-                          className="cursor-pointer p-1 rounded-lg bg-blue-500/10 text-blue-500 hover:bg-blue-500/20 transition-all"
+                          className="cursor-pointer p-1 rounded-lg bg-green-600/10 text-green-600 hover:bg-green-700/20 transition-all"
                           title="Refresh Status"
                         >
                           <RotateCcw size={10} className={`${checkingStatus === tx.razorpay_order_id ? 'animate-spin' : ''}`} />
                         </button>
                       )}
-                      <div className="text-[10px] font-mono text-[#666]">{tx.razorpay_order_id}</div>
+                      <div className="text-[10px] font-mono text-[#0b0b0c]/55">{tx.razorpay_order_id}</div>
                     </div>
                     <div className={`text-[10px] font-black uppercase mt-1 ${
                       tx.status === 'success' ? 'text-green-500/50' : 
-                      tx.status === 'failed' ? 'text-red-500/50' : 'text-blue-500/50'
+                      tx.status === 'failed' ? 'text-red-500/50' : 'text-green-600/50'
                     }`}>{tx.status}</div>
                   </div>
                 </div>
@@ -831,10 +833,10 @@ function TransactionsModal({ user, transactions, loading, onClose, onRefresh }: 
           )}
         </div>
 
-        <div className="p-8 bg-[#161616]/50 border-t border-[#222] flex items-center justify-end shrink-0">
+        <div className="p-8 bg-black/[0.02] border-t border-black/[0.08] flex items-center justify-end shrink-0">
           <button 
             onClick={onClose}
-            className="cursor-pointer bg-[#222] text-white hover:bg-[#333] px-8 py-3 rounded-xl font-bold transition-all"
+            className="cursor-pointer bg-black/[0.05] text-[#0b0b0c] hover:bg-black/[0.08] px-8 py-3 rounded-xl font-bold transition-all"
           >
             Close
           </button>

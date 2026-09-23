@@ -1,15 +1,15 @@
 from django.urls import path, include
 from rest_framework.routers import DefaultRouter
-from rest_framework.authtoken.views import obtain_auth_token
 from .views import (
     JobViewSet, StatsView, CompaniesView, CompanyViewSet,
     SignupView, GoogleAuthView, UserView, RecentJobsView,
-    CheckExistenceView, AdminLoginView, AdminUserViewSet, CategoriesView, CountriesView,
+    CheckExistenceView, LoginView, LogoutView, AdminLoginView,
+    AdminSessionListView, AdminSessionRevokeView, AdminSessionBulkView, AdminChangeOwnPasswordView, AdminUserViewSet, CategoriesView, CountriesView,
     FeedbackView, AdminFeedbackView, PublicPortfolioView, MyPortfolioView, MyPortfolioContentView, PortfolioAnalyticsView,
-    RequestLogsView, CustomCVListCreateView, CustomCVDetailView, CustomCVTailorView, CustomCVExportView,
+    CustomCVListCreateView, CustomCVDetailView, CustomCVTailorView, CustomCVExportView,
     JobApplicationKitView, AtsKeywordsView, ApplicationsView, AdminJobsView, ChangePasswordView,
     RequestEmailOtpView, VerifyEmailOtpView, ConfirmEmailOtpView, RunScraperScriptView, RunGeocodeView,
-    RunningScriptsView, StopScriptView, RunScriptStatusView,
+    RunningScriptsView, StopScriptView, RunScriptStatusView, ScraperPauseView,
     JobsMissingCoordinatesView,
 )
 
@@ -24,13 +24,18 @@ urlpatterns = [
     # ==========================================
     path('user/', UserView.as_view(), name='user'),
     path('user/change-password/', ChangePasswordView.as_view(), name='change-password'),
-    path('login/', obtain_auth_token, name='login'),
+    path('login/', LoginView.as_view(), name='login'),
+    path('logout/', LogoutView.as_view(), name='logout'),
     path('signup/', SignupView.as_view(), name='signup'),
     path('auth/google/', GoogleAuthView.as_view(), name='auth-google'),
     path('otp/request/', RequestEmailOtpView.as_view(), name='otp-request'),
     path('otp/verify/', VerifyEmailOtpView.as_view(), name='otp-verify'),
     path('otp/confirm/', ConfirmEmailOtpView.as_view(), name='otp-confirm'),
     path('admin-login/', AdminLoginView.as_view(), name='admin-login'),
+    path('admin/me/change-password/', AdminChangeOwnPasswordView.as_view(), name='admin-change-own-password'),
+    path('admin/sessions/', AdminSessionListView.as_view(), name='admin-sessions'),
+    path('admin/sessions/bulk/', AdminSessionBulkView.as_view(), name='admin-sessions-bulk'),
+    path('admin/sessions/<int:user_id>/', AdminSessionRevokeView.as_view(), name='admin-session-revoke'),
     
     # ==========================================
     # CORE API
@@ -84,7 +89,7 @@ urlpatterns = [
     path('admin/run-script/status/', RunScriptStatusView.as_view(), name='admin-run-script-status'),
     path('admin/run-script/running/', RunningScriptsView.as_view(), name='admin-run-script-running'),
     path('admin/run-script/stop/', StopScriptView.as_view(), name='admin-run-script-stop'),
+    path('admin/run-script/pause/', ScraperPauseView.as_view(), name='admin-run-script-pause'),
     path('admin/run-geocode/', RunGeocodeView.as_view(), name='admin-run-geocode'),
     path('admin/jobs/missing-coordinates/', JobsMissingCoordinatesView.as_view(), name='admin-jobs-missing-coordinates'),
-    path('admin/request-logs/', RequestLogsView.as_view(), name='admin-request-logs'),
 ]

@@ -2,6 +2,7 @@ from django.db import models
 from django.contrib.auth.models import User
 from django.db.models.signals import post_save
 from django.dispatch import receiver
+from django.utils import timezone
 
 class Profile(models.Model):
     user = models.OneToOneField(User, on_delete=models.CASCADE, related_name='profile')
@@ -13,6 +14,10 @@ class Profile(models.Model):
     is_subscribed = models.BooleanField(default=False)
     subscription_expires_at = models.DateTimeField(blank=True, null=True)
     google_id = models.CharField(max_length=255, blank=True, null=True, unique=True)
+    # Per-user Groq token budget — see api.groq_usage. Resets on a rolling
+    # 24h window from groq_tokens_reset_at, not a fixed daily clock.
+    groq_tokens_used = models.PositiveIntegerField(default=0)
+    groq_tokens_reset_at = models.DateTimeField(default=timezone.now)
 
     def __str__(self):
         return f"Profile for {self.user.username}"
@@ -225,6 +230,30 @@ class ScraperRun(models.Model):
 
     def __str__(self):
         return f"{self.board} ({self.script}) - {self.status}"
+
+
+class ScraperPauseState(models.Model):
+    """Singleton (always pk=1) — a global on/off switch checked before
+    starting any new scraper run, by both RunScraperScriptView
+    (admin-triggered, see api/views.py) and auto_scrape_job (the 5-minute
+    scheduler, see api/scheduler.py). Only gates *new* starts — a run
+    already in flight when this flips on keeps going; use StopScriptView to
+    stop those.
+
+    DB-backed rather than the in-memory _run_registry or the process-local
+    cache, so the pause holds across a restart/deploy and is honored by
+    every worker process, not just whichever one flipped it."""
+    is_paused = models.BooleanField(default=False)
+    paused_at = models.DateTimeField(null=True, blank=True)
+    paused_by = models.ForeignKey(User, on_delete=models.SET_NULL, null=True, blank=True)
+
+    @classmethod
+    def get_solo(cls):
+        obj, _ = cls.objects.get_or_create(pk=1)
+        return obj
+
+    def __str__(self):
+        return 'paused' if self.is_paused else 'not paused'
 
 
 class JobApplicationKit(models.Model):

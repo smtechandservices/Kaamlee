@@ -1,66 +1,161 @@
 'use client';
 
+import { useEffect, useState } from 'react';
 import Link from 'next/link';
+import Image from 'next/image';
 import { usePathname, useRouter } from 'next/navigation';
-import { LayoutDashboard, Building2, CreditCard, Users, MessageSquare, ScrollText, LogOut, Briefcase, GraduationCap } from 'lucide-react';
+import { LayoutDashboard, Building2, ShieldCheck, CreditCard, Users, MessageSquare, LogOut, Briefcase, GraduationCap, Radio, FileText, KeyRound } from 'lucide-react';
 
-const NAV_ITEMS = [
-  { href: '/', label: 'Dashboard', icon: LayoutDashboard },
-  { href: '/companies', label: 'Companies', icon: Building2 },
-  { href: '/jobs', label: 'Jobs', icon: Briefcase },
-  { href: '/revenue', label: 'Finance', icon: CreditCard },
-  { href: '/users', label: 'Users', icon: Users },
-  { href: '/ambassadors', label: 'Ambassadors', icon: GraduationCap },
-  { href: '/feedback', label: 'Feedback', icon: MessageSquare },
-  { href: '/logs', label: 'Logs', icon: ScrollText },
+// Grouped by what the admin is looking after. The Dashboard sits on its
+// own above the groups.
+const NAV_GROUPS = [
+  {
+    title: 'Job data',
+    items: [
+      { href: '/companies', label: 'Companies', icon: Building2 },
+      { href: '/jobs', label: 'Scraped jobs', icon: Briefcase },
+      { href: '/scraper', label: 'Scraper', icon: Radio },
+    ],
+  },
+  {
+    title: 'Hiring',
+    items: [
+      { href: '/employers', label: 'Employers', icon: ShieldCheck },
+      { href: '/postings', label: 'Postings', icon: FileText },
+    ],
+  },
+  {
+    title: 'People',
+    items: [
+      { href: '/users', label: 'Users', icon: Users },
+      { href: '/ambassadors', label: 'Ambassadors', icon: GraduationCap },
+      { href: '/feedback', label: 'Feedback', icon: MessageSquare },
+    ],
+  },
+  {
+    title: 'Business',
+    items: [
+      { href: '/revenue', label: 'Finance', icon: CreditCard },
+    ],
+  },
+  {
+    title: 'Security',
+    items: [
+      { href: '/sessions', label: 'Sessions', icon: KeyRound },
+    ],
+  },
 ];
+
+const itemCls = (active: boolean) =>
+  `w-full flex flex-row items-center gap-3 px-3 py-2.5 rounded-full transition-all text-[13.5px] font-medium ${
+    active ? 'bg-[#16a34a]/10 text-[#16a34a]' : 'text-black/60 hover:text-[#0b0b0c] hover:bg-black/[0.04]'
+  }`;
+
+interface StoredAdminUser {
+  username?: string;
+  first_name?: string;
+  last_name?: string;
+}
+
+// Saved at login (and refreshed by the Profile page) — read here for the
+// Profile item's initials, same as the candidate app's sidebar.
+function readStoredUser(): StoredAdminUser | null {
+  try {
+    return JSON.parse(localStorage.getItem('admin_user') || 'null');
+  } catch {
+    return null;
+  }
+}
 
 export default function AdminSidebar() {
   const pathname = usePathname();
   const router = useRouter();
+  const [adminUser, setAdminUser] = useState<StoredAdminUser | null>(null);
+
+  useEffect(() => {
+    const sync = () => setAdminUser(readStoredUser());
+    sync();
+    window.addEventListener('admin-user-updated', sync);
+    window.addEventListener('storage', sync);
+    return () => {
+      window.removeEventListener('admin-user-updated', sync);
+      window.removeEventListener('storage', sync);
+    };
+  }, [pathname]);
 
   if (pathname === '/login') return null;
 
+  const initials =
+    `${adminUser?.first_name?.[0] ?? ''}${adminUser?.last_name?.[0] ?? ''}`.toUpperCase()
+    || adminUser?.username?.[0]?.toUpperCase()
+    || 'A';
+  const profileTitle = [adminUser?.first_name, adminUser?.last_name].filter(Boolean).join(' ') || adminUser?.username || 'Profile';
+
   const handleLogout = () => {
+    // Delete the token on the server too (fire-and-forget) so it can't be
+    // reused after logout.
+    const token = localStorage.getItem('admin_token');
+    if (token) {
+      fetch(`${process.env.NEXT_PUBLIC_API_URL}/api/logout/`, {
+        method: 'POST',
+        headers: { Authorization: `Token ${token}` },
+        keepalive: true,
+      }).catch(() => {});
+    }
     localStorage.removeItem('admin_token');
     localStorage.removeItem('admin_user');
     router.push('/login');
   };
 
   return (
-    <aside className="hidden md:flex fixed left-0 top-0 h-screen w-56 flex-col border-r border-[#222] bg-[#0a0a0a] z-30">
-      <Link href="/" className="flex items-center gap-2.5 px-5 h-16 border-b border-[#222] shrink-0">
-        <img src="/logo.png" alt="Kaamlee Logo" className="h-7 w-auto" />
-        <span className="text-sm font-black tracking-tight">Admin</span>
+    <aside
+      className="hidden md:flex fixed left-0 top-0 h-screen w-56 flex-col border-r border-black/[0.08] bg-white py-5 z-30"
+      style={{ fontFamily: 'var(--font-outfit)' }}
+    >
+      <Link href="/" className="mb-6 mx-4 flex items-center gap-2.5 shrink-0">
+        <span className="grid h-9 w-9 flex-none place-items-center overflow-hidden rounded-[10px] border border-black/[0.08] shadow-[0_1px_2px_rgba(16,18,26,.05),0_6px_16px_-8px_rgba(16,18,26,.10)]">
+          <Image src="/logo.png" alt="Kaamlee" width={36} height={36} className="w-full h-full object-cover" />
+        </span>
+        <span className="text-[15px] font-bold uppercase tracking-[0.1em] text-[#0b0b0c] truncate">Admin</span>
       </Link>
 
-      <nav className="flex flex-col gap-1 mx-3 mt-4">
-        {NAV_ITEMS.map(({ href, label, icon: Icon }) => {
-          const active = pathname === href;
-          return (
-            <Link
-              key={href}
-              href={href}
-              className={`flex items-center gap-3 px-3 py-2.5 rounded-xl text-sm font-semibold transition-all ${
-                active
-                  ? 'bg-blue-600/15 text-blue-400 border border-blue-500/30'
-                  : 'text-[#888] border border-transparent hover:bg-[#111] hover:text-white'
-              }`}
-            >
-              <Icon size={18} />
-              {label}
-            </Link>
-          );
-        })}
+      <nav className="flex-1 flex flex-col w-full px-3 overflow-y-auto no-scrollbar">
+        <Link href="/" title="Dashboard" className={itemCls(pathname === '/')}>
+          <LayoutDashboard size={17} className="shrink-0" strokeWidth={1.8} />
+          <span className="leading-none truncate">Dashboard</span>
+        </Link>
+
+        {NAV_GROUPS.map((group) => (
+          <div key={group.title} className="mt-4 flex flex-col gap-1">
+            <p className="px-3 mb-0.5 text-[10px] font-bold uppercase tracking-[0.16em] text-black/35">{group.title}</p>
+            {group.items.map(({ href, label, icon: Icon }) => (
+              <Link key={href} href={href} title={label} className={itemCls(pathname === href)}>
+                <Icon size={17} className="shrink-0" strokeWidth={1.8} />
+                <span className="leading-none truncate">{label}</span>
+              </Link>
+            ))}
+          </div>
+        ))}
       </nav>
 
-      <div className="mt-auto p-3 border-t border-[#222]">
+      <div className="w-full px-3 pt-3 mt-2 shrink-0 border-t border-black/[0.08] flex flex-col gap-1.5">
+        <Link
+          href="/profile"
+          title={profileTitle}
+          className={`border border-black/[0.08] ${itemCls(pathname === '/profile')}`}
+        >
+          <div className="w-7 h-7 rounded-full bg-gradient-to-br from-[#4ade80] to-[#16a34a] flex items-center justify-center text-[10px] font-bold text-white shrink-0">
+            {initials}
+          </div>
+          <span className="leading-none truncate">Profile</span>
+        </Link>
+
         <button
           onClick={handleLogout}
-          className="cursor-pointer w-full flex items-center gap-3 px-3 py-2.5 rounded-xl text-sm font-semibold text-[#888] hover:bg-red-500/10 hover:text-red-500 transition-all"
+          className={`cursor-pointer border border-black/[0.08] ${itemCls(false)} hover:!bg-red-500/10 hover:!text-red-600`}
         >
-          <LogOut size={18} />
-          Logout
+          <LogOut size={17} className="shrink-0" strokeWidth={1.8} />
+          <span className="leading-none truncate">Logout</span>
         </button>
       </div>
     </aside>

@@ -1,7 +1,7 @@
 'use client';
 
 import React from 'react';
-import { MapPin, Briefcase, ExternalLink, Clock, Bookmark, Copy, Check, FileEdit, DollarSign, Tag, GraduationCap } from 'lucide-react';
+import { MapPin, Briefcase, ExternalLink, Clock, Bookmark, Copy, Check, FileEdit, Tag, GraduationCap } from 'lucide-react';
 import CoverLetterModal from '@/components/CoverLetterModal';
 
 interface JobCardProps {
@@ -217,7 +217,6 @@ export const JobCard = React.memo(function JobCard({ job, isSelected, onClick, o
             )}
             {job.salary && (
               <div className="flex items-center gap-1 text-[11px] text-[#16a34a] bg-[#16a34a]/10 px-2 py-1 rounded-full border border-[#16a34a]/20" style={{ fontFamily: 'var(--font-outfit)' }}>
-                <DollarSign size={12} />
                 {job.salary}
               </div>
             )}

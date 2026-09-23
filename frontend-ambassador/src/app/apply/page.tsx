@@ -6,6 +6,7 @@ import Image from 'next/image';
 import { CheckCircle2, Loader2, UploadCloud, ArrowLeft } from 'lucide-react';
 
 const API_URL = process.env.NEXT_PUBLIC_API_URL || 'http://localhost:8000';
+const MAIN_SITE_URL = process.env.NEXT_PUBLIC_KAAMLEE_URL || 'https://kaamlee.in';
 const MAX_FILE_MB = 5;
 const MAX_FILE_BYTES = MAX_FILE_MB * 1024 * 1024;
 const CURRENT_YEAR = new Date().getFullYear();
@@ -71,6 +72,7 @@ export default function ApplyPage() {
   const [file, setFile] = useState<File | null>(null);
   const [errors, setErrors] = useState<Record<string, string>>({});
   const [status, setStatus] = useState<'idle' | 'submitting' | 'success' | 'error'>('idle');
+  const [checkingEmail, setCheckingEmail] = useState(false);
 
   function set<K extends keyof FormState>(key: K, value: FormState[K]) {
     setForm((f) => ({ ...f, [key]: value }));
@@ -111,8 +113,36 @@ export default function ApplyPage() {
     setFile(f);
   }
 
-  function goNext() {
-    if (validateStep(step)) setStep((s) => Math.min(s + 1, STEPS.length - 1));
+  // Step one also confirms the email belongs to a Kaamlee account with no
+  // open application, so a doomed applicant finds out before filling in
+  // the rest of the form (the backend re-checks on submit either way).
+  async function checkEmail(): Promise<boolean> {
+    setCheckingEmail(true);
+    try {
+      const res = await fetch(`${API_URL}/ambassador/applications/check-email/`, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ email: form.email.trim() }),
+      });
+      if (res.ok) return true;
+      const data = await res.json().catch(() => ({}));
+      setErrors((prev) => ({
+        ...prev,
+        email: data.error || (res.status === 429 ? 'Too many attempts — wait a minute and try again.' : 'Could not verify this email.'),
+      }));
+      return false;
+    } catch {
+      setErrors((prev) => ({ ...prev, detail: 'Could not reach the server. Check your connection and try again.' }));
+      return false;
+    } finally {
+      setCheckingEmail(false);
+    }
+  }
+
+  async function goNext() {
+    if (!validateStep(step)) return;
+    if (step === 0 && !(await checkEmail())) return;
+    setStep((s) => Math.min(s + 1, STEPS.length - 1));
   }
 
   function goBack() {
@@ -165,7 +195,7 @@ export default function ApplyPage() {
             <CheckCircle2 size={28} />
           </span>
           <h1 className="mt-6 text-[26px] font-semibold tracking-[-0.03em]" style={{ fontFamily: 'var(--font-outfit)' }}>Application received</h1>
-          <p className="mt-3 text-[15px] leading-relaxed text-black/55">We&apos;ll review it within a few days. If approved, you&apos;ll get an email with your login details, plus a call on the number you applied with.</p>
+          <p className="mt-3 text-[15px] leading-relaxed text-black/55">We&apos;ll review it within a few days. If approved, we&apos;ll give you a call on the number you applied with. Keep using your Kaamlee login as usual.</p>
           <Link href="/" className="mt-8 inline-flex items-center justify-center rounded-full bg-[#0b0b0c] px-7 py-[13px] text-[14.5px] font-bold text-white" style={{ fontFamily: 'var(--font-outfit)' }}>
             Back to home
           </Link>
@@ -226,6 +256,10 @@ export default function ApplyPage() {
               </Field>
               <Field id="email" label="Email" required error={errors.email}>
                 <input id="email" type="email" value={form.email} onChange={(e) => set('email', e.target.value)} className={inputClass} placeholder="you@college.edu" />
+                <p className="mt-1.5 text-[13px] text-black/50">
+                  Use the email of your Kaamlee account. No account yet?{' '}
+                  <a href={`${MAIN_SITE_URL}/signup`} target="_blank" rel="noreferrer" className="font-medium text-[#16a34a] hover:underline">Sign up first</a>.
+                </p>
               </Field>
               <Field id="phone" label="Phone" required error={errors.phone}>
                 <input id="phone" type="tel" value={form.phone} onChange={(e) => set('phone', e.target.value)} className={inputClass} placeholder="98765 43210" />
@@ -313,10 +347,11 @@ export default function ApplyPage() {
               <button
                 type="button"
                 onClick={goNext}
-                className="ml-auto flex-1 rounded-full bg-[#0b0b0c] py-[15px] text-[15px] font-bold text-white transition-transform duration-300 hover:-translate-y-0.5"
+                disabled={checkingEmail}
+                className="ml-auto flex-1 rounded-full bg-[#0b0b0c] py-[15px] text-[15px] font-bold text-white transition-transform duration-300 hover:-translate-y-0.5 disabled:opacity-60 disabled:hover:translate-y-0"
                 style={{ fontFamily: 'var(--font-outfit)' }}
               >
-                Continue
+                {checkingEmail ? 'Checking…' : 'Continue'}
               </button>
             ) : (
               <button

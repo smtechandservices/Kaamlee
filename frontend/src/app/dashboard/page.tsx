@@ -33,8 +33,14 @@ interface Application {
   status_updated_at: string;
 }
 
+// Applications submitted through Kaamlee to an employer's posting (hiring app).
+interface KaamleeApplication {
+  id: number;
+  stage: string;
+}
+
 const QUICK_LINKS = [
-  { href: '/explore', label: 'Explore jobs', desc: 'Search the live map across every board.', icon: Compass },
+  { href: '/map', label: 'Map', desc: 'Search the live map across every board.', icon: Compass },
   { href: '/applications', label: 'Application tracker', desc: 'See where every application stands.', icon: Kanban },
   { href: '/custom-cv', label: 'Custom CV', desc: 'Generate an ATS-scored CV for a role.', icon: FileText },
   { href: '/transactions', label: 'Billing', desc: 'Subscription status and payment history.', icon: Receipt },
@@ -51,6 +57,10 @@ export default function DashboardPage() {
   const { isReady, isSubscribed } = useSubscriptionGate({ allowUnsubscribed: true });
 
   const [applications, setApplications] = useState<Application[]>([]);
+  const [kaamleeApplications, setKaamleeApplications] = useState<KaamleeApplication[]>([]);
+  // Saved-but-not-applied postings — the tracker board shows these in its
+  // Saved column, so they count toward "Applications tracked" here too.
+  const [savedPostingCount, setSavedPostingCount] = useState(0);
   const [cvs, setCvs] = useState<CustomCV[]>([]);
   const [portfolio, setPortfolio] = useState<{ is_public: boolean; has_resume: boolean } | null>(null);
   const [totalJobs, setTotalJobs] = useState<number | null>(null);
@@ -65,11 +75,19 @@ export default function DashboardPage() {
     setIsFetching(true);
     Promise.all([
       fetch(`${process.env.NEXT_PUBLIC_API_URL}/api/applications/`, { headers: { Authorization: `Token ${token}` } }).then((r) => r.json()).catch(() => []),
+      fetch(`${process.env.NEXT_PUBLIC_API_URL}/hiring/applications/mine/`, { headers: { Authorization: `Token ${token}` } }).then((r) => r.json()).catch(() => []),
+      fetch(`${process.env.NEXT_PUBLIC_API_URL}/hiring/saved/mine/`, { headers: { Authorization: `Token ${token}` } }).then((r) => r.json()).catch(() => []),
       fetch(`${process.env.NEXT_PUBLIC_API_URL}/api/custom-cv/`, { headers: { Authorization: `Token ${token}` } }).then((r) => r.json()).catch(() => []),
       fetch(`${process.env.NEXT_PUBLIC_API_URL}/api/portfolio/me/`, { headers: { Authorization: `Token ${token}` } }).then((r) => r.json()).catch(() => null),
       fetch(`${process.env.NEXT_PUBLIC_API_URL}/api/stats/`).then((r) => r.json()).catch(() => null),
-    ]).then(([apps, cvList, portfolioData, stats]) => {
+    ]).then(([apps, kaamleeApps, savedPostings, cvList, portfolioData, stats]) => {
       setApplications(Array.isArray(apps) ? apps : []);
+      setKaamleeApplications(Array.isArray(kaamleeApps) ? kaamleeApps : []);
+      setSavedPostingCount(
+        Array.isArray(savedPostings)
+          ? savedPostings.filter((s: { job_posting?: { has_applied?: boolean } }) => !s.job_posting?.has_applied).length
+          : 0,
+      );
       setCvs(Array.isArray(cvList) ? cvList : []);
       if (portfolioData && !portfolioData.error) setPortfolio(portfolioData);
       if (stats && !stats.error && !stats.detail) setTotalJobs(Number(stats.total_jobs) || null);
@@ -100,12 +118,18 @@ export default function DashboardPage() {
 
   const subscribed = isSubscriptionActive(user);
   const daysLeft = getDaysLeft(user?.subscription_expires_at);
-  const activeCount = applications.filter((a) => a.status === 'applied' || a.status === 'interviewing').length;
-  const offeredCount = applications.filter((a) => a.status === 'offered').length;
+  const offeredCount =
+    applications.filter((a) => a.status === 'offered').length +
+    kaamleeApplications.filter((a) => a.stage === 'offer' || a.stage === 'hired').length;
+  const totalApplications = applications.length + kaamleeApplications.length + savedPostingCount;
   const bestScore = cvs.reduce((max, cv) => Math.max(max, cv.ats_score ?? 0), 0);
 
   const STATS = [
-    { label: 'Applications tracked', value: applications.length, sub: `${activeCount} in progress`, icon: Kanban },
+    {
+      label: 'Applications tracked',
+      value: totalApplications,
+      icon: Kanban,
+    },
     { label: 'Custom CVs', value: cvs.length, sub: bestScore ? `Best ATS score ${bestScore}%` : 'None yet', icon: FileText },
     { label: 'Offers', value: offeredCount, sub: offeredCount ? 'Nice work' : 'Keep going', icon: Sparkles },
     { label: 'Live jobs on the map', value: totalJobs ?? '—', sub: 'Updated every 15 min', icon: MapPin },
@@ -154,7 +178,7 @@ export default function DashboardPage() {
                 className="mt-6 flex items-center gap-3 rounded-[18px] border border-black/[0.08] bg-white px-5 py-4"
               >
                 <span className="grid h-9 w-9 flex-none place-items-center rounded-full bg-[#16a34a]/10 text-[#16a34a]"><ShieldCheck size={17} /></span>
-                <span className="text-[14px] text-[#3d3d3d]">Subscription active — <b className="font-semibold text-[#0b0b0c]">{daysLeft} days</b> remaining.</span>
+                <span className="text-[14px] text-[#3d3d3d]">Subscription active, <b className="font-semibold text-[#0b0b0c]">{daysLeft} days</b> remaining.</span>
                 <Link href="/transactions" className="ml-auto text-[13px] font-medium text-[#16a34a] hover:text-[#15803d]" style={{ fontFamily: 'var(--font-outfit)' }}>Manage billing →</Link>
               </motion.div>
             )}
@@ -173,7 +197,7 @@ export default function DashboardPage() {
                   </div>
                   <div className="mt-4 text-[28px] tracking-[-0.03em] text-[#0b0b0c]" style={{ fontFamily: 'var(--font-outfit)', fontWeight: 600 }}>{s.value}</div>
                   <div className="mt-1 text-[13px] text-black/45">{s.label}</div>
-                  <div className="mt-2 text-[12px] text-[rgba(61,61,61,0.6)]">{s.sub}</div>
+                  {s.sub && <div className="mt-2 text-[12px] text-[rgba(61,61,61,0.6)]">{s.sub}</div>}
                 </motion.div>
               ))}
             </div>

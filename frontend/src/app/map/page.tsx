@@ -6,10 +6,22 @@ import Sidebar from '@/components/Sidebar';
 import PageHeader from '@/components/PageHeader';
 import { motion, AnimatePresence, Variants } from 'framer-motion';
 import { JobCard } from '@/components/JobCard';
+import { PostingCard } from '@/components/PostingCard';
 import Map from '@/components/Map';
 import { useAuth } from '@/context/AuthContext';
 import { useSubscriptionGate } from '@/hooks/useSubscriptionGate';
 import PricingModal from '@/components/PricingModal';
+import type { JobPosting } from '@/lib/hiring-types';
+
+// /hiring/feed/ items. Scraped jobs keep their own shape (plus `location`,
+// see mapJobFields); postings are JobPosting.
+type FeedItem =
+  | { kind: 'job'; data: any }
+  | { kind: 'posting'; data: JobPosting };
+
+// Ids as used for selection, map pins and DOM anchors: postings are
+// prefixed so they can't collide with scraped Job ids.
+const feedItemId = (item: FeedItem) => (item.kind === 'posting' ? `posting-${item.data.id}` : item.data.id);
 
 const PRICING_MODAL_SEEN_KEY = 'explore_pricing_modal_seen';
 
@@ -24,6 +36,19 @@ function getCached(key: string) {
 
 function setCache(key: string, data: any) {
   _cache[key] = { data, ts: Date.now() };
+}
+
+const EMPLOYMENT_TYPE_LABELS: Record<JobPosting['employment_type'], string> = {
+  full_time: 'Full-time',
+  part_time: 'Part-time',
+  contract: 'Contract',
+  internship: 'Internship',
+};
+
+function formatPostingLocation(p: JobPosting): string {
+  const parts = [p.city, p.state, p.country].filter(Boolean);
+  if (p.is_remote) return parts.length ? `Remote · ${parts.join(', ')}` : 'Remote';
+  return parts.join(', ');
 }
 
 function useDebounce<T>(value: T, delay: number): T {
@@ -114,7 +139,7 @@ function useResizablePanel() {
   };
 }
 
-export default function ExplorePage() {
+export default function MapPage() {
   const { token, logout } = useAuth();
   const { isReady, isSubscribed } = useSubscriptionGate({ allowUnsubscribed: true });
   const { asideRef, panelWidth, isDesktop, isResizing, startResizing } = useResizablePanel();
@@ -133,10 +158,14 @@ export default function ExplorePage() {
     setIsPricingOpen(false);
   };
 
-  const [jobs, setJobs] = useState<any[]>([]);
+  // One mixed list of scraped jobs and employer postings, straight from
+  // /hiring/feed/ (already shuffled and, for non-subscribers, capped at the
+  // shared 200-job preview).
+  const [jobs, setJobs] = useState<FeedItem[]>([]);
   const [totalJobs, setTotalJobs] = useState(0);
   const [mapPins, setMapPins] = useState<any[]>([]);
-  const [pinnedJob, setPinnedJob] = useState<any | null>(null);
+  // A map-pin click for something not on the current page — shown first.
+  const [pinnedJob, setPinnedJob] = useState<FeedItem | null>(null);
   const [countries, setCountries] = useState<string[]>([]);
   const [jobCategories, setJobCategories] = useState<string[]>([]);
   const [selectedJobId, setSelectedJobId] = useState<string | null>(null);
@@ -151,6 +180,10 @@ export default function ExplorePage() {
   const [currentPage, setCurrentPage] = useState(1);
   const [isFetchingJobs, setIsFetchingJobs] = useState(false);
   const jobsPerPage = 20;
+
+  // Postings employers create directly on Kaamlee (hiring.JobPosting), only
+  // for their map pins now — the list itself comes mixed from the feed.
+  const [postings, setPostings] = useState<JobPosting[]>([]);
 
   const debouncedSearch = useDebounce(searchQuery, 300);
   const debouncedLocation = useDebounce(locationQuery, 300);
@@ -210,6 +243,46 @@ export default function ExplorePage() {
     fetchMeta();
   }, [token]);
 
+  // Employer-posted jobs — respects the same search/location/category/
+  // country/remote filters as the scraped-job fetch below (the hiring
+  // endpoint accepts the same param names), refetched whenever those
+  // change. "Bookmarks" maps to the hiring endpoint's own saved_only param
+  // (postings use SavedJob, a separate save mechanism from the scraped-Job
+  // Bookmark model — see PostingCard's onToggleBookmark) rather than being
+  // excluded outright.
+  useEffect(() => {
+    const fetchPostings = async () => {
+      if (!token) {
+        setPostings([]);
+        return;
+      }
+      const params = new URLSearchParams(filterParams);
+      params.delete('bookmarked_only');
+      if (bookmarkedOnly) params.set('saved_only', 'true');
+      params.set('page_size', '200');
+      const cacheKey = `postings-${params.toString()}`;
+      const cached = getCached(cacheKey);
+      if (cached && !Array.isArray(cached)) {
+        setPostings(cached.results);
+        return;
+      }
+      try {
+        const res = await fetch(`${process.env.NEXT_PUBLIC_API_URL}/hiring/jobs/public/?${params}`, {
+          headers: { Authorization: `Token ${token}` },
+        });
+        if (res.status === 401) { logout(); return; }
+        if (!res.ok) return;
+        const data = await res.json();
+        const results = Array.isArray(data) ? data : (data.results || []);
+        setCache(cacheKey, { results });
+        setPostings(results);
+      } catch (error) {
+        console.error('Failed to fetch postings:', error);
+      }
+    };
+    fetchPostings();
+  }, [token, logout, bookmarkedOnly, filterParams]);
+
   // Re-fetch the current page whenever filters or the page change — backend
   // paginates and filters at the DB level, so only ~20 jobs cross the wire.
   useEffect(() => {
@@ -217,7 +290,7 @@ export default function ExplorePage() {
       if (!token) return;
       const params = new URLSearchParams(filterParams);
       params.set('page', String(currentPage));
-      const cacheKey = `jobs-${params.toString()}`;
+      const cacheKey = `feed-${params.toString()}`;
       const cached = getCached(cacheKey);
       if (cached) {
         setJobs(cached.results);
@@ -227,14 +300,15 @@ export default function ExplorePage() {
       setIsFetchingJobs(true);
       try {
         const jobsRes = await fetch(
-          `${process.env.NEXT_PUBLIC_API_URL}/api/jobs/?${params}`,
+          `${process.env.NEXT_PUBLIC_API_URL}/hiring/feed/?${params}`,
           { headers: { 'Authorization': `Token ${token}` } }
         );
         if (jobsRes.status === 401) { logout(); return; }
         if (!jobsRes.ok) return;
         const jobsData = await jobsRes.json();
-        const jobsList = Array.isArray(jobsData) ? jobsData : (jobsData.results || []);
-        const mapped = jobsList.map(mapJobFields);
+        const mapped: FeedItem[] = (jobsData.results || []).map((item: FeedItem) => (
+          item.kind === 'job' ? { kind: 'job', data: mapJobFields(item.data) } : item
+        ));
         const payload = { results: mapped, count: jobsData.count ?? mapped.length };
         setCache(cacheKey, payload);
         setJobs(payload.results);
@@ -286,6 +360,27 @@ export default function ExplorePage() {
   // Jobs/pins are already filtered server-side (country, search, location,
   // remote, bookmarked) — no client-side re-filtering needed here anymore.
 
+  // Posting pins merged into the same map as scraped-job pins. Prefixed ids
+  // (`posting-<id>`) keep them from colliding with scraped Job ids, which
+  // are drawn from an entirely different table and can overlap numerically.
+  // job_url here is an internal relative path (`/apply/<id>`) — Map's popup
+  // renders it as a plain `<a href>`, which works for in-app routes too, so
+  // no changes were needed in Map.tsx itself.
+  const postingMapPins = React.useMemo(() => postings
+    .filter(p => p.latitude != null && p.longitude != null)
+    .map(p => ({
+      id: `posting-${p.id}`,
+      title: p.title,
+      company: p.employer_name,
+      location: formatPostingLocation(p),
+      latitude: p.latitude,
+      longitude: p.longitude,
+      job_url: `/apply/${p.id}`,
+      job_type: EMPLOYMENT_TYPE_LABELS[p.employment_type],
+    })), [postings]);
+
+  const combinedMapPins = React.useMemo(() => [...postingMapPins, ...mapPins], [postingMapPins, mapPins]);
+
   const handleMapJobClick = React.useCallback(async (jobId: string | null) => {
     if (!jobId) {
       setSelectedJobId(null);
@@ -298,18 +393,21 @@ export default function ExplorePage() {
     }
     // Map pins and the paginated list are separate datasets, so a clicked pin
     // may not be on the currently loaded page — fetch it directly if so.
-    if (jobs.some(j => j.id === jobId)) {
+    // Scraped job ids arrive as numbers at runtime; only postings are strings.
+    const isPosting = typeof jobId === 'string' && jobId.startsWith('posting-');
+    if (jobs.some(item => feedItemId(item) === jobId)) {
       setPinnedJob(null);
       return;
     }
     try {
-      const res = await fetch(`${process.env.NEXT_PUBLIC_API_URL}/api/jobs/${jobId}/`, {
-        headers: { 'Authorization': `Token ${token}` }
-      });
+      const url = isPosting
+        ? `${process.env.NEXT_PUBLIC_API_URL}/hiring/jobs/public/${jobId.slice('posting-'.length)}/`
+        : `${process.env.NEXT_PUBLIC_API_URL}/api/jobs/${jobId}/`;
+      const res = await fetch(url, { headers: { 'Authorization': `Token ${token}` } });
       if (res.status === 401) { logout(); return; }
       if (!res.ok) return;
       const data = await res.json();
-      setPinnedJob(mapJobFields(data));
+      setPinnedJob(isPosting ? { kind: 'posting', data } : { kind: 'job', data: mapJobFields(data) });
     } catch (error) {
       console.error('Failed to fetch job:', error);
     }
@@ -346,15 +444,57 @@ export default function ExplorePage() {
       
       if (response.ok) {
         const data = await response.json();
-        setJobs(prevJobs => prevJobs.map(j =>
-          j.id === jobId ? { ...j, is_bookmarked: data.is_bookmarked } : j
-        ));
-        setPinnedJob((prev: any) => (prev && prev.id === jobId ? { ...prev, is_bookmarked: data.is_bookmarked } : prev));
+        const update = (item: FeedItem): FeedItem => (
+          item.kind === 'job' && item.data.id === jobId
+            ? { kind: 'job', data: { ...item.data, is_bookmarked: data.is_bookmarked } }
+            : item
+        );
+        setJobs(prev => prev.map(update));
+        setPinnedJob(prev => (prev ? update(prev) : prev));
       }
     } catch (error) {
       console.error("Failed to toggle bookmark:", error);
     }
   }, [token]);
+
+  // Postings use a separate save mechanism (hiring.SavedJob, not the
+  // scraped-Job Bookmark model) — POST to save / DELETE to unsave, and
+  // neither returns a body, so the toggled value is computed client-side
+  // from the posting's current is_saved rather than read off the response.
+  const handleTogglePostingBookmark = React.useCallback(async (e: React.MouseEvent, postingId: number) => {
+    e.stopPropagation();
+    if (!token) return;
+    const inFeed = [...(pinnedJob ? [pinnedJob] : []), ...jobs]
+      .find((item): item is Extract<FeedItem, { kind: 'posting' }> => item.kind === 'posting' && item.data.id === postingId);
+    const current = inFeed?.data ?? postings.find((p) => p.id === postingId);
+    if (!current) return;
+    const nextSaved = !current.is_saved;
+
+    // The same posting can be in the feed, the pinned slot and the map-pin
+    // list at once — keep all three in step.
+    const setSaved = (value: boolean) => {
+      const update = (item: FeedItem): FeedItem => (
+        item.kind === 'posting' && item.data.id === postingId
+          ? { kind: 'posting', data: { ...item.data, is_saved: value } }
+          : item
+      );
+      setPostings((prev) => prev.map((p) => (p.id === postingId ? { ...p, is_saved: value } : p)));
+      setJobs((prev) => prev.map(update));
+      setPinnedJob((prev) => (prev ? update(prev) : prev));
+    };
+
+    setSaved(nextSaved);
+    try {
+      const res = await fetch(`${process.env.NEXT_PUBLIC_API_URL}/hiring/saved/${postingId}/`, {
+        method: nextSaved ? 'POST' : 'DELETE',
+        headers: { Authorization: `Token ${token}` },
+      });
+      if (!res.ok) setSaved(!nextSaved); // revert
+    } catch (error) {
+      console.error('Failed to toggle posting bookmark:', error);
+      setSaved(!nextSaved); // revert
+    }
+  }, [token, postings, jobs, pinnedJob]);
 
   if (!isReady) {
     return (
@@ -366,7 +506,9 @@ export default function ExplorePage() {
 
   const totalPages = Math.max(1, Math.ceil(totalJobs / jobsPerPage));
   // Pinned job (from a map-pin click not on the current page) shown first, deduped.
-  const displayJobs = pinnedJob ? [pinnedJob, ...jobs.filter(j => j.id !== pinnedJob.id)] : jobs;
+  const displayJobs = pinnedJob
+    ? [pinnedJob, ...jobs.filter(item => feedItemId(item) !== feedItemId(pinnedJob))]
+    : jobs;
 
   const containerVariants: Variants = {
     hidden: { opacity: 0 },
@@ -404,7 +546,7 @@ export default function ExplorePage() {
 
       <div className="flex-1 flex flex-col overflow-hidden">
       {/* Header - Always visible for navigation/logout */}
-      <PageHeader backHref="/dashboard" title="Explore" wordmark>
+      <PageHeader backHref="/dashboard" title="Map" wordmark>
         <div className="w-px h-6 bg-black/[0.08] mx-1 sm:mx-2" />
         {/* View Toggles - Always visible */}
         <div className="flex items-center gap-1 sm:gap-2 bg-white rounded-full p-1 border border-black/[0.08] shadow-[0_1px_2px_rgba(16,18,26,.05),0_6px_16px_-8px_rgba(16,18,26,.10)]">
@@ -568,7 +710,7 @@ export default function ExplorePage() {
               <span className="hidden sm:inline">Bookmarks</span>
             </button>
           </div>
-          
+
           <AnimatePresence mode="wait">
             {isFetchingJobs ? (
               <div className="flex-1 overflow-y-auto p-4 sm:p-5 space-y-4 custom-scrollbar">
@@ -609,22 +751,34 @@ export default function ExplorePage() {
               animate="visible"
               className={`flex-1 overflow-y-auto p-4 sm:p-5 space-y-4 custom-scrollbar ${isFetchingJobs ? 'hidden' : ''}`}
             >
-              {displayJobs.map(job => (
-                <motion.div 
-                  key={job.id} 
-                  variants={itemVariants}
-                  id={`job-card-${job.id}`}
-                  className="w-full"
-                >
-                  <JobCard 
-                    job={job} 
-                    isSelected={selectedJobId === job.id}
-                    onClick={handleJobClick}
-                    onToggleBookmark={handleToggleBookmark}
-                  />
-                </motion.div>
-              ))}
-              
+              {displayJobs.map(item => {
+                const itemId = feedItemId(item);
+                return (
+                  <motion.div
+                    key={itemId}
+                    variants={itemVariants}
+                    id={`job-card-${itemId}`}
+                    className="w-full"
+                  >
+                    {item.kind === 'posting' ? (
+                      <PostingCard
+                        posting={item.data}
+                        isSelected={selectedJobId === itemId}
+                        onClick={() => handleJobClick(itemId)}
+                        onToggleBookmark={handleTogglePostingBookmark}
+                      />
+                    ) : (
+                      <JobCard
+                        job={item.data}
+                        isSelected={selectedJobId === item.data.id}
+                        onClick={handleJobClick}
+                        onToggleBookmark={handleToggleBookmark}
+                      />
+                    )}
+                  </motion.div>
+                );
+              })}
+
               {totalPages > 1 && (
                 <div className="flex items-center justify-between pt-6 pb-2 px-2 border-t border-black/[0.08] mt-4">
                   <button
@@ -679,7 +833,7 @@ export default function ExplorePage() {
         {/* Map Area */}
         <section className={`${viewMode === 'list' ? 'hidden' : 'flex'} flex-1 bg-[#f2f3f5]`}>
           <Map
-            jobs={mapPins}
+            jobs={combinedMapPins}
             selectedJobId={selectedJobId || undefined}
             onJobClick={handleMapJobClick}
           />
