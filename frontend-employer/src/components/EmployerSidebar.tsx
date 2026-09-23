@@ -3,14 +3,16 @@
 import Link from 'next/link';
 import Image from 'next/image';
 import { usePathname, useRouter } from 'next/navigation';
-import { LayoutDashboard, ShieldCheck, Users, Briefcase, LogOut, UserCircle2 } from 'lucide-react';
+import { LayoutDashboard, ShieldCheck, Users, Briefcase, LogOut, UserCircle2, Inbox, History } from 'lucide-react';
 import { logout } from '@/lib/auth';
 
 const NAV_ITEMS = [
   { href: '/', label: 'Dashboard', icon: LayoutDashboard },
   { href: '/jobs', label: 'Job Postings', icon: Briefcase },
-  { href: '/kyc', label: 'Verification', icon: ShieldCheck },
+  { href: '/applicants', label: 'Applicants', icon: Inbox },
   { href: '/team', label: 'Team', icon: Users },
+  { href: '/activity', label: 'Activity', icon: History },
+  { href: '/kyc', label: 'Verification', icon: ShieldCheck },
 ];
 
 const itemCls = (active: boolean) =>

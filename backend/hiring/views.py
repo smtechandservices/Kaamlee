@@ -300,6 +300,209 @@ class EmployerApplicationStageView(views.APIView):
         return Response(ApplicationKanbanSerializer(application).data)
 
 
+class EmployerApplicantsPagination(PageNumberPagination):
+    page_size = 25
+    page_size_query_param = 'page_size'
+    max_page_size = 100
+
+
+def _person_name(user):
+    return f"{user.first_name} {user.last_name}".strip() or user.username
+
+
+class EmployerApplicantsView(views.APIView):
+    """GET /hiring/applicants/ — every application across the caller's
+    employer's postings, for the portal's Applicants page.
+    ?posting=<id>, ?stage=, ?search= (candidate name/username/email),
+    ?applied_from=/?applied_to= (YYYY-MM-DD, inclusive), ?sort=newest|oldest|updated.
+    Also returns per-stage counts for the current filters (ignoring
+    ?stage= so the tabs stay meaningful) and the posting list for the
+    filter dropdown."""
+    permission_classes = [IsEmployerMember, IsApprovedEmployer]
+    SORTS = {'newest': '-applied_at', 'oldest': 'applied_at', 'updated': '-stage_updated_at'}
+
+    def get(self, request):
+        employer = request.user.employer_membership.employer
+        params = request.query_params
+        queryset = (
+            Application.objects.filter(job_posting__employer=employer)
+            .select_related('candidate', 'candidate__profile', 'candidate__portfolio', 'cv', 'job_posting')
+        )
+
+        posting = params.get('posting')
+        if posting:
+            queryset = queryset.filter(job_posting_id=posting)
+        search = (params.get('search') or '').strip()
+        if search:
+            queryset = queryset.filter(
+                Q(candidate__first_name__icontains=search) | Q(candidate__last_name__icontains=search)
+                | Q(candidate__username__icontains=search) | Q(candidate__email__icontains=search)
+            )
+        if params.get('applied_from'):
+            queryset = queryset.filter(applied_at__date__gte=params['applied_from'])
+        if params.get('applied_to'):
+            queryset = queryset.filter(applied_at__date__lte=params['applied_to'])
+
+        stage_counts = dict(queryset.values_list('stage').annotate(n=Count('id')).values_list('stage', 'n'))
+
+        stage = params.get('stage')
+        if stage:
+            queryset = queryset.filter(stage=stage)
+        queryset = queryset.order_by(self.SORTS.get(params.get('sort'), '-applied_at'))
+
+        paginator = EmployerApplicantsPagination()
+        page = paginator.paginate_queryset(queryset, request, view=self)
+        results = []
+        for app in page:
+            data = ApplicationKanbanSerializer(app).data
+            data.update({
+                'candidate_name': _person_name(app.candidate),
+                'job_posting_title': app.job_posting.title,
+                'job_posting_status': app.job_posting.status,
+                # So screening answers can be shown with their question text.
+                'screening_questions': app.job_posting.screening_questions,
+            })
+            results.append(data)
+        response = paginator.get_paginated_response(results)
+        response.data['stage_counts'] = {key: stage_counts.get(key, 0) for key, _ in APPLICATION_STAGE_CHOICES}
+        response.data['postings'] = list(
+            JobPosting.objects.filter(employer=employer).order_by('-created_at').values('id', 'title', 'status')
+        )
+        return response
+
+
+class EmployerApplicantsBulkStageView(views.APIView):
+    """POST /hiring/applicants/bulk-stage/ {"ids": [...], "to_stage": "...", "note": "..."}
+    — move many applications at once. Same rules as a single move:
+    rejecting needs a note (the candidate sees it), and each move is
+    recorded as an ApplicationStageChange by the caller."""
+    permission_classes = [IsEmployerMember, IsApprovedEmployer]
+
+    def post(self, request):
+        membership = request.user.employer_membership
+        ids = request.data.get('ids')
+        if not isinstance(ids, list) or not ids:
+            return Response({'error': 'ids must be a non-empty list.'}, status=400)
+        serializer = StageChangeSerializer(data=request.data)
+        serializer.is_valid(raise_exception=True)
+        to_stage = serializer.validated_data['to_stage']
+        note = serializer.validated_data.get('note', '')
+
+        moved = 0
+        applications = Application.objects.filter(id__in=ids, job_posting__employer=membership.employer).exclude(stage=to_stage)
+        for application in applications:
+            from_stage = application.stage
+            application.stage = to_stage
+            application.save(update_fields=['stage', 'stage_updated_at'])
+            ApplicationStageChange.objects.create(
+                application=application, from_stage=from_stage, to_stage=to_stage,
+                changed_by=membership, note=note,
+            )
+            moved += 1
+        return Response({'moved': moved})
+
+
+class EmployerActivityView(views.APIView):
+    """GET /hiring/activity/ — the employer's activity timeline, newest
+    first, merged from: stage changes (with who made them), new
+    applications, postings created and published, and teammates joining.
+    ?type=stage_change|applied|posting_created|posting_published|member_joined,
+    ?member=<EmployerMember id> (only that teammate's actions), ?page=."""
+    permission_classes = [IsEmployerMember]
+    PAGE_SIZE = 30
+    TYPES = ('stage_change', 'applied', 'posting_created', 'posting_published', 'member_joined')
+
+    def get(self, request):
+        from employers.models import EmployerMember
+
+        employer = request.user.employer_membership.employer
+        try:
+            page = max(int(request.query_params.get('page', 1)), 1)
+        except ValueError:
+            page = 1
+        wanted = request.query_params.get('type')
+        types = [wanted] if wanted in self.TYPES else list(self.TYPES)
+        member_id = request.query_params.get('member')
+        if member_id:
+            # Only events a teammate performs themselves.
+            types = [t for t in types if t in ('stage_change', 'posting_created', 'member_joined')]
+
+        # Enough of each source to fill this page after merging.
+        take = page * self.PAGE_SIZE
+        events, total = [], 0
+
+        def member_name(member):
+            return _person_name(member.user) if member else 'A former teammate'
+
+        if 'stage_change' in types:
+            qs = ApplicationStageChange.objects.filter(application__job_posting__employer=employer)
+            if member_id:
+                qs = qs.filter(changed_by_id=member_id)
+            total += qs.count()
+            for c in qs.select_related('changed_by__user', 'application__candidate', 'application__job_posting').order_by('-created_at')[:take]:
+                events.append({
+                    'type': 'stage_change', 'at': c.created_at,
+                    'actor': member_name(c.changed_by),
+                    'candidate': _person_name(c.application.candidate),
+                    'posting_id': c.application.job_posting_id,
+                    'posting_title': c.application.job_posting.title,
+                    'from_stage': c.from_stage, 'to_stage': c.to_stage, 'note': c.note,
+                })
+        if 'applied' in types:
+            qs = Application.objects.filter(job_posting__employer=employer)
+            total += qs.count()
+            for a in qs.select_related('candidate', 'job_posting').order_by('-applied_at')[:take]:
+                events.append({
+                    'type': 'applied', 'at': a.applied_at,
+                    'actor': _person_name(a.candidate),
+                    'candidate': _person_name(a.candidate),
+                    'posting_id': a.job_posting_id, 'posting_title': a.job_posting.title,
+                })
+        if 'posting_created' in types:
+            qs = JobPosting.objects.filter(employer=employer)
+            if member_id:
+                qs = qs.filter(created_by_id=member_id)
+            total += qs.count()
+            for p in qs.select_related('created_by__user').order_by('-created_at')[:take]:
+                events.append({
+                    'type': 'posting_created', 'at': p.created_at,
+                    'actor': member_name(p.created_by) if p.created_by_id else 'Kaamlee team',
+                    'posting_id': p.id, 'posting_title': p.title,
+                })
+        if 'posting_published' in types:
+            qs = JobPosting.objects.filter(employer=employer, published_at__isnull=False)
+            total += qs.count()
+            for p in qs.order_by('-published_at')[:take]:
+                events.append({
+                    'type': 'posting_published', 'at': p.published_at,
+                    'actor': None, 'posting_id': p.id, 'posting_title': p.title,
+                })
+        if 'member_joined' in types:
+            qs = EmployerMember.objects.filter(employer=employer)
+            if member_id:
+                qs = qs.filter(id=member_id)
+            total += qs.count()
+            for m in qs.select_related('user').order_by('-created_at')[:take]:
+                events.append({
+                    'type': 'member_joined', 'at': m.created_at,
+                    'actor': _person_name(m.user), 'role': m.role,
+                })
+
+        events.sort(key=lambda e: e['at'], reverse=True)
+        start = (page - 1) * self.PAGE_SIZE
+        members = [
+            {'id': m.id, 'name': _person_name(m.user), 'role': m.role}
+            for m in EmployerMember.objects.filter(employer=employer).select_related('user').order_by('created_at')
+        ]
+        return Response({
+            'count': total,
+            'page': page,
+            'has_more': start + self.PAGE_SIZE < total,
+            'results': events[start:start + self.PAGE_SIZE],
+            'members': members,
+        })
+
+
 def _render_application_cv(application, fmt):
     """Shared by the employer- and admin-side CV views — renders the CV
     attached to `application` the same way the candidate's own
