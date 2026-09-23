@@ -23,6 +23,7 @@ import {
   Download,
   Calendar,
   CheckCircle2,
+  Link as LinkIcon,
 } from 'lucide-react';
 import { useRouter } from 'next/navigation';
 import { useMapPreview, CoordinatesButton, MapPreviewPopover } from '@/components/MapPreview';
@@ -30,6 +31,7 @@ import { useMapPreview, CoordinatesButton, MapPreviewPopover } from '@/component
 const HIRING_BASE = `${process.env.NEXT_PUBLIC_API_URL}/hiring`;
 const EMPLOYERS_BASE = `${process.env.NEXT_PUBLIC_API_URL}/employers`;
 const API_BASE = `${process.env.NEXT_PUBLIC_API_URL}/api`;
+const CANDIDATE_APP_URL = process.env.NEXT_PUBLIC_CANDIDATE_APP_URL || 'https://kaamlee.in';
 const PAGE_SIZE = 20;
 
 type JobStatus = 'draft' | 'published' | 'paused' | 'closed';
@@ -197,6 +199,13 @@ export default function PostingsPage() {
   const [selectedPosting, setSelectedPosting] = useState<Posting | null>(null);
   const [deletingPosting, setDeletingPosting] = useState<Posting | null>(null);
   const [deleting, setDeleting] = useState(false);
+  const [copiedPostingId, setCopiedPostingId] = useState<number | null>(null);
+
+  const copyJobLink = (posting: Posting) => {
+    navigator.clipboard.writeText(`${CANDIDATE_APP_URL}/apply/${posting.id}`);
+    setCopiedPostingId(posting.id);
+    setTimeout(() => setCopiedPostingId(null), 2000);
+  };
   const [viewingApplicantsFor, setViewingApplicantsFor] = useState<Posting | null>(null);
   const [showCreateModal, setShowCreateModal] = useState(false);
   const [employerOptions, setEmployerOptions] = useState<EmployerOption[]>([]);
@@ -536,6 +545,13 @@ export default function PostingsPage() {
                         {new Date(p.created_at).toLocaleDateString('en-IN', { day: '2-digit', month: 'short', year: 'numeric' })}
                       </td>
                       <td className="px-6 py-5 text-right" onClick={(e) => e.stopPropagation()}>
+                        <button
+                          onClick={() => copyJobLink(p)}
+                          className="cursor-pointer inline-flex items-center gap-1 mr-4 text-[#0b0b0c]/40 hover:text-[#0b0b0c] transition-colors"
+                          title="Copy job link"
+                        >
+                          {copiedPostingId === p.id ? <CheckCircle2 size={16} className="text-green-500" /> : <LinkIcon size={16} />}
+                        </button>
                         <button
                           onClick={() => setDeletingPosting(p)}
                           className="cursor-pointer inline-flex items-center gap-1 text-[#0b0b0c]/40 hover:text-red-500 transition-colors"
