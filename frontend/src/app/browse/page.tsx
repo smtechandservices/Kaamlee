@@ -2,7 +2,7 @@
 
 import React, { useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import Link from 'next/link';
-import { Loader2, Sparkles, Kanban, ArrowUpRight, Briefcase, ChevronLeft, ChevronRight } from 'lucide-react';
+import { Loader2, Sparkles, Kanban, ArrowUpRight, Briefcase, ChevronLeft, ChevronRight, Bookmark } from 'lucide-react';
 import Sidebar from '@/components/Sidebar';
 import PageHeader from '@/components/PageHeader';
 import { JobCard } from '@/components/JobCard';
@@ -10,7 +10,7 @@ import { PostingCard } from '@/components/PostingCard';
 import { useAuth } from '@/context/AuthContext';
 import { useSubscriptionGate } from '@/hooks/useSubscriptionGate';
 import { CARD_CLS } from '@/components/ui/landing-kit';
-import type { JobPosting, ApplicationStage } from '@/lib/hiring-types';
+import type { JobPosting, ApplicationStage, SavedPosting } from '@/lib/hiring-types';
 
 const API = process.env.NEXT_PUBLIC_API_URL;
 const JOBS_PER_PAGE = 10;
@@ -44,7 +44,7 @@ interface AppliedRow {
   title: string;
   company: string;
   status: string;
-  tone: 'active' | 'good' | 'bad';
+  tone: 'active' | 'good' | 'bad' | 'saved';
   href: string;
   external: boolean;
   at: string;
@@ -61,7 +61,11 @@ const TONE_CLS: Record<AppliedRow['tone'], string> = {
   active: 'bg-[#16a34a]/10 text-[#16a34a]',
   good: 'bg-blue-500/10 text-blue-600',
   bad: 'bg-red-500/10 text-red-600',
+  saved: 'bg-slate-100 text-slate-600',
 };
+
+// Shown in the panel instead when there are no applications yet.
+const MAX_BOOKMARKS_SHOWN = 5;
 
 type TriState = 'all' | 'yes' | 'no';
 
@@ -119,6 +123,7 @@ export default function BrowsePage() {
   const [loadingJobs, setLoadingJobs] = useState(true);
 
   const [applied, setApplied] = useState<AppliedRow[]>([]);
+  const [bookmarks, setBookmarks] = useState<AppliedRow[]>([]);
   const [loadingApplied, setLoadingApplied] = useState(true);
 
   const authed = useCallback(async (url: string, init?: RequestInit) => {
@@ -143,7 +148,8 @@ export default function BrowsePage() {
     Promise.all([
       authed(`${API}/hiring/applications/mine/`).then((r) => (r.ok ? r.json() : [])).catch(() => []),
       authed(`${API}/api/applications/`).then((r) => (r.ok ? r.json() : [])).catch(() => []),
-    ]).then(([kaamlee, tracked]: [KaamleeApplication[], TrackedJob[]]) => {
+      authed(`${API}/hiring/saved/mine/`).then((r) => (r.ok ? r.json() : [])).catch(() => []),
+    ]).then(([kaamlee, tracked, savedPostings]: [KaamleeApplication[], TrackedJob[], SavedPosting[]]) => {
       const rows: AppliedRow[] = [
         ...(Array.isArray(kaamlee) ? kaamlee : []).map((a) => ({
           key: `k-${a.id}`,
@@ -171,6 +177,36 @@ export default function BrowsePage() {
           })),
       ].sort((a, b) => new Date(b.at).getTime() - new Date(a.at).getTime());
       setApplied(rows);
+
+      // Latest bookmarks — scraped jobs still at "saved" plus saved
+      // employer postings not applied to yet — for the panel's empty state.
+      const saved: AppliedRow[] = [
+        ...(Array.isArray(tracked) ? tracked : [])
+          .filter((t) => t.status === 'saved')
+          .map((t) => ({
+            key: `b-${t.id}`,
+            title: t.job.title,
+            company: t.job.company || 'Confidential',
+            status: 'Saved',
+            tone: 'saved' as const,
+            href: t.job.job_url,
+            external: true,
+            at: t.status_updated_at,
+          })),
+        ...(Array.isArray(savedPostings) ? savedPostings : [])
+          .filter((sp) => !sp.job_posting.has_applied)
+          .map((sp) => ({
+            key: `s-${sp.id}`,
+            title: sp.job_posting.title,
+            company: sp.job_posting.employer_name,
+            status: 'Saved',
+            tone: 'saved' as const,
+            href: `/apply/${sp.job_posting.id}`,
+            external: false,
+            at: sp.created_at,
+          })),
+      ].sort((a, b) => new Date(b.at).getTime() - new Date(a.at).getTime());
+      setBookmarks(saved.slice(0, MAX_BOOKMARKS_SHOWN));
     }).finally(() => setLoadingApplied(false));
   }, [token, authed]);
 
@@ -241,6 +277,9 @@ export default function BrowsePage() {
   }, [authed, jobs, suggested]);
 
   const totalPages = Math.max(1, Math.ceil(jobsCount / JOBS_PER_PAGE));
+  // No applications yet → the panel shows recent bookmarks instead.
+  const showBookmarks = applied.length === 0 && bookmarks.length > 0;
+  const panelRows = showBookmarks ? bookmarks : applied.slice(0, MAX_APPLIED_SHOWN);
   const totalInCategory = jobsCount;
   const chips = useMemo(() => ['All', ...categories], [categories]);
 
@@ -397,18 +436,23 @@ export default function BrowsePage() {
               <aside className={`${CARD_CLS} p-5 lg:sticky lg:top-2`}>
                 <div className="flex items-center justify-between mb-4">
                   <h2 className="text-[16px] font-semibold tracking-[-0.01em] flex items-center gap-2" style={{ fontFamily: 'var(--font-outfit)' }}>
-                    <Kanban size={16} className="text-[#16a34a]" /> Your applications
+                    {showBookmarks
+                      ? <><Bookmark size={16} className="text-[#16a34a]" /> Your bookmarks</>
+                      : <><Kanban size={16} className="text-[#16a34a]" /> Your applications</>}
                   </h2>
-                  <span className="text-[12px] text-black/45">{applied.length}</span>
+                  <span className="text-[12px] text-black/45">{showBookmarks ? bookmarks.length : applied.length}</span>
                 </div>
 
                 {loadingApplied ? (
                   <div className="py-8 flex justify-center"><Loader2 className="w-5 h-5 text-[#16a34a] animate-spin" /></div>
-                ) : applied.length === 0 ? (
-                  <p className="text-[13px] text-black/50 py-4 text-center">You haven&apos;t applied anywhere yet.</p>
+                ) : panelRows.length === 0 ? (
+                  <p className="text-[13px] text-black/50 py-4 text-center">You haven&apos;t applied to or bookmarked anything yet.</p>
                 ) : (
                   <div className="flex flex-col gap-2">
-                    {applied.slice(0, MAX_APPLIED_SHOWN).map((a) => {
+                    {showBookmarks && (
+                      <p className="text-[12px] text-black/50 -mt-1 mb-1">No applications yet — here&apos;s what you saved recently.</p>
+                    )}
+                    {panelRows.map((a) => {
                       const body = (
                         <>
                           <div className="min-w-0 flex-1">
@@ -429,7 +473,7 @@ export default function BrowsePage() {
                 )}
 
                 <Link href="/applications" className="mt-4 flex items-center justify-center gap-1 text-[13px] font-medium text-[#16a34a] hover:text-[#15803d]" style={{ fontFamily: 'var(--font-outfit)' }}>
-                  {applied.length > MAX_APPLIED_SHOWN ? `View all ${applied.length} in tracker` : 'Open tracker'} <ArrowUpRight size={14} />
+                  {!showBookmarks && applied.length > MAX_APPLIED_SHOWN ? `View all ${applied.length} in tracker` : 'Open tracker'} <ArrowUpRight size={14} />
                 </Link>
               </aside>
             </div>

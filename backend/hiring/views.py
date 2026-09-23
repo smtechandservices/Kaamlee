@@ -756,8 +756,8 @@ class SuggestedJobPostingsView(views.APIView):
     """GET /hiring/jobs/suggested/ — published employer postings the
     candidate hasn't applied to yet, ranked for them. Signals, cheapest
     first: categories they've applied to / saved (Kaamlee postings and
-    tracked scraped jobs alike), their resume's role, and their resume
-    skills. Falls back to the newest postings when there's nothing to go on.
+    tracked scraped jobs alike), title words shared with jobs they've
+    bookmarked, their resume's role, and their resume skills. Falls back to the newest postings when there's nothing to go on.
     Each result carries a short match_reason for the card."""
     permission_classes = [permissions.IsAuthenticated]
     LIMIT = 5
@@ -776,6 +776,18 @@ class SuggestedJobPostingsView(views.APIView):
             Bookmark.objects.filter(user=user).values_list('job__category', flat=True)
         )
         categories = {c.lower() for c in categories if c and c.lower() != 'other'}
+
+        # Bookmarks as a signal in their own right, not just via category:
+        # words from the titles of the most recent things they've saved
+        # (scraped jobs and employer postings alike).
+        saved_titles = list(
+            Bookmark.objects.filter(user=user).order_by('-created_at').values_list('job__title', flat=True)[:20]
+        ) + list(
+            SavedJob.objects.filter(user=user).order_by('-created_at').values_list('job_posting__title', flat=True)[:20]
+        )
+        bookmark_words = set()
+        for title in saved_titles:
+            bookmark_words |= _words(title)
 
         role_words = _words(parsed.get('role'))
         for exp in (parsed.get('experience') or [])[:2]:
@@ -813,6 +825,10 @@ class SuggestedJobPostingsView(views.APIView):
             if job.category and job.category.lower() in categories:
                 score += 3
                 reasons.append(f"You're into {job.category}")
+            bookmark_hits = bookmark_words & title_words
+            if bookmark_hits:
+                score += 2 * min(len(bookmark_hits), 3)
+                reasons.append('Similar to jobs you saved')
             role_hits = role_words & title_words
             if role_hits:
                 score += 2 * len(role_hits)
