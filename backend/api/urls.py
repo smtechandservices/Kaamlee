@@ -1,10 +1,10 @@
 from django.urls import path, include
 from rest_framework.routers import DefaultRouter
-from rest_framework.authtoken.views import obtain_auth_token
 from .views import (
     JobViewSet, StatsView, CompaniesView, CompanyViewSet,
     SignupView, GoogleAuthView, UserView, RecentJobsView,
-    CheckExistenceView, AdminLoginView, AdminChangeOwnPasswordView, AdminUserViewSet, CategoriesView, CountriesView,
+    CheckExistenceView, LoginView, LogoutView, AdminLoginView,
+    AdminSessionListView, AdminSessionRevokeView, AdminSessionBulkView, AdminChangeOwnPasswordView, AdminUserViewSet, CategoriesView, CountriesView,
     FeedbackView, AdminFeedbackView, PublicPortfolioView, MyPortfolioView, MyPortfolioContentView, PortfolioAnalyticsView,
     CustomCVListCreateView, CustomCVDetailView, CustomCVTailorView, CustomCVExportView,
     JobApplicationKitView, AtsKeywordsView, ApplicationsView, AdminJobsView, ChangePasswordView,
@@ -24,7 +24,8 @@ urlpatterns = [
     # ==========================================
     path('user/', UserView.as_view(), name='user'),
     path('user/change-password/', ChangePasswordView.as_view(), name='change-password'),
-    path('login/', obtain_auth_token, name='login'),
+    path('login/', LoginView.as_view(), name='login'),
+    path('logout/', LogoutView.as_view(), name='logout'),
     path('signup/', SignupView.as_view(), name='signup'),
     path('auth/google/', GoogleAuthView.as_view(), name='auth-google'),
     path('otp/request/', RequestEmailOtpView.as_view(), name='otp-request'),
@@ -32,6 +33,9 @@ urlpatterns = [
     path('otp/confirm/', ConfirmEmailOtpView.as_view(), name='otp-confirm'),
     path('admin-login/', AdminLoginView.as_view(), name='admin-login'),
     path('admin/me/change-password/', AdminChangeOwnPasswordView.as_view(), name='admin-change-own-password'),
+    path('admin/sessions/', AdminSessionListView.as_view(), name='admin-sessions'),
+    path('admin/sessions/bulk/', AdminSessionBulkView.as_view(), name='admin-sessions-bulk'),
+    path('admin/sessions/<int:user_id>/', AdminSessionRevokeView.as_view(), name='admin-session-revoke'),
     
     # ==========================================
     # CORE API

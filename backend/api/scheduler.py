@@ -224,6 +224,16 @@ def _reconcile_stale_runs():
         logger.info(f"[AutoScrape] Marked {count} stale 'running' run(s) from a previous process as failed.")
 
 
+def _purge_expired_tokens():
+    from .tokens import purge_expired_tokens
+    try:
+        deleted = purge_expired_tokens()
+        if deleted:
+            logger.info(f"[Sessions] Deleted {deleted} expired login token(s).")
+    except Exception:
+        logger.exception("[Sessions] Failed to purge expired login tokens")
+
+
 def start():
     if not _become_leader():
         logger.info("[AutoScrape] Another worker already owns the scheduler — not starting one here.")
@@ -239,5 +249,15 @@ def start():
         id="auto_scrape",
         replace_existing=True,
     )
+    # Expired login tokens are deleted on their next use anyway; this clears
+    # the ones nobody comes back with (see api/tokens.py).
+    scheduler.add_job(
+        _purge_expired_tokens,
+        trigger="interval",
+        hours=1,
+        id="purge_expired_tokens",
+        replace_existing=True,
+    )
+    _purge_expired_tokens()
     scheduler.start()
     logger.info(f"[AutoScrape] Scheduler started (leader worker, pid={os.getpid()}) — fires every {INTERVAL_MINUTES} minutes.")

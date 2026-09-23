@@ -22,6 +22,7 @@ from .google_auth import get_or_create_google_user, _unique_username_from_email
 from .email_otp import create_otp, verify_otp
 from .constants import JOB_CATEGORIES
 from .scraper_events import publish_scraper_event
+from .tokens import issue_token, is_expired, expires_at, purge_expired_tokens, TOKEN_TTL
 from django.core.validators import validate_email
 from django.core.exceptions import ValidationError as DjangoValidationError
 from scripts.ats_scoring import score_cv, get_profession_keywords, get_all_profession_keywords
@@ -193,7 +194,7 @@ class SignupView(generics.CreateAPIView):
         serializer = self.get_serializer(data=request.data)
         serializer.is_valid(raise_exception=True)
         user = serializer.save()
-        token, created = Token.objects.get_or_create(user=user)
+        token = issue_token(user)
         return Response({
             "user": UserSerializer(user).data,
             "token": token.key
@@ -212,7 +213,7 @@ class GoogleAuthView(views.APIView):
         except ValueError as e:
             return Response({"error": str(e)}, status=400)
 
-        token, created = Token.objects.get_or_create(user=user)
+        token = issue_token(user)
         return Response({
             "user": UserSerializer(user).data,
             "token": token.key
@@ -275,7 +276,7 @@ class VerifyEmailOtpView(views.APIView):
             user.save()
             created = True
 
-        token, _ = Token.objects.get_or_create(user=user)
+        token = issue_token(user)
         return Response({
             "user": UserSerializer(user).data,
             "token": token.key,
@@ -333,6 +334,124 @@ class AdminChangeOwnPasswordView(views.APIView):
         serializer.is_valid(raise_exception=True)
         serializer.save()
         return Response({'detail': 'Password updated successfully.'})
+
+class AdminSessionPagination(PageNumberPagination):
+    page_size = 25
+    page_size_query_param = 'page_size'
+    max_page_size = 100
+
+
+def _session_account_type(user):
+    if user.is_superuser or user.is_staff:
+        return 'admin'
+    if hasattr(user, 'employer_membership'):
+        return 'employer'
+    return 'candidate'
+
+
+class AdminSessionListView(views.APIView):
+    """GET /api/admin/sessions/ — every issued login token (one per user,
+    see api/tokens.py), newest first. ?type=candidate|employer|admin,
+    ?status=active|expired, ?search= (username/email/name). Token keys are
+    never returned — a session is identified by its user."""
+    permission_classes = [permissions.IsAdminUser]
+
+    def get(self, request):
+        # Expired tokens are deleted hourly by the scheduler; do it here too
+        # so the list is never showing sessions that are already dead.
+        purge_expired_tokens()
+        now = timezone.now()
+        cutoff = now - TOKEN_TTL
+        queryset = (
+            Token.objects.select_related('user', 'user__employer_membership__employer')
+            .order_by('-created')
+        )
+        account_type = request.query_params.get('type')
+        if account_type == 'admin':
+            queryset = queryset.filter(Q(user__is_superuser=True) | Q(user__is_staff=True))
+        elif account_type == 'employer':
+            queryset = queryset.filter(user__is_superuser=False, user__is_staff=False, user__employer_membership__isnull=False)
+        elif account_type == 'candidate':
+            queryset = queryset.filter(user__is_superuser=False, user__is_staff=False, user__employer_membership__isnull=True)
+
+        status_param = request.query_params.get('status')
+        if status_param == 'active':
+            queryset = queryset.filter(created__gt=cutoff)
+        elif status_param == 'expired':
+            queryset = queryset.filter(created__lte=cutoff)
+
+        search = (request.query_params.get('search') or '').strip()
+        if search:
+            queryset = queryset.filter(
+                Q(user__username__icontains=search) | Q(user__email__icontains=search)
+                | Q(user__first_name__icontains=search) | Q(user__last_name__icontains=search)
+            )
+
+        all_tokens = Token.objects.all()
+        stats = {
+            'active': all_tokens.filter(created__gt=cutoff).count(),
+            'expired': all_tokens.filter(created__lte=cutoff).count(),
+            'ttl_hours': int(TOKEN_TTL.total_seconds() // 3600),
+        }
+
+        paginator = AdminSessionPagination()
+        page = paginator.paginate_queryset(queryset, request, view=self)
+        results = []
+        for token in page:
+            user = token.user
+            membership = getattr(user, 'employer_membership', None)
+            results.append({
+                'user_id': user.id,
+                'username': user.username,
+                'email': user.email,
+                'name': f"{user.first_name} {user.last_name}".strip(),
+                'account_type': _session_account_type(user),
+                'employer_name': membership.employer.name if membership else None,
+                'employer_role': membership.role if membership else None,
+                'issued_at': token.created,
+                'expires_at': expires_at(token),
+                'is_expired': is_expired(token),
+                'is_you': user.id == request.user.id,
+            })
+        response = paginator.get_paginated_response(results)
+        response.data['stats'] = stats
+        return response
+
+
+class AdminSessionRevokeView(views.APIView):
+    """DELETE /api/admin/sessions/<user_id>/ — force-log-out one user by
+    deleting their token (they're signed out on every device). Your own
+    session can't be revoked here — use Logout."""
+    permission_classes = [permissions.IsAdminUser]
+
+    def delete(self, request, user_id):
+        if user_id == request.user.id:
+            return Response({'error': "That's your own session — use Logout instead."}, status=400)
+        deleted, _ = Token.objects.filter(user_id=user_id).delete()
+        if not deleted:
+            return Response({'error': 'No session for this user.'}, status=404)
+        return Response(status=204)
+
+
+class AdminSessionBulkView(views.APIView):
+    """POST /api/admin/sessions/bulk/ — {"action": "purge_expired"} deletes
+    every expired token; {"action": "revoke", "user_ids": [...]} force-logs-
+    out those users. Your own session is always skipped."""
+    permission_classes = [permissions.IsAdminUser]
+
+    def post(self, request):
+        action_name = request.data.get('action')
+        if action_name == 'purge_expired':
+            deleted, _ = Token.objects.filter(created__lte=timezone.now() - TOKEN_TTL).delete()
+            return Response({'deleted': deleted})
+        if action_name == 'revoke':
+            user_ids = request.data.get('user_ids')
+            if not isinstance(user_ids, list) or not user_ids:
+                return Response({'error': 'user_ids must be a non-empty list.'}, status=400)
+            deleted, _ = Token.objects.filter(user_id__in=user_ids).exclude(user_id=request.user.id).delete()
+            return Response({'deleted': deleted})
+        return Response({'error': 'action must be purge_expired or revoke.'}, status=400)
+
 
 class RecentJobsView(generics.ListAPIView):
     serializer_class = RecentJobSerializer
@@ -1138,6 +1257,27 @@ class RunGeocodeView(views.APIView):
 
         return StreamingHttpResponse(event_stream(), content_type='application/x-ndjson')
 
+class LoginView(ObtainAuthToken):
+    """POST /api/login/ — username/password login for candidates and
+    employer members. Same as DRF's obtain_auth_token, but issues through
+    issue_token so an expired token is replaced rather than handed back."""
+    def post(self, request, *args, **kwargs):
+        serializer = self.serializer_class(data=request.data, context={'request': request})
+        serializer.is_valid(raise_exception=True)
+        return Response({'token': issue_token(serializer.validated_data['user']).key})
+
+
+class LogoutView(views.APIView):
+    """POST /api/logout/ — deletes the caller's token on the server, so it
+    stops working immediately (not just when the browser forgets it)."""
+    permission_classes = [permissions.IsAuthenticated]
+
+    def post(self, request):
+        if isinstance(request.auth, Token):
+            request.auth.delete()
+        return Response(status=204)
+
+
 class AdminLoginView(ObtainAuthToken):
     def post(self, request, *args, **kwargs):
         serializer = self.serializer_class(data=request.data, context={'request': request})
@@ -1145,7 +1285,7 @@ class AdminLoginView(ObtainAuthToken):
         user = serializer.validated_data['user']
         if not user.is_superuser:
             return Response({"error": "Only superusers can access the admin dashboard."}, status=403)
-        token, created = Token.objects.get_or_create(user=user)
+        token = issue_token(user)
         return Response({
             'token': token.key,
             'user': UserSerializer(user).data

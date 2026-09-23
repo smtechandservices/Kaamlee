@@ -3,6 +3,7 @@ from urllib.parse import parse_qs
 from channels.db import database_sync_to_async
 from channels.generic.websocket import AsyncJsonWebsocketConsumer
 from rest_framework.authtoken.models import Token
+from .tokens import is_expired
 
 GROUP = 'scraper_runs'
 
@@ -58,6 +59,9 @@ class ScraperConsumer(AsyncJsonWebsocketConsumer):
         try:
             token = Token.objects.select_related('user').get(key=token_key)
         except Token.DoesNotExist:
+            return None
+        if is_expired(token):
+            token.delete()
             return None
         return token.user if token.user.is_superuser else None
 

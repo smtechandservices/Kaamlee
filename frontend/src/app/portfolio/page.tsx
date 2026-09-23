@@ -230,8 +230,9 @@ export default function PortfolioSettingsPage() {
                         <button
                           type="button"
                           onClick={() => {
-                            const authToken = sessionStorage.getItem('kaamlee_token');
-                            if (authToken) localStorage.setItem('kaamlee_edit_token', authToken);
+                            // No token handoff needed: a tab opened with
+                            // window.open (without noopener) starts with a
+                            // copy of this tab's sessionStorage, login included.
                             window.open(`/portfolio/${user.username}?edit=1`, '_blank');
                           }}
                           className={`cursor-pointer ${SECONDARY_BTN_CLS} !px-3.5 !py-1.5 !text-[11px]`}

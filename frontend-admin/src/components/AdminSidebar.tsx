@@ -4,7 +4,7 @@ import { useEffect, useState } from 'react';
 import Link from 'next/link';
 import Image from 'next/image';
 import { usePathname, useRouter } from 'next/navigation';
-import { LayoutDashboard, Building2, ShieldCheck, CreditCard, Users, MessageSquare, LogOut, Briefcase, GraduationCap, Radio, FileText } from 'lucide-react';
+import { LayoutDashboard, Building2, ShieldCheck, CreditCard, Users, MessageSquare, LogOut, Briefcase, GraduationCap, Radio, FileText, KeyRound } from 'lucide-react';
 
 const NAV_ITEMS = [
   { href: '/', label: 'Dashboard', icon: LayoutDashboard },
@@ -14,6 +14,7 @@ const NAV_ITEMS = [
   { href: '/revenue', label: 'Finance', icon: CreditCard },
   { href: '/users', label: 'Users', icon: Users },
   { href: '/feedback', label: 'Feedback', icon: MessageSquare },
+  { href: '/sessions', label: 'Sessions', icon: KeyRound },
 ];
 
 const EMPLOYER_ITEM = { href: '/employers', label: 'Employers', icon: ShieldCheck };
@@ -66,6 +67,16 @@ export default function AdminSidebar() {
   const profileTitle = [adminUser?.first_name, adminUser?.last_name].filter(Boolean).join(' ') || adminUser?.username || 'Profile';
 
   const handleLogout = () => {
+    // Delete the token on the server too (fire-and-forget) so it can't be
+    // reused after logout.
+    const token = localStorage.getItem('admin_token');
+    if (token) {
+      fetch(`${process.env.NEXT_PUBLIC_API_URL}/api/logout/`, {
+        method: 'POST',
+        headers: { Authorization: `Token ${token}` },
+        keepalive: true,
+      }).catch(() => {});
+    }
     localStorage.removeItem('admin_token');
     localStorage.removeItem('admin_user');
     router.push('/login');

@@ -261,8 +261,9 @@ export default function PortfolioTemplate({ data, forceOwner }: { data: Portfoli
 
     const stripEditParam = () => router.replace(window.location.pathname, { scroll: false });
 
-    const token = localStorage.getItem('kaamlee_edit_token') || sessionStorage.getItem('kaamlee_token');
+    // Clear any leftover token copy from the old localStorage handoff.
     localStorage.removeItem('kaamlee_edit_token');
+    const token = sessionStorage.getItem('kaamlee_token');
     if (!token) { stripEditParam(); return; }
     const apiUrl = process.env.NEXT_PUBLIC_API_URL || 'http://localhost:8000';
     fetch(`${apiUrl}/api/user/`, { headers: { Authorization: `Token ${token}` } })

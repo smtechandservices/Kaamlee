@@ -4,7 +4,7 @@ import Link from 'next/link';
 import Image from 'next/image';
 import { usePathname, useRouter } from 'next/navigation';
 import { LayoutDashboard, ShieldCheck, Users, Briefcase, LogOut } from 'lucide-react';
-import { clearToken } from '@/lib/auth';
+import { logout } from '@/lib/auth';
 
 const NAV_ITEMS = [
   { href: '/', label: 'Dashboard', icon: LayoutDashboard },
@@ -25,7 +25,7 @@ export default function EmployerSidebar() {
   if (pathname === '/login') return null;
 
   const handleLogout = () => {
-    clearToken();
+    logout();
     router.push('/login');
   };
 

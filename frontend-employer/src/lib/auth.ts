@@ -16,6 +16,20 @@ export function clearToken(): void {
   localStorage.removeItem(TOKEN_KEY);
 }
 
+// Logout proper: deletes the token on the server (so a copied token stops
+// working immediately), then forgets it locally either way.
+export function logout(): void {
+  const token = getToken();
+  if (token) {
+    fetch(`${process.env.NEXT_PUBLIC_API_URL}/api/logout/`, {
+      method: 'POST',
+      headers: authHeaders(token),
+      keepalive: true,
+    }).catch(() => {});
+  }
+  clearToken();
+}
+
 export function authHeaders(token: string): Record<string, string> {
   return { Authorization: `Token ${token}` };
 }

@@ -77,6 +77,17 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
   };
 
   const logout = () => {
+    // Delete the token on the server too, so a copy of it stops working now
+    // rather than lingering until it expires. Fire-and-forget: the local
+    // logout below happens regardless (keepalive lets it finish mid-navigation).
+    const current = sessionStorage.getItem('kaamlee_token');
+    if (current) {
+      fetch(`${process.env.NEXT_PUBLIC_API_URL}/api/logout/`, {
+        method: 'POST',
+        headers: { Authorization: `Token ${current}` },
+        keepalive: true,
+      }).catch(() => {});
+    }
     sessionStorage.removeItem('kaamlee_token');
     setToken(null);
     setUser(null);
