@@ -108,6 +108,7 @@ export default function EmployersKYCPage() {
   const [editingMember, setEditingMember] = useState<{ employerId: number; member: EmployerMember } | null>(null);
   const [managingTeamId, setManagingTeamId] = useState<number | null>(null);
   const [deletingEmployer, setDeletingEmployer] = useState<Employer | null>(null);
+  const [editingEmployer, setEditingEmployer] = useState<Employer | null>(null);
   const managingTeamEmployer = employers.find((e) => e.id === managingTeamId) ?? null;
   const [removingDocId, setRemovingDocId] = useState<number | null>(null);
   const [isCreating, setIsCreating] = useState(false);
@@ -487,6 +488,14 @@ export default function EmployersKYCPage() {
                           </button>
                         )}
                         <button
+                          onClick={() => setEditingEmployer(e)}
+                          disabled={updatingId === e.id}
+                          className="cursor-pointer mt-2 flex items-center gap-1 text-xs font-semibold text-purple-600 hover:text-purple-500 transition-colors disabled:opacity-50"
+                          title="Edit employer"
+                        >
+                          <Pencil size={12} /> Edit
+                        </button>
+                        <button
                           onClick={() => setDeletingEmployer(e)}
                           disabled={updatingId === e.id}
                           className="cursor-pointer mt-2 flex items-center gap-1 text-xs font-semibold text-red-500/80 hover:text-red-600 transition-colors disabled:opacity-50"
@@ -560,6 +569,19 @@ export default function EmployersKYCPage() {
               } else {
                 fetchEmployers();
               }
+            }}
+          />
+        )}
+      </AnimatePresence>
+
+      <AnimatePresence>
+        {editingEmployer && (
+          <EditEmployerModal
+            employer={editingEmployer}
+            onClose={() => setEditingEmployer(null)}
+            onSaved={(updated) => {
+              setEmployers((prev) => prev.map((e) => (e.id === editingEmployer.id ? { ...e, ...updated } : e)));
+              setEditingEmployer(null);
             }}
           />
         )}
@@ -942,7 +964,8 @@ function useAvailability(field: 'username' | 'email', value: string): Availabili
 
 // Same idea for the company contact email, checked against existing
 // employers via the admin list endpoint's exact contact_email filter.
-function useContactEmailAvailability(value: string): Availability {
+// `excludeId` skips the employer being edited so its own email isn't "taken".
+function useContactEmailAvailability(value: string, excludeId?: number): Availability {
   const [state, setState] = useState<Availability>('idle');
 
   useEffect(() => {
@@ -963,7 +986,8 @@ function useContactEmailAvailability(value: string): Availability {
         });
         if (!res.ok) { setState('idle'); return; }
         const data = await res.json();
-        setState(data.count > 0 ? 'taken' : 'available');
+        const taken = (data.results as { id: number }[]).some((r) => r.id !== excludeId);
+        setState(taken ? 'taken' : 'available');
       } catch {
         if (!controller.signal.aborted) setState('idle');
       }
@@ -972,7 +996,7 @@ function useContactEmailAvailability(value: string): Availability {
       clearTimeout(timer);
       controller.abort();
     };
-  }, [value]);
+  }, [value, excludeId]);
 
   return state;
 }
@@ -1175,6 +1199,165 @@ function CreateEmployerModal({ onClose, onCreated }: {
           >
             {saving ? <Loader2 size={18} className="animate-spin" /> : null}
             Create employer
+          </button>
+        </div>
+      </motion.div>
+    </motion.div>
+  );
+}
+
+// Edit the company profile only. KYC status goes through approve/reject and
+// logins through Manage team; an uploaded logo file still wins over logo_url.
+function EditEmployerModal({ employer, onClose, onSaved }: {
+  employer: Employer;
+  onClose: () => void;
+  onSaved: (updated: Partial<Employer>) => void;
+}) {
+  const [form, setForm] = useState({
+    name: employer.name,
+    legal_name: employer.legal_name,
+    industry: employer.industry,
+    size: employer.size,
+    website: employer.website,
+    logo_url: employer.logo_url,
+    address: employer.address,
+    contact_email: employer.contact_email,
+    contact_phone: employer.contact_phone,
+  });
+  const [saving, setSaving] = useState(false);
+  const [error, setError] = useState('');
+  const router = useRouter();
+
+  const contactEmailState = useContactEmailAvailability(form.contact_email, employer.id);
+
+  const set = (field: keyof typeof form) => (e: React.ChangeEvent<HTMLInputElement>) =>
+    setForm((f) => ({ ...f, [field]: e.target.value }));
+
+  const canSubmit = form.name.trim() && form.contact_email.trim() && contactEmailState !== 'taken';
+
+  const handleSave = async () => {
+    const token = localStorage.getItem('admin_token');
+    if (!token) { router.push('/login'); return; }
+    setSaving(true);
+    setError('');
+    try {
+      const res = await fetch(`${EMPLOYERS_BASE}/admin/kyc/${employer.id}/`, {
+        method: 'PATCH',
+        headers: { Authorization: `Token ${token}`, 'Content-Type': 'application/json' },
+        body: JSON.stringify(form),
+      });
+      const data = await res.json();
+      if (res.ok) {
+        onSaved(data as Partial<Employer>);
+      } else {
+        setError(Object.values(data).flat().join(' ') || 'Failed to update employer.');
+      }
+    } catch {
+      setError('Failed to reach the server.');
+    } finally {
+      setSaving(false);
+    }
+  };
+
+  return (
+    <motion.div
+      initial={{ opacity: 0 }}
+      animate={{ opacity: 1 }}
+      exit={{ opacity: 0 }}
+      className="fixed inset-0 bg-black/80 backdrop-blur-sm z-50 flex items-center justify-center p-4"
+      onClick={onClose}
+    >
+      <motion.div
+        initial={{ scale: 0.95, opacity: 0 }}
+        animate={{ scale: 1, opacity: 1 }}
+        exit={{ scale: 0.95, opacity: 0 }}
+        onClick={(e) => e.stopPropagation()}
+        className="bg-white border border-black/[0.12] rounded-3xl w-full max-w-lg shadow-2xl flex flex-col max-h-[90vh]"
+      >
+        <div className="p-6 border-b border-black/[0.12] bg-black/[0.04] rounded-t-3xl shrink-0 flex items-center justify-between">
+          <h2 className="text-xl font-bold flex items-center gap-2">
+            <Pencil size={20} className="text-purple-600" />
+            Edit employer
+          </h2>
+          <button onClick={onClose} className="cursor-pointer p-2 hover:bg-black/[0.08] rounded-lg transition-colors text-[#0b0b0c]/40 hover:text-[#0b0b0c]">
+            <X size={20} />
+          </button>
+        </div>
+
+        <div className="p-6 space-y-4 overflow-y-auto">
+          {error && (
+            <div className="text-sm text-red-500 bg-red-500/10 border border-red-500/20 rounded-xl px-4 py-3">{error}</div>
+          )}
+
+          <div className="grid grid-cols-2 gap-3">
+            <div>
+              <label className={LABEL_CLASS}>Company name<span className="text-purple-600"> *</span></label>
+              <input type="text" value={form.name} onChange={set('name')} className={INPUT_CLASS} />
+            </div>
+            <div>
+              <label className={LABEL_CLASS}>Legal name</label>
+              <input type="text" value={form.legal_name} onChange={set('legal_name')} className={INPUT_CLASS} />
+            </div>
+          </div>
+          <div className="grid grid-cols-2 gap-3">
+            <div>
+              <label className={LABEL_CLASS}>Contact email<span className="text-purple-600"> *</span></label>
+              <input type="email" value={form.contact_email} onChange={set('contact_email')}
+                className={`${INPUT_CLASS} ${contactEmailState === 'taken' ? '!border-red-500' : ''}`} />
+              <AvailabilityHint state={contactEmailState} takenLabel="Another employer uses this email" />
+            </div>
+            <div>
+              <label className={LABEL_CLASS}>Contact phone</label>
+              <input type="tel" value={form.contact_phone} onChange={set('contact_phone')} className={INPUT_CLASS} />
+            </div>
+          </div>
+          <div className="grid grid-cols-2 gap-3">
+            <div>
+              <label className={LABEL_CLASS}>Industry</label>
+              <input type="text" value={form.industry} onChange={set('industry')} className={INPUT_CLASS} />
+            </div>
+            <div>
+              <label className={LABEL_CLASS}>Company size</label>
+              <input type="text" placeholder="e.g. 11-50" value={form.size} onChange={set('size')} className={INPUT_CLASS} />
+            </div>
+          </div>
+          <div>
+            <label className={LABEL_CLASS}>Website</label>
+            <input type="url" placeholder="https://" value={form.website} onChange={set('website')} className={INPUT_CLASS} />
+          </div>
+          <div>
+            <label className={LABEL_CLASS}>Address</label>
+            <input type="text" value={form.address} onChange={set('address')} className={INPUT_CLASS} />
+          </div>
+          <div>
+            <label className={LABEL_CLASS}>Logo URL</label>
+            <div className="flex items-center gap-3">
+              <input type="url" placeholder="https://example.com/logo.png" value={form.logo_url} onChange={set('logo_url')} className={INPUT_CLASS} />
+              <div className="w-10 h-10 rounded-xl bg-black/[0.03] border border-black/[0.08] flex items-center justify-center overflow-hidden shrink-0">
+                {/^https?:\/\//.test(form.logo_url.trim()) ? (
+                  <img src={form.logo_url.trim()} alt="" className="w-full h-full object-contain bg-white" />
+                ) : (
+                  <Building2 size={16} className="text-[#0b0b0c]/30" />
+                )}
+              </div>
+            </div>
+            {employer.logo && employer.logo !== employer.logo_url && (
+              <p className="text-xs text-[#0b0b0c]/50 mt-1.5">This employer uploaded a logo file, which is shown instead of this URL.</p>
+            )}
+          </div>
+        </div>
+
+        <div className="p-6 bg-black/[0.04] border-t border-black/[0.12] flex gap-3 shrink-0 rounded-b-3xl">
+          <button onClick={onClose} className="cursor-pointer flex-1 py-3 rounded-xl bg-black/[0.05] hover:bg-black/[0.10] font-bold transition-all">
+            Cancel
+          </button>
+          <button
+            disabled={saving || !canSubmit}
+            onClick={handleSave}
+            className="cursor-pointer flex-1 py-3 rounded-xl bg-purple-600 hover:bg-purple-700 text-white disabled:opacity-40 disabled:cursor-not-allowed font-bold transition-all flex items-center justify-center gap-2"
+          >
+            {saving ? <Loader2 size={18} className="animate-spin" /> : null}
+            Save changes
           </button>
         </div>
       </motion.div>

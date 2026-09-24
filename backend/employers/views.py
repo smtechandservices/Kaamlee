@@ -10,6 +10,7 @@ from .serializers import (
     EmployerSerializer, KYCDocumentSerializer,
     EmployerMemberSerializer, EmployerMemberRoleUpdateSerializer, EmployerTeamInviteSerializer,
     AdminEmployerSerializer, AdminEmployerCreateSerializer, AdminEmployerKYCReviewSerializer,
+    AdminEmployerProfileUpdateSerializer,
     AdminEmployerMemberCreateSerializer, AdminEmployerMemberUpdateSerializer,
 )
 
@@ -158,7 +159,8 @@ class AdminEmployerKYCListView(generics.ListCreateAPIView):
 
 
 class AdminEmployerKYCDetailView(generics.RetrieveUpdateDestroyAPIView):
-    """GET full employer + documents + team; PATCH to approve/reject;
+    """GET full employer + documents + team; PATCH with `kyc_status` to
+    approve/reject, PATCH without it to edit the company profile;
     DELETE to remove the employer entirely (see perform_destroy)."""
     queryset = Employer.objects.all().prefetch_related('kyc_documents', 'members__user')
     permission_classes = [permissions.IsAdminUser]
@@ -181,7 +183,9 @@ class AdminEmployerKYCDetailView(generics.RetrieveUpdateDestroyAPIView):
 
     def get_serializer_class(self):
         if self.request.method == 'PATCH':
-            return AdminEmployerKYCReviewSerializer
+            if 'kyc_status' in self.request.data:
+                return AdminEmployerKYCReviewSerializer
+            return AdminEmployerProfileUpdateSerializer
         return AdminEmployerSerializer
 
 

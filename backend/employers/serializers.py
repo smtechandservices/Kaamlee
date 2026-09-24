@@ -194,6 +194,23 @@ class AdminEmployerSerializer(LogoFallbackMixin, serializers.ModelSerializer):
         ]
 
 
+class AdminEmployerProfileUpdateSerializer(LogoFallbackMixin, serializers.ModelSerializer):
+    """PATCH /employers/admin/kyc/<id>/ without `kyc_status` — a platform admin
+    editing the employer's company profile. KYC state is left untouched."""
+    class Meta:
+        model = Employer
+        fields = [
+            'name', 'legal_name', 'industry', 'size', 'website', 'logo', 'logo_url',
+            'address', 'contact_email', 'contact_phone',
+        ]
+        read_only_fields = ['logo']
+
+    def validate_contact_email(self, value):
+        if Employer.objects.exclude(pk=self.instance.pk).filter(contact_email__iexact=value).exists():
+            raise serializers.ValidationError('Another employer already uses this contact email.')
+        return value
+
+
 class AdminEmployerKYCReviewSerializer(serializers.ModelSerializer):
     """PATCH /employers/admin/kyc/<id>/ — approve or reject."""
     class Meta:
