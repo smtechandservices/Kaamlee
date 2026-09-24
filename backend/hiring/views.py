@@ -937,6 +937,30 @@ class PublicJobPostingDetailView(generics.RetrieveAPIView):
     queryset = JobPosting.objects.filter(status='published').select_related('employer')
 
 
+class PublicJobPostingMetaView(views.APIView):
+    """GET /hiring/jobs/public/<id>/meta/ — the bare minimum needed to render
+    a link preview (title, company, logo, location) for a shared /apply/<id>
+    URL. Unauthenticated on purpose: WhatsApp/LinkedIn/Slack crawlers never
+    carry a token. Description, form schema and screening questions stay
+    behind login on the detail view."""
+    permission_classes = [permissions.AllowAny]
+
+    def get(self, request, pk):
+        job = get_object_or_404(
+            JobPosting.objects.filter(status='published').select_related('employer'), pk=pk,
+        )
+        return Response({
+            'id': job.id,
+            'title': job.title,
+            'employer_name': job.employer.name,
+            'employer_logo': job.employer.logo_src,
+            'city': job.city,
+            'country': job.country,
+            'is_remote': job.is_remote,
+            'employment_type': job.employment_type,
+        })
+
+
 class PublicCountriesView(views.APIView):
     """Distinct countries derived from currently published postings."""
     permission_classes = [permissions.AllowAny]

@@ -5,7 +5,7 @@ from .views import (
     EmployerApplicantsView, EmployerApplicantsBulkStageView, EmployerActivityView, EmployerJobPostingPublishView,
     EmployerJobApplicationsView, EmployerApplicationStageView, EmployerApplicationCVView,
     AdminJobPostingListView, AdminJobPostingDetailView, AdminJobApplicationsView, AdminApplicationCVView,
-    PublicJobPostingListView, SuggestedJobPostingsView, CombinedJobFeedView, PublicJobPostingDetailView, PublicCountriesView, PublicJobMapPinsView,
+    PublicJobPostingListView, SuggestedJobPostingsView, CombinedJobFeedView, PublicJobPostingDetailView, PublicJobPostingMetaView, PublicCountriesView, PublicJobMapPinsView,
     ApplyToJobView, MyApplicationsView, SavedJobView, MySavedJobsView, JobApplicationKitView,
 )
 
@@ -37,6 +37,7 @@ urlpatterns = [
     path('jobs/public/map_pins/', PublicJobMapPinsView.as_view(), name='hiring-public-map-pins'),
     path('jobs/public/countries/', PublicCountriesView.as_view(), name='hiring-public-countries'),
     path('jobs/public/<int:pk>/', PublicJobPostingDetailView.as_view(), name='hiring-public-job-detail'),
+    path('jobs/public/<int:pk>/meta/', PublicJobPostingMetaView.as_view(), name='hiring-public-job-meta'),
     path('jobs/<int:pk>/apply/', ApplyToJobView.as_view(), name='hiring-apply'),
     path('jobs/<int:pk>/application-kit/', JobApplicationKitView.as_view(), name='hiring-application-kit'),
     path('applications/mine/', MyApplicationsView.as_view(), name='hiring-my-applications'),
