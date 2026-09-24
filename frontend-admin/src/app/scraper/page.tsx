@@ -35,6 +35,8 @@ interface CompanyOption {
   career_url: string;
   logo_url: string;
   last_scraped_at: string | null;
+  // Latest finished run's stats — null if no run is on record for this company.
+  last_run?: { status: string; created: number; removed: number; finished_at: string | null } | null;
 }
 
 function formatScrapedAt(value: string) {
@@ -521,6 +523,16 @@ export default function ScraperPage() {
                         <div className="text-sm font-semibold truncate">{c.name}</div>
                         <div className="text-[10px] text-[#0b0b0c]/60">{formatScrapedAt(c.last_scraped_at)}</div>
                       </div>
+                      {c.last_run && (
+                        <div className="flex items-center gap-1.5 shrink-0 text-[11px] font-semibold tabular-nums">
+                          <span className="px-2 py-0.5 rounded-lg bg-green-500/10 text-green-600" title="Jobs added in the last run">
+                            +{c.last_run.created} added
+                          </span>
+                          <span className="px-2 py-0.5 rounded-lg bg-red-500/10 text-red-500" title="Jobs removed in the last run">
+                            −{c.last_run.removed} removed
+                          </span>
+                        </div>
+                      )}
                     </div>
                   ))}
                 </div>

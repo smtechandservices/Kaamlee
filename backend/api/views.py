@@ -31,7 +31,7 @@ from django.http import HttpResponse, StreamingHttpResponse
 from django.shortcuts import get_object_or_404
 from django.db import models
 from django.db.models import Exists, OuterRef, Q, Count
-from django.db.models.functions import TruncMonth, RowNumber
+from django.db.models.functions import TruncMonth, RowNumber, Lower
 from django.core.cache import cache
 from django.contrib.auth.models import User
 from django.utils import timezone
@@ -846,10 +846,50 @@ class CompanyViewSet(viewsets.ModelViewSet):
         jobs_by_company = {}
         for job in recent:
             jobs_by_company.setdefault(job.pop('company'), []).append(job)
+        last_runs = self._last_runs(rows)
         for row in rows:
             row['job_count'] = counts.get(row['name'], 0)
             row['jobs'] = jobs_by_company.get(row['name'], [])
+            row['last_run'] = last_runs.get(row['name'])
         return response
+
+    def _last_runs(self, rows):
+        """Each company's most recent finished ScraperRun (jobs added/removed),
+        keyed by company name. Scheduler runs record company_name, but
+        admin-triggered ones only record the board — usually the slug from the
+        company's career_url (e.g. "stripe"), sometimes the name itself — so a
+        run matches a company on any of the three, case-insensitively."""
+        from .scheduler import _detect_ats
+
+        keys_by_company = {}
+        for row in rows:
+            keys = {row['name'].strip().lower()}
+            detected = _detect_ats(row.get('career_url'))
+            if detected:
+                keys.add(detected[1].strip().lower())
+            keys_by_company[row['name']] = keys
+        company_by_key = {k: name for name, keys in keys_by_company.items() for k in keys}
+        if not company_by_key:
+            return {}
+
+        runs = (
+            ScraperRun.objects.exclude(status='running')
+            .annotate(board_l=Lower('board'), company_l=Lower('company_name'))
+            .filter(Q(board_l__in=company_by_key.keys()) | Q(company_l__in=company_by_key.keys()))
+            .order_by('-started_at')
+            .values('board_l', 'company_l', 'status', 'created', 'removed', 'finished_at')
+        )
+        last_runs = {}
+        for run in runs.iterator():
+            name = company_by_key.get(run['company_l']) or company_by_key.get(run['board_l'])
+            if name and name not in last_runs:
+                last_runs[name] = {
+                    'status': run['status'], 'created': run['created'],
+                    'removed': run['removed'], 'finished_at': run['finished_at'],
+                }
+                if len(last_runs) == len(keys_by_company):
+                    break
+        return last_runs
 
     @action(detail=False, methods=['post'], url_path='bulk')
     def bulk_create(self, request):

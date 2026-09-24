@@ -10,6 +10,7 @@ import {
   BrandMark,
   TAG_CLS,
 } from '@/components/ui/landing-kit';
+import { SUPPORT_EMAIL } from '@/lib/constants';
 
 const INDIGO = '#4f46e5';
 
@@ -21,7 +22,7 @@ const B2B_FEATURES = [
   { icon: LayoutDashboard, n: '05', t: 'Company admin portal', d: 'A dedicated portal for company admins to manage job posts, screening pipelines, assessments and your hiring team, all in one place.' },
 ];
 
-export default function EmployersComingSoonPage() {
+export default function EmployersPage() {
   const [companyName, setCompanyName] = useState('');
   const [email, setEmail] = useState('');
   const [submitted, setSubmitted] = useState(false);
@@ -29,11 +30,11 @@ export default function EmployersComingSoonPage() {
   const handleSubmit = (e: React.FormEvent) => {
     e.preventDefault();
     if (!email.trim()) return;
-    const subject = encodeURIComponent(`Employer early access - ${companyName || 'Kaamlee for Business'}`);
+    const subject = encodeURIComponent(`Employer registration - ${companyName || 'Kaamlee for Business'}`);
     const body = encodeURIComponent(
-      `Company: ${companyName || ' '}\nWork email: ${email}\n\nPlease notify us when Kaamlee for Business launches.`
+      `Company: ${companyName || ' '}\nWork email: ${email}\n\nPlease register us as an employer on Kaamlee.`
     );
-    window.location.href = `mailto:kaamlee2026@gmail.com?subject=${subject}&body=${body}`;
+    window.location.href = `mailto:${SUPPORT_EMAIL}?subject=${subject}&body=${body}`;
     setSubmitted(true);
   };
 
@@ -68,7 +69,7 @@ export default function EmployersComingSoonPage() {
                     style={{ color: INDIGO }}
                   >
                     <i className="h-[7px] w-[7px] rounded-full bg-[#4f46e5] animate-pulse" />
-                    Coming soon for employers
+                    Now live for employers
                   </span>
                 </Reveal>
                 <Reveal delay={80}>
@@ -92,11 +93,11 @@ export default function EmployersComingSoonPage() {
           </div>
         </section>
 
-        {/* ============ UPCOMING FEATURES ============ */}
+        {/* ============ FEATURES ============ */}
         <section className="pb-16">
           <div className="mx-auto w-[min(1400px,calc(100%-40px))]">
             <div className="mx-auto flex flex-col items-center gap-4.5 text-center">
-              <Reveal><span className={TAG_CLS}><i className="h-[7px] w-[7px] rounded-full bg-[#16a34a] animate-pulse" />What&apos;s coming</span></Reveal>
+              <Reveal><span className={TAG_CLS}><i className="h-[7px] w-[7px] rounded-full bg-[#16a34a] animate-pulse" />What you get</span></Reveal>
               <Reveal delay={80}><h2 className="text-[30px] tracking-[-0.035em]">Built for teams hiring early-career and campus talent</h2></Reveal>
             </div>
             <div className="mt-12 grid grid-cols-1 gap-4.5 sm:grid-cols-2 lg:grid-cols-3">
@@ -116,7 +117,7 @@ export default function EmployersComingSoonPage() {
           </div>
         </section>
 
-        {/* ============ SIGNUP ============ */}
+        {/* ============ REGISTER ============ */}
         <section className="pb-4">
           <div className="mx-auto w-[min(1400px,calc(100%-40px))]">
             <Reveal type="scale">
@@ -125,16 +126,16 @@ export default function EmployersComingSoonPage() {
                 style={{ background: 'linear-gradient(180deg,#4338ca,#3730a3 55%,#312e81)' }}
               >
                 <h2 className="mx-auto max-w-[26ch] text-[28px] tracking-[-0.035em] text-white sm:text-[32px]">
-                  Be first in line when Kaamlee for Business launches
+                  Get your company registered as an employer
                 </h2>
                 <p className="mx-auto mt-3 max-w-[52ch] text-[15px] leading-relaxed text-white/70">
-                  Leave your work email and we&apos;ll reach out the moment employer accounts open up.
+                  Kaamlee for Business is live. Employer accounts are set up by our team send your company name and work email to the admin and we&apos;ll get you registered.
                 </p>
 
                 {submitted ? (
                   <div className="mx-auto mt-8 flex max-w-[440px] items-center justify-center gap-2.5 rounded-full border border-white/15 bg-white/10 px-6 py-3.5 text-[14.5px] font-medium text-white">
                     <CheckCircle2 size={17} />
-                    Thanks, opening your email client to confirm.
+                    Thanks, opening your email client to send it to the admin.
                   </div>
                 ) : (
                   <form onSubmit={handleSubmit} className="mx-auto mt-8 flex max-w-[560px] flex-col gap-3 sm:flex-row">
@@ -158,7 +159,7 @@ export default function EmployersComingSoonPage() {
                       className="group inline-flex flex-none items-center justify-center gap-2 whitespace-nowrap rounded-full bg-white px-6 py-3.5 text-[14.5px] font-medium text-[#3730a3] transition-transform duration-300 hover:-translate-y-0.5"
                     >
                       <Mail size={15} />
-                      Notify me
+                      Contact admin
                       <ArrowChevron className="text-[#3730a3]" />
                     </button>
                   </form>
