@@ -217,28 +217,31 @@
   scrollbar-width: none;
 }
 
-/* Global Custom Scrollbar */
+/* Global Custom Scrollbar — light theme: transparent track, neutral grey thumb
+   (mid-grey so it still shows on the odd dark surface, e.g. portfolio themes).
+   Note: modern Chrome lets the standard `scrollbar-color` below win over the
+   ::-webkit-scrollbar rules, so the two must agree — a dark track here is what
+   painted a black strip beside the map page's job list. */
 ::-webkit-scrollbar {
   width: 6px;
   height: 6px;
 }
 
 ::-webkit-scrollbar-track {
-  background: #050505;
+  background: transparent;
 }
 
 ::-webkit-scrollbar-thumb {
-  background-color: rgba(255, 255, 255, 0.1);
+  background-color: rgba(128, 128, 128, 0.35);
   border-radius: 100px;
   transition: all 0.3s ease;
 }
 
 ::-webkit-scrollbar-thumb:hover {
-  background-color: #22c55e; /* Blue accent on hover */
-  box-shadow: 0 0 10px rgba(59, 130, 246, 0.5);
+  background-color: #16a34a;
 }
 
 * {
   scrollbar-width: thin;
-  scrollbar-color: rgba(255, 255, 255, 0.1) #050505;
+  scrollbar-color: rgba(128, 128, 128, 0.35) transparent;
 }
