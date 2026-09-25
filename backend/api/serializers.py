@@ -5,7 +5,7 @@ import logging
 import PyPDF2
 from groq import Groq
 from rest_framework import serializers
-from .models import Job, Bookmark, Feedback, Portfolio, PortfolioView, CustomCV, JobApplicationKit, Company, EmailOTP
+from .models import Job, Bookmark, Feedback, Portfolio, PortfolioView, CustomCV, JobApplicationKit, Company, College, EmailOTP
 from .permissions import is_user_subscribed
 from .groq_usage import GroqQuotaExceeded, ensure_quota_available, record_usage, usage_summary
 from django.contrib.auth.models import User
@@ -516,6 +516,15 @@ class CompanySerializer(serializers.ModelSerializer):
             'address', 'linkedin_url', 'logo_url', 'is_active', 'last_scraped_at', 'created_at',
         ]
         read_only_fields = ['last_scraped_at', 'created_at']
+
+class CollegeSerializer(serializers.ModelSerializer):
+    class Meta:
+        model = College
+        fields = [
+            'id', 'name', 'ownership', 'courses_offered', 'logo_url',
+            'location', 'established', 'created_at',
+        ]
+        read_only_fields = ['created_at']
 
 def _resolve_job_location_name(obj):
     name = obj.location_name

@@ -158,7 +158,6 @@ export default function AmbassadorsPage() {
         <header className="flex flex-col md:flex-row md:items-center justify-between gap-6 mb-10">
           <div>
             <h1 className="text-3xl font-bold tracking-tight mb-1 flex items-center gap-3">
-              <GraduationCap size={28} className="text-green-600" />
               Campus Ambassadors
             </h1>
             <p className="text-[#0b0b0c]/60 font-medium">

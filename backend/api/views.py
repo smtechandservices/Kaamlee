@@ -8,13 +8,13 @@ from rest_framework.decorators import action
 from rest_framework.authtoken.views import ObtainAuthToken
 from rest_framework.response import Response
 from rest_framework.authtoken.models import Token
-from .models import Job, Bookmark, Feedback, Portfolio, PortfolioView, Profile, CustomCV, JobApplicationKit, Company, ScraperRun, ScraperPauseState
+from .models import Job, Bookmark, Feedback, Portfolio, PortfolioView, Profile, CustomCV, JobApplicationKit, Company, College, ScraperRun, ScraperPauseState
 from .serializers import (
     JobSerializer, JobMapPinSerializer,
     UserSerializer, RegisterSerializer, RecentJobSerializer,
     FeedbackSerializer, PortfolioSettingsSerializer, PublicPortfolioSerializer,
     PortfolioViewSerializer, CustomCVSerializer, CustomCVCreateSerializer, tailor_resume_with_groq,
-    JobApplicationKitSerializer, generate_application_kit_with_groq, CompanySerializer,
+    JobApplicationKitSerializer, generate_application_kit_with_groq, CompanySerializer, CollegeSerializer,
     BookmarkSerializer, AdminJobSerializer, ChangePasswordSerializer, AdminSetPasswordSerializer,
     AdminChangeOwnPasswordSerializer,
 )
@@ -935,6 +935,24 @@ class CompanyViewSet(viewsets.ModelViewSet):
         _delete_company_jobs([instance.name])
         instance.delete()
         cache.delete(_STATS_CACHE_KEY)
+
+class CollegeViewSet(viewsets.ModelViewSet):
+    """Full CRUD for the colleges Kaamlee collaborates with (Colleges page)."""
+    serializer_class = CollegeSerializer
+    permission_classes = [permissions.IsAdminUser]
+    pagination_class = CompaniesPagination
+
+    def get_queryset(self):
+        queryset = College.objects.all().order_by('name')
+        search = self.request.query_params.get('search')
+        if search:
+            queryset = queryset.filter(
+                models.Q(name__icontains=search) | models.Q(location__icontains=search)
+            )
+        ownership = self.request.query_params.get('ownership')
+        if ownership in ('public', 'private'):
+            queryset = queryset.filter(ownership=ownership)
+        return queryset
 
 class CompaniesView(views.APIView):
     """Paginated companies + their 10 most recent jobs each, for the admin

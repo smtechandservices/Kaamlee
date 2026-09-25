@@ -1,7 +1,7 @@
 from django.contrib import admin
 from django.contrib.auth.admin import UserAdmin as BaseUserAdmin
 from django.contrib.auth.models import User
-from .models import Job, Profile, Company, Portfolio, PortfolioView, ScraperRun
+from .models import Job, Profile, Company, College, Portfolio, PortfolioView, ScraperRun
 
 @admin.register(Company)
 class CompanyAdmin(admin.ModelAdmin):
@@ -9,6 +9,13 @@ class CompanyAdmin(admin.ModelAdmin):
     search_fields = ('name', 'domain')
     list_filter = ('is_active',)
     readonly_fields = ('last_scraped_at', 'created_at')
+
+@admin.register(College)
+class CollegeAdmin(admin.ModelAdmin):
+    list_display = ('name', 'ownership', 'courses_offered', 'location', 'established', 'created_at')
+    search_fields = ('name', 'location')
+    list_filter = ('ownership',)
+    readonly_fields = ('created_at',)
 
 @admin.register(Job)
 class JobAdmin(admin.ModelAdmin):

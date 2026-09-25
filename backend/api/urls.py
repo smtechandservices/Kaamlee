@@ -1,7 +1,7 @@
 from django.urls import path, include
 from rest_framework.routers import DefaultRouter
 from .views import (
-    JobViewSet, StatsView, CompaniesView, CompanyViewSet,
+    JobViewSet, StatsView, CompaniesView, CompanyViewSet, CollegeViewSet,
     SignupView, GoogleAuthView, UserView, RecentJobsView,
     CheckExistenceView, LoginView, LogoutView, AdminLoginView,
     AdminSessionListView, AdminSessionRevokeView, AdminSessionBulkView, AdminChangeOwnPasswordView, AdminUserViewSet, CategoriesView, CountriesView,
@@ -17,6 +17,7 @@ router = DefaultRouter()
 router.register(r'jobs', JobViewSet, basename='jobs')
 router.register(r'users', AdminUserViewSet, basename='users')
 router.register(r'admin/companies', CompanyViewSet, basename='admin-companies')
+router.register(r'admin/colleges', CollegeViewSet, basename='admin-colleges')
 
 urlpatterns = [
     # ==========================================

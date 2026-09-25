@@ -269,3 +269,26 @@ class JobApplicationKit(models.Model):
 
     def __str__(self):
         return f"ApplicationKit for {self.user.username} - {self.job.title}"
+
+
+class College(models.Model):
+    """A college/university Kaamlee has a collaboration with. Managed entirely
+    from the admin app (Colleges page) — no scraping involved."""
+    OWNERSHIP_CHOICES = [
+        ('public', 'Public'),
+        ('private', 'Private'),
+    ]
+
+    name = models.CharField(max_length=255, unique=True)
+    ownership = models.CharField(max_length=10, choices=OWNERSHIP_CHOICES, default='public')
+    courses_offered = models.PositiveIntegerField(default=0, help_text='Number of courses offered.', blank=True)
+    logo_url = models.URLField(max_length=1000, blank=True)
+    location = models.CharField(max_length=500, blank=True)
+    established = models.PositiveIntegerField(null=True, blank=True, help_text='Year the college was established.')
+    created_at = models.DateTimeField(auto_now_add=True)
+
+    class Meta:
+        ordering = ['name']
+
+    def __str__(self):
+        return self.name
