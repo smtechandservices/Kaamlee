@@ -25,17 +25,8 @@ const getDistance = (lat1: number, lon1: number, lat2: number, lon2: number) => 
 // pile of pins stacked on top of each other.
 const locationKey = (lat: number, lng: number) => `${lat.toFixed(4)},${lng.toFixed(4)}`;
 
-// A small, deterministic pixel nudge for the Nth job in a stack. Index 0 sits
-// dead-centre; each step out spirals a little further (phyllotaxis), so paging
-// next shifts the pin over and paging back returns it to exactly where it was.
-const stackOffset = (index: number): [number, number] => {
-  if (index <= 0) return [0, 0];
-  const GOLDEN_ANGLE = 2.399963; // radians — spreads points evenly
-  const SPACING = 9; // px
-  const radius = SPACING * Math.sqrt(index);
-  const angle = index * GOLDEN_ANGLE;
-  return [radius * Math.cos(angle), radius * Math.sin(angle)];
-};
+// "Jobs Near Me" only considers jobs within this straight-line distance.
+const NEARBY_RADIUS_KM = 20;
 
 interface MapProps {
   jobs: any[];
@@ -52,7 +43,9 @@ const Map = ({ jobs, unmappedCount = 0, selectedJobId, onJobClick }: MapProps) =
   const [currentIndex, setCurrentIndex] = useState(0);
   const [userLocation, setUserLocation] = useState<{lat: number, lng: number} | null>(null);
   const [isSearching, setIsSearching] = useState(false);
-  
+  // True after a "Jobs Near Me" search that found nothing within range.
+  const [noNearby, setNoNearby] = useState(false);
+
   // Performance states
   const [zoom, setZoom] = useState(4);
   const [bounds, setBounds] = useState<any>(null);
@@ -62,17 +55,40 @@ const Map = ({ jobs, unmappedCount = 0, selectedJobId, onJobClick }: MapProps) =
   const [stackKey, setStackKey] = useState<string | null>(null);
   const [stackIndex, setStackIndex] = useState(0);
 
+  // Our own camera moves (flying to a selected / nearby job) change the zoom
+  // too, so they're flagged here — only a zoom the user makes (wheel, pinch,
+  // +/− buttons) closes the open job card. Each flight gets a token so an
+  // interrupted flight's moveend can't clear the flag for the one replacing it.
+  const flyingRef = useRef(false);
+  const flightRef = useRef(0);
+  const lastZoomRef = useRef(zoom);
+  const flyTo = (options: { center: [number, number]; zoom: number; duration: number }) => {
+    const map = mapRef.current;
+    if (!map) return;
+    const flight = ++flightRef.current;
+    flyingRef.current = true;
+    const land = () => {
+      if (flightRef.current === flight) flyingRef.current = false;
+    };
+    map.flyTo(options);
+    // Registered after flyTo so the moveend of a flight it interrupts doesn't count.
+    map.once('moveend', land);
+    // Fallback: no moveend fires if the camera was already there.
+    setTimeout(land, options.duration + 250);
+  };
+
   useEffect(() => {
     if (selectedJobId && mapRef.current) {
       const selectedJob = jobs.find(j => j.id === selectedJobId);
       if (selectedJob && selectedJob.latitude && selectedJob.longitude) {
-        mapRef.current.flyTo({
+        flyTo({
           center: [selectedJob.longitude, selectedJob.latitude],
           zoom: 12,
           duration: 1200
         });
       }
     }
+    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [selectedJobId, jobs]);
 
   useEffect(() => {
@@ -140,6 +156,15 @@ const Map = ({ jobs, unmappedCount = 0, selectedJobId, onJobClick }: MapProps) =
 
   const handleViewportChange = (viewport: MapViewport) => {
     setZoom(viewport.zoom);
+
+    // User zoomed in/out (not one of our flyTo moves) → close the open card.
+    const zoomed = Math.abs(viewport.zoom - lastZoomRef.current) > 0.001;
+    lastZoomRef.current = viewport.zoom;
+    if (zoomed && !flyingRef.current && (selectedJobId || stackKey)) {
+      setStackKey(null);
+      onJobClick?.(null);
+    }
+
     if (mapRef.current) {
       const newBounds = mapRef.current.getBounds();
       setBounds(newBounds);
@@ -150,27 +175,30 @@ const Map = ({ jobs, unmappedCount = 0, selectedJobId, onJobClick }: MapProps) =
     if (!navigator.geolocation) return;
     
     setIsSearching(true);
+    setNoNearby(false);
     navigator.geolocation.getCurrentPosition((position) => {
       const { latitude, longitude } = position.coords;
       setUserLocation({ lat: latitude, lng: longitude });
-      
+
       const jobsWithDistance = jobs
         .filter(job => job.latitude && job.longitude)
         .map(job => ({
           ...job,
           distance: getDistance(latitude, longitude, job.latitude, job.longitude)
         }))
+        .filter(job => job.distance <= NEARBY_RADIUS_KM)
         .sort((a, b) => a.distance - b.distance)
         .slice(0, 10);
-      
+
       setNearbyJobs(jobsWithDistance);
+      setNoNearby(jobsWithDistance.length === 0);
       setCurrentIndex(0);
       setIsSearching(false);
       
       if (jobsWithDistance.length > 0) {
         const closestJob = jobsWithDistance[0];
         onJobClick?.(closestJob.id);
-        mapRef.current.flyTo({
+        flyTo({
           center: [closestJob.longitude, closestJob.latitude],
           zoom: 12,
           duration: 2000
@@ -190,7 +218,7 @@ const Map = ({ jobs, unmappedCount = 0, selectedJobId, onJobClick }: MapProps) =
     setCurrentIndex(newIndex);
     const job = nearbyJobs[newIndex];
     onJobClick?.(job.id);
-    mapRef.current.flyTo({
+    flyTo({
       center: [job.longitude, job.latitude],
       zoom: 12,
       duration: 1500
@@ -277,10 +305,6 @@ const Map = ({ jobs, unmappedCount = 0, selectedJobId, onJobClick }: MapProps) =
     const isOpen = stackKey === group.key || selIdx >= 0;
     const idx = isOpen ? (stackKey === group.key ? Math.min(stackIndex, total - 1) : selIdx) : 0;
     const job = group.jobs[idx];
-    // The pin gets this pixel nudge per step; feed the same shift (plus the
-    // usual ~16px lift) to the popup so the hovering card moves with the pin.
-    const [pinDx, pinDy] = isOpen ? stackOffset(idx) : [0, 0];
-    const popupOffset: [number, number] = [pinDx, pinDy - 16];
 
     const goTo = (next: number) => {
       const wrapped = (next + total) % total;
@@ -295,7 +319,6 @@ const Map = ({ jobs, unmappedCount = 0, selectedJobId, onJobClick }: MapProps) =
         key={group.key}
         longitude={group.lng}
         latitude={group.lat}
-        offset={isOpen ? stackOffset(idx) : [0, 0]}
         onClick={(e) => {
           e.stopPropagation();
           if (!isOpen) {
@@ -318,7 +341,7 @@ const Map = ({ jobs, unmappedCount = 0, selectedJobId, onJobClick }: MapProps) =
             {isOpen ? (job.company || 'Confidential') : `${total} jobs around here`}
           </MarkerLabel>
         </MarkerContent>
-        <MarkerPopup show={isOpen} offset={popupOffset} className="w-64 bg-white border border-black/[0.08] p-0 overflow-hidden rounded-2xl shadow-[0_30px_80px_-30px_rgba(16,18,26,.35)]">
+        <MarkerPopup show={isOpen} className="w-64 bg-white border border-black/[0.08] p-0 overflow-hidden rounded-2xl shadow-[0_30px_80px_-30px_rgba(16,18,26,.35)]">
           <div className="p-4 bg-white">
             <div className="flex items-center justify-between mb-3 -mt-0.5">
               <div className="text-[9px] font-semibold uppercase tracking-widest text-[#16a34a]" style={{ fontFamily: 'var(--font-outfit)' }}>
@@ -372,6 +395,7 @@ const Map = ({ jobs, unmappedCount = 0, selectedJobId, onJobClick }: MapProps) =
           if (hasFeature) return;
 
           setNearbyJobs([]);
+          setNoNearby(false);
           setStackKey(null);
           onJobClick?.(null);
         }}
@@ -461,6 +485,28 @@ const Map = ({ jobs, unmappedCount = 0, selectedJobId, onJobClick }: MapProps) =
                  <span className="text-black/45">{currentNearby.distance.toFixed(1)} km away</span>
                  <span className="text-[#16a34a]">{Math.round(currentNearby.distance * 1.5)} min</span>
               </div>
+            </motion.div>
+          )}
+        </AnimatePresence>
+
+        <AnimatePresence>
+          {noNearby && (
+            <motion.div
+              initial={{ opacity: 0, x: -20 }}
+              animate={{ opacity: 1, x: 0 }}
+              exit={{ opacity: 0, x: 20 }}
+              transition={{ type: "spring", stiffness: 300, damping: 30 }}
+              className="pl-4 pr-2 py-2 rounded-2xl bg-white border border-black/[0.08] w-64 flex items-center justify-between gap-2 shadow-[0_2px_4px_rgba(16,18,26,.04),0_18px_40px_-18px_rgba(16,18,26,.22)]"
+            >
+              <span className="text-xs font-medium text-black/60" style={{ fontFamily: 'var(--font-outfit)' }}>
+                No jobs within {NEARBY_RADIUS_KM} km of you
+              </span>
+              <button
+                onClick={() => setNoNearby(false)}
+                className="cursor-pointer p-1 rounded-md bg-black/[0.04] hover:bg-red-50 transition-colors text-black/50 hover:text-red-500"
+              >
+                <X size={12} />
+              </button>
             </motion.div>
           )}
         </AnimatePresence>
