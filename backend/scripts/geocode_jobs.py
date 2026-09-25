@@ -110,9 +110,16 @@ def geocode_real_locations(queryset, stop_event=None):
     failure. Callers that only want the end result can drain it, e.g.:
         *_, (resolved, rate_limited, stopped) = geocode_real_locations(qs)
     """
+    # Any distinct (city, state, country) that carries a real place — a city,
+    # or at least a state/country — is geocoded here. We used to require a city
+    # (.exclude(city='')), which meant a country-only posting (e.g. a remote
+    # "… – Philippines" with no city) was skipped and later borrowed an
+    # unrelated company sibling's coordinates in pass 2, landing it in the wrong
+    # country. Country-only combos now resolve to their country centroid; combos
+    # with nothing usable produce an empty query and are skipped at `if not
+    # query` below, so they still fall through to pass 2.
     combos = list(
         queryset.filter(latitude__isnull=True)
-        .exclude(city='')
         .values('city', 'state', 'country')
         .distinct()
     )
@@ -179,6 +186,13 @@ def fill_remote_from_company(queryset):
     coordinates. Anchors are restricted to jobs with a genuine city so
     coordinates don't chain through a previously borrowed placeholder.
 
+    Borrowing is country-aware: a job that knows its country only borrows from
+    a sibling in that *same* country — otherwise a remote "… – Philippines"
+    role would inherit, say, the company's Dubai office coordinates and show up
+    on the wrong continent. A job with a country but no same-country sibling is
+    left missing (a country-only posting should have been resolved in pass 1
+    anyway); only jobs with no country at all fall back to any company sibling.
+
     Deliberately excludes jobs that have a real city but just haven't been
     geocoded yet (e.g. pass 1 got rate-limited before reaching them) —
     borrowing an unrelated sibling's coordinates for those would silently
@@ -188,21 +202,72 @@ def fill_remote_from_company(queryset):
     no_location_of_own = queryset.filter(latitude__isnull=True).filter(
         Q(is_remote=True) | Q(city='') | Q(city__iexact='unspecified')
     )
-    companies = no_location_of_own.values_list('company', flat=True).distinct()
+    # Group by (company, country) so each group borrows from a same-country
+    # sibling; country '' (unknown) keeps the old any-sibling fallback.
+    combos = no_location_of_own.values('company', 'country').distinct()
     filled = 0
-    for company in companies:
-        anchor = (
+    for combo in combos:
+        company, country = combo['company'], combo['country']
+        anchors = (
             Job.objects.filter(company=company, latitude__isnull=False)
             .exclude(city='')
-            .values('latitude', 'longitude')
-            .first()
         )
+        if country:
+            anchors = anchors.filter(country=country)
+        anchor = anchors.values('latitude', 'longitude').first()
         if not anchor:
             continue
-        filled += no_location_of_own.filter(company=company).update(
+        filled += no_location_of_own.filter(company=company, country=country).update(
             latitude=anchor['latitude'], longitude=anchor['longitude'],
         )
     return filled
+
+
+# ------------------------------------------------------------------
+# Pass 0 — self-heal coordinates that were borrowed across countries
+# ------------------------------------------------------------------
+def heal_cross_country_borrows(queryset):
+    """Clear coordinates that an older run borrowed from the wrong country, so
+    the passes below re-resolve them correctly on this same run.
+
+    The tell-tale of the bug: a job with no city of its own (blank/placeholder)
+    but a known country is sitting on the *exact* coordinates of a *real-city*
+    job in a different country — e.g. a remote "… – Philippines" role stamped
+    with a company's Dubai office point (pass 2 always borrows from a sibling
+    that has a genuine city, so the borrowed point belongs to one).
+
+    The real-city requirement is what keeps this precise: two country centroids
+    that only differ by spelling — 'USA' vs 'United States', 'Viet Nam' vs
+    'Vietnam' — legitimately share a point, but neither is a real city, so they
+    are never flagged. Only a city anchor in a genuinely different country is.
+
+    Nulling is a pure DB op (no Nominatim). In steady state it clears nothing;
+    it only catches legacy rows and never re-heals a value it just re-resolved,
+    so it's safe to run on every geocode. Returns how many were cleared.
+    """
+    suspects = (
+        queryset.filter(latitude__isnull=False)
+        .filter(Q(city='') | Q(city__iexact='unspecified'))
+        .exclude(country='')
+        .exclude(country__isnull=True)
+    )
+    cleared = 0
+    # One existence check per distinct (country, point) instead of per job.
+    for combo in suspects.values('country', 'latitude', 'longitude').distinct():
+        borrowed_from_other_country = (
+            Job.objects.filter(latitude=combo['latitude'], longitude=combo['longitude'])
+            .exclude(country=combo['country'])
+            .exclude(country='')
+            .exclude(country__isnull=True)
+            .exclude(city='')
+            .exclude(city__iexact='unspecified')
+            .exists()
+        )
+        if borrowed_from_other_country:
+            cleared += suspects.filter(
+                country=combo['country'], latitude=combo['latitude'], longitude=combo['longitude'],
+            ).update(latitude=None, longitude=None)
+    return cleared
 
 
 # ------------------------------------------------------------------
@@ -217,6 +282,10 @@ def run(company=None, stop_event=None):
     queryset = Job.objects.all()
     if company:
         queryset = queryset.filter(company__iexact=company)
+
+    # Pass 0: clear any cross-country borrows first so the passes below can
+    # re-resolve them (the geocoder only touches jobs missing coordinates).
+    heal_cross_country_borrows(queryset)
 
     resolved = rate_limited = stopped = None
     for item in geocode_real_locations(queryset, stop_event=stop_event):
@@ -242,6 +311,11 @@ def run_streaming(company=None, stop_event=None):
     if company:
         queryset = queryset.filter(company__iexact=company)
 
+    # Pass 0: clear cross-country borrows so the passes below re-resolve them.
+    healed = heal_cross_country_borrows(queryset)
+    if healed:
+        yield f"Cleared {healed} mislocated coordinate(s) for re-resolution"
+
     resolved = rate_limited = stopped = None
     for item in geocode_real_locations(queryset, stop_event=stop_event):
         if isinstance(item, tuple):
@@ -256,7 +330,7 @@ def run_streaming(company=None, stop_event=None):
     remaining = queryset.filter(latitude__isnull=True).count()
     yield {
         'geocoded': resolved, 'borrowed': borrowed, 'remaining': remaining,
-        'rate_limited': rate_limited, 'stopped': stopped,
+        'healed': healed, 'rate_limited': rate_limited, 'stopped': stopped,
     }
 
 

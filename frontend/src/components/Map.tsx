@@ -39,11 +39,12 @@ const stackOffset = (index: number): [number, number] => {
 
 interface MapProps {
   jobs: any[];
+  unmappedCount?: number;
   selectedJobId?: string | null;
   onJobClick?: (id: string | null) => void;
 }
 
-const Map = ({ jobs, selectedJobId, onJobClick }: MapProps) => {
+const Map = ({ jobs, unmappedCount = 0, selectedJobId, onJobClick }: MapProps) => {
   // Center of India as default
   const center: [number, number] = [78.9629, 20.5937];
   const mapRef = useRef<any>(null);
@@ -410,6 +411,13 @@ const Map = ({ jobs, selectedJobId, onJobClick }: MapProps) => {
           <div className="w-2 h-2 rounded-full bg-[#16a34a] animate-pulse" />
           {jobs.length.toLocaleString()} on the map
         </div>
+
+        {unmappedCount > 0 && (
+          <div className="px-3 py-1.5 rounded-full text-[11px] font-medium text-black/45 w-fit flex items-center gap-2 bg-white/90 backdrop-blur-md border border-black/[0.08] shadow-[0_1px_2px_rgba(16,18,26,.05),0_6px_16px_-8px_rgba(16,18,26,.10)] pointer-events-none" style={{ fontFamily: 'var(--font-outfit)' }} title="Jobs without a mappable location">
+            <div className="w-2 h-2 rounded-full bg-black/25" />
+            {unmappedCount.toLocaleString()} totally remote
+          </div>
+        )}
 
         <AnimatePresence mode="wait">
           {currentNearby && (

@@ -164,6 +164,8 @@ export default function MapPage() {
   const [jobs, setJobs] = useState<FeedItem[]>([]);
   const [totalJobs, setTotalJobs] = useState(0);
   const [mapPins, setMapPins] = useState<any[]>([]);
+  // Matching scraped jobs with no coordinates yet, so they can't be plotted.
+  const [unmappedJobs, setUnmappedJobs] = useState(0);
   // A map-pin click for something not on the current page — shown first.
   const [pinnedJob, setPinnedJob] = useState<FeedItem | null>(null);
   const [countries, setCountries] = useState<string[]>([]);
@@ -328,9 +330,10 @@ export default function MapPage() {
     const fetchMapPins = async () => {
       if (!token) return;
       const cacheKey = `map-pins-${filterParams.toString()}`;
-      const cached = getCached(cacheKey);
+      const cached = getCached(cacheKey) as { pins: any[]; unmapped: number } | null;
       if (cached) {
-        setMapPins(cached);
+        setMapPins(cached.pins);
+        setUnmappedJobs(cached.unmapped);
         return;
       }
       try {
@@ -341,9 +344,14 @@ export default function MapPage() {
         if (pinsRes.status === 401) { logout(); return; }
         if (!pinsRes.ok) return;
         const pinsData = await pinsRes.json();
-        const mapped = (pinsData || []).map(mapJobFields);
-        setCache(cacheKey, mapped);
+        // Endpoint returns { pins, unmapped }; tolerate the old array shape too
+        // (a stale cache entry from before this change).
+        const rawPins = Array.isArray(pinsData) ? pinsData : (pinsData.pins || []);
+        const unmapped = Array.isArray(pinsData) ? 0 : (pinsData.unmapped || 0);
+        const mapped = rawPins.map(mapJobFields);
+        setCache(cacheKey, { pins: mapped, unmapped });
         setMapPins(mapped);
+        setUnmappedJobs(unmapped);
       } catch (error) {
         console.error('Failed to fetch map pins:', error);
       }
@@ -380,6 +388,14 @@ export default function MapPage() {
     })), [postings]);
 
   const combinedMapPins = React.useMemo(() => [...postingMapPins, ...mapPins], [postingMapPins, mapPins]);
+
+  // Jobs that match the current filters but can't be placed on the map: scraped
+  // jobs missing coordinates (counted server-side) plus any postings without a
+  // resolvable location (dropped from postingMapPins above).
+  const unmappedCount = React.useMemo(
+    () => unmappedJobs + (postings.length - postingMapPins.length),
+    [unmappedJobs, postings.length, postingMapPins.length],
+  );
 
   const handleMapJobClick = React.useCallback(async (jobId: string | null) => {
     if (!jobId) {
@@ -837,6 +853,7 @@ export default function MapPage() {
         <section className={`${viewMode === 'list' ? 'hidden' : 'flex'} flex-1 bg-[#f2f3f5]`}>
           <Map
             jobs={combinedMapPins}
+            unmappedCount={unmappedCount}
             selectedJobId={selectedJobId || undefined}
             onJobClick={handleMapJobClick}
           />

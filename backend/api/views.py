@@ -671,11 +671,13 @@ class JobViewSet(viewsets.ModelViewSet):
         if pins is not None:
             return Response(pins)
 
-        queryset = Job.objects.filter(latitude__isnull=False, longitude__isnull=False)
-        queryset = self._filter_queryset(queryset)
+        # Base set of matching jobs (same filters), before the coordinate check —
+        # so we can both draw the geocoded ones and report how many matched but
+        # can't be placed on the map (missing coordinates).
+        base = self._filter_queryset(Job.objects.all())
 
         if bookmarked_only:
-            queryset = queryset.filter(bookmarked_by__user=request.user)
+            base = base.filter(bookmarked_by__user=request.user)
 
         if not subscribed:
             # Free preview: only the scraped share of the shared 200-job
@@ -683,7 +685,11 @@ class JobViewSet(viewsets.ModelViewSet):
             # what the combined list does.
             from hiring.feed import preview_ids
             _, scraped_ids = preview_ids(request)
-            queryset = queryset.filter(id__in=scraped_ids)
+            base = base.filter(id__in=scraped_ids)
+
+        queryset = base.filter(latitude__isnull=False, longitude__isnull=False)
+        # Matching jobs we couldn't place — no latitude/longitude yet.
+        unmapped = base.filter(Q(latitude__isnull=True) | Q(longitude__isnull=True)).count()
 
         rows = queryset.values(
             'id', 'title', 'company', 'location_name', 'job_type', 'job_url',
@@ -709,8 +715,9 @@ class JobViewSet(viewsets.ModelViewSet):
                 'longitude': row['longitude'],
             })
 
-        cache.set(cache_key, pins, _JOBS_CACHE_TTL)
-        return Response(pins)
+        payload = {'pins': pins, 'unmapped': unmapped}
+        cache.set(cache_key, payload, _JOBS_CACHE_TTL)
+        return Response(payload)
 
 
 class ApplicationsView(views.APIView):
