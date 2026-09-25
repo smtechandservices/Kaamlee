@@ -356,14 +356,6 @@ export default function ApplicationsPage() {
         <PageHeader
           backHref="/dashboard"
           title="Application Tracker"
-          badge={!isFetching && (
-            <span
-              className="text-[10px] sm:text-xs text-black/45 font-semibold shrink-0"
-              style={{ fontFamily: 'var(--font-outfit)' }}
-            >
-              {totalCount} tracked
-            </span>
-          )}
         />
 
         <div className="flex items-center gap-3 px-4 sm:px-6 py-2 bg-black/[0.03] border-b border-black/[0.08] shrink-0">

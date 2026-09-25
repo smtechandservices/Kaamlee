@@ -388,7 +388,10 @@ export default function MapPage() {
       return;
     }
     setSelectedJobId(jobId);
-    if (viewMode === 'map') {
+    // On desktop the map is full-width in 'map' mode, so reveal the list beside
+    // it. On mobile that would yank the user off the map to the list on every
+    // pin tap — leave the view alone and let them toggle map/list themselves.
+    if (viewMode === 'map' && isDesktop) {
       setViewMode('split');
     }
     // Map pins and the paginated list are separate datasets, so a clicked pin
@@ -411,7 +414,7 @@ export default function MapPage() {
     } catch (error) {
       console.error('Failed to fetch job:', error);
     }
-  }, [jobs, viewMode, token]);
+  }, [jobs, viewMode, token, isDesktop]);
 
   useEffect(() => {
     if (selectedJobId) {

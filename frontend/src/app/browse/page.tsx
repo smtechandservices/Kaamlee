@@ -69,15 +69,13 @@ const MAX_BOOKMARKS_SHOWN = 5;
 
 type TriState = 'all' | 'yes' | 'no';
 
-function Segmented({ label, value, onChange, options }: {
-  label: string;
+function Segmented({ value, onChange, options }: {
   value: TriState;
   onChange: (v: TriState) => void;
   options: [TriState, string][];
 }) {
   return (
-    <div className="inline-flex items-center gap-1 rounded-full border border-black/[0.10] bg-white p-1" role="group" aria-label={label} style={{ fontFamily: 'var(--font-outfit)' }}>
-      <span className="pl-2 pr-1 text-[11px] font-semibold uppercase tracking-[0.12em] text-black/40">{label}</span>
+    <div className="inline-flex items-center gap-1 rounded-full border border-black/[0.10] bg-white p-1" role="group" style={{ fontFamily: 'var(--font-outfit)' }}>
       {options.map(([key, text]) => (
         <button
           key={key}
@@ -380,13 +378,11 @@ export default function BrowsePage() {
 
                 <div className="flex flex-wrap items-center gap-2 mb-3">
                   <Segmented
-                    label="Remote"
                     value={remote}
                     onChange={selectRemote}
                     options={[['all', 'All'], ['yes', 'Remote'], ['no', 'On-site']]}
                   />
                   <Segmented
-                    label="Bookmarks"
                     value={bookmarked}
                     onChange={selectBookmarked}
                     options={[['all', 'All'], ['yes', 'Bookmarked'], ['no', 'Not bookmarked']]}
