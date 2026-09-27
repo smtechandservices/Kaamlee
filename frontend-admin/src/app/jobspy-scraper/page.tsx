@@ -3,7 +3,7 @@
 import React, { useCallback, useEffect, useState } from 'react';
 import Link from 'next/link';
 import {
-  Play, Power, PowerOff, Plus, Trash2, Loader2, CheckCircle2, XCircle, Clock, Globe, Database,
+  Play, Power, PowerOff, Plus, Trash2, Loader2, CheckCircle2, XCircle, Clock, Globe,
   AlertCircle, RefreshCcw, ChevronLeft, ChevronRight,
 } from 'lucide-react';
 import { useRouter } from 'next/navigation';
@@ -22,6 +22,7 @@ interface Run {
   fetched: number;
   saved: number;
   duplicates: number;
+  removed_old: number; // saved JobSpy jobs deleted for being over a month old
   dropped: { remote: number; country_only: number; wrong_country: number; unresolved: number };
   site_counts: Record<string, number>;
   error: string;
@@ -42,8 +43,7 @@ interface FeedState {
   runs_page: number;
   runs_pages: number;
   runs_page_size: number;
-  totals: { runs: number; saved: number; jobs_in_db: number };
-}
+  totals: { runs: number; saved: number; jobs_in_db: number };}
 
 const SITE_LABELS: Record<string, string> = { linkedin: 'LinkedIn', indeed: 'Indeed', bayt: 'Bayt' };
 const DROP_LABELS: [keyof Run['dropped'], string][] = [
@@ -229,8 +229,7 @@ export default function JobSpyScraperPage() {
             <p className="text-xs text-[#0b0b0c]/50 mt-2">Every {state.interval_minutes} minutes</p>
           </div>
           <Stat icon={Clock} label="Runs" value={state.totals.runs} />
-          <Stat icon={CheckCircle2} label="Jobs saved (all runs)" value={state.totals.saved} />
-        </div>
+          <Stat icon={CheckCircle2} label="Jobs saved (all runs)" value={state.totals.saved} />        </div>
 
         <section className="bg-white border border-black/[0.08] rounded-3xl p-6 mb-6">
           <div className="flex items-center justify-between mb-4">
@@ -423,7 +422,14 @@ function RunRow({ run }: { run: Run }) {
         <div className="font-semibold">{run.fetched}</div>
         {sites && <div className="text-[11px] text-[#0b0b0c]/45 whitespace-nowrap">{sites}</div>}
       </td>
-      <td className="px-4 py-3 text-right font-bold text-green-700">{run.status === 'running' ? '—' : run.saved}</td>
+      <td className="px-4 py-3 text-right">
+        <div className="font-bold text-green-700">{run.status === 'running' ? '—' : run.saved}</div>
+        {run.removed_old > 0 && (
+          <div className="text-[11px] text-[#0b0b0c]/45 whitespace-nowrap" title="Saved JobSpy jobs deleted for being over a month old">
+            {run.removed_old} old removed
+          </div>
+        )}
+      </td>
       <td className="px-6 py-3 text-xs text-[#0b0b0c]/55">{skipped.length ? skipped.join(', ') : run.status === 'running' ? '' : 'none'}</td>
     </tr>
   );

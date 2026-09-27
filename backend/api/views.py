@@ -1039,7 +1039,7 @@ def _jobspy_run_dict(run):
         'triggered_by': run.triggered_by,
         'triggered_by_name': (run.triggered_by_user.get_full_name() or run.triggered_by_user.username)
                              if run.triggered_by_user else None,
-        'fetched': run.fetched, 'saved': run.saved, 'duplicates': run.duplicates,
+        'fetched': run.fetched, 'saved': run.saved, 'duplicates': run.duplicates, 'removed_old': run.removed_old,
         'dropped': {
             'remote': run.dropped_remote, 'country_only': run.dropped_country_only,
             'wrong_country': run.dropped_wrong_country, 'unresolved': run.dropped_unresolved,
@@ -1206,12 +1206,19 @@ class AdminJobSpyJobsView(generics.ListAPIView):
         by_site = dict(self.get_queryset(ignore_site=True).order_by().values_list('site').annotate(n=Count('id')))
         filtered = self.get_queryset()
         base = self._base()
+        oldest = (
+            base.filter(date_posted__isnull=False).order_by('date_posted', 'id')
+            .values('id', 'title', 'company', 'date_posted').first()
+        )
         response.data['stats'] = {
             'total': base.count(),
             'matching': response.data['count'],
             'by_site': by_site,
             'countries_in_results': filtered.values('country').distinct().count(),
             'newest_saved': base.aggregate(m=models.Max('created_at'))['m'],
+            # Earliest posting date among all JobSpy jobs (not just this filter);
+            # days counted here so the page doesn't read the clock while rendering.
+            'oldest_posted': oldest and {**oldest, 'days_ago': (timezone.localdate() - oldest['date_posted']).days},
         }
         response.data['countries'] = sorted(c for c in base.values_list('country', flat=True).distinct() if c)
         response.data['categories'] = sorted(c for c in base.values_list('category', flat=True).distinct() if c)

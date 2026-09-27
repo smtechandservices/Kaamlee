@@ -307,6 +307,7 @@ class JobSpyScrapeRun(models.Model):
     dropped_country_only = models.PositiveIntegerField(default=0)  # only a country/region, no city
     dropped_wrong_country = models.PositiveIntegerField(default=0)
     dropped_unresolved = models.PositiveIntegerField(default=0)    # geocoder found nothing usable
+    removed_old = models.PositiveIntegerField(default=0)  # saved JobSpy jobs deleted for being over a month old
     site_counts = models.JSONField(default=dict, blank=True)  # {site: jobs fetched}
     error = models.TextField(blank=True)
     started_at = models.DateTimeField(auto_now_add=True, db_index=True)

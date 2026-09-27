@@ -254,18 +254,41 @@ def _execute(run):
         run.dropped_wrong_country = counts['wrong_country']
         run.dropped_unresolved = counts['unresolved']
         run.status = 'success'
-        if rows:
-            from django.core.cache import cache
-            from api.views import _STATS_CACHE_KEY
-            cache.delete(_STATS_CACHE_KEY)  # admin dashboard counts
     except Exception as e:
         logger.exception('JobSpy feeder run %s failed', run.pk)
         run.status = 'failed'
         run.error = f'{run.error}\n{e}'.strip()
     finally:
+        # After saving, and even if the search failed: it only looks at jobs
+        # already in the database. Its own failure mustn't fail the run.
+        try:
+            run.removed_old = _remove_old_jobs()
+        except Exception:
+            logger.exception('JobSpy feeder run %s: removing old jobs failed', run.pk)
+        if run.saved or run.removed_old:
+            from django.core.cache import cache
+            from api.views import _STATS_CACHE_KEY
+            cache.delete(_STATS_CACHE_KEY)  # admin dashboard counts
         run.finished_at = timezone.now()
         run.save()
-        logger.info(f'[JobSpyFeed] {run.role} / {run.country}: fetched {run.fetched}, saved {run.saved} ({run.status})')
+        logger.info(f'[JobSpyFeed] {run.role} / {run.country}: fetched {run.fetched}, saved {run.saved}, '
+                    f'removed {run.removed_old} over a month old ({run.status})')
+
+
+def _remove_old_jobs():
+    """Delete saved JobSpy jobs posted more than MAX_JOB_AGE_DAYS (30) ago —
+    the same rule the career-page scrapers apply to their own jobs
+    (scripts/jobs remove_old_jobs), which never touch 'jobspy:' ones. A job
+    with no posting date goes that long after it was saved instead, so it
+    can't stay forever. Returns how many were deleted."""
+    from django.db.models import Q
+    from api.models import Job
+    from scripts.jobs import MAX_JOB_AGE_DAYS
+
+    cutoff = timezone.now() - timedelta(days=MAX_JOB_AGE_DAYS)
+    return Job.objects.filter(id_from_site__startswith='jobspy:').filter(
+        Q(date_posted__lt=cutoff.date()) | Q(date_posted__isnull=True, created_at__lt=cutoff),
+    ).delete()[0]
 
 
 def fail_stale_runs():

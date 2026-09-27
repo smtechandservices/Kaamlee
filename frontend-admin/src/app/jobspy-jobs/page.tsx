@@ -5,7 +5,7 @@ import Link from 'next/link';
 import { useRouter } from 'next/navigation';
 import {
   Bot, Search, X, ExternalLink, Trash2, Loader2, AlertCircle, MapPin, ChevronLeft, ChevronRight,
-  Database, Globe, Clock, RefreshCcw,
+  Database, Globe, Clock, RefreshCcw, CalendarClock,
 } from 'lucide-react';
 
 const API_BASE = `${process.env.NEXT_PUBLIC_API_URL}/api`;
@@ -55,6 +55,8 @@ interface JobsResponse {
     by_site: Record<string, number>;
     countries_in_results: number;
     newest_saved: string | null;
+    // JobSpy job with the earliest posting date (null when none have one).
+    oldest_posted: { id: number; title: string; company: string; date_posted: string; days_ago: number } | null;
   };
   countries: string[];
   categories: string[];
@@ -239,7 +241,7 @@ export default function JobSpyJobsPage() {
           </div>
         </header>
 
-        <div className="grid grid-cols-1 md:grid-cols-3 gap-4 mb-6">
+        <div className="grid grid-cols-1 md:grid-cols-4 gap-4 mb-6">
           <Stat icon={Database} label="JobSpy jobs in database" value={data ? data.stats.total.toLocaleString() : '—'} />
           <Stat
             icon={Globe}
@@ -247,6 +249,7 @@ export default function JobSpyJobsPage() {
             value={data ? String(data.stats.countries_in_results) : '—'}
           />
           <Stat icon={Clock} label="Last saved" value={data?.stats.newest_saved ? ago(data.stats.newest_saved) : '—'} />
+          <OldestPosted job={data?.stats.oldest_posted ?? null} />
         </div>
 
         <div className="flex flex-col lg:flex-row lg:items-center justify-between gap-3 mb-4">
@@ -437,6 +440,31 @@ export default function JobSpyJobsPage() {
           onDelete={() => deleteJob(selected)}
           onClose={() => setSelected(null)}
         />
+      )}
+    </div>
+  );
+}
+
+function OldestPosted({ job }: { job: JobsResponse['stats']['oldest_posted'] }) {
+  // date_posted is a plain date; read it as local midnight, not UTC.
+  const posted = job ? new Date(`${job.date_posted}T00:00:00`) : null;
+  const days = job?.days_ago ?? 0;
+  return (
+    <div className="bg-white border border-black/[0.08] rounded-3xl p-5 min-w-0">
+      <div className="text-[10px] font-black uppercase tracking-[0.2em] text-[#0b0b0c]/50 mb-2 flex items-center gap-1.5">
+        <CalendarClock size={12} /> Oldest job posted
+      </div>
+      {job && posted ? (
+        <>
+          <div className="text-2xl font-bold">
+            {posted.toLocaleDateString('en-GB', { day: '2-digit', month: 'short', year: 'numeric' })}
+          </div>
+          <p className="text-xs text-[#0b0b0c]/50 mt-1 truncate" title={`${job.title} · ${job.company}`}>
+            {days <= 0 ? 'today' : `${days} day${days === 1 ? '' : 's'} ago`}
+          </p>
+        </>
+      ) : (
+        <div className="text-2xl font-bold text-[#0b0b0c]/30">—</div>
       )}
     </div>
   );
