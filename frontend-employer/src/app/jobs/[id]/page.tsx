@@ -35,6 +35,8 @@ function toFormValues(job: JobPosting): JobPostingFormValues {
     is_remote: job.is_remote,
     screening_questions: job.screening_questions,
     application_form_schema: job.application_form_schema,
+    apply_mode: job.apply_mode ?? 'kaamlee',
+    external_apply_url: job.external_apply_url ?? '',
   };
 }
 

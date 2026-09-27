@@ -101,6 +101,9 @@ interface Posting {
   application_form_schema: FormField[];
   screening_questions: ScreeningQuestion[];
   applications_count: number;
+  // 'external': candidates apply on external_apply_url; click-throughs count as applications.
+  apply_mode: 'kaamlee' | 'external';
+  external_apply_url: string;
   created_at: string;
   updated_at: string;
   published_at: string | null;
@@ -199,6 +202,7 @@ export default function PostingsPage() {
   const [selectedPosting, setSelectedPosting] = useState<Posting | null>(null);
   const [deletingPosting, setDeletingPosting] = useState<Posting | null>(null);
   const [deleting, setDeleting] = useState(false);
+  const [updatingStatusId, setUpdatingStatusId] = useState<number | null>(null);
   const [copiedPostingId, setCopiedPostingId] = useState<number | null>(null);
 
   const copyJobLink = (posting: Posting) => {
@@ -316,6 +320,43 @@ export default function PostingsPage() {
       applications: prev.applications + delta * (posting.applications_count ?? 0),
       most_recent_created: delta === 1 ? posting.created_at : prev.most_recent_created,
     });
+  };
+
+  // Admin moderation: change only a posting's status (publish, pause, close…).
+  const changeStatus = async (posting: Posting, status: JobStatus) => {
+    if (status === posting.status) return;
+    const token = getToken();
+    if (!token) return;
+    setUpdatingStatusId(posting.id);
+    try {
+      const res = await fetch(`${HIRING_BASE}/admin/jobs/${posting.id}/`, {
+        method: 'PATCH',
+        headers: { Authorization: `Token ${token}`, 'Content-Type': 'application/json' },
+        body: JSON.stringify({ status }),
+      });
+      const data = await res.json().catch(() => ({}));
+      if (!res.ok) {
+        alert(data.error || 'Failed to change the status.');
+        return;
+      }
+      const updated = data as Posting;
+      // A status tab only lists that status — drop the row if it no longer fits.
+      const leavesFilter = statusFilter !== 'all' && updated.status !== statusFilter;
+      setPostings((prev) =>
+        leavesFilter ? prev.filter((p) => p.id !== updated.id) : prev.map((p) => (p.id === updated.id ? updated : p)),
+      );
+      if (leavesFilter) setCount((prev) => prev - 1);
+      setSelectedPosting((prev) => (prev?.id === updated.id ? updated : prev));
+      setStats((prev) => prev && {
+        ...prev,
+        [posting.status]: prev[posting.status] - 1,
+        [updated.status]: prev[updated.status] + 1,
+      });
+    } catch {
+      alert('Failed to reach the server.');
+    } finally {
+      setUpdatingStatusId(null);
+    }
   };
 
   const applySearch = () => {
@@ -535,10 +576,12 @@ export default function PostingsPage() {
                           {p.applications_count}
                         </button>
                       </td>
-                      <td className="px-6 py-5">
-                        <span className={`inline-flex items-center px-2.5 py-1 rounded-lg text-[11px] font-bold uppercase tracking-wider border ${STATUS_STYLES[p.status]}`}>
-                          {p.status}
-                        </span>
+                      <td className="px-6 py-5" onClick={(e) => e.stopPropagation()}>
+                        <StatusSelect
+                          status={p.status}
+                          busy={updatingStatusId === p.id}
+                          onChange={(status) => changeStatus(p, status)}
+                        />
                       </td>
                       <td className="px-6 py-5 text-sm text-[#0b0b0c]/55">
                         {new Date(p.created_at).toLocaleDateString('en-IN', { day: '2-digit', month: 'short', year: 'numeric' })}
@@ -609,6 +652,8 @@ export default function PostingsPage() {
             onClose={() => setSelectedPosting(null)}
             onDelete={() => setDeletingPosting(selectedPosting)}
             onViewApplicants={() => setViewingApplicantsFor(selectedPosting)}
+            onChangeStatus={(status) => changeStatus(selectedPosting, status)}
+            updatingStatus={updatingStatusId === selectedPosting.id}
           />
         )}
       </AnimatePresence>
@@ -678,11 +723,36 @@ export default function PostingsPage() {
   );
 }
 
-function PostingDetailModal({ posting, onClose, onDelete, onViewApplicants }: {
+// Status badge that doubles as a dropdown — picking a value saves it right away.
+function StatusSelect({ status, busy, onChange }: {
+  status: JobStatus;
+  busy: boolean;
+  onChange: (status: JobStatus) => void;
+}) {
+  return (
+    <span className="inline-flex items-center gap-1.5">
+      <select
+        value={status}
+        disabled={busy}
+        onChange={(e) => onChange(e.target.value as JobStatus)}
+        aria-label="Change status"
+        title="Change status"
+        className={`cursor-pointer px-2 py-1 rounded-lg text-[11px] font-bold uppercase tracking-wider border outline-none disabled:opacity-60 disabled:cursor-wait ${STATUS_STYLES[status]}`}
+      >
+        {STATUS_OPTIONS.map(([value, label]) => <option key={value} value={value}>{label}</option>)}
+      </select>
+      {busy && <Loader2 size={13} className="animate-spin text-[#0b0b0c]/40" />}
+    </span>
+  );
+}
+
+function PostingDetailModal({ posting, onClose, onDelete, onViewApplicants, onChangeStatus, updatingStatus }: {
   posting: Posting;
   onClose: () => void;
   onDelete: () => void;
   onViewApplicants: () => void;
+  onChangeStatus: (status: JobStatus) => void;
+  updatingStatus: boolean;
 }) {
   const salary = formatSalary(posting);
 
@@ -725,9 +795,7 @@ function PostingDetailModal({ posting, onClose, onDelete, onViewApplicants }: {
         <div className="px-8 py-6 space-y-6">
           <div className="grid grid-cols-2 md:grid-cols-3 gap-x-6 gap-y-5">
             <DetailField label="Status" value={
-              <span className={`inline-flex items-center px-2.5 py-1 rounded-lg text-[11px] font-bold uppercase tracking-wider border ${STATUS_STYLES[posting.status]}`}>
-                {posting.status}
-              </span>
+              <StatusSelect status={posting.status} busy={updatingStatus} onChange={onChangeStatus} />
             } />
             <DetailField label="Category" value={posting.category} />
             <DetailField label="Employment type" value={EMPLOYMENT_TYPE_LABELS[posting.employment_type]} />
@@ -748,6 +816,13 @@ function PostingDetailModal({ posting, onClose, onDelete, onViewApplicants }: {
             />
             <DetailField label="Salary" value={salary ?? '—'} />
             <DetailField label="Applications" value={posting.applications_count} />
+            <DetailField label="How to apply" value={
+              posting.apply_mode === 'external' && posting.external_apply_url ? (
+                <a href={posting.external_apply_url} target="_blank" rel="noreferrer" className="text-green-700 hover:underline break-all">
+                  External link ↗
+                </a>
+              ) : 'On Kaamlee'
+            } />
             <DetailField label="Employer KYC" value={
               <span className="inline-flex items-center gap-1">
                 {posting.employer_kyc_status === 'approved'
@@ -833,6 +908,8 @@ interface CreatePostingFormValues {
   salary_min: string;
   salary_max: string;
   salary_currency: string;
+  apply_mode: 'kaamlee' | 'external';
+  external_apply_url: string;
 }
 
 const EMPTY_CREATE_FORM: CreatePostingFormValues = {
@@ -850,6 +927,8 @@ const EMPTY_CREATE_FORM: CreatePostingFormValues = {
   salary_min: '',
   salary_max: '',
   salary_currency: 'INR',
+  apply_mode: 'kaamlee',
+  external_apply_url: '',
 };
 
 function CreatePostingModal({ employerOptions, categories, onClose, onCreate }: {
@@ -868,7 +947,8 @@ function CreatePostingModal({ employerOptions, categories, onClose, onCreate }: 
       setForm((prev) => ({ ...prev, [key]: value }));
     };
 
-  const canSave = form.employer !== '' && form.title.trim() !== '';
+  const canSave = form.employer !== '' && form.title.trim() !== ''
+    && (form.apply_mode === 'kaamlee' || form.external_apply_url.trim() !== '');
 
   const handleSave = async () => {
     setSaving(true);
@@ -888,6 +968,8 @@ function CreatePostingModal({ employerOptions, categories, onClose, onCreate }: 
       salary_currency: form.salary_currency,
       salary_min: form.salary_min ? Number(form.salary_min) : null,
       salary_max: form.salary_max ? Number(form.salary_max) : null,
+      apply_mode: form.apply_mode,
+      external_apply_url: form.apply_mode === 'external' ? form.external_apply_url.trim() : '',
     };
     const errorMessage = await onCreate(payload);
     setSaving(false);
@@ -1041,6 +1123,25 @@ function CreatePostingModal({ employerOptions, categories, onClose, onCreate }: 
           </div>
 
           <div>
+            <label className="text-xs font-bold uppercase tracking-wider text-[#0b0b0c]/60 mb-1.5 block">How candidates apply</label>
+            <select
+              value={form.apply_mode}
+              onChange={set('apply_mode')}
+              className="w-full bg-black/[0.03] border border-black/[0.08] rounded-xl px-4 py-2.5 text-sm outline-none focus:border-purple-500 transition-all cursor-pointer"
+            >
+              <option value="kaamlee">Apply on Kaamlee</option>
+              <option value="external">External apply link (employer&apos;s own site)</option>
+            </select>
+            {form.apply_mode === 'external' && (
+              <input
+                type="url" value={form.external_apply_url} onChange={set('external_apply_url')}
+                placeholder="https://careers.company.com/jobs/123"
+                className="mt-2 w-full bg-black/[0.03] border border-black/[0.08] rounded-xl px-3 py-2.5 text-sm outline-none focus:border-purple-500 transition-all"
+              />
+            )}
+          </div>
+
+          <div>
             <label className="text-xs font-bold uppercase tracking-wider text-[#0b0b0c]/60 mb-1.5 block">Status</label>
             <select
               value={form.status}
@@ -1089,7 +1190,13 @@ interface Applicant {
   candidate_username: string;
   candidate_email: string;
   candidate_phone: string | null;
-  cv: { id: number; label: string; target_role: string; ats_score: number } | null;
+  cv: {
+    id: number | null;
+    label: string;
+    target_role: string | null;
+    ats_score: number | null;
+    source: 'custom_cv' | 'profile_resume';
+  } | null;
   portfolio_url: string | null;
   portfolio_public_snapshot: boolean;
   form_responses: Record<string, string>;
@@ -1098,6 +1205,9 @@ interface Applicant {
   stage_updated_at: string;
   applied_at: string;
   latest_note: string | null;
+  via_external_link: boolean;
+  external_click_count: number;
+  last_external_click_at: string | null;
 }
 
 const STAGE_BADGE_STYLES: Record<ApplicationStage, string> = {
@@ -1220,6 +1330,14 @@ function ApplicantsModal({ posting, onClose }: { posting: Posting; onClose: () =
                   </div>
 
                   <div className="flex flex-wrap items-center gap-2 mb-3">
+                    {a.via_external_link && (
+                      <span
+                        className="inline-flex items-center gap-1.5 text-xs font-semibold bg-sky-500/10 text-sky-700 px-3 py-1.5 rounded-full"
+                        title={`Clicked through to the external apply link${a.external_click_count > 1 ? ` (${a.external_click_count} clicks)` : ''}`}
+                      >
+                        <ExternalLink size={12} /> Redirected
+                      </span>
+                    )}
                     {a.cv && (
                       <>
                         <button
@@ -1228,15 +1346,18 @@ function ApplicantsModal({ posting, onClose }: { posting: Posting; onClose: () =
                           className="cursor-pointer inline-flex items-center gap-1.5 text-xs font-semibold bg-black/[0.05] hover:bg-black/[0.08] px-3 py-1.5 rounded-full transition-colors disabled:opacity-50"
                         >
                           {loadingCvId === a.id ? <Loader2 size={12} className="animate-spin" /> : <FileText size={12} />}
-                          {a.cv.label || a.cv.target_role || 'CV'} &middot; ATS {a.cv.ats_score}%
+                          {a.cv.source === 'profile_resume' ? 'Resume' : a.cv.label || a.cv.target_role || 'CV'}
+                          {a.cv.ats_score != null && <> &middot; ATS {a.cv.ats_score}%</>}
                         </button>
-                        <button
-                          onClick={() => openCV(a.id, 'docx')}
-                          className="cursor-pointer inline-flex items-center gap-1.5 text-xs font-semibold bg-black/[0.05] hover:bg-black/[0.08] px-3 py-1.5 rounded-full transition-colors"
-                          title="Download as DOCX"
-                        >
-                          <Download size={12} /> DOCX
-                        </button>
+                        {a.cv.source === 'custom_cv' && (
+                          <button
+                            onClick={() => openCV(a.id, 'docx')}
+                            className="cursor-pointer inline-flex items-center gap-1.5 text-xs font-semibold bg-black/[0.05] hover:bg-black/[0.08] px-3 py-1.5 rounded-full transition-colors"
+                            title="Download as DOCX"
+                          >
+                            <Download size={12} /> DOCX
+                          </button>
+                        )}
                       </>
                     )}
                     {a.portfolio_url && (

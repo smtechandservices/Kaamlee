@@ -4,7 +4,7 @@ import React, { useEffect, useState } from 'react';
 import Link from 'next/link';
 import { useParams, useRouter } from 'next/navigation';
 import {
-  Loader2, Building2, MapPin, Briefcase, CheckCircle2, FileText, Globe, AlertCircle,
+  Loader2, Building2, MapPin, Briefcase, CheckCircle2, FileText, Globe, AlertCircle, ExternalLink, Info,
 } from 'lucide-react';
 import Sidebar from '@/components/Sidebar';
 import PageHeader from '@/components/PageHeader';
@@ -32,6 +32,11 @@ export default function ApplyPage() {
   const [notFound, setNotFound] = useState(false);
 
   const [selectedCvId, setSelectedCvId] = useState<number | null>(null);
+  // External-link postings: what to share with the employer before redirecting —
+  // a Kaamlee CV id, 'resume' (the uploaded profile resume) or null (nothing) —
+  // and whether that chooser is open.
+  const [shareChoice, setShareChoice] = useState<number | 'resume' | null>(null);
+  const [choosingCv, setChoosingCv] = useState(false);
   const [formResponses, setFormResponses] = useState<Record<string, string>>({});
   const [screeningAnswers, setScreeningAnswers] = useState<Record<string, string>>({});
   const [makePortfolioPublic, setMakePortfolioPublic] = useState(false);
@@ -68,6 +73,9 @@ export default function ApplyPage() {
         if (Array.isArray(cvList) && cvList.length > 0) setSelectedCvId(cvList[0].id);
         setPortfolioPublic(!!portfolio?.is_public);
         setHasResume(!!portfolio?.has_resume);
+        setShareChoice(
+          Array.isArray(cvList) && cvList.length > 0 ? cvList[0].id : portfolio?.has_resume ? 'resume' : null,
+        );
       })
       .finally(() => setLoading(false));
     // eslint-disable-next-line react-hooks/exhaustive-deps
@@ -110,6 +118,25 @@ export default function ApplyPage() {
     } finally {
       setSubmitting(false);
     }
+  };
+
+  // External-link postings: after the candidate picks what to share, send
+  // them to the employer's own apply page. The tab is opened straight from the
+  // Continue click (so popup blockers allow it) and the click + chosen CV are
+  // recorded in parallel — keepalive lets the request finish even if the
+  // candidate leaves this page.
+  const handleExternalApply = () => {
+    if (!token || !job?.external_apply_url) return;
+    window.open(job.external_apply_url, '_blank', 'noopener,noreferrer');
+    setChoosingCv(false);
+    fetch(`${API_BASE}/hiring/jobs/${id}/external-apply/`, {
+      method: 'POST',
+      headers: { Authorization: `Token ${token}`, 'Content-Type': 'application/json' },
+      body: JSON.stringify({ cv: typeof shareChoice === 'number' ? shareChoice : null }),
+      keepalive: true,
+    })
+      .then((r) => { if (r.ok) setSubmitted(true); })
+      .catch(() => {});
   };
 
   if (isAuthLoading || !token || loading) {
@@ -169,7 +196,91 @@ export default function ApplyPage() {
               <p className="text-sm text-black/60 mt-4 whitespace-pre-wrap leading-relaxed">{job.description}</p>
             </div>
 
-            {alreadyApplied ? (
+            {job.apply_mode === 'external' ? (
+              <div className="bg-white border border-black/[0.08] rounded-3xl p-6 sm:p-8">
+                <h2 className="text-sm font-bold uppercase tracking-wider text-black/50 mb-2">Apply on the company site</h2>
+                <p className="text-sm text-black/65 mb-4">
+                  {job.employer_name} takes applications on their own careers site.
+                </p>
+                <div className="flex items-start gap-2 text-xs text-black/60 bg-black/[0.03] border border-black/[0.06] rounded-xl px-4 py-3 mb-4">
+                  <Info size={14} className="shrink-0 mt-0.5" />
+                  <span>
+                    When you continue, Kaamlee shares your profile (name, email, phone) and the CV you choose with{' '}
+                    {job.employer_name}, and adds this job to your Application Tracker.
+                  </span>
+                </div>
+
+                {!choosingCv ? (
+                  <button
+                    type="button"
+                    onClick={() => setChoosingCv(true)}
+                    className="cursor-pointer inline-flex items-center gap-2 bg-[#16a34a] hover:bg-[#15803d] text-white px-6 py-3 rounded-xl text-sm font-semibold transition-all"
+                  >
+                    {alreadyApplied ? 'Open the apply page again' : `Apply on ${job.employer_name}'s site`}
+                    <ExternalLink size={15} />
+                  </button>
+                ) : (
+                  <div className="border border-black/[0.08] rounded-2xl p-4 sm:p-5">
+                    <h3 className="text-sm font-bold mb-3">Which CV should we share with {job.employer_name}?</h3>
+                    {cvs.length === 0 && !hasResume ? (
+                      <p className="text-sm text-black/55 mb-4">
+                        You don&apos;t have a CV or resume to share yet.{' '}
+                        <Link href="/custom-cv" className="font-semibold text-[#16a34a] hover:underline">Create a CV</Link> or{' '}
+                        <Link href="/profile" className="font-semibold text-[#16a34a] hover:underline">upload a resume</Link>,
+                        or continue without one.
+                      </p>
+                    ) : (
+                      <div className="flex flex-col gap-2 mb-4">
+                        {cvs.map((cv) => (
+                          <label key={cv.id} className={`flex items-center gap-3 p-3 rounded-xl border cursor-pointer transition-all ${shareChoice === cv.id ? 'border-[#16a34a]/50 bg-[#16a34a]/5' : 'border-black/[0.08] hover:border-black/20'}`}>
+                            <input type="radio" name="share-cv" checked={shareChoice === cv.id} onChange={() => setShareChoice(cv.id)}
+                              className="w-4 h-4 accent-[#16a34a] cursor-pointer" />
+                            <FileText size={15} className="text-black/40 shrink-0" />
+                            <div className="min-w-0 flex-1">
+                              <div className="text-sm font-semibold truncate">{cv.label || cv.target_role || `CV #${cv.id}`}</div>
+                              <div className="text-xs text-black/45">Kaamlee CV · ATS score {cv.ats_score}%</div>
+                            </div>
+                          </label>
+                        ))}
+                        {hasResume && (
+                          <label className={`flex items-center gap-3 p-3 rounded-xl border cursor-pointer transition-all ${shareChoice === 'resume' ? 'border-[#16a34a]/50 bg-[#16a34a]/5' : 'border-black/[0.08] hover:border-black/20'}`}>
+                            <input type="radio" name="share-cv" checked={shareChoice === 'resume'} onChange={() => setShareChoice('resume')}
+                              className="w-4 h-4 accent-[#16a34a] cursor-pointer" />
+                            <FileText size={15} className="text-black/40 shrink-0" />
+                            <div className="min-w-0 flex-1">
+                              <div className="text-sm font-semibold truncate">My uploaded resume</div>
+                              <div className="text-xs text-black/45">The file on your profile</div>
+                            </div>
+                          </label>
+                        )}
+                      </div>
+                    )}
+                    <div className="flex flex-wrap items-center gap-3">
+                      <button
+                        type="button"
+                        onClick={handleExternalApply}
+                        className="cursor-pointer inline-flex items-center gap-2 bg-[#16a34a] hover:bg-[#15803d] text-white px-6 py-3 rounded-xl text-sm font-semibold transition-all"
+                      >
+                        Continue to {job.employer_name}&apos;s site <ExternalLink size={15} />
+                      </button>
+                      <button
+                        type="button"
+                        onClick={() => setChoosingCv(false)}
+                        className="cursor-pointer text-sm font-semibold text-black/50 hover:text-black/80"
+                      >
+                        Cancel
+                      </button>
+                    </div>
+                  </div>
+                )}
+                {alreadyApplied && (
+                  <p className="flex items-center gap-1.5 text-sm text-black/60 mt-4">
+                    <CheckCircle2 size={15} className="text-[#16a34a]" /> Added to your tracker.{' '}
+                    <Link href="/applications" className="font-semibold text-[#16a34a] hover:underline">Go to Application Tracker</Link>
+                  </p>
+                )}
+              </div>
+            ) : alreadyApplied ? (
               <div className="bg-white border border-black/[0.08] rounded-3xl p-8 text-center">
                 <CheckCircle2 className="w-12 h-12 text-[#16a34a] mx-auto mb-3" />
                 <h2 className="text-lg font-bold mb-1">You've applied</h2>

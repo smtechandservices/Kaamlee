@@ -1,10 +1,10 @@
 'use client';
 
 import React, { useEffect, useState } from 'react';
-import { Plus, X, Loader2, Save } from 'lucide-react';
+import { Plus, X, Loader2, Save, ClipboardList, ExternalLink } from 'lucide-react';
 import {
   EMPLOYMENT_TYPES, EXPERIENCE_LEVELS, FIELD_TYPES,
-  type FormField, type ScreeningQuestion, type JobPosting,
+  type FormField, type ScreeningQuestion, type JobPosting, type ApplyMode,
 } from '@/lib/hiring-types';
 
 export interface JobPostingFormValues {
@@ -24,6 +24,8 @@ export interface JobPostingFormValues {
   is_remote: boolean;
   screening_questions: ScreeningQuestion[];
   application_form_schema: FormField[];
+  apply_mode: ApplyMode;
+  external_apply_url: string;
 }
 
 export const EMPTY_JOB_FORM: JobPostingFormValues = {
@@ -43,7 +45,24 @@ export const EMPTY_JOB_FORM: JobPostingFormValues = {
   is_remote: false,
   screening_questions: [],
   application_form_schema: [],
+  apply_mode: 'kaamlee',
+  external_apply_url: '',
 };
+
+const APPLY_MODES: { value: ApplyMode; title: string; body: string; icon: typeof ClipboardList }[] = [
+  {
+    value: 'kaamlee',
+    title: 'Apply on Kaamlee',
+    body: 'Candidates answer your screening questions and attach a CV here. You review them in the pipeline.',
+    icon: ClipboardList,
+  },
+  {
+    value: 'external',
+    title: 'External apply link',
+    body: "Candidates apply on your own careers portal. We track everyone who clicks through and add them to your applicants.",
+    icon: ExternalLink,
+  },
+];
 
 function slugify(label: string) {
   return label.trim().toLowerCase().replace(/[^a-z0-9]+/g, '_').replace(/^_+|_+$/g, '') || 'field';
@@ -211,6 +230,47 @@ export default function JobPostingForm({
       </div>
 
       <div className="bg-white border border-black/[0.08] rounded-3xl p-6">
+        <h2 className="text-sm font-bold uppercase tracking-wider text-[#0b0b0c]/60 mb-4">How candidates apply</h2>
+        <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
+          {APPLY_MODES.map(({ value: mode, title, body, icon: Icon }) => {
+            const selected = value.apply_mode === mode;
+            return (
+              <button
+                key={mode}
+                type="button"
+                onClick={() => set('apply_mode', mode)}
+                aria-pressed={selected}
+                className={`cursor-pointer text-left rounded-2xl border p-4 transition-all ${
+                  selected ? 'border-purple-600/60 bg-purple-600/[0.05] ring-2 ring-purple-600/15' : 'border-black/[0.08] hover:border-black/20'
+                }`}
+              >
+                <span className="flex items-center gap-2 text-sm font-bold text-[#0b0b0c]">
+                  <Icon size={16} className={selected ? 'text-purple-600' : 'text-[#0b0b0c]/45'} /> {title}
+                </span>
+                <span className="block text-xs text-[#0b0b0c]/55 mt-1.5 leading-relaxed">{body}</span>
+              </button>
+            );
+          })}
+        </div>
+
+        {value.apply_mode === 'external' && (
+          <div className="mt-5">
+            <label className="text-xs font-bold uppercase tracking-wider text-[#0b0b0c]/60 mb-1.5 block">Apply link</label>
+            <input
+              type="url" required value={value.external_apply_url} onChange={(e) => set('external_apply_url', e.target.value)}
+              placeholder="https://careers.yourcompany.com/jobs/123"
+              className="w-full bg-black/[0.03] border border-black/[0.08] rounded-xl px-4 py-2.5 text-sm outline-none focus:border-purple-600 transition-all"
+            />
+            <p className="text-xs text-[#0b0b0c]/45 mt-1.5">
+              Candidates who click &ldquo;Apply&rdquo; are sent here. Each one shows up in your applicants, marked as
+              redirected, with their profile and resume.
+            </p>
+          </div>
+        )}
+      </div>
+
+      {value.apply_mode === 'kaamlee' && (<>
+      <div className="bg-white border border-black/[0.08] rounded-3xl p-6">
         <div className="flex items-center justify-between mb-4">
           <h2 className="text-sm font-bold uppercase tracking-wider text-[#0b0b0c]/60">Screening questions</h2>
           <button type="button" onClick={addQuestion}
@@ -276,6 +336,7 @@ export default function JobPostingForm({
           )}
         </div>
       </div>
+      </>)}
 
       <button type="submit" disabled={saving}
         className="cursor-pointer inline-flex items-center gap-2 bg-purple-600 hover:bg-purple-700 disabled:opacity-50 text-white px-6 py-3 rounded-xl text-sm font-semibold transition-all">

@@ -34,6 +34,10 @@ export interface JobPosting {
   screening_questions: ScreeningQuestion[];
   is_saved: boolean;
   has_applied: boolean;
+  // 'external': apply on external_apply_url (the employer's own site) instead
+  // of Kaamlee's form; clicking through records an application.
+  apply_mode: 'kaamlee' | 'external';
+  external_apply_url: string;
   created_at: string;
   updated_at: string;
   published_at: string | null;
@@ -75,4 +79,9 @@ export interface Application {
   stage_updated_at: string;
   applied_at: string;
   rejection_note: string | null;
+  // Went to the employer's own apply page (external-link posting) rather than
+  // applying on Kaamlee; external_apply_url lets the tracker reopen it.
+  via_external_link: boolean;
+  last_external_click_at: string | null;
+  external_apply_url: string;
 }

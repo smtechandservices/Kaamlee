@@ -4,7 +4,7 @@ import { useEffect, useState } from 'react';
 import Link from 'next/link';
 import Image from 'next/image';
 import { usePathname, useRouter } from 'next/navigation';
-import { LayoutDashboard, Building2, ShieldCheck, CreditCard, Users, MessageSquare, LogOut, Briefcase, GraduationCap, Radio, FileText, KeyRound, School, ScanSearch } from 'lucide-react';
+import { LayoutDashboard, Building2, ShieldCheck, CreditCard, Users, MessageSquare, LogOut, Briefcase, GraduationCap, Radio, FileText, KeyRound, School, ScanSearch, Activity } from 'lucide-react';
 
 // Grouped by what the admin is looking after. The Dashboard sits on its
 // own above the groups.
@@ -23,6 +23,7 @@ const NAV_GROUPS = [
     items: [
       { href: '/employers', label: 'Employers', icon: ShieldCheck },
       { href: '/postings', label: 'Postings', icon: FileText },
+      { href: '/employer-activity', label: 'Employer activity', icon: Activity },
     ],
   },
   {

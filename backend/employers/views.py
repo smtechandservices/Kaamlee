@@ -4,6 +4,7 @@ from django.shortcuts import get_object_or_404
 from rest_framework import generics, views, permissions
 from rest_framework.pagination import PageNumberPagination
 from rest_framework.response import Response
+from . import activity
 from .models import Employer, EmployerMember, KYCDocument
 from .permissions import IsEmployerMember, IsEmployerAdmin, IsEmployerOwner
 from .serializers import (
@@ -13,6 +14,27 @@ from .serializers import (
     AdminEmployerProfileUpdateSerializer,
     AdminEmployerMemberCreateSerializer, AdminEmployerMemberUpdateSerializer,
 )
+
+# Company-profile fields whose edits go into the employer activity log.
+PROFILE_TRACKED_FIELDS = [
+    'name', 'legal_name', 'industry', 'size', 'website', 'logo', 'logo_url',
+    'address', 'contact_email', 'contact_phone',
+]
+MEMBER_USER_FIELDS = ['username', 'email', 'first_name', 'last_name']
+
+
+def _log_profile_change(employer, before, actor):
+    changes = activity.diff(before, employer, PROFILE_TRACKED_FIELDS)
+    if changes:
+        activity.record('profile_updated', employer=employer, actor=actor,
+                        target_type='employer', target_id=employer.id, target_label=employer.name,
+                        changes=changes)
+
+
+def _log_member_removed(member, actor):
+    activity.record('member_removed', employer=member.employer, actor=actor,
+                    target_type='member', target_id=member.id, target_label=activity.person_name(member.user),
+                    changes={'role': [member.role, None], 'email': [member.user.email, None]})
 
 
 class MyEmployerView(generics.RetrieveUpdateAPIView):
@@ -27,6 +49,11 @@ class MyEmployerView(generics.RetrieveUpdateAPIView):
 
     def get_object(self):
         return self.request.user.employer_membership.employer
+
+    def perform_update(self, serializer):
+        before = activity.snapshot(serializer.instance, PROFILE_TRACKED_FIELDS)
+        employer = serializer.save()
+        _log_profile_change(employer, before, self.request.user)
 
 
 class EmployerChangeOwnPasswordView(views.APIView):
@@ -98,13 +125,20 @@ class EmployerTeamMemberDetailView(views.APIView):
             return Response({'error': "The owner's role can't be changed here."}, status=400)
         serializer = EmployerMemberRoleUpdateSerializer(member, data=request.data, partial=True)
         serializer.is_valid(raise_exception=True)
+        old_role = member.role
         serializer.save()
+        if member.role != old_role:
+            activity.record('member_role_changed', employer=member.employer, actor=request.user,
+                            target_type='member', target_id=member.id,
+                            target_label=activity.person_name(member.user),
+                            changes={'role': [old_role, member.role]})
         return Response(EmployerMemberSerializer(member).data)
 
     def delete(self, request, pk):
         member = self._get_member(request, pk)
         if member.role == 'owner':
             return Response({'error': "The owner can't be removed."}, status=400)
+        _log_member_removed(member, request.user)
         # Delete the login itself, not just the membership link — otherwise a
         # removed member's account would linger with no employer and start
         # showing up as a "candidate" in the admin's Users list.
@@ -173,6 +207,11 @@ class AdminEmployerKYCDetailView(generics.RetrieveUpdateDestroyAPIView):
         from storage, and every team member's login is deleted — otherwise
         those accounts would linger with no employer and show up as
         candidates in the admin Users list."""
+        # Logged first; the entry keeps the name after the employer row is gone.
+        activity.record('employer_deleted', employer=instance, actor=self.request.user,
+                        target_type='employer', target_id=instance.id, target_label=instance.name,
+                        changes={'postings': [instance.job_postings.count(), None],
+                                 'team_members': [instance.members.count(), None]})
         for doc in instance.kyc_documents.all():
             doc.file.delete(save=False)
         if instance.logo:
@@ -180,6 +219,24 @@ class AdminEmployerKYCDetailView(generics.RetrieveUpdateDestroyAPIView):
         member_user_ids = list(instance.members.values_list('user_id', flat=True))
         instance.delete()
         User.objects.filter(id__in=member_user_ids, is_superuser=False, is_staff=False).delete()
+
+    def perform_update(self, serializer):
+        employer = serializer.instance
+        if isinstance(serializer, AdminEmployerKYCReviewSerializer):
+            before = {'kyc_status': employer.kyc_status, 'kyc_rejection_reason': employer.kyc_rejection_reason}
+            employer = serializer.save()
+            # Every review is logged (the model only keeps the latest one).
+            activity.record('kyc_reviewed', employer=employer, actor=self.request.user,
+                            target_type='employer', target_id=employer.id, target_label=employer.name,
+                            changes={
+                                'kyc_status': [before['kyc_status'], employer.kyc_status],
+                                'kyc_rejection_reason': [before['kyc_rejection_reason'] or None,
+                                                         employer.kyc_rejection_reason or None],
+                            })
+            return
+        before = activity.snapshot(employer, PROFILE_TRACKED_FIELDS)
+        employer = serializer.save()
+        _log_profile_change(employer, before, self.request.user)
 
     def get_serializer_class(self):
         if self.request.method == 'PATCH':
@@ -197,7 +254,10 @@ class AdminKYCDocumentDetailView(views.APIView):
     permission_classes = [permissions.IsAdminUser]
 
     def delete(self, request, pk):
-        doc = get_object_or_404(KYCDocument, pk=pk)
+        doc = get_object_or_404(KYCDocument.objects.select_related('employer'), pk=pk)
+        activity.record('kyc_document_deleted', employer=doc.employer, actor=request.user,
+                        target_type='kyc_document', target_id=doc.id, target_label=doc.get_doc_type_display(),
+                        changes={'uploaded_at': [doc.uploaded_at.isoformat(), None]})
         doc.file.delete(save=False)
         doc.delete()
         return Response(status=204)
@@ -220,7 +280,18 @@ class AdminEmployerMemberDetailView(views.APIView):
             return Response({'role': ["This is the employer's only owner — make someone else owner first."]}, status=400)
         serializer = AdminEmployerMemberUpdateSerializer(member, data=request.data, partial=True)
         serializer.is_valid(raise_exception=True)
+        before = {**activity.snapshot(member.user, MEMBER_USER_FIELDS), 'role': member.role}
         serializer.save()
+        changes = activity.diff(before, member.user, MEMBER_USER_FIELDS)
+        if member.role != before['role']:
+            changes['role'] = [before['role'], member.role]
+        if serializer.validated_data.get('new_password'):
+            changes['password'] = [None, 'changed']  # never log the password itself
+        if changes:
+            action = 'member_role_changed' if list(changes) == ['role'] else 'member_updated'
+            activity.record(action, employer=member.employer, actor=request.user,
+                            target_type='member', target_id=member.id,
+                            target_label=activity.person_name(member.user), changes=changes)
         return Response(EmployerMemberSerializer(member).data)
 
     def delete(self, request, pk):
@@ -230,6 +301,7 @@ class AdminEmployerMemberDetailView(views.APIView):
         member = get_object_or_404(self.queryset, pk=pk)
         if member.role == 'owner' and not _has_other_owner(member):
             return Response({'error': "This is the employer's only owner — make someone else owner first."}, status=400)
+        _log_member_removed(member, request.user)
         member.user.delete()
         return Response(status=204)
 

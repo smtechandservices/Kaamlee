@@ -22,7 +22,7 @@ export default function PrivacyPage() {
         className="mx-auto mt-16 sm:mt-20 z-10 relative bg-white border border-black/[0.08] rounded-[34px] p-8 sm:p-12 shadow-[0_30px_80px_-30px_rgba(16,18,26,.25)]"
       >
         <h1 className="text-3xl sm:text-4xl tracking-[-0.03em] text-[#0b0b0c] mb-2" style={{ fontFamily: 'var(--font-outfit)', fontWeight: 600 }}>Privacy Policy</h1>
-        <p className="text-sm text-black/45 mb-8" style={{ fontFamily: 'var(--font-outfit)' }}>Last updated: 25 September 2026</p>
+        <p className="text-sm text-black/45 mb-8" style={{ fontFamily: 'var(--font-outfit)' }}>Last updated: 27 September 2026</p>
 
         <div className="space-y-8 text-[rgba(61,61,61,0.85)] leading-relaxed">
           <p>
@@ -87,6 +87,7 @@ export default function PrivacyPage() {
             <p>Kaamlee acts as a facilitator between job seekers and employers, and sharing certain information is essential to that purpose:</p>
             <ul className="list-disc pl-6 mt-2 space-y-1 text-[rgba(61,61,61,0.72)]">
               <li>When a job seeker applies to a role, their profile and application details (such as name, contact information, and resume) are shared with the relevant employer.</li>
+              <li>Some employers take applications on their own website. When a job seeker clicks through to such an employer&apos;s apply link from Kaamlee, we record the click and share their profile (such as name and contact information) together with the CV or resume they choose to share with that employer, the same as an application made on Kaamlee. The job seeker is told this, and picks what to share, before being redirected.</li>
               <li>Employer and company details, along with job listings, are displayed to job seekers on the Platform.</li>
               <li>We may share information with trusted service providers who help us operate the Platform, and where required by law.</li>
             </ul>

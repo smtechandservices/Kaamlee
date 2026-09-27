@@ -15,7 +15,7 @@ const EMPLOYMENT_TYPE_LABELS: Record<JobPosting['employment_type'], string> = {
 // Same tint palette as JobCard, so the two card types read as one family
 // even though they're rendered by separate components (their action sets
 // differ too much to share one component — bookmark/copy-link/cover-letter
-// are scraped-job-only, "Apply on Kaamlee" is posting-only).
+// are scraped-job-only, the /apply/<id> link is posting-only).
 const CARD_TINTS = [
   { bg: '#ecfdf5', text: '#16a34a' },
   { bg: '#f3eeff', text: '#7c4dff' },
@@ -171,7 +171,7 @@ export const PostingCard = React.memo(function PostingCard({ posting, isSelected
               style={{ fontFamily: 'var(--font-outfit)' }}
               onClick={(e) => e.stopPropagation()}
             >
-              Apply on Kaamlee
+              Apply here
             </Link>
 
             {posting.published_at && (

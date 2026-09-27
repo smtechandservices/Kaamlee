@@ -24,6 +24,13 @@ JOB_STATUS_CHOICES = [
     ('closed', 'Closed'),
 ]
 
+# How candidates apply: through Kaamlee's own form (screening questions etc.),
+# or via the employer's own portal — then Kaamlee records who clicked through.
+APPLY_MODE_CHOICES = [
+    ('kaamlee', 'Apply on Kaamlee'),
+    ('external', 'External apply link'),
+]
+
 class JobPosting(models.Model):
     employer = models.ForeignKey(Employer, on_delete=models.CASCADE, related_name='job_postings')
     created_by = models.ForeignKey(EmployerMember, on_delete=models.SET_NULL, null=True, related_name='created_postings')
@@ -48,6 +55,13 @@ class JobPosting(models.Model):
     application_form_schema = models.JSONField(default=list, blank=True)
     # Screening questions, text-only for now: [{id, question}]
     screening_questions = models.JSONField(default=list, blank=True)
+
+    # 'external': candidates apply on external_apply_url (the employer's own
+    # portal) instead of Kaamlee's form; each click-through is recorded as an
+    # Application with via_external_link=True. The form/questions above are
+    # unused then.
+    apply_mode = models.CharField(max_length=10, choices=APPLY_MODE_CHOICES, default='kaamlee')
+    external_apply_url = models.URLField(max_length=1000, blank=True)
 
     created_at = models.DateTimeField(auto_now_add=True)
     updated_at = models.DateTimeField(auto_now=True)
@@ -84,6 +98,12 @@ class Application(models.Model):
     stage = models.CharField(max_length=15, choices=APPLICATION_STAGE_CHOICES, default='applied', db_index=True)
     stage_updated_at = models.DateTimeField(auto_now=True)
     applied_at = models.DateTimeField(auto_now_add=True)
+
+    # Set when the candidate clicked through to an external-mode posting's
+    # apply link instead of applying on Kaamlee. applied_at = first click.
+    via_external_link = models.BooleanField(default=False, db_index=True)
+    external_click_count = models.PositiveIntegerField(default=0)
+    last_external_click_at = models.DateTimeField(null=True, blank=True)
 
     class Meta:
         unique_together = ('job_posting', 'candidate')

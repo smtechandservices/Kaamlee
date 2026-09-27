@@ -11,6 +11,25 @@ from .models import JobPosting, Application, ApplicationStageChange, SavedJob, J
 logger = logging.getLogger(__name__)
 
 
+def validate_apply_mode(attrs, instance=None):
+    """Shared by the employer and admin posting serializers. An 'external'
+    posting needs a real http(s) link — candidates are sent straight to it, so
+    anything else (javascript:, ftp:, a bare word) is refused. Values not in
+    this request fall back to the saved posting's, so a partial update (PATCH)
+    that only flips the mode is still checked against the saved link."""
+    mode = attrs.get('apply_mode', getattr(instance, 'apply_mode', 'kaamlee'))
+    url = attrs.get('external_apply_url', getattr(instance, 'external_apply_url', '')) or ''
+    url = url.strip()
+    if 'external_apply_url' in attrs:
+        attrs['external_apply_url'] = url
+    if mode == 'external':
+        if not url:
+            raise serializers.ValidationError({'external_apply_url': 'Add the link candidates should apply on.'})
+        if not url.lower().startswith(('http://', 'https://')):
+            raise serializers.ValidationError({'external_apply_url': 'The apply link must start with http:// or https://.'})
+    return attrs
+
+
 class JobPostingSerializer(serializers.ModelSerializer):
     """Used for both the employer's own CRUD and the public browse/detail
     endpoints — status/employer are read-only from the client's side; the
@@ -27,12 +46,16 @@ class JobPostingSerializer(serializers.ModelSerializer):
             'employment_type', 'salary_min', 'salary_max', 'salary_currency',
             'city', 'state', 'country', 'latitude', 'longitude', 'is_remote', 'experience_level', 'category',
             'status', 'application_form_schema', 'screening_questions', 'is_saved', 'has_applied',
+            'apply_mode', 'external_apply_url',
             'created_at', 'updated_at', 'published_at', 'closes_at',
         ]
         read_only_fields = [
             'id', 'employer', 'employer_name', 'employer_logo', 'is_saved', 'has_applied',
             'created_at', 'updated_at', 'published_at',
         ]
+
+    def validate(self, attrs):
+        return validate_apply_mode(attrs, self.instance)
 
     def get_employer_logo(self, obj):
         return obj.employer.logo_src
@@ -75,6 +98,7 @@ class AdminJobPostingSerializer(serializers.ModelSerializer):
             'title', 'description', 'employment_type', 'salary_min', 'salary_max', 'salary_currency',
             'city', 'state', 'country', 'latitude', 'longitude', 'is_remote', 'experience_level', 'category',
             'status', 'application_form_schema', 'screening_questions', 'applications_count',
+            'apply_mode', 'external_apply_url',
             'created_at', 'updated_at', 'published_at', 'closes_at',
         ]
         read_only_fields = fields
@@ -98,9 +122,13 @@ class AdminJobPostingCreateSerializer(serializers.ModelSerializer):
             'city', 'state', 'country', 'latitude', 'longitude', 'is_remote',
             'experience_level', 'category', 'status',
             'application_form_schema', 'screening_questions',
+            'apply_mode', 'external_apply_url',
             'published_at', 'closes_at',
         ]
         read_only_fields = ['id', 'published_at']
+
+    def validate(self, attrs):
+        return validate_apply_mode(attrs, self.instance)
 
     def create(self, validated_data):
         # Mirrors EmployerJobPostingPublishView: posting straight to
@@ -125,6 +153,8 @@ class ApplicationSerializer(serializers.ModelSerializer):
     employer_name = serializers.CharField(source='job_posting.employer.name', read_only=True)
     employer_logo = serializers.SerializerMethodField()
     rejection_note = serializers.SerializerMethodField()
+    # External-link postings: the link, so the tracker can reopen it.
+    external_apply_url = serializers.CharField(source='job_posting.external_apply_url', read_only=True)
 
     class Meta:
         model = Application
@@ -132,6 +162,7 @@ class ApplicationSerializer(serializers.ModelSerializer):
             'id', 'job_posting', 'job_posting_title', 'employer_name', 'employer_logo',
             'cv', 'portfolio_public_snapshot', 'form_responses', 'screening_answers',
             'stage', 'stage_updated_at', 'applied_at', 'rejection_note',
+            'via_external_link', 'last_external_click_at', 'external_apply_url',
         ]
         read_only_fields = fields
 
@@ -195,6 +226,7 @@ class ApplicationKanbanSerializer(serializers.ModelSerializer):
             'id', 'job_posting', 'candidate_username', 'candidate_email', 'candidate_phone',
             'cv', 'portfolio_url', 'portfolio_public_snapshot', 'form_responses', 'screening_answers',
             'stage', 'stage_updated_at', 'applied_at', 'latest_note',
+            'via_external_link', 'external_click_count', 'last_external_click_at',
         ]
         read_only_fields = fields
 
@@ -203,9 +235,16 @@ class ApplicationKanbanSerializer(serializers.ModelSerializer):
         return profile.phone if profile else None
 
     def get_cv(self, obj):
-        if not obj.cv:
-            return None
-        return {'id': obj.cv.id, 'label': obj.cv.label, 'target_role': obj.cv.target_role, 'ats_score': obj.cv.ats_score}
+        if obj.cv:
+            return {'id': obj.cv.id, 'label': obj.cv.label, 'target_role': obj.cv.target_role,
+                    'ats_score': obj.cv.ats_score, 'source': 'custom_cv'}
+        # External-link applicants choose what to share before being redirected:
+        # a Kaamlee CV (handled above) or, with no CV set, their uploaded resume.
+        profile = getattr(obj.candidate, 'profile', None)
+        if obj.via_external_link and profile and profile.resume:
+            return {'id': None, 'label': 'Profile resume', 'target_role': None, 'ats_score': None,
+                    'source': 'profile_resume'}
+        return None
 
     def get_portfolio_url(self, obj):
         portfolio = getattr(obj.candidate, 'portfolio', None)

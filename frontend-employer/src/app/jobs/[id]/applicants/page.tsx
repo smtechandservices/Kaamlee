@@ -194,6 +194,11 @@ export default function ApplicantsKanbanPage() {
                           </button>
                         )}
                         {app.portfolio_url && <span className="text-[10px] font-bold px-1.5 py-0.5 rounded bg-purple-500/10 text-purple-600">Portfolio</span>}
+                        {app.via_external_link && (
+                          <span className="text-[10px] font-bold px-1.5 py-0.5 rounded bg-sky-500/10 text-sky-700" title="Clicked through to your apply link">
+                            Redirected
+                          </span>
+                        )}
                       </div>
                     </div>
                   ))}
@@ -268,17 +273,33 @@ function ApplicantDetailModal({ application, questionsById, fieldLabelsByKey, ca
         </div>
 
         <div className="p-6 space-y-5">
+          {application.via_external_link && (
+            <div className="flex items-start gap-2 text-xs text-sky-800 bg-sky-500/10 border border-sky-500/20 rounded-xl px-3.5 py-2.5">
+              <ExternalLink size={13} className="shrink-0 mt-0.5" />
+              <span>
+                Redirected to your apply link — they applied on your own site, so there are no answers here.
+                First click {new Date(application.applied_at).toLocaleString()}
+                {application.external_click_count > 1 &&
+                  `, ${application.external_click_count} clicks in total (last ${application.last_external_click_at ? new Date(application.last_external_click_at).toLocaleString() : '—'})`}
+                .
+              </span>
+            </div>
+          )}
           <div className="flex flex-wrap gap-2">
             {application.cv && (
               <button
                 onClick={() => onOpenCV(application.id)}
                 className="cursor-pointer inline-flex items-center gap-1.5 text-xs font-semibold bg-black/[0.05] hover:bg-black/[0.08] px-3 py-1.5 rounded-full transition-colors"
-                title="Open as PDF"
+                title={application.cv.source === 'profile_resume' ? 'Open the resume from their profile' : 'Open as PDF'}
               >
-                <FileText size={12} /> {application.cv.label || application.cv.target_role || 'CV'} &middot; ATS {application.cv.ats_score}%
+                <FileText size={12} />
+                {application.cv.source === 'profile_resume'
+                  ? 'Resume'
+                  : application.cv.label || application.cv.target_role || 'CV'}
+                {application.cv.ats_score != null && <> &middot; ATS {application.cv.ats_score}%</>}
               </button>
             )}
-            {application.cv && (
+            {application.cv?.source === 'custom_cv' && (
               <button
                 onClick={() => onOpenCV(application.id, 'docx')}
                 className="cursor-pointer inline-flex items-center gap-1.5 text-xs font-semibold bg-black/[0.05] hover:bg-black/[0.08] px-3 py-1.5 rounded-full transition-colors"

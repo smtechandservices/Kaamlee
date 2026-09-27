@@ -1,21 +1,26 @@
+import os
 import random
 import re
 
 from django.db.models import Q, F, Count, Max, Exists, OuterRef
-from django.http import HttpResponse
+from django.http import FileResponse, HttpResponse
 from django.shortcuts import get_object_or_404
 from django.utils import timezone
 from rest_framework import generics, views, permissions
 from rest_framework.pagination import PageNumberPagination
 from rest_framework.response import Response
 
+from employers import activity as employer_activity
 from employers.permissions import IsEmployerMember, IsApprovedEmployer
 from api.models import Bookmark, Job
 from api.serializers import JobSerializer
 from api.permissions import IsSubscribed, is_user_subscribed
 from api.groq_usage import GroqQuotaExceeded, usage_summary
 from scripts.cv_export import render_cv_pdf, render_cv_docx
-from .models import JobPosting, Application, ApplicationStageChange, SavedJob, JobApplicationKit, APPLICATION_STAGE_CHOICES
+from .models import (
+    JobPosting, Application, ApplicationStageChange, SavedJob, JobApplicationKit,
+    APPLICATION_STAGE_CHOICES, JOB_STATUS_CHOICES,
+)
 from .feed import build_feed_page, preview_ids, FEED_PAGE_SIZE, MAX_FEED_PAGE_SIZE
 from .serializers import (
     JobPostingSerializer, AdminJobPostingSerializer, AdminJobPostingCreateSerializer, SavedJobSerializer,
@@ -202,6 +207,43 @@ class EmployerJobPostingOverviewView(views.APIView):
         return Response(results)
 
 
+# Posting fields whose edits go into the employer activity log.
+POSTING_TRACKED_FIELDS = [
+    'title', 'description', 'employment_type', 'experience_level', 'category',
+    'salary_min', 'salary_max', 'salary_currency', 'city', 'state', 'country',
+    'latitude', 'longitude', 'is_remote', 'status', 'apply_mode', 'external_apply_url',
+    'screening_questions', 'application_form_schema', 'closes_at',
+]
+
+
+def _posting_snapshot(job):
+    return employer_activity.snapshot(job, POSTING_TRACKED_FIELDS + ['published_at'])
+
+
+def _log_posting_change(job, before, actor):
+    """Log what changed on a posting since `before` (a _posting_snapshot)."""
+    changes = employer_activity.diff(before, job, POSTING_TRACKED_FIELDS)
+    status = changes.get('status')
+    if status and status[1] == 'published' and before.get('published_at') is None and job.published_at:
+        # First publish — the admin feed already shows it from published_at.
+        changes.pop('status')
+    if not changes:
+        return
+    action = 'posting_status_changed' if list(changes) == ['status'] else 'posting_updated'
+    employer_activity.record(
+        action, employer=job.employer, actor=actor,
+        target_type='posting', target_id=job.id, target_label=job.title, changes=changes,
+    )
+
+
+def _log_posting_deleted(job, actor):
+    employer_activity.record(
+        'posting_deleted', employer=job.employer, actor=actor,
+        target_type='posting', target_id=job.id, target_label=job.title,
+        changes={'status': [job.status, None], 'applications': [job.applications.count(), None]},
+    )
+
+
 class EmployerJobPostingDetailView(generics.RetrieveUpdateDestroyAPIView):
     """GET/PATCH /hiring/jobs/<id>/ — employer-side edit, scoped to own employer account.
     DELETE — only for a posting nobody has applied to yet; one with
@@ -212,6 +254,11 @@ class EmployerJobPostingDetailView(generics.RetrieveUpdateDestroyAPIView):
     def get_queryset(self):
         return JobPosting.objects.filter(employer=self.request.user.employer_membership.employer)
 
+    def perform_update(self, serializer):
+        before = _posting_snapshot(serializer.instance)
+        job = serializer.save()
+        _log_posting_change(job, before, self.request.user)
+
     def destroy(self, request, *args, **kwargs):
         job = self.get_object()
         if job.applications.exists():
@@ -219,6 +266,7 @@ class EmployerJobPostingDetailView(generics.RetrieveUpdateDestroyAPIView):
                 {'error': 'This posting has applicants, so it can\'t be deleted — close it instead.'},
                 status=400,
             )
+        _log_posting_deleted(job, request.user)
         job.delete()
         return Response(status=204)
 
@@ -231,6 +279,7 @@ class EmployerJobPostingDuplicateView(views.APIView):
         'title', 'description', 'employment_type', 'salary_min', 'salary_max', 'salary_currency',
         'city', 'state', 'country', 'latitude', 'longitude', 'is_remote', 'experience_level',
         'category', 'application_form_schema', 'screening_questions',
+        'apply_mode', 'external_apply_url',
     ]
 
     def post(self, request, pk):
@@ -253,10 +302,15 @@ class EmployerJobPostingPublishView(views.APIView):
 
     def post(self, request, pk):
         job = get_object_or_404(JobPosting, pk=pk, employer=request.user.employer_membership.employer)
+        # A draft can be saved without its link; don't let it go live that way.
+        if job.apply_mode == 'external' and not job.external_apply_url:
+            return Response({'error': 'Add the external apply link before publishing.'}, status=400)
+        before = _posting_snapshot(job)
         job.status = 'published'
         if not job.published_at:
             job.published_at = timezone.now()
         job.save(update_fields=['status', 'published_at'])
+        _log_posting_change(job, before, request.user)
         return Response(JobPostingSerializer(job).data)
 
 
@@ -505,6 +559,147 @@ class EmployerActivityView(views.APIView):
         })
 
 
+class AdminEmployerActivityView(views.APIView):
+    """GET /hiring/admin/activity/ — every employer's activity for the admin
+    Employer activity page, newest first. Merges two kinds of source:
+      * rows that already record their own event + time (employer created,
+        KYC document uploaded, teammate joined, posting created / first
+        published, applications, stage changes), and
+      * EmployerActivityLog — changes nothing else records (edits with
+        before/after values, status changes, deletions, removals, KYC reviews).
+    ?employer=<id>, ?type=<one of TYPES>, ?page=."""
+    permission_classes = [permissions.IsAdminUser]
+    PAGE_SIZE = 40
+    DERIVED_TYPES = {
+        'employer_registered': 'Employer added',
+        'kyc_document_uploaded': 'KYC document uploaded',
+        'member_joined': 'Teammate joined',
+        'posting_created': 'Posting created',
+        'posting_published': 'Posting published',
+        'applied': 'Application received',
+        'stage_change': 'Applicant stage changed',
+    }
+
+    def get(self, request):
+        from employers.models import ACTIVITY_ACTION_CHOICES, Employer, EmployerActivityLog, EmployerMember, KYCDocument
+
+        types = {**self.DERIVED_TYPES, **dict(ACTIVITY_ACTION_CHOICES)}
+        try:
+            page = max(int(request.query_params.get('page', 1)), 1)
+        except ValueError:
+            page = 1
+        wanted = request.query_params.get('type')
+        active = [wanted] if wanted in types else list(types)
+        employer_id = request.query_params.get('employer')
+        employer_id = int(employer_id) if employer_id and employer_id.isdigit() else None
+
+        take = page * self.PAGE_SIZE  # enough of each source to fill this page after merging
+        events, total = [], 0
+
+        def by_employer(qs, field):
+            return qs.filter(**{field: employer_id}) if employer_id else qs
+
+        def add(qs, build):
+            nonlocal total
+            total += qs.count()
+            events.extend(build(obj) for obj in qs[:take])
+
+        def member_name(member):
+            return _person_name(member.user) if member else 'A former teammate'
+
+        if 'employer_registered' in active:
+            add(by_employer(Employer.objects.all(), 'id').order_by('-created_at'), lambda e: {
+                'key': f'emp-{e.id}', 'type': 'employer_registered', 'at': e.created_at,
+                'employer_id': e.id, 'employer_name': e.name, 'actor': 'Kaamlee team', 'actor_is_admin': True,
+            })
+        if 'kyc_document_uploaded' in active:
+            add(by_employer(KYCDocument.objects.select_related('employer'), 'employer_id').order_by('-uploaded_at'), lambda d: {
+                'key': f'kycdoc-{d.id}', 'type': 'kyc_document_uploaded', 'at': d.uploaded_at,
+                'employer_id': d.employer_id, 'employer_name': d.employer.name, 'actor': None,
+                'target_label': d.get_doc_type_display(),
+            })
+        if 'kyc_reviewed' in active:
+            # Reviews from before the log existed: the model keeps the latest
+            # one. Employers with logged reviews are covered by the log below.
+            logged = EmployerActivityLog.objects.filter(action='kyc_reviewed', employer__isnull=False).values('employer_id')
+            qs = by_employer(Employer.objects.filter(kyc_reviewed_at__isnull=False), 'id').exclude(id__in=logged)
+            add(qs.select_related('kyc_reviewed_by').order_by('-kyc_reviewed_at'), lambda e: {
+                'key': f'kycrev-{e.id}', 'type': 'kyc_reviewed', 'at': e.kyc_reviewed_at,
+                'employer_id': e.id, 'employer_name': e.name,
+                'actor': _person_name(e.kyc_reviewed_by) if e.kyc_reviewed_by else 'Kaamlee team', 'actor_is_admin': True,
+                'changes': {'kyc_status': [None, e.kyc_status],
+                            'kyc_rejection_reason': [None, e.kyc_rejection_reason or None]},
+            })
+        if 'member_joined' in active:
+            add(by_employer(EmployerMember.objects.select_related('user', 'employer'), 'employer_id').order_by('-created_at'), lambda m: {
+                'key': f'mem-{m.id}', 'type': 'member_joined', 'at': m.created_at,
+                'employer_id': m.employer_id, 'employer_name': m.employer.name,
+                'actor': _person_name(m.user), 'target_label': _person_name(m.user), 'role': m.role,
+            })
+        if 'posting_created' in active:
+            qs = by_employer(JobPosting.objects.select_related('employer', 'created_by__user'), 'employer_id')
+            add(qs.order_by('-created_at'), lambda p: {
+                'key': f'pc-{p.id}', 'type': 'posting_created', 'at': p.created_at,
+                'employer_id': p.employer_id, 'employer_name': p.employer.name,
+                'actor': member_name(p.created_by) if p.created_by_id else 'Kaamlee team',
+                'actor_is_admin': not p.created_by_id,
+                'posting_id': p.id, 'posting_title': p.title, 'apply_mode': p.apply_mode,
+            })
+        if 'posting_published' in active:
+            qs = by_employer(JobPosting.objects.filter(published_at__isnull=False).select_related('employer'), 'employer_id')
+            add(qs.order_by('-published_at'), lambda p: {
+                'key': f'pp-{p.id}', 'type': 'posting_published', 'at': p.published_at,
+                'employer_id': p.employer_id, 'employer_name': p.employer.name, 'actor': None,
+                'posting_id': p.id, 'posting_title': p.title,
+            })
+        if 'applied' in active:
+            qs = by_employer(Application.objects.select_related('candidate', 'job_posting__employer'), 'job_posting__employer_id')
+            add(qs.order_by('-applied_at'), lambda a: {
+                'key': f'app-{a.id}', 'type': 'applied', 'at': a.applied_at,
+                'employer_id': a.job_posting.employer_id, 'employer_name': a.job_posting.employer.name,
+                'actor': _person_name(a.candidate), 'candidate': _person_name(a.candidate),
+                'posting_id': a.job_posting_id, 'posting_title': a.job_posting.title,
+                'via_external_link': a.via_external_link,
+            })
+        if 'stage_change' in active:
+            qs = by_employer(
+                ApplicationStageChange.objects.select_related(
+                    'changed_by__user', 'application__candidate', 'application__job_posting__employer'),
+                'application__job_posting__employer_id',
+            )
+            add(qs.order_by('-created_at'), lambda c: {
+                'key': f'sc-{c.id}', 'type': 'stage_change', 'at': c.created_at,
+                'employer_id': c.application.job_posting.employer_id,
+                'employer_name': c.application.job_posting.employer.name,
+                'actor': member_name(c.changed_by), 'candidate': _person_name(c.application.candidate),
+                'posting_id': c.application.job_posting_id, 'posting_title': c.application.job_posting.title,
+                'changes': {'stage': [c.from_stage or None, c.to_stage]}, 'note': c.note,
+            })
+
+        logged_types = [t for t in active if t in dict(ACTIVITY_ACTION_CHOICES)]
+        if logged_types:
+            qs = by_employer(EmployerActivityLog.objects.filter(action__in=logged_types), 'employer_id')
+            add(qs.order_by('-created_at'), lambda log: {
+                'key': f'log-{log.id}', 'type': log.action, 'at': log.created_at,
+                'employer_id': log.employer_id, 'employer_name': log.employer_name,
+                'actor': log.actor_name or None, 'actor_is_admin': log.actor_is_admin,
+                'posting_id': log.target_id if log.target_type == 'posting' else None,
+                'posting_title': log.target_label if log.target_type == 'posting' else None,
+                'target_label': log.target_label, 'changes': log.changes,
+            })
+
+        events.sort(key=lambda e: e['at'], reverse=True)
+        start = (page - 1) * self.PAGE_SIZE
+        return Response({
+            'count': total,
+            'page': page,
+            'has_more': start + self.PAGE_SIZE < total,
+            'results': events[start:start + self.PAGE_SIZE],
+            'types': [{'key': k, 'label': v} for k, v in types.items()],
+            'employers': list(Employer.objects.order_by('name').values('id', 'name')),
+        })
+
+
 def _render_application_cv(application, fmt):
     """Shared by the employer- and admin-side CV views — renders the CV
     attached to `application` the same way the candidate's own
@@ -514,6 +709,12 @@ def _render_application_cv(application, fmt):
     candidate later lets a subscription lapse."""
     cv = application.cv
     if not cv:
+        # An external-link applicant with no CV set chose to share their
+        # uploaded profile resume on the apply page — serve that file as-is.
+        profile = getattr(application.candidate, 'profile', None)
+        if application.via_external_link and profile and profile.resume:
+            name = os.path.basename(profile.resume.name)
+            return FileResponse(profile.resume.open('rb'), as_attachment=True, filename=name)
         return Response({'error': "This applicant didn't attach a CV."}, status=404)
 
     name = (cv.content.get('name') or application.candidate.get_full_name() or application.candidate.username or 'resume').strip()
@@ -634,12 +835,34 @@ class AdminJobPostingListView(generics.ListCreateAPIView):
 class AdminJobPostingDetailView(generics.RetrieveDestroyAPIView):
     """GET /hiring/admin/jobs/<id>/ — full posting detail (same shape as the
     list, no separate detail serializer needed since nothing here is huge
-    like the employer KYC documents are). DELETE — remove a posting outright;
-    there's no "hide"/"flag" state on JobPosting today, so this is the only
-    moderation action available until one gets added."""
+    like the employer KYC documents are). PATCH {status} — moderate a posting
+    by changing only its status (e.g. pause or close it). DELETE — remove a
+    posting outright."""
     queryset = JobPosting.objects.all().select_related('employer').annotate(applications_count=Count('applications'))
     serializer_class = AdminJobPostingSerializer
     permission_classes = [permissions.IsAdminUser]
+
+    def patch(self, request, pk):
+        job = self.get_object()
+        new_status = request.data.get('status')
+        if new_status not in dict(JOB_STATUS_CHOICES):
+            return Response({'error': f"Status must be one of: {', '.join(dict(JOB_STATUS_CHOICES))}."}, status=400)
+        # Same rules as the employer's own publish (EmployerJobPostingPublishView).
+        if new_status == 'published' and job.apply_mode == 'external' and not job.external_apply_url:
+            return Response({'error': "This posting has no external apply link yet, so it can't be published."}, status=400)
+        before = _posting_snapshot(job)
+        job.status = new_status
+        update_fields = ['status', 'updated_at']
+        if new_status == 'published' and not job.published_at:
+            job.published_at = timezone.now()
+            update_fields.append('published_at')
+        job.save(update_fields=update_fields)
+        _log_posting_change(job, before, request.user)
+        return Response(self.get_serializer(self.get_object()).data)
+
+    def perform_destroy(self, instance):
+        _log_posting_deleted(instance, self.request.user)
+        instance.delete()
 
 
 class AdminJobApplicationsView(generics.ListAPIView):
@@ -979,6 +1202,8 @@ class ApplyToJobView(views.APIView):
 
     def post(self, request, pk):
         job = get_object_or_404(JobPosting, pk=pk, status='published')
+        if job.apply_mode == 'external':
+            return Response({'error': "This job takes applications on the employer's own site."}, status=400)
         if Application.objects.filter(job_posting=job, candidate=request.user).exists():
             return Response({'error': 'You already applied to this job.'}, status=400)
 
@@ -988,6 +1213,49 @@ class ApplyToJobView(views.APIView):
         serializer.is_valid(raise_exception=True)
         application = serializer.save()
         return Response(ApplicationSerializer(application).data, status=201)
+
+
+class ExternalApplyView(views.APIView):
+    """POST /hiring/jobs/<id>/external-apply/ — the candidate clicked through to
+    an external-mode posting's apply link. Records it as an Application
+    (via_external_link) so the employer sees them with the other applicants
+    and the candidate sees it in their tracker; repeat clicks bump the count.
+    Body: {cv: <CustomCV id> | null} — the CV the candidate chose to share
+    (null = their uploaded profile resume). A later click may change it.
+    Returns {url, application} — the page opens the link itself."""
+    permission_classes = [permissions.IsAuthenticated]
+
+    def post(self, request, pk):
+        from api.models import CustomCV
+
+        job = get_object_or_404(JobPosting, pk=pk, status='published')
+        if job.apply_mode != 'external' or not job.external_apply_url:
+            return Response({'error': 'This job takes applications on Kaamlee.'}, status=400)
+
+        cv = None
+        cv_id = request.data.get('cv')
+        if cv_id not in (None, ''):
+            cv = CustomCV.objects.filter(pk=cv_id, user=request.user).first()
+            if cv is None:
+                return Response({'error': "That CV doesn't belong to you."}, status=400)
+
+        now = timezone.now()
+        application, created = Application.objects.get_or_create(
+            job_posting=job, candidate=request.user,
+            defaults={'via_external_link': True, 'external_click_count': 1, 'last_external_click_at': now, 'cv': cv},
+        )
+        if not created and application.via_external_link:
+            # F() so two quick clicks can't lose a count.
+            Application.objects.filter(pk=application.pk).update(
+                external_click_count=F('external_click_count') + 1, last_external_click_at=now, cv=cv,
+            )
+            application.refresh_from_db()
+        # (not created and not via_external_link: they applied on Kaamlee before
+        # the posting switched to an external link — keep that application as is.)
+        return Response({
+            'url': job.external_apply_url,
+            'application': ApplicationSerializer(application).data,
+        }, status=201 if created else 200)
 
 
 class MyApplicationsView(generics.ListAPIView):

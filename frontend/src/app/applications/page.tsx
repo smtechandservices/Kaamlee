@@ -244,7 +244,10 @@ export default function ApplicationsPage() {
     const grouped = {} as Record<UnifiedColumnKey, MergedCard[]>;
     UNIFIED_COLUMNS.forEach((c) => { grouped[c.key] = []; });
     stageApplications.forEach((app) => {
-      grouped[STAGE_TO_UNIFIED[app.stage]].push({ kind: 'kaamlee', key: `k-${app.id}`, app });
+      // Applied on the company's own site: they run the process there, so the
+      // card stays in Applied instead of following Kaamlee pipeline stages.
+      const column = app.via_external_link ? STAGE_TO_UNIFIED.applied : STAGE_TO_UNIFIED[app.stage];
+      grouped[column].push({ kind: 'kaamlee', key: `k-${app.id}`, app });
     });
     savedPostings
       .filter((saved) => !saved.job_posting.has_applied)
@@ -450,7 +453,7 @@ export default function ApplicationsPage() {
                             <div className="flex items-center gap-1.5 mb-2">
                               <Sparkles size={10} className="text-[#16a34a] shrink-0" />
                               <span className="text-[9px] font-bold uppercase tracking-widest text-[#16a34a]" style={{ fontFamily: 'var(--font-outfit)' }}>
-                                Via Kaamlee
+                                {card.app.via_external_link ? 'Applied on company site' : 'Via Kaamlee'}
                               </span>
                             </div>
                             <div className="flex items-start gap-2.5">
@@ -469,7 +472,7 @@ export default function ApplicationsPage() {
                                 </div>
                               </div>
                             </div>
-                            {card.app.stage === 'rejected' && card.app.rejection_note && (
+                            {!card.app.via_external_link && card.app.stage === 'rejected' && card.app.rejection_note && (
                               <div className="mt-2.5 text-[10px] text-red-600 bg-red-50 border border-red-100 rounded-lg px-2.5 py-2 leading-relaxed">
                                 {card.app.rejection_note}
                               </div>
@@ -603,7 +606,8 @@ export default function ApplicationsPage() {
 }
 
 function ApplicationDetailModal({ application, onClose }: { application: Application; onClose: () => void }) {
-  const unified = UNIFIED_COLUMNS.find((c) => c.key === STAGE_TO_UNIFIED[application.stage]);
+  const external = application.via_external_link;
+  const unified = UNIFIED_COLUMNS.find((c) => c.key === STAGE_TO_UNIFIED[external ? 'applied' : application.stage]);
 
   return (
     <div className="fixed inset-0 z-50 bg-black/60 backdrop-blur-sm flex items-center justify-center p-4" onClick={onClose}>
@@ -633,7 +637,7 @@ function ApplicationDetailModal({ application, onClose }: { application: Applica
               {unified && (
                 <span className={`inline-flex items-center gap-1.5 text-xs font-semibold px-2.5 py-1 rounded-full ${unified.chip} ${unified.accent}`}>
                   <span className={`w-1.5 h-1.5 rounded-full ${unified.dot}`} />
-                  {STAGE_LABELS[application.stage]}
+                  {external ? 'Applied on company site' : STAGE_LABELS[application.stage]}
                 </span>
               )}
             </div>
@@ -643,7 +647,24 @@ function ApplicationDetailModal({ application, onClose }: { application: Applica
             </div>
           </div>
 
-          {application.stage === 'rejected' && application.rejection_note && (
+          {external && (
+            <div className="text-sm text-black/65 bg-black/[0.03] border border-black/[0.06] rounded-xl px-4 py-3 leading-relaxed">
+              You applied on {application.employer_name}&apos;s own site, so updates come from them directly, not
+              through Kaamlee.
+              {application.external_apply_url && (
+                <a
+                  href={application.external_apply_url}
+                  target="_blank"
+                  rel="noopener noreferrer"
+                  className="mt-2 flex items-center gap-1.5 font-semibold text-[#16a34a] hover:underline w-fit"
+                >
+                  Open their apply page <ExternalLink size={14} />
+                </a>
+              )}
+            </div>
+          )}
+
+          {!external && application.stage === 'rejected' && application.rejection_note && (
             <div className="text-sm text-red-600 bg-red-50 border border-red-100 rounded-xl px-4 py-3 leading-relaxed">
               {application.rejection_note}
             </div>

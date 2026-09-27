@@ -5,7 +5,7 @@ import Link from 'next/link';
 import { useRouter } from 'next/navigation';
 import {
   Loader2, Inbox, Search, ShieldAlert, Mail, Phone, FileText, Download, Globe, ChevronDown,
-  ChevronLeft, ChevronRight, X, Check, Calendar,
+  ChevronLeft, ChevronRight, X, Check, Calendar, ExternalLink,
 } from 'lucide-react';
 import { getToken, authHeaders } from '@/lib/auth';
 import { STAGE_COLUMNS, type ApplicationStage, type KanbanApplication, type JobStatus } from '@/lib/hiring-types';
@@ -367,7 +367,19 @@ export default function ApplicantsPage() {
                         <td className="px-5 py-4 text-sm text-[#0b0b0c]/65 whitespace-nowrap">{formatDate(a.applied_at)}</td>
                         <td className="px-5 py-4">
                           <div className="flex flex-wrap items-center gap-1.5">
-                            {a.cv ? (
+                            {a.via_external_link && (
+                              <span
+                                className="inline-flex items-center gap-1 rounded-lg bg-sky-500/10 px-2 py-1 text-xs font-semibold text-sky-700"
+                                title={`Clicked through to your apply link${a.external_click_count > 1 ? ` (${a.external_click_count} clicks)` : ''}`}
+                              >
+                                <ExternalLink size={12} /> Redirected
+                              </span>
+                            )}
+                            {a.cv?.source === 'profile_resume' ? (
+                              <button onClick={() => openCV(a.id, 'pdf')} className="cursor-pointer inline-flex items-center gap-1 rounded-lg border border-black/[0.08] px-2 py-1 text-xs font-semibold text-[#0b0b0c]/70 hover:text-purple-600" title="Open the resume from their profile">
+                                <FileText size={12} /> Resume
+                              </button>
+                            ) : a.cv ? (
                               <>
                                 <button onClick={() => openCV(a.id, 'pdf')} className="cursor-pointer inline-flex items-center gap-1 rounded-lg border border-black/[0.08] px-2 py-1 text-xs font-semibold text-[#0b0b0c]/70 hover:text-purple-600">
                                   <FileText size={12} /> CV{a.cv.ats_score ? ` · ${a.cv.ats_score}%` : ''}
@@ -377,7 +389,7 @@ export default function ApplicantsPage() {
                                 </button>
                               </>
                             ) : (
-                              <span className="text-xs text-[#0b0b0c]/40">No CV</span>
+                              <span className="text-xs text-[#0b0b0c]/40">{a.via_external_link ? 'No resume on profile' : 'No CV'}</span>
                             )}
                             {a.portfolio_url && (
                               <a href={`${CANDIDATE_APP_URL}${a.portfolio_url}`} target="_blank" rel="noreferrer" className="inline-flex items-center gap-1 rounded-lg border border-black/[0.08] px-2 py-1 text-xs font-semibold text-[#0b0b0c]/70 hover:text-purple-600">

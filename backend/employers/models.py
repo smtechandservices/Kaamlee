@@ -73,3 +73,45 @@ class KYCDocument(models.Model):
 
     def __str__(self):
         return f"{self.get_doc_type_display()} for {self.employer.name}"
+
+
+# Changes that aren't otherwise recorded anywhere (edits, status changes,
+# deletions, removals, reviews). Things that already have their own row and
+# timestamp — employer created, KYC document uploaded, teammate joined,
+# posting created/first published, applications, stage changes — are read
+# from those rows by the admin activity feed instead of being logged twice.
+ACTIVITY_ACTION_CHOICES = [
+    ('posting_updated', 'Posting edited'),
+    ('posting_status_changed', 'Posting status changed'),
+    ('posting_deleted', 'Posting deleted'),
+    ('profile_updated', 'Company profile edited'),
+    ('kyc_reviewed', 'KYC reviewed'),
+    ('kyc_document_deleted', 'KYC document removed'),
+    ('member_role_changed', 'Teammate role changed'),
+    ('member_updated', 'Teammate details edited'),
+    ('member_removed', 'Teammate removed'),
+    ('employer_deleted', 'Employer deleted'),
+]
+
+
+class EmployerActivityLog(models.Model):
+    """One change made to an employer's data, by the employer's team or by a
+    Kaamlee admin. Names/titles are copied in (not just linked) so an entry
+    still reads correctly after the posting, teammate, or employer is gone."""
+    employer = models.ForeignKey(Employer, on_delete=models.SET_NULL, null=True, blank=True, related_name='activity_logs')
+    employer_name = models.CharField(max_length=255)
+    actor = models.ForeignKey(User, on_delete=models.SET_NULL, null=True, blank=True, related_name='employer_activity')
+    actor_name = models.CharField(max_length=255, blank=True)
+    actor_is_admin = models.BooleanField(default=False)  # a Kaamlee admin, not the employer's team
+    action = models.CharField(max_length=30, choices=ACTIVITY_ACTION_CHOICES, db_index=True)
+    target_type = models.CharField(max_length=20, blank=True)  # 'posting' | 'member' | 'employer' | 'kyc_document'
+    target_id = models.IntegerField(null=True, blank=True)
+    target_label = models.CharField(max_length=255, blank=True)  # posting title, teammate name…
+    changes = models.JSONField(default=dict, blank=True)  # {field: [old, new]}
+    created_at = models.DateTimeField(auto_now_add=True, db_index=True)
+
+    class Meta:
+        ordering = ['-created_at']
+
+    def __str__(self):
+        return f"{self.get_action_display()} — {self.employer_name} ({self.created_at:%Y-%m-%d %H:%M})"

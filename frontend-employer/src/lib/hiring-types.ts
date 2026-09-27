@@ -34,11 +34,17 @@ export interface JobPosting {
   status: JobStatus;
   application_form_schema: FormField[];
   screening_questions: ScreeningQuestion[];
+  // 'external': candidates apply on external_apply_url; each click-through is
+  // recorded as an application (via_external_link) instead of a form submission.
+  apply_mode: ApplyMode;
+  external_apply_url: string;
   created_at: string;
   updated_at: string;
   published_at: string | null;
   closes_at: string | null;
 }
+
+export type ApplyMode = 'kaamlee' | 'external';
 
 export type ApplicationStage = 'applied' | 'screening' | 'shortlisted' | 'interview' | 'offer' | 'hired' | 'rejected';
 
@@ -58,7 +64,15 @@ export interface KanbanApplication {
   candidate_username: string;
   candidate_email: string;
   candidate_phone: string | null;
-  cv: { id: number; label: string; target_role: string; ats_score: number } | null;
+  // source 'profile_resume' = an external-link applicant's uploaded resume
+  // (no Kaamlee CV was attached, so id/target_role/ats_score are null).
+  cv: {
+    id: number | null;
+    label: string;
+    target_role: string | null;
+    ats_score: number | null;
+    source: 'custom_cv' | 'profile_resume';
+  } | null;
   portfolio_url: string | null;
   portfolio_public_snapshot: boolean;
   form_responses: Record<string, string>;
@@ -67,6 +81,10 @@ export interface KanbanApplication {
   stage_updated_at: string;
   applied_at: string;
   latest_note: string | null;
+  // Clicked through to the posting's external apply link (applied_at = first click).
+  via_external_link: boolean;
+  external_click_count: number;
+  last_external_click_at: string | null;
 }
 
 export const EMPLOYMENT_TYPES: { value: JobPosting['employment_type']; label: string }[] = [
