@@ -18,6 +18,22 @@ const CARD_CLS =
 
 const LABEL_CLS = 'text-[10px] sm:text-xs font-semibold text-black/45 uppercase tracking-widest ml-1';
 
+// Must match the backend (UserSerializer.validate_resume in api/serializers.py):
+// PDF or plain text only, at most 5 MB. Checked here too so a bad file is
+// caught before it's uploaded.
+const RESUME_MAX_BYTES = 5 * 1024 * 1024;
+const RESUME_EXTENSIONS = ['.pdf', '.txt'];
+
+function resumeProblem(file: File): string | null {
+  if (!RESUME_EXTENSIONS.some((ext) => file.name.toLowerCase().endsWith(ext))) {
+    return 'Only PDF or plain text (.txt) resumes are supported.';
+  }
+  if (file.size > RESUME_MAX_BYTES) {
+    return `Resume file is too large (${(file.size / 1024 / 1024).toFixed(1)} MB, max 5 MB).`;
+  }
+  return null;
+}
+
 const INPUT_CLS =
   'w-full bg-black/[0.02] border border-black/[0.08] rounded-xl sm:rounded-2xl pl-11 sm:pl-12 pr-4 py-3.5 sm:py-4 text-xs sm:text-sm text-[#0b0b0c] placeholder:text-black/30 focus:border-[#16a34a]/50 focus:bg-white outline-none transition-all';
 
@@ -188,8 +204,11 @@ export default function ProfilePage() {
         setResumeSuccess(true);
         setTimeout(() => setResumeSuccess(false), 3000);
       } else {
-        const data = await response.json();
-        setResumeError(data.detail || 'Failed to update resume.');
+        // The backend's reason comes back as a field error ({"resume": ["…"]}),
+        // not in `detail` — show it rather than a generic message.
+        const data = await response.json().catch(() => ({}));
+        const fieldError = Array.isArray(data.resume) ? data.resume[0] : data.resume;
+        setResumeError(fieldError || data.detail || 'Failed to update resume.');
       }
     } catch (err) {
       setResumeError('An error occurred. Please try again.');
@@ -373,7 +392,7 @@ export default function ProfilePage() {
             )}
 
             <div className="space-y-2 sm:space-y-3">
-              <label className={LABEL_CLS} style={OUTFIT}>Resume (PDF Recommended)</label>
+              <label className={LABEL_CLS} style={OUTFIT}>Resume (PDF or TXT, max 5 MB)</label>
               <div className="relative">
                 {!user?.resume && !resume ? (
                   <div className="w-full bg-black/[0.02] border border-black/[0.10] border-dashed rounded-xl sm:rounded-2xl p-6 sm:p-8 flex flex-col items-center justify-center gap-3 hover:border-[#16a34a]/50 transition-all cursor-pointer relative text-center">
@@ -381,8 +400,21 @@ export default function ProfilePage() {
                     <span className="text-[10px] sm:text-xs font-medium text-black/45" style={OUTFIT}>Click to upload or drag & drop</span>
                     <input
                       type="file"
-                      accept=".pdf,.doc,.docx"
-                      onChange={(e) => setResume(e.target.files?.[0] || null)}
+                      accept={RESUME_EXTENSIONS.join(',')}
+                      onChange={(e) => {
+                        const file = e.target.files?.[0] || null;
+                        e.target.value = ''; // so re-picking the same file fires onChange again
+                        if (!file) return;
+                        const problem = resumeProblem(file);
+                        setResumeSuccess(false);
+                        if (problem) {
+                          setResume(null);
+                          setResumeError(problem);
+                          return;
+                        }
+                        setResumeError('');
+                        setResume(file);
+                      }}
                       className="absolute inset-0 opacity-0 cursor-pointer"
                     />
                   </div>

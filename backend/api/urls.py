@@ -2,6 +2,7 @@ from django.urls import path, include
 from rest_framework.routers import DefaultRouter
 from .views import (
     JobViewSet, StatsView, CompaniesView, CompanyViewSet, CollegeViewSet,
+    AdminJobSpyOptionsView, AdminJobSpySearchView,
     SignupView, GoogleAuthView, UserView, RecentJobsView,
     CheckExistenceView, LoginView, LogoutView, AdminLoginView,
     AdminSessionListView, AdminSessionRevokeView, AdminSessionBulkView, AdminChangeOwnPasswordView, AdminUserViewSet, CategoriesView, CountriesView,
@@ -93,4 +94,6 @@ urlpatterns = [
     path('admin/run-script/pause/', ScraperPauseView.as_view(), name='admin-run-script-pause'),
     path('admin/run-geocode/', RunGeocodeView.as_view(), name='admin-run-geocode'),
     path('admin/jobs/missing-coordinates/', JobsMissingCoordinatesView.as_view(), name='admin-jobs-missing-coordinates'),
+    path('admin/jobspy/options/', AdminJobSpyOptionsView.as_view(), name='admin-jobspy-options'),
+    path('admin/jobspy/search/', AdminJobSpySearchView.as_view(), name='admin-jobspy-search'),
 ]

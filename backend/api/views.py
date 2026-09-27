@@ -961,6 +961,64 @@ class CollegeViewSet(viewsets.ModelViewSet):
             queryset = queryset.filter(ownership=ownership)
         return queryset
 
+class AdminJobSpyOptionsView(views.APIView):
+    """Choices for the admin JobSpy page's form, straight from
+    scripts/jobspy (combined.py + _common.py) so the page never hard-codes them.
+    JobSpy is imported lazily — it pulls in pandas, and a problem there
+    shouldn't break API startup."""
+    permission_classes = [permissions.IsAdminUser]
+
+    def get(self, request):
+        from scripts.jobspy import combined
+        from scripts.jobspy._common import COUNTRIES, JOB_TYPES, MAX_HOURS_OLD
+        return Response({
+            'countries': COUNTRIES,
+            'job_types': JOB_TYPES,
+            'max_age_days': MAX_HOURS_OLD // 24,
+            'default_country': combined.COUNTRY,
+            'bayt_countries': sorted(combined.BAYT_COUNTRIES),
+            'total_results': combined.TOTAL_RESULTS,
+        })
+
+
+class AdminJobSpySearchView(views.APIView):
+    """Mixed JobSpy search (scripts/jobspy/combined.py): LinkedIn + Indeed
+    (+ Bayt for Gulf countries), 10 random jobs. Body: {role, location,
+    country, job_type}. Nothing is saved — returns {jobs, errors, counts, seconds}."""
+    permission_classes = [permissions.IsAdminUser]
+
+    def post(self, request):
+        from scripts.jobspy import combined
+        from scripts.jobspy._common import SearchError
+
+        data = request.data
+        country = data.get('country') or combined.COUNTRY
+        try:
+            result = combined.search(
+                role=(data.get('role') or '').strip() or None,
+                location=data.get('location') or None,
+                country=country,
+                job_type=data.get('job_type') or None,
+            )
+        except SearchError as e:
+            return Response({'error': str(e)}, status=400)
+        except Exception as e:
+            logger.exception('JobSpy combined search failed')
+            return Response({'error': f'Search failed: {e}'}, status=502)
+
+        # JobSpy gives only a location string — add latitude/longitude per job.
+        # A geocoding problem shouldn't lose the search results.
+        try:
+            from .jobspy_geocode import add_coordinates
+            result['seconds'] = round(result['seconds'] + add_coordinates(result['jobs'], country), 1)
+        except Exception:
+            logger.exception('JobSpy result geocoding failed')
+            for job in result['jobs']:
+                job.setdefault('latitude', None)
+                job.setdefault('longitude', None)
+        return Response(result)
+
+
 class CompaniesView(views.APIView):
     """Paginated companies + their 10 most recent jobs each, for the admin
     dashboard's company cards. For CRUD management, see CompanyViewSet."""

@@ -922,7 +922,7 @@ export default function LandingPage() {
 
           <Reveal delay={180}>
             <p className="max-w-[60ch] text-[16px] leading-relaxed text-[rgba(61,61,61,0.72)] sm:text-[18.5px]">
-              We pull roles from ATS platforms and B2B partners into one map, scores each one against your resume, and gives you a tracker, tailored CVs and a portfolio to show for it.
+              We pull roles from ATS platforms and B2B partners into one map, scores each one against resume, and gives you a tracker, tailored CVs and a portfolio to show for it.
             </p>
           </Reveal>
 
