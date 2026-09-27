@@ -28,6 +28,9 @@ wheels/
 *.sqlite3-wal
 *.sqlite3-shm
 *.log
+# Rotated logs (requests.log.1, .2 …) — *.log above doesn't match them.
+# The server writes its own, so tracked copies break its `git pull`.
+logs/
 local_settings.py
 staticfiles/
 
