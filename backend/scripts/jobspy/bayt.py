@@ -7,6 +7,7 @@ filter — so put the place in the role itself (e.g. "python developer dubai").
 Edit the inputs below, then run from the backend folder (venv active):
     python scripts/jobspy/bayt.py > bayt.json
 """
+import os
 import time
 from datetime import datetime, timezone
 
@@ -28,10 +29,33 @@ RESULTS = 5
 # ------------------------------------------------------------------------------
 
 
+# Bayt blocks some IPs outright (e.g. data-centre servers): every connection
+# gets 403, not just the odd one the retry below handles. Optional fix: route
+# Bayt through a residential proxy, BAYT_PROXY in backend/.env, e.g.
+# "http://user:pass@host:port". Otherwise, once Bayt blocks us, skip it for
+# BLOCKED_SKIP_HOURS instead of burning retries on every search.
+BLOCKED_SKIP_HOURS = 12
+_blocked_until = 0.0  # time.monotonic(); per process
+
+
 def search(role=None, results=5):
+    global _blocked_until
     if not role:
         raise SearchError("Enter a role / keywords.")
-    return run(SITE, "Bayt", search_term=role, results_wanted=results)
+    wait = _blocked_until - time.monotonic()
+    if wait > 0:
+        return {"site": SITE, "jobs": [], "seconds": 0,
+                "errors": [f"Skipped: Bayt is blocking this server (403). Next try in {_hours(wait)}."]}
+    result = run(SITE, "Bayt", search_term=role, results_wanted=results,
+                 proxies=os.environ.get("BAYT_PROXY") or None)
+    if not result["jobs"] and any("403" in message for message in result["errors"]):
+        _blocked_until = time.monotonic() + BLOCKED_SKIP_HOURS * 3600
+        result["errors"] = [f"Bayt is blocking this server (403) — skipping Bayt for {BLOCKED_SKIP_HOURS} hours."]
+    return result
+
+
+def _hours(seconds):
+    return f"{seconds / 3600:.0f}h" if seconds >= 3600 else f"{max(1, round(seconds / 60))} min"
 
 
 # --- Bayt fix -----------------------------------------------------------------
