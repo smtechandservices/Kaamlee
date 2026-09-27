@@ -8,7 +8,7 @@
 #   ./tail_logs.sh requests     only requests + responses
 #   ./tail_logs.sh service      only the service output (journalctl)
 #   ./tail_logs.sh errors       only warnings, errors, tracebacks, 4xx/5xx
-#   ./tail_logs.sh scheduler    follow logs/scheduler.log (auto-scrape)
+#   ./tail_logs.sh scheduler    follow logs/scheduler.log (auto-scrape + JobSpy feeder)
 #   ./tail_logs.sh <file>       follow any log file
 #
 # Ctrl+C to stop.
@@ -35,7 +35,7 @@ colorize() {
         printf '%s%s%s\n' "$YELLOW" "$line" "$RESET" ;;
       *'status=2'[0-9][0-9]*|*'status=3'[0-9][0-9]*|*'" 2'[0-9][0-9]' '*|*'" 3'[0-9][0-9]' '*|*WSCONNECT*)
         printf '%s%s%s\n' "$GREEN" "$line" "$RESET" ;;
-      *AutoScrape*|*Scheduler*|*Sessions*)
+      *AutoScrape*|*JobSpyFeed*|*Scheduler*|*Sessions*)
         printf '%s%s%s\n' "$CYAN" "$line" "$RESET" ;;
       'curl '*|'     -'*|'-- response --'|'--------'*)
         printf '%s%s%s\n' "$DIM" "$line" "$RESET" ;;

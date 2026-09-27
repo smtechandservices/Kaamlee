@@ -316,6 +316,13 @@ LOGGING = {
             'level': 'INFO',
             'propagate': False,
         },
+        # JobSpy feeder runs ([JobSpyFeed] lines) — same log as the scheduler
+        # that starts them.
+        'api.jobspy_feed': {
+            'handlers': ['scheduler_console', 'scheduler_file'],
+            'level': 'INFO',
+            'propagate': False,
+        },
     },
 }
 
