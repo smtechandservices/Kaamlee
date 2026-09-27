@@ -25,7 +25,8 @@ const DASHBOARD_COMPANIES = 3;
 
 interface Stats {
   total_jobs: number;
-  scraped_jobs?: number;
+  scraped_jobs?: number; // includes jobspy_jobs
+  jobspy_jobs?: number;
   published_postings?: number;
 }
 
@@ -237,7 +238,11 @@ export default function AdminDashboard() {
             label="Total Jobs"
             value={stats?.total_jobs.toLocaleString() || '0'}
             sub={stats?.scraped_jobs != null && stats.published_postings != null
-              ? `${stats.scraped_jobs.toLocaleString()} scraped · ${stats.published_postings.toLocaleString()} published postings`
+              ? [
+                  `${(stats.scraped_jobs - (stats.jobspy_jobs ?? 0)).toLocaleString()} scraped`,
+                  stats.jobspy_jobs != null && `${stats.jobspy_jobs.toLocaleString()} JobSpy`,
+                  `${stats.published_postings.toLocaleString()} published postings`,
+                ].filter(Boolean).join(' · ')
               : undefined}
           />
           <StatCard

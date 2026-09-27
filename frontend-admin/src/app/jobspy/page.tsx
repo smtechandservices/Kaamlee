@@ -211,12 +211,11 @@ export default function JobSpyPage() {
       <div className="mx-auto">
         <header className="mb-10">
           <h1 className="text-3xl font-bold tracking-tight mb-1 flex items-center gap-3">
-            <ScanSearch size={28} className="text-green-600" />
             JobSpy search
           </h1>
           <p className="text-[#0b0b0c]/60 font-medium">
             {options?.total_results ?? 10} random jobs from the last {options?.max_age_days === 7 || !options ? 'week' : `${options.max_age_days} days`},
-            mixed from LinkedIn, Indeed and Bayt — remote and on-site, easy-apply and regular. Results aren&apos;t saved.
+            mixed from LinkedIn, Indeed and Bayt, remote and on-site, easy-apply and regular. Results aren&apos;t saved.
           </p>
         </header>
 

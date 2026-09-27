@@ -217,7 +217,6 @@ export default function EmployerActivityPage() {
         <header className="flex flex-col md:flex-row md:items-end justify-between gap-6 mb-8">
           <div>
             <h1 className="text-3xl font-bold tracking-tight mb-1 flex items-center gap-3">
-              <Activity size={28} className="text-purple-600" />
               Employer activity
             </h1>
             <p className="text-[#0b0b0c]/60 font-medium">

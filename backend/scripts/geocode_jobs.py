@@ -74,18 +74,19 @@ def _location_query(city, state, country):
     return ', '.join(parts)
 
 
-def _geocode_one(geolocator, query):
+def _geocode_one(geolocator, query, **geocode_kwargs):
     """Geocode a single query, retrying through _RATE_LIMIT_BACKOFFS on a 429
     instead of giving up on the first one. Returns (result, rate_limited);
     rate_limited is only True once the whole backoff schedule is exhausted
-    and Nominatim is still rejecting us."""
+    and Nominatim is still rejecting us. Extra keyword arguments go straight
+    to geocode() (e.g. addressdetails/featuretype for the JobSpy feeder)."""
     for backoff in [0, *_RATE_LIMIT_BACKOFFS]:
         with _NOMINATIM_LOCK:
             if backoff:
                 time.sleep(backoff)
             try:
                 time.sleep(GEOCODE_DELAY)
-                return geolocator.geocode(query, timeout=10), False
+                return geolocator.geocode(query, timeout=10, **geocode_kwargs), False
             except GeocoderRateLimited:
                 continue
             except Exception:

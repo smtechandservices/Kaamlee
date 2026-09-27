@@ -4,18 +4,43 @@ import { useEffect, useState } from 'react';
 import Link from 'next/link';
 import Image from 'next/image';
 import { usePathname, useRouter } from 'next/navigation';
-import { LayoutDashboard, Building2, ShieldCheck, CreditCard, Users, MessageSquare, LogOut, Briefcase, GraduationCap, Radio, FileText, KeyRound, School, ScanSearch, Activity } from 'lucide-react';
+import { LayoutDashboard, Building2, ShieldCheck, CreditCard, Users, MessageSquare, LogOut, Briefcase, GraduationCap, Radio, FileText, KeyRound, School, ScanSearch, Activity, Bot, Database, type LucideIcon } from 'lucide-react';
+
+interface NavItem {
+  href: string;
+  label: string;
+  icon: LucideIcon;
+}
+
+interface NavGroup {
+  title: string;
+  items?: NavItem[];
+  // Labelled sub-sections inside the group.
+  subgroups?: { title: string; items: NavItem[] }[];
+}
 
 // Grouped by what the admin is looking after. The Dashboard sits on its
 // own above the groups.
-const NAV_GROUPS = [
+const NAV_GROUPS: NavGroup[] = [
   {
     title: 'Job data',
-    items: [
-      { href: '/companies', label: 'Companies', icon: Building2 },
-      { href: '/jobs', label: 'Scraped jobs', icon: Briefcase },
-      { href: '/scraper', label: 'Scraper', icon: Radio },
-      { href: '/jobspy', label: 'JobSpy search', icon: ScanSearch },
+    subgroups: [
+      {
+        title: 'Career pages',
+        items: [
+          { href: '/companies', label: 'Companies', icon: Building2 },
+          { href: '/jobs', label: 'Scraped jobs', icon: Briefcase },
+          { href: '/scraper', label: 'Scraper', icon: Radio },
+        ],
+      },
+      {
+        title: 'JobSpy',
+        items: [
+          { href: '/jobspy', label: 'Search', icon: ScanSearch },
+          { href: '/jobspy-scraper', label: 'Scraper', icon: Bot },
+          { href: '/jobspy-jobs', label: 'Jobs', icon: Database },
+        ],
+      },
     ],
   },
   {
@@ -53,6 +78,15 @@ const itemCls = (active: boolean) =>
   `w-full flex flex-row items-center gap-3 px-3 py-2.5 rounded-full transition-all text-[13.5px] font-medium ${
     active ? 'bg-[#16a34a]/10 text-[#16a34a]' : 'text-black/60 hover:text-[#0b0b0c] hover:bg-black/[0.04]'
   }`;
+
+function NavLink({ item: { href, label, icon: Icon }, active }: { item: NavItem; active: boolean }) {
+  return (
+    <Link href={href} title={label} className={itemCls(active)}>
+      <Icon size={17} className="shrink-0" strokeWidth={1.8} />
+      <span className="leading-none truncate">{label}</span>
+    </Link>
+  );
+}
 
 interface StoredAdminUser {
   username?: string;
@@ -131,11 +165,14 @@ export default function AdminSidebar() {
         {NAV_GROUPS.map((group) => (
           <div key={group.title} className="mt-4 flex flex-col gap-1">
             <p className="px-3 mb-0.5 text-[10px] font-bold uppercase tracking-[0.16em] text-black/35">{group.title}</p>
-            {group.items.map(({ href, label, icon: Icon }) => (
-              <Link key={href} href={href} title={label} className={itemCls(pathname === href)}>
-                <Icon size={17} className="shrink-0" strokeWidth={1.8} />
-                <span className="leading-none truncate">{label}</span>
-              </Link>
+            {group.items?.map((item) => <NavLink key={item.href} item={item} active={pathname === item.href} />)}
+            {group.subgroups?.map((sub) => (
+              <div key={sub.title} className="flex flex-col gap-1">
+                <p className="px-3 py-1.5 text-[12px] font-semibold text-black/50 truncate">{sub.title}</p>
+                <div className="ml-4 pl-2 border-l border-black/[0.08] flex flex-col gap-1">
+                  {sub.items.map((item) => <NavLink key={item.href} item={item} active={pathname === item.href} />)}
+                </div>
+              </div>
             ))}
           </div>
         ))}

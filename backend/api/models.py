@@ -256,6 +256,69 @@ class ScraperPauseState(models.Model):
         return 'paused' if self.is_paused else 'not paused'
 
 
+# ------------------------------------------------------------------
+# JobSpy feeder (api/jobspy_feed.py): each run picks a random active role
+# and a random JobSpy country, searches LinkedIn/Indeed/Bayt, and saves the
+# jobs that geocode to a real city in that country into Job.
+# ------------------------------------------------------------------
+class JobSpyRole(models.Model):
+    """A role/keyword the feeder picks from at random. Managed on the admin
+    JobSpy scraper page; only active ones are picked."""
+    name = models.CharField(max_length=100, unique=True)
+    is_active = models.BooleanField(default=True)
+    created_at = models.DateTimeField(auto_now_add=True)
+
+    class Meta:
+        ordering = ['name']
+
+    def __str__(self):
+        return self.name
+
+
+class JobSpyFeederState(models.Model):
+    """Singleton (pk=1): whether the scheduler runs the feeder automatically.
+    The global ScraperPauseState pauses it too."""
+    auto_enabled = models.BooleanField(default=True)
+
+    @classmethod
+    def get_solo(cls):
+        obj, _ = cls.objects.get_or_create(pk=1)
+        return obj
+
+
+JOBSPY_RUN_STATUS_CHOICES = [
+    ('running', 'Running'),
+    ('success', 'Success'),
+    ('failed', 'Failed'),
+]
+
+
+class JobSpyScrapeRun(models.Model):
+    """One feeder run and what happened to every job it fetched."""
+    role = models.CharField(max_length=100)
+    country = models.CharField(max_length=100)
+    triggered_by = models.CharField(max_length=20, default='scheduler')  # 'scheduler' | 'admin'
+    triggered_by_user = models.ForeignKey(User, on_delete=models.SET_NULL, null=True, blank=True)
+    status = models.CharField(max_length=10, choices=JOBSPY_RUN_STATUS_CHOICES, default='running', db_index=True)
+    fetched = models.PositiveIntegerField(default=0)
+    saved = models.PositiveIntegerField(default=0)
+    duplicates = models.PositiveIntegerField(default=0)       # already in Job
+    dropped_remote = models.PositiveIntegerField(default=0)   # remote with no place
+    dropped_country_only = models.PositiveIntegerField(default=0)  # only a country/region, no city
+    dropped_wrong_country = models.PositiveIntegerField(default=0)
+    dropped_unresolved = models.PositiveIntegerField(default=0)    # geocoder found nothing usable
+    site_counts = models.JSONField(default=dict, blank=True)  # {site: jobs fetched}
+    error = models.TextField(blank=True)
+    started_at = models.DateTimeField(auto_now_add=True, db_index=True)
+    finished_at = models.DateTimeField(null=True, blank=True)
+
+    class Meta:
+        ordering = ['-started_at']
+
+    def __str__(self):
+        return f"{self.role} / {self.country} ({self.status})"
+
+
 class JobApplicationKit(models.Model):
     user = models.ForeignKey(User, on_delete=models.CASCADE, related_name='application_kits')
     job = models.ForeignKey(Job, on_delete=models.CASCADE, related_name='application_kits')

@@ -2,7 +2,9 @@ from django.urls import path, include
 from rest_framework.routers import DefaultRouter
 from .views import (
     JobViewSet, StatsView, CompaniesView, CompanyViewSet, CollegeViewSet,
-    AdminJobSpyOptionsView, AdminJobSpySearchView,
+    AdminJobSpyOptionsView, AdminJobSpySearchView, JobSpyOptionsView, JobSpySearchView,
+    AdminJobSpyFeedView, AdminJobSpyFeedRunView, AdminJobSpyRoleListView, AdminJobSpyRoleDetailView,
+    AdminJobSpyJobsView,
     SignupView, GoogleAuthView, UserView, RecentJobsView,
     CheckExistenceView, LoginView, LogoutView, AdminLoginView,
     AdminSessionListView, AdminSessionRevokeView, AdminSessionBulkView, AdminChangeOwnPasswordView, AdminUserViewSet, CategoriesView, CountriesView,
@@ -95,5 +97,12 @@ urlpatterns = [
     path('admin/run-geocode/', RunGeocodeView.as_view(), name='admin-run-geocode'),
     path('admin/jobs/missing-coordinates/', JobsMissingCoordinatesView.as_view(), name='admin-jobs-missing-coordinates'),
     path('admin/jobspy/options/', AdminJobSpyOptionsView.as_view(), name='admin-jobspy-options'),
+    path('jobspy/options/', JobSpyOptionsView.as_view(), name='jobspy-options'),
+    path('admin/jobspy-feed/', AdminJobSpyFeedView.as_view(), name='admin-jobspy-feed'),
+    path('admin/jobspy-jobs/', AdminJobSpyJobsView.as_view(), name='admin-jobspy-jobs'),
+    path('admin/jobspy-feed/run/', AdminJobSpyFeedRunView.as_view(), name='admin-jobspy-feed-run'),
+    path('admin/jobspy-feed/roles/', AdminJobSpyRoleListView.as_view(), name='admin-jobspy-feed-roles'),
+    path('admin/jobspy-feed/roles/<int:pk>/', AdminJobSpyRoleDetailView.as_view(), name='admin-jobspy-feed-role'),
+    path('jobspy/search/', JobSpySearchView.as_view(), name='jobspy-search'),
     path('admin/jobspy/search/', AdminJobSpySearchView.as_view(), name='admin-jobspy-search'),
 ]

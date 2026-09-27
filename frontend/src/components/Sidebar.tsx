@@ -3,7 +3,7 @@
 import Link from 'next/link';
 import Image from 'next/image';
 import { usePathname } from 'next/navigation';
-import { Map as MapIcon, LayoutList, FileText, Receipt, LogOut, X, Kanban, Globe, LayoutDashboard, LifeBuoy, Mail, Users } from 'lucide-react';
+import { Map as MapIcon, LayoutList, FileText, Receipt, LogOut, X, Kanban, Globe, LayoutDashboard, LifeBuoy, Mail, Users, Radar } from 'lucide-react';
 import { SUPPORT_EMAIL, COMMUNITY_URL } from '@/lib/constants';
 import { useAuth } from '@/context/AuthContext';
 import { useSidebar } from '@/context/SidebarContext';
@@ -12,6 +12,7 @@ const NAV_ITEMS = [
   { href: '/dashboard', label: 'Dashboard', icon: LayoutDashboard },
   { href: '/map', label: 'Map', icon: MapIcon },
   { href: '/browse', label: 'Browse', icon: LayoutList },
+  { href: '/live-search', label: 'Live Search', icon: Radar },
   { href: '/applications', label: 'Tracker', icon: Kanban },
   { href: '/custom-cv', label: 'Custom CV', icon: FileText },
   { href: '/portfolio', label: 'Portfolio', icon: Globe },

@@ -43,15 +43,19 @@ COUNTRY = "United Arab Emirates"   # exact name from COUNTRIES in _common.py, e.
 JOB_TYPE = None                    # None (any), "fulltime", "parttime", "internship" or "contract"
 # -------------------------------------------------------------------------------
 
-TOTAL_RESULTS = 15  # jobs returned per search, picked at random from all sites' results
+TOTAL_RESULTS = 14  # jobs returned per search, picked at random from all sites' results
 PER_SITE = 10       # asked from each site, so the pool still fills up if one site has few
 
 # Countries Bayt covers (of the ones JobSpy/Indeed accept).
 BAYT_COUNTRIES = {"United Arab Emirates", "Saudi Arabia", "Qatar", "Kuwait", "Oman", "Bahrain", "Egypt", "Morocco"}
 
 
-def search(role=None, location=None, country="USA", job_type=None):
-    """Returns {"jobs": [...], "errors": {site: [...]}, "counts": {site: n}, "seconds": n}."""
+def search(role=None, location=None, country="USA", job_type=None, per_site=None, total=None):
+    """Returns {"jobs": [...], "errors": {site: [...]}, "counts": {site: n}, "seconds": n}.
+    per_site / total override PER_SITE / TOTAL_RESULTS — the admin JobSpy
+    feeder (api/jobspy_feed.py) asks for more and keeps everything."""
+    per_site = per_site or PER_SITE
+    total = total or TOTAL_RESULTS
     if not role:
         raise SearchError("Enter a role / keywords.")
     check_country(country)
@@ -70,16 +74,16 @@ def search(role=None, location=None, country="USA", job_type=None):
             location=", ".join(p for p in (location, country) if p),
             job_type=job_type,
             hours_old=MAX_HOURS_OLD,
-            results=PER_SITE,
+            results=per_site,
             fetch_description=True,
         ),
         "indeed": lambda: indeed.search(
             role=role, location=location, country=country, job_type=job_type, hours_old=indeed_hours,
-            results=PER_SITE,
+            results=per_site,
         ),
     }
     if country in BAYT_COUNTRIES:
-        searches["bayt"] = lambda: bayt.search(role=f"{role} {location}" if location else role, results=PER_SITE)
+        searches["bayt"] = lambda: bayt.search(role=f"{role} {location}" if location else role, results=per_site)
     # Sites whose own search already applied the age limit.
     age_filtered_by_site = {"linkedin": True, "indeed": indeed_hours is not None, "bayt": False}
 
@@ -119,7 +123,7 @@ def search(role=None, location=None, country="USA", job_type=None):
             if key not in seen and recent(job, site):
                 seen.add(key)
                 pool.append(job)
-    mixed = random.sample(pool, min(TOTAL_RESULTS, len(pool)))
+    mixed = random.sample(pool, min(total, len(pool)))
 
     return {
         "jobs": mixed,

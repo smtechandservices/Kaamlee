@@ -32,7 +32,22 @@ const HIRING_BASE = `${process.env.NEXT_PUBLIC_API_URL}/hiring`;
 const EMPLOYERS_BASE = `${process.env.NEXT_PUBLIC_API_URL}/employers`;
 const API_BASE = `${process.env.NEXT_PUBLIC_API_URL}/api`;
 const CANDIDATE_APP_URL = process.env.NEXT_PUBLIC_CANDIDATE_APP_URL || 'https://kaamlee.in';
-const PAGE_SIZE = 20;
+// Rows-per-page choices; the backend (JobPostingPagination) caps page_size at 100.
+const PAGE_SIZE_OPTIONS = [10, 20, 50, 100];
+const DEFAULT_PAGE_SIZE = 20;
+
+// Page numbers to show: always the first and last, the current page and its
+// neighbours, and 'gap' where pages are skipped — e.g. 1 … 4 5 6 … 12.
+function pageNumbers(current: number, total: number): (number | 'gap')[] {
+  const wanted = new Set([1, total, current - 1, current, current + 1]);
+  const pages = [...wanted].filter((n) => n >= 1 && n <= total).sort((a, b) => a - b);
+  const out: (number | 'gap')[] = [];
+  pages.forEach((n, i) => {
+    if (i > 0 && n - pages[i - 1] > 1) out.push('gap');
+    out.push(n);
+  });
+  return out;
+}
 
 type JobStatus = 'draft' | 'published' | 'paused' | 'closed';
 type EmploymentType = 'full_time' | 'part_time' | 'contract' | 'internship';
@@ -195,6 +210,7 @@ export default function PostingsPage() {
   const [stats, setStats] = useState<PostingStats | null>(null);
   const mapPreview = useMapPreview();
   const [page, setPage] = useState(1);
+  const [pageSize, setPageSize] = useState(DEFAULT_PAGE_SIZE);
   const [loading, setLoading] = useState(true);
   const [searchInput, setSearchInput] = useState('');
   const [search, setSearch] = useState('');
@@ -216,7 +232,18 @@ export default function PostingsPage() {
   const [categories, setCategories] = useState<string[]>([]);
   const router = useRouter();
 
-  const totalPages = Math.max(1, Math.ceil(count / PAGE_SIZE));
+  const totalPages = Math.max(1, Math.ceil(count / pageSize));
+
+  // A row just left this page (deleted, or moved out of the status tab). If it
+  // was the only one here, step back a page rather than show an empty one.
+  const afterRowRemoved = () => {
+    if (postings.length <= 1 && page > 1) setPage((p) => p - 1);
+  };
+
+  // New page → back to the top of the list.
+  useEffect(() => {
+    window.scrollTo({ top: 0, behavior: 'smooth' });
+  }, [page]);
 
   const getToken = () => {
     const token = localStorage.getItem('admin_token');
@@ -230,7 +257,7 @@ export default function PostingsPage() {
   const fetchPostings = useCallback(async () => {
     const token = getToken();
     if (!token) return;
-    const params = new URLSearchParams({ page: String(page) });
+    const params = new URLSearchParams({ page: String(page), page_size: String(pageSize) });
     if (statusFilter !== 'all') params.set('status', statusFilter);
     if (search) params.set('search', search);
 
@@ -255,7 +282,7 @@ export default function PostingsPage() {
       setLoading(false);
     }
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [page, search, statusFilter]);
+  }, [page, pageSize, search, statusFilter]);
 
   useEffect(() => {
     fetchPostings();
@@ -345,7 +372,10 @@ export default function PostingsPage() {
       setPostings((prev) =>
         leavesFilter ? prev.filter((p) => p.id !== updated.id) : prev.map((p) => (p.id === updated.id ? updated : p)),
       );
-      if (leavesFilter) setCount((prev) => prev - 1);
+      if (leavesFilter) {
+        setCount((prev) => prev - 1);
+        afterRowRemoved();
+      }
       setSelectedPosting((prev) => (prev?.id === updated.id ? updated : prev));
       setStats((prev) => prev && {
         ...prev,
@@ -383,6 +413,7 @@ export default function PostingsPage() {
         setPostings((prev) => prev.filter((p) => p.id !== deletingPosting.id));
         setCount((prev) => prev - 1);
         adjustStats(deletingPosting, -1);
+        afterRowRemoved();
         setDeletingPosting(null);
         if (selectedPosting?.id === deletingPosting.id) setSelectedPosting(null);
       } else {
@@ -620,27 +651,64 @@ export default function PostingsPage() {
           </div>
         )}
 
-        {count > PAGE_SIZE && (
-          <div className="flex items-center justify-between mt-6">
-            <p className="text-xs text-[#0b0b0c]/60 font-medium">
-              Page {page} of {totalPages}
-            </p>
-            <div className="flex items-center gap-2">
-              <button
-                onClick={() => setPage((p) => Math.max(1, p - 1))}
-                disabled={page <= 1}
-                className="cursor-pointer p-2.5 rounded-xl bg-white border border-black/[0.08] hover:bg-black/[0.03] disabled:opacity-30 disabled:cursor-not-allowed transition-all"
-              >
-                <ChevronLeft size={18} />
-              </button>
-              <button
-                onClick={() => setPage((p) => Math.min(totalPages, p + 1))}
-                disabled={page >= totalPages}
-                className="cursor-pointer p-2.5 rounded-xl bg-white border border-black/[0.08] hover:bg-black/[0.03] disabled:opacity-30 disabled:cursor-not-allowed transition-all"
-              >
-                <ChevronRight size={18} />
-              </button>
+        {count > 0 && (
+          <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4 mt-6">
+            <div className="flex items-center gap-4 text-xs text-[#0b0b0c]/60 font-medium">
+              <span>
+                Showing {((page - 1) * pageSize + 1).toLocaleString()}–{Math.min(page * pageSize, count).toLocaleString()} of{' '}
+                {count.toLocaleString()} posting{count !== 1 ? 's' : ''}
+              </span>
+              <label className="flex items-center gap-2">
+                Rows per page
+                <select
+                  value={pageSize}
+                  onChange={(e) => { setPageSize(Number(e.target.value)); setPage(1); }}
+                  className="cursor-pointer bg-white border border-black/[0.08] rounded-lg px-2 py-1 text-xs font-semibold outline-none focus:border-purple-500"
+                >
+                  {PAGE_SIZE_OPTIONS.map((n) => <option key={n} value={n}>{n}</option>)}
+                </select>
+              </label>
             </div>
+
+            {totalPages > 1 && (
+              <nav className="flex items-center gap-1.5" aria-label="Pagination">
+                <button
+                  onClick={() => setPage((p) => Math.max(1, p - 1))}
+                  disabled={page <= 1 || loading}
+                  aria-label="Previous page"
+                  className="cursor-pointer p-2 rounded-xl bg-white border border-black/[0.08] hover:bg-black/[0.03] disabled:opacity-30 disabled:cursor-not-allowed transition-all"
+                >
+                  <ChevronLeft size={16} />
+                </button>
+                {pageNumbers(page, totalPages).map((n, i) =>
+                  n === 'gap' ? (
+                    <span key={`gap-${i}`} className="px-1.5 text-sm text-[#0b0b0c]/40">…</span>
+                  ) : (
+                    <button
+                      key={n}
+                      onClick={() => setPage(n)}
+                      disabled={loading}
+                      aria-current={n === page ? 'page' : undefined}
+                      className={`cursor-pointer min-w-9 h-9 px-2 rounded-xl text-sm font-semibold border transition-all disabled:cursor-wait ${
+                        n === page
+                          ? 'bg-purple-600 text-white border-purple-600'
+                          : 'bg-white border-black/[0.08] text-[#0b0b0c]/70 hover:bg-black/[0.03]'
+                      }`}
+                    >
+                      {n}
+                    </button>
+                  ),
+                )}
+                <button
+                  onClick={() => setPage((p) => Math.min(totalPages, p + 1))}
+                  disabled={page >= totalPages || loading}
+                  aria-label="Next page"
+                  className="cursor-pointer p-2 rounded-xl bg-white border border-black/[0.08] hover:bg-black/[0.03] disabled:opacity-30 disabled:cursor-not-allowed transition-all"
+                >
+                  <ChevronRight size={16} />
+                </button>
+              </nav>
+            )}
           </div>
         )}
       </div>

@@ -36,6 +36,8 @@ logger = logging.getLogger(__name__)
 LEADER_LOCK_FILE = '/tmp/kaamlee_autoscrape_leader.lock'
 INTERVAL_MINUTES = 5
 BATCH_SIZE = 3
+# JobSpy feeder (api/jobspy_feed.py): one random role + country per tick.
+JOBSPY_FEED_INTERVAL_MINUTES = 5
 
 # Held open for the lifetime of the process if this worker wins leadership —
 # closing it (or letting it get garbage-collected) would release the flock.
@@ -240,6 +242,8 @@ def start():
         return
 
     _reconcile_stale_runs()
+    from .jobspy_feed import reconcile_stale_runs as reconcile_jobspy_runs, scheduled_tick as jobspy_feed_tick
+    reconcile_jobspy_runs()
 
     scheduler = BackgroundScheduler()
     scheduler.add_job(
@@ -247,6 +251,13 @@ def start():
         trigger="interval",
         minutes=INTERVAL_MINUTES,
         id="auto_scrape",
+        replace_existing=True,
+    )
+    scheduler.add_job(
+        jobspy_feed_tick,
+        trigger="interval",
+        minutes=JOBSPY_FEED_INTERVAL_MINUTES,
+        id="jobspy_feed",
         replace_existing=True,
     )
     # Expired login tokens are deleted on their next use anyway; this clears

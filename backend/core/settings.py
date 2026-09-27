@@ -79,8 +79,16 @@ REST_FRAMEWORK = {
         'ambassador-email-check': '20/minute',
         'email-otp-request': '5/minute',
         'email-otp-verify': '10/minute',
+        # Live Search scrapes LinkedIn/Indeed/Bayt from the server's IP on
+        # every request — capped per user so heavy use can't get it blocked.
+        # (Plus one search per JOBSPY_SEARCH_INTERVAL_SECONDS, below.)
+        'jobspy-search': '15/hour',
     },
 }
+
+# Live Search: at most one search per user in this many seconds
+# (api.throttles.JobSpySearchIntervalThrottle). Shown on the page too.
+JOBSPY_SEARCH_INTERVAL_SECONDS = 120
 
 MIDDLEWARE = [
     'django.middleware.security.SecurityMiddleware',

@@ -1,6 +1,7 @@
 from rest_framework import viewsets, views, generics, permissions
 from rest_framework.pagination import PageNumberPagination
 from rest_framework.throttling import ScopedRateThrottle
+from .throttles import JobSpySearchIntervalThrottle
 from .permissions import IsSubscribed, is_user_subscribed
 from .groq_usage import GroqQuotaExceeded, usage_summary
 
@@ -790,7 +791,8 @@ class StatsView(views.APIView):
             published_postings = JobPosting.objects.filter(status='published').count()
             data = {
                 'total_jobs': scraped_jobs + published_postings,
-                'scraped_jobs': scraped_jobs,
+                'scraped_jobs': scraped_jobs,  # includes jobspy_jobs
+                'jobspy_jobs': Job.objects.filter(id_from_site__startswith='jobspy:').count(),
                 'published_postings': published_postings,
             }
             cache.set(_STATS_CACHE_KEY, data, _STATS_CACHE_TTL)
@@ -961,51 +963,46 @@ class CollegeViewSet(viewsets.ModelViewSet):
             queryset = queryset.filter(ownership=ownership)
         return queryset
 
-class AdminJobSpyOptionsView(views.APIView):
-    """Choices for the admin JobSpy page's form, straight from
-    scripts/jobspy (combined.py + _common.py) so the page never hard-codes them.
-    JobSpy is imported lazily — it pulls in pandas, and a problem there
-    shouldn't break API startup."""
-    permission_classes = [permissions.IsAdminUser]
+# ------------------------------------------------------------------
+# JobSpy live search (scripts/jobspy/combined.py) — shared by the admin
+# JobSpy page and the subscribers' Live Search page. JobSpy is imported
+# lazily: it pulls in pandas, and a problem there shouldn't break API startup.
+# ------------------------------------------------------------------
+def _jobspy_options():
+    """Form choices, straight from scripts/jobspy so no page hard-codes them."""
+    from scripts.jobspy import combined
+    from scripts.jobspy._common import COUNTRIES, JOB_TYPES, MAX_HOURS_OLD
+    return {
+        'countries': COUNTRIES,
+        'job_types': JOB_TYPES,
+        'max_age_days': MAX_HOURS_OLD // 24,
+        'default_country': combined.COUNTRY,
+        'bayt_countries': sorted(combined.BAYT_COUNTRIES),
+        'total_results': combined.TOTAL_RESULTS,
+    }
 
-    def get(self, request):
-        from scripts.jobspy import combined
-        from scripts.jobspy._common import COUNTRIES, JOB_TYPES, MAX_HOURS_OLD
-        return Response({
-            'countries': COUNTRIES,
-            'job_types': JOB_TYPES,
-            'max_age_days': MAX_HOURS_OLD // 24,
-            'default_country': combined.COUNTRY,
-            'bayt_countries': sorted(combined.BAYT_COUNTRIES),
-            'total_results': combined.TOTAL_RESULTS,
-        })
 
+def _jobspy_search_response(data, with_coordinates):
+    """Runs combined.search() for {role, location, country, job_type}.
+    Nothing is saved — returns {jobs, errors, counts, seconds}."""
+    from scripts.jobspy import combined
+    from scripts.jobspy._common import SearchError
 
-class AdminJobSpySearchView(views.APIView):
-    """Mixed JobSpy search (scripts/jobspy/combined.py): LinkedIn + Indeed
-    (+ Bayt for Gulf countries), 10 random jobs. Body: {role, location,
-    country, job_type}. Nothing is saved — returns {jobs, errors, counts, seconds}."""
-    permission_classes = [permissions.IsAdminUser]
+    country = data.get('country') or combined.COUNTRY
+    try:
+        result = combined.search(
+            role=(data.get('role') or '').strip() or None,
+            location=data.get('location') or None,
+            country=country,
+            job_type=data.get('job_type') or None,
+        )
+    except SearchError as e:
+        return Response({'error': str(e)}, status=400)
+    except Exception as e:
+        logger.exception('JobSpy combined search failed')
+        return Response({'error': f'Search failed: {e}'}, status=502)
 
-    def post(self, request):
-        from scripts.jobspy import combined
-        from scripts.jobspy._common import SearchError
-
-        data = request.data
-        country = data.get('country') or combined.COUNTRY
-        try:
-            result = combined.search(
-                role=(data.get('role') or '').strip() or None,
-                location=data.get('location') or None,
-                country=country,
-                job_type=data.get('job_type') or None,
-            )
-        except SearchError as e:
-            return Response({'error': str(e)}, status=400)
-        except Exception as e:
-            logger.exception('JobSpy combined search failed')
-            return Response({'error': f'Search failed: {e}'}, status=502)
-
+    if with_coordinates:
         # JobSpy gives only a location string — add latitude/longitude per job.
         # A geocoding problem shouldn't lose the search results.
         try:
@@ -1016,7 +1013,239 @@ class AdminJobSpySearchView(views.APIView):
             for job in result['jobs']:
                 job.setdefault('latitude', None)
                 job.setdefault('longitude', None)
-        return Response(result)
+    return Response(result)
+
+
+class AdminJobSpyOptionsView(views.APIView):
+    """GET /api/admin/jobspy/options/ — form choices for the admin JobSpy page."""
+    permission_classes = [permissions.IsAdminUser]
+
+    def get(self, request):
+        return Response(_jobspy_options())
+
+
+class AdminJobSpySearchView(views.APIView):
+    """POST /api/admin/jobspy/search/ — mixed search for the admin JobSpy page,
+    with latitude/longitude added per job."""
+    permission_classes = [permissions.IsAdminUser]
+
+    def post(self, request):
+        return _jobspy_search_response(request.data, with_coordinates=True)
+
+
+def _jobspy_run_dict(run):
+    return {
+        'id': run.id, 'role': run.role, 'country': run.country, 'status': run.status,
+        'triggered_by': run.triggered_by,
+        'triggered_by_name': (run.triggered_by_user.get_full_name() or run.triggered_by_user.username)
+                             if run.triggered_by_user else None,
+        'fetched': run.fetched, 'saved': run.saved, 'duplicates': run.duplicates,
+        'dropped': {
+            'remote': run.dropped_remote, 'country_only': run.dropped_country_only,
+            'wrong_country': run.dropped_wrong_country, 'unresolved': run.dropped_unresolved,
+        },
+        'site_counts': run.site_counts, 'error': run.error,
+        'started_at': run.started_at, 'finished_at': run.finished_at,
+    }
+
+
+class AdminJobSpyFeedView(views.APIView):
+    """GET /api/admin/jobspy-feed/?runs_page=N — the JobSpy scraper page: roles,
+    auto-run and pause switches, one page of runs (newest first) and totals.
+    PATCH {auto_enabled} — turn the scheduled runs on/off (see api/jobspy_feed.py)."""
+    permission_classes = [permissions.IsAdminUser]
+    RUNS_PAGE_SIZE = 5
+
+    def get(self, request):
+        from django.db.models import Sum
+        from scripts.jobspy._common import COUNTRIES
+        from .models import JobSpyFeederState, JobSpyRole, JobSpyScrapeRun
+        from .scheduler import JOBSPY_FEED_INTERVAL_MINUTES
+        from .jobspy_feed import fail_stale_runs
+
+        # Otherwise a dead run would keep the page on "Running…" with the
+        # Run now button disabled.
+        fail_stale_runs()
+        runs_count = JobSpyScrapeRun.objects.count()
+        runs_pages = max(1, -(-runs_count // self.RUNS_PAGE_SIZE))
+        try:
+            runs_page = int(request.query_params.get('runs_page', 1))
+        except ValueError:
+            runs_page = 1
+        # Clamped rather than 404, so a page that emptied out still shows runs.
+        runs_page = min(max(runs_page, 1), runs_pages)
+        start = (runs_page - 1) * self.RUNS_PAGE_SIZE
+        runs = JobSpyScrapeRun.objects.select_related('triggered_by_user')[start:start + self.RUNS_PAGE_SIZE]
+        return Response({
+            'roles': list(JobSpyRole.objects.values('id', 'name', 'is_active')),
+            'auto_enabled': JobSpyFeederState.get_solo().auto_enabled,
+            'paused': ScraperPauseState.get_solo().is_paused,
+            'interval_minutes': JOBSPY_FEED_INTERVAL_MINUTES,
+            'countries_count': len(COUNTRIES),
+            'countries': sorted(COUNTRIES),  # for Run now's country picker
+            'running': JobSpyScrapeRun.objects.filter(status='running').exists(),
+            'runs': [_jobspy_run_dict(r) for r in runs],
+            'runs_page': runs_page,
+            'runs_pages': runs_pages,
+            'runs_page_size': self.RUNS_PAGE_SIZE,
+            'totals': {
+                'runs': runs_count,
+                'saved': JobSpyScrapeRun.objects.aggregate(n=Sum('saved'))['n'] or 0,
+                'jobs_in_db': Job.objects.filter(id_from_site__startswith='jobspy:').count(),
+            },
+        })
+
+    def patch(self, request):
+        from .models import JobSpyFeederState
+        if not isinstance(request.data.get('auto_enabled'), bool):
+            return Response({'error': 'auto_enabled must be true or false.'}, status=400)
+        state = JobSpyFeederState.get_solo()
+        state.auto_enabled = request.data['auto_enabled']
+        state.save(update_fields=['auto_enabled'])
+        return Response({'auto_enabled': state.auto_enabled})
+
+
+class AdminJobSpyFeedRunView(views.APIView):
+    """POST /api/admin/jobspy-feed/run/ {country?} — start a run now: random
+    role, and the given JobSpy country or a random one when it's blank.
+    202 with the run; 400 for an unknown country; 409 if one's already going
+    or no role is on. Runs even while scheduled scraping is paused — an
+    explicit admin action."""
+    permission_classes = [permissions.IsAdminUser]
+
+    def post(self, request):
+        from scripts.jobspy._common import COUNTRIES
+        from .jobspy_feed import start_run
+
+        country = str(request.data.get('country') or '').strip()
+        if country:
+            match = next((c for c in COUNTRIES if c.lower() == country.lower()), None)
+            if match is None:
+                return Response({'error': f'"{country}" is not a JobSpy country.'}, status=400)
+            country = match
+        run, reason = start_run('admin', request.user, country=country or None)
+        if run is None:
+            return Response({'error': reason}, status=409)
+        return Response(_jobspy_run_dict(run), status=202)
+
+
+class AdminJobSpyRoleListView(views.APIView):
+    """POST /api/admin/jobspy-feed/roles/ {name} — add a role."""
+    permission_classes = [permissions.IsAdminUser]
+
+    def post(self, request):
+        from .models import JobSpyRole
+        name = ' '.join(str(request.data.get('name') or '').split())
+        if not name:
+            return Response({'error': 'Enter a role.'}, status=400)
+        if len(name) > 100:
+            return Response({'error': 'Keep the role under 100 characters.'}, status=400)
+        if JobSpyRole.objects.filter(name__iexact=name).exists():
+            return Response({'error': 'That role is already in the list.'}, status=400)
+        role = JobSpyRole.objects.create(name=name)
+        return Response({'id': role.id, 'name': role.name, 'is_active': role.is_active}, status=201)
+
+
+class AdminJobSpyRoleDetailView(views.APIView):
+    """PATCH /api/admin/jobspy-feed/roles/<id>/ {name?, is_active?}; DELETE."""
+    permission_classes = [permissions.IsAdminUser]
+
+    def patch(self, request, pk):
+        from .models import JobSpyRole
+        role = get_object_or_404(JobSpyRole, pk=pk)
+        if 'name' in request.data:
+            name = ' '.join(str(request.data.get('name') or '').split())
+            if not name or len(name) > 100:
+                return Response({'error': 'Enter a role under 100 characters.'}, status=400)
+            if JobSpyRole.objects.filter(name__iexact=name).exclude(pk=pk).exists():
+                return Response({'error': 'That role is already in the list.'}, status=400)
+            role.name = name
+        if 'is_active' in request.data:
+            if not isinstance(request.data['is_active'], bool):
+                return Response({'error': 'is_active must be true or false.'}, status=400)
+            role.is_active = request.data['is_active']
+        role.save()
+        return Response({'id': role.id, 'name': role.name, 'is_active': role.is_active})
+
+    def delete(self, request, pk):
+        from .models import JobSpyRole
+        get_object_or_404(JobSpyRole, pk=pk).delete()
+        return Response(status=204)
+
+
+class AdminJobSpyJobsView(generics.ListAPIView):
+    """GET /api/admin/jobspy-jobs/ — only the jobs the JobSpy scraper saved
+    (id_from_site 'jobspy:…', see api/jobspy_feed.py), newest first.
+    ?search= (title/company), ?site=linkedin|indeed|bayt, ?country=, ?category=.
+    Adds `stats` for the current filters and the choices for the filter menus."""
+    serializer_class = AdminJobSerializer
+    permission_classes = [permissions.IsAdminUser]
+    pagination_class = JobPagination
+
+    def _base(self):
+        return Job.objects.filter(id_from_site__startswith='jobspy:')
+
+    def get_queryset(self, ignore_site=False):
+        queryset = self._base().order_by('-created_at', '-id')
+        params = self.request.query_params
+        search = (params.get('search') or '').strip()
+        if search:
+            queryset = queryset.filter(models.Q(title__icontains=search) | models.Q(company__icontains=search))
+        if params.get('site') and not ignore_site:
+            queryset = queryset.filter(site=params['site'])
+        if params.get('country'):
+            queryset = queryset.filter(country=params['country'])
+        if params.get('category'):
+            queryset = queryset.filter(category=params['category'])
+        return queryset
+
+    def list(self, request, *args, **kwargs):
+        response = super().list(request, *args, **kwargs)
+        # Per-site counts follow every filter except the site one, so the
+        # site tabs keep showing what each tab would contain.
+        by_site = dict(self.get_queryset(ignore_site=True).order_by().values_list('site').annotate(n=Count('id')))
+        filtered = self.get_queryset()
+        base = self._base()
+        response.data['stats'] = {
+            'total': base.count(),
+            'matching': response.data['count'],
+            'by_site': by_site,
+            'countries_in_results': filtered.values('country').distinct().count(),
+            'newest_saved': base.aggregate(m=models.Max('created_at'))['m'],
+        }
+        response.data['countries'] = sorted(c for c in base.values_list('country', flat=True).distinct() if c)
+        response.data['categories'] = sorted(c for c in base.values_list('category', flat=True).distinct() if c)
+        return response
+
+
+class JobSpyOptionsView(views.APIView):
+    """GET /api/jobspy/options/ — form choices for the Live Search page, plus
+    its rate limits so the page can state them. Any signed-in user (the page
+    shows non-subscribers what they'd unlock)."""
+    permission_classes = [permissions.IsAuthenticated]
+
+    def get(self, request):
+        from django.conf import settings as django_settings
+        hourly = django_settings.REST_FRAMEWORK['DEFAULT_THROTTLE_RATES']['jobspy-search']
+        return Response({
+            **_jobspy_options(),
+            'search_interval_seconds': django_settings.JOBSPY_SEARCH_INTERVAL_SECONDS,
+            'searches_per_hour': int(hourly.split('/')[0]),
+        })
+
+
+class JobSpySearchView(views.APIView):
+    """POST /api/jobspy/search/ — Live Search for subscribers: the same mixed
+    LinkedIn + Indeed (+ Bayt) search as the admin page, minus coordinates.
+    Throttled per user — one search every JOBSPY_SEARCH_INTERVAL_SECONDS and a
+    'jobspy-search' hourly cap: every search scrapes those sites from our
+    server's IP, and heavy use would get that IP blocked for everyone."""
+    permission_classes = [permissions.IsAuthenticated, IsSubscribed]
+    throttle_classes = [JobSpySearchIntervalThrottle, ScopedRateThrottle]
+    throttle_scope = 'jobspy-search'
+
+    def post(self, request):
+        return _jobspy_search_response(request.data, with_coordinates=False)
 
 
 class CompaniesView(views.APIView):
