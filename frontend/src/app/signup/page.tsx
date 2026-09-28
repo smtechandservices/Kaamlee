@@ -3,11 +3,13 @@
 import React, { useState } from 'react';
 import Link from 'next/link';
 import { motion, AnimatePresence } from 'framer-motion';
-import { ArrowLeft, User, Mail, Lock, Loader2, Phone, Link as LinkIcon, Eye, EyeOff, CheckCircle2, ChevronRight } from 'lucide-react';
+import { Loader2, Eye, EyeOff, Check, ChevronRight, UserPlus } from 'lucide-react';
 import { useAuth } from '@/context/AuthContext';
 import GoogleSignInButton from '@/components/GoogleSignInButton';
 import EmailVerificationGate from '@/components/EmailVerificationGate';
-import { PRIMARY_BTN_CLS, PRIMARY_BTN_BG, SECONDARY_BTN_CLS } from '@/components/ui/landing-kit';
+import AuthSplitLayout, {
+  AUTH_INPUT_CLS, AUTH_SUBMIT_CLS, AUTH_SUBMIT_BG, AUTH_SECONDARY_CLS, AuthError, AuthDivider, AuthNote,
+} from '@/components/AuthSplitLayout';
 import { withNext } from '@/lib/redirect';
 
 export default function SignupPage() {
@@ -134,339 +136,256 @@ export default function SignupPage() {
   };
 
   const steps = [
-    { id: 1, title: 'Personal Info' },
-    { id: 2, title: 'Contact Details' },
+    { id: 1, title: 'Personal info' },
+    { id: 2, title: 'Contact' },
     { id: 3, title: 'Security' },
   ];
 
   return (
-    <main className="min-h-screen bg-[#f2f3f5] text-[#0b0b0c] flex flex-col items-center justify-center p-6 relative overflow-hidden">
-      {/* Background decoration */}
-      <div className="absolute top-0 left-1/2 -translate-x-1/2 w-full max-w-[800px] h-[500px] bg-[#16a34a]/[0.06] blur-[120px] rounded-full pointer-events-none" />
-
-      <Link href="/" className="absolute top-6 left-6 sm:top-8 sm:left-8 text-black/45 hover:text-[#0b0b0c] transition-colors flex items-center gap-2 text-xs sm:text-sm font-medium z-20" style={{ fontFamily: 'var(--font-outfit)' }}>
-        <ArrowLeft className="w-3.5 h-3.5 sm:w-4 sm:h-4" />
-        <span className="hidden sm:inline">Back to Home</span>
-        <span className="sm:hidden">Back</span>
-      </Link>
-
-      <motion.div
-        initial={{ opacity: 0, y: 20 }}
-        animate={{ opacity: 1, y: 0 }}
-        className="w-full max-w-md z-10"
-      >
-        <div className="hidden md:block text-center my-6">
-          <h1
-            className="text-3xl sm:text-4xl font-semibold tracking-[-0.03em] mb-2"
-            style={{ fontFamily: 'var(--font-outfit)' }}
-          >
-            Create an account
-          </h1>
-          <p className="text-sm sm:text-base text-[rgba(61,61,61,0.72)]">Join Kaamlee in 3 simple steps</p>
-        </div>
-
-        {/* Step Progress */}
-        <div className="flex items-center justify-between my-4 px-4">
-          {steps.map((s, i) => (
+    <AuthSplitLayout
+      title={<>Create <span className="italic font-normal">account.</span></>}
+      subtitle="Join Kaamlee in 3 simple steps."
+      headline={
+        <>
+          Your next job,
+          <br />
+          <span className="italic font-normal">on the map.</span>
+        </>
+      }
+    >
+      {/* Step progress */}
+      <ol className="mt-7 flex items-center gap-2 sm:gap-3">
+        {steps.map((s, i) => {
+          const done = step > s.id;
+          const current = step === s.id;
+          return (
             <React.Fragment key={s.id}>
-              <div className="flex flex-col items-center gap-2">
-                <div
-                  className={`w-10 h-10 rounded-full flex items-center justify-center text-sm font-semibold border-2 transition-all duration-500 ${
-                    step >= s.id ? 'border-transparent text-white shadow-[0_4px_16px_-4px_rgba(22,163,74,.55)]' : 'bg-white border-black/[0.10] text-black/35'
-                  }`}
-                  style={step >= s.id ? { background: 'green' } : undefined}
-                >
-                  {step > s.id ? <CheckCircle2 size={20} /> : s.id}
-                </div>
+              <li className="flex items-center gap-2 shrink-0">
                 <span
-                  className={`text-center text-[10px] uppercase tracking-wider font-semibold ${step >= s.id ? 'text-[#0b0b0c]' : 'text-black/35'}`}
+                  className={`flex h-8 w-8 items-center justify-center rounded-full text-[13px] font-semibold transition-all duration-500 ${
+                    done || current
+                      ? 'text-white shadow-[0_6px_16px_-6px_rgba(22,163,74,.7)]'
+                      : 'border border-black/[0.12] bg-white text-black/40'
+                  }`}
+                  style={done || current ? AUTH_SUBMIT_BG : undefined}
+                >
+                  {done ? <Check size={15} strokeWidth={3} /> : s.id}
+                </span>
+                <span
+                  className={`text-[10.5px] font-semibold uppercase tracking-wider ${current ? 'inline text-[#0b0b0c]' : 'hidden sm:inline text-black/40'}`}
                   style={{ fontFamily: 'var(--font-outfit)' }}
                 >
                   {s.title}
                 </span>
-              </div>
+              </li>
               {i < steps.length - 1 && (
-                <div className="flex-1 h-[2px] bg-black/[0.08] mx-2 -mt-6 relative overflow-hidden rounded-full">
+                <li aria-hidden className="relative h-[2px] flex-1 overflow-hidden rounded-full bg-black/[0.08]">
                   <motion.div
-                    initial={{ width: '0%' }}
-                    animate={{ width: step > s.id ? '100%' : '0%' }}
-                    className="absolute top-0 left-0 h-full bg-[#16a34a]"
+                    initial={false}
+                    animate={{ width: done ? '100%' : '0%' }}
+                    className="absolute inset-y-0 left-0 bg-[#16a34a]"
                   />
-                </div>
+                </li>
               )}
             </React.Fragment>
-          ))}
-        </div>
+          );
+        })}
+      </ol>
 
-        <div className="bg-white border border-black/[0.08] rounded-[24px] sm:rounded-[28px] p-6 sm:p-8 shadow-[0_30px_80px_-30px_rgba(16,18,26,.35)] relative overflow-hidden">
-          {/* Ambient background wash */}
-          <div className="absolute -top-24 -right-24 w-48 h-48 bg-[#16a34a]/[0.06] blur-3xl rounded-full pointer-events-none" />
+      <AnimatePresence mode="wait">
+        <motion.div
+          key={step}
+          initial={{ opacity: 0, x: 20 }}
+          animate={{ opacity: 1, x: 0 }}
+          exit={{ opacity: 0, x: -20 }}
+          transition={{ duration: 0.3 }}
+          className="mt-6 sm:mt-7 space-y-3.5 sm:space-y-4"
+        >
+          <AuthError message={error} />
 
-          <AnimatePresence mode="wait">
-            <motion.div
-              key={step}
-              initial={{ opacity: 0, x: 20 }}
-              animate={{ opacity: 1, x: 0 }}
-              exit={{ opacity: 0, x: -20 }}
-              transition={{ duration: 0.3 }}
-              className="space-y-5"
-            >
-              {error && (
-                <motion.div
-                  initial={{ opacity: 0, height: 0 }}
-                  animate={{ opacity: 1, height: 'auto' }}
-                  className="bg-red-50 border border-red-200 text-red-600 text-xs py-3 px-4 rounded-2xl"
-                >
-                  {error}
-                </motion.div>
-              )}
-
-              {step === 1 && (
-                <div className="space-y-5">
-                  <GoogleSignInButton onError={setError} setLoading={setIsValidating} />
-
-                  <div className="flex items-center gap-3">
-                    <div className="flex-1 h-px bg-black/[0.08]" />
-                    <span
-                      className="text-[10px] font-semibold uppercase tracking-widest text-black/40"
-                      style={{ fontFamily: 'var(--font-outfit)' }}
-                    >
-                      Or sign up with email
-                    </span>
-                    <div className="flex-1 h-px bg-black/[0.08]" />
-                  </div>
-
-                  <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
-                    <div className="space-y-2">
-                      <label
-                        className="text-xs font-semibold text-black/45 uppercase tracking-wide ml-1"
-                        style={{ fontFamily: 'var(--font-outfit)' }}
-                      >
-                        First Name
-                      </label>
-                      <input
-                        type="text"
-                        required
-                        value={firstName}
-                        onChange={(e) => setFirstName(e.target.value)}
-                        placeholder="John"
-                        className="w-full bg-white border border-black/[0.10] rounded-full px-4 py-3.5 text-sm outline-none transition-all placeholder-black/30 focus:border-[#16a34a] focus:shadow-[0_0_0_4px_rgba(22,163,74,.12)]"
-                      />
-                    </div>
-                    <div className="space-y-2">
-                      <label
-                        className="text-xs font-semibold text-black/45 uppercase tracking-wide ml-1"
-                        style={{ fontFamily: 'var(--font-outfit)' }}
-                      >
-                        Last Name
-                      </label>
-                      <input
-                        type="text"
-                        required
-                        value={lastName}
-                        onChange={(e) => setLastName(e.target.value)}
-                        placeholder="Doe"
-                        className="w-full bg-white border border-black/[0.10] rounded-full px-4 py-3.5 text-sm outline-none transition-all placeholder-black/30 focus:border-[#16a34a] focus:shadow-[0_0_0_4px_rgba(22,163,74,.12)]"
-                      />
-                    </div>
-                  </div>
-
-                  <div className="space-y-2">
-                    <label
-                      className="text-xs font-semibold text-black/45 uppercase tracking-wide ml-1"
-                      style={{ fontFamily: 'var(--font-outfit)' }}
-                    >
-                      Username
-                    </label>
-                    <div className="relative">
-                      <User size={16} className="absolute left-4 top-1/2 -translate-y-1/2 text-black/35" />
-                      <input
-                        type="text"
-                        required
-                        value={username}
-                        onChange={(e) => setUsername(e.target.value)}
-                        placeholder="johndoe"
-                        className="w-full bg-white border border-black/[0.10] rounded-full pl-12 pr-4 py-3.5 text-sm outline-none transition-all placeholder-black/30 focus:border-[#16a34a] focus:shadow-[0_0_0_4px_rgba(22,163,74,.12)]"
-                      />
-                    </div>
-                  </div>
-
-                  <div className="space-y-2">
-                    <label
-                      className="text-xs font-semibold text-black/45 uppercase tracking-wide ml-1"
-                      style={{ fontFamily: 'var(--font-outfit)' }}
-                    >
-                      LinkedIn Profile
-                    </label>
-                    <div className="relative">
-                      <LinkIcon size={16} className="absolute left-4 top-1/2 -translate-y-1/2 text-black/35" />
-                      <input
-                        type="url"
-                        value={linkedinUrl}
-                        onChange={(e) => setLinkedinUrl(e.target.value)}
-                        placeholder="https://linkedin.com/in/..."
-                        className="w-full bg-white border border-black/[0.10] rounded-full pl-12 pr-4 py-3.5 text-sm outline-none transition-all placeholder-black/30 focus:border-[#16a34a] focus:shadow-[0_0_0_4px_rgba(22,163,74,.12)]"
-                      />
-                    </div>
-                  </div>
-                </div>
-              )}
-
-              {step === 2 && (
-                <div className="space-y-5">
-                  <div className="space-y-2">
-                    <label
-                      className="text-xs font-semibold text-black/45 uppercase tracking-wide ml-1"
-                      style={{ fontFamily: 'var(--font-outfit)' }}
-                    >
-                      Email Address
-                    </label>
-                    <div className="relative">
-                      <Mail size={16} className="absolute left-4 top-1/2 -translate-y-1/2 text-black/35" />
-                      <input
-                        type="email"
-                        required
-                        value={email}
-                        onChange={(e) => { setEmail(e.target.value); setEmailVerified(false); }}
-                        placeholder="name@example.com"
-                        className="w-full bg-white border border-black/[0.10] rounded-full pl-12 pr-4 py-3.5 text-sm outline-none transition-all placeholder-black/30 focus:border-[#16a34a] focus:shadow-[0_0_0_4px_rgba(22,163,74,.12)]"
-                      />
-                    </div>
-                    <EmailVerificationGate
-                      email={email}
-                      verified={emailVerified}
-                      onVerified={() => setEmailVerified(true)}
-                      onError={setError}
-                      purpose="signup"
-                    />
-                  </div>
-
-                  <div className="space-y-2">
-                    <label
-                      className="text-xs font-semibold text-black/45 uppercase tracking-wide ml-1"
-                      style={{ fontFamily: 'var(--font-outfit)' }}
-                    >
-                      Phone Number
-                    </label>
-                    <div className="relative">
-                      <Phone size={16} className="absolute left-4 top-1/2 -translate-y-1/2 text-black/35" />
-                      <input
-                        type="tel"
-                        required
-                        value={phone}
-                        onChange={(e) => setPhone(e.target.value)}
-                        placeholder="987..."
-                        className="w-full bg-white border border-black/[0.10] rounded-full pl-12 pr-4 py-3.5 text-sm outline-none transition-all placeholder-black/30 focus:border-[#16a34a] focus:shadow-[0_0_0_4px_rgba(22,163,74,.12)]"
-                      />
-                    </div>
-                  </div>
-                </div>
-              )}
-
-              {step === 3 && (
-                <div className="space-y-5">
-                  <div className="space-y-2">
-                    <label
-                      className="text-xs font-semibold text-black/45 uppercase tracking-wide ml-1"
-                      style={{ fontFamily: 'var(--font-outfit)' }}
-                    >
-                      Password
-                    </label>
-                    <div className="relative">
-                      <Lock size={16} className="absolute left-4 top-1/2 -translate-y-1/2 text-black/35" />
-                      <input
-                        type={showPassword ? "text" : "password"}
-                        required
-                        value={password}
-                        onChange={(e) => setPassword(e.target.value)}
-                        placeholder="••••••••"
-                        className="w-full bg-white border border-black/[0.10] rounded-full pl-12 pr-12 py-3.5 text-sm outline-none transition-all placeholder-black/30 focus:border-[#16a34a] focus:shadow-[0_0_0_4px_rgba(22,163,74,.12)]"
-                      />
-                      <button
-                        type="button"
-                        onClick={() => setShowPassword(!showPassword)}
-                        className="cursor-pointer absolute right-4 top-1/2 -translate-y-1/2 text-black/35 hover:text-black/60 transition-colors z-10"
-                      >
-                        {showPassword ? <EyeOff size={16} /> : <Eye size={16} />}
-                      </button>
-                    </div>
-                  </div>
-
-                  <div className="space-y-2">
-                    <label
-                      className="text-xs font-semibold text-black/45 uppercase tracking-wide ml-1"
-                      style={{ fontFamily: 'var(--font-outfit)' }}
-                    >
-                      Confirm Password
-                    </label>
-                    <div className="relative">
-                      <Lock size={16} className="absolute left-4 top-1/2 -translate-y-1/2 text-black/35" />
-                      <input
-                        type={showConfirmPassword ? "text" : "password"}
-                        required
-                        value={confirmPassword}
-                        onChange={(e) => setConfirmPassword(e.target.value)}
-                        placeholder="••••••••"
-                        className="w-full bg-white border border-black/[0.10] rounded-full pl-12 pr-12 py-3.5 text-sm outline-none transition-all placeholder-black/30 focus:border-[#16a34a] focus:shadow-[0_0_0_4px_rgba(22,163,74,.12)]"
-                      />
-                      <button
-                        type="button"
-                        onClick={() => setShowConfirmPassword(!showConfirmPassword)}
-                        className="cursor-pointer absolute right-4 top-1/2 -translate-y-1/2 text-black/35 hover:text-black/60 transition-colors z-10"
-                      >
-                        {showConfirmPassword ? <EyeOff size={16} /> : <Eye size={16} />}
-                      </button>
-                    </div>
-                  </div>
-                </div>
-              )}
-
-              <div className="flex gap-4 pt-4">
-                {step > 1 && (
-                  <button
-                    type="button"
-                    onClick={handleBack}
-                    className={`${SECONDARY_BTN_CLS} flex-1`}
-                  >
-                    Back
-                  </button>
-                )}
-
-                {step < 3 ? (
-                  <button
-                    type="button"
-                    onClick={handleNext}
-                    disabled={isValidating || (step === 2 && !emailVerified)}
-                    className={`${PRIMARY_BTN_CLS} flex-[2]`}
-                    style={PRIMARY_BTN_BG}
-                  >
-                    {isValidating ? <Loader2 size={18} className="animate-spin" /> : (
-                      <>
-                        Continue
-                        <ChevronRight size={18} />
-                      </>
-                    )}
-                  </button>
-                ) : (
-                  <button
-                    type="button"
-                    onClick={handleSubmit}
-                    disabled={isSubmitting}
-                    className={`${PRIMARY_BTN_CLS} flex-[2]`}
-                    style={PRIMARY_BTN_BG}
-                  >
-                    {isSubmitting ? <Loader2 size={18} className="animate-spin" /> : 'Create Account'}
-                  </button>
-                )}
+          {step === 1 && (
+            <>
+              <div className="grid grid-cols-1 sm:grid-cols-2 gap-3.5 sm:gap-4">
+                <input
+                  type="text"
+                  required
+                  autoComplete="given-name"
+                  aria-label="First name"
+                  value={firstName}
+                  onChange={(e) => setFirstName(e.target.value)}
+                  placeholder="First name"
+                  className={AUTH_INPUT_CLS}
+                />
+                <input
+                  type="text"
+                  required
+                  autoComplete="family-name"
+                  aria-label="Last name"
+                  value={lastName}
+                  onChange={(e) => setLastName(e.target.value)}
+                  placeholder="Last name"
+                  className={AUTH_INPUT_CLS}
+                />
               </div>
-            </motion.div>
-          </AnimatePresence>
+              <input
+                type="text"
+                required
+                autoComplete="username"
+                aria-label="Username"
+                value={username}
+                onChange={(e) => setUsername(e.target.value)}
+                placeholder="Username"
+                className={AUTH_INPUT_CLS}
+              />
+              <input
+                type="url"
+                autoComplete="url"
+                aria-label="LinkedIn profile (optional)"
+                value={linkedinUrl}
+                onChange={(e) => setLinkedinUrl(e.target.value)}
+                placeholder="LinkedIn profile URL (optional)"
+                className={AUTH_INPUT_CLS}
+              />
+            </>
+          )}
 
-          <div className="mt-8 text-center text-sm text-[rgba(61,61,61,0.72)]">
-            Already have an account? <Link href={withNext('/login')} className="text-[#16a34a] font-medium hover:underline">Log in</Link>
+          {step === 2 && (
+            <>
+              <div className="space-y-2.5">
+                <input
+                  type="email"
+                  required
+                  autoComplete="email"
+                  aria-label="Email address"
+                  value={email}
+                  onChange={(e) => { setEmail(e.target.value); setEmailVerified(false); }}
+                  placeholder="Email address"
+                  className={AUTH_INPUT_CLS}
+                />
+                <EmailVerificationGate
+                  email={email}
+                  verified={emailVerified}
+                  onVerified={() => setEmailVerified(true)}
+                  onError={setError}
+                  purpose="signup"
+                />
+              </div>
+              <input
+                type="tel"
+                required
+                autoComplete="tel"
+                aria-label="Phone number"
+                value={phone}
+                onChange={(e) => setPhone(e.target.value)}
+                placeholder="Phone number"
+                className={AUTH_INPUT_CLS}
+              />
+            </>
+          )}
+
+          {step === 3 && (
+            <>
+              <div className="relative">
+                <input
+                  type={showPassword ? 'text' : 'password'}
+                  required
+                  autoComplete="new-password"
+                  aria-label="Password"
+                  value={password}
+                  onChange={(e) => setPassword(e.target.value)}
+                  placeholder="Password"
+                  className={`${AUTH_INPUT_CLS} pr-14`}
+                />
+                <button
+                  type="button"
+                  onClick={() => setShowPassword(!showPassword)}
+                  aria-label={showPassword ? 'Hide password' : 'Show password'}
+                  className="cursor-pointer absolute right-5 top-1/2 -translate-y-1/2 text-black/45 hover:text-black/70 transition-colors"
+                >
+                  {showPassword ? <Eye size={19} /> : <EyeOff size={19} />}
+                </button>
+              </div>
+              <div className="relative">
+                <input
+                  type={showConfirmPassword ? 'text' : 'password'}
+                  required
+                  autoComplete="new-password"
+                  aria-label="Confirm password"
+                  value={confirmPassword}
+                  onChange={(e) => setConfirmPassword(e.target.value)}
+                  placeholder="Confirm password"
+                  className={`${AUTH_INPUT_CLS} pr-14`}
+                />
+                <button
+                  type="button"
+                  onClick={() => setShowConfirmPassword(!showConfirmPassword)}
+                  aria-label={showConfirmPassword ? 'Hide password' : 'Show password'}
+                  className="cursor-pointer absolute right-5 top-1/2 -translate-y-1/2 text-black/45 hover:text-black/70 transition-colors"
+                >
+                  {showConfirmPassword ? <Eye size={19} /> : <EyeOff size={19} />}
+                </button>
+              </div>
+            </>
+          )}
+
+          <div className="flex gap-3 pt-3">
+            {step > 1 && (
+              <button type="button" onClick={handleBack} className={`${AUTH_SECONDARY_CLS} flex-1`}>
+                Back
+              </button>
+            )}
+
+            {step < 3 ? (
+              <button
+                type="button"
+                onClick={handleNext}
+                disabled={isValidating || (step === 2 && !emailVerified)}
+                className={`${AUTH_SUBMIT_CLS} flex-[2]`}
+                style={AUTH_SUBMIT_BG}
+              >
+                {isValidating ? <Loader2 size={18} className="animate-spin" /> : (
+                  <>
+                    Continue
+                    <ChevronRight size={18} />
+                  </>
+                )}
+              </button>
+            ) : (
+              <button
+                type="button"
+                onClick={handleSubmit}
+                disabled={isSubmitting}
+                className={`${AUTH_SUBMIT_CLS} flex-[2]`}
+                style={AUTH_SUBMIT_BG}
+              >
+                {isSubmitting ? <Loader2 size={18} className="animate-spin" /> : (
+                  <>
+                    <UserPlus size={17} />
+                    Create account
+                  </>
+                )}
+              </button>
+            )}
           </div>
-        </div>
-      </motion.div>
-    </main>
+
+          {step === 1 && (
+            <>
+              <div className="pt-3">
+                <AuthDivider />
+              </div>
+              <GoogleSignInButton onError={setError} setLoading={setIsValidating} />
+            </>
+          )}
+        </motion.div>
+      </AnimatePresence>
+
+      <AuthNote>
+        Already have an account?{' '}
+        <Link href={withNext('/login')} className="font-medium text-[#16a34a] hover:underline">
+          Sign in
+        </Link>{' '}
+        instead.
+      </AuthNote>
+    </AuthSplitLayout>
   );
 }
