@@ -1,5 +1,5 @@
 import Script from "next/script";
-import type { Metadata } from "next";
+import type { Metadata, Viewport } from "next";
 import { Geist, Geist_Mono, Inter, Outfit, Caveat } from "next/font/google";
 import { Analytics } from "@vercel/analytics/next";
 import "./globals.css";
@@ -35,13 +35,23 @@ export const metadata: Metadata = {
   description: "Job Applying is a Job. Visualize your future commute with our map based jobs.",
   icons: {
     icon: "/logo.png",
-    apple: "/logo.png",
+    apple: "/icons/apple-touch-icon.png",
   },
+  appleWebApp: {
+    capable: true,
+    title: "Kaamlee",
+    statusBarStyle: "default",
+  },
+};
+
+export const viewport: Viewport = {
+  themeColor: "#f2f3f5",
 };
 
 import { GoogleOAuthProvider } from "@react-oauth/google";
 import { AuthProvider } from "@/context/AuthContext";
 import { SidebarProvider } from "@/context/SidebarContext";
+import ServiceWorkerRegister from "@/components/ServiceWorkerRegister";
 
 export default function RootLayout({
   children,
@@ -63,6 +73,7 @@ export default function RootLayout({
           </AuthProvider>
         </GoogleOAuthProvider>
         <Analytics />
+        <ServiceWorkerRegister />
       </body>
     </html>
   );

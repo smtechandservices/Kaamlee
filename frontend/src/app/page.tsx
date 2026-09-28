@@ -13,6 +13,8 @@ import {
 import { useAuth } from '@/context/AuthContext';
 import { useRouter } from 'next/navigation';
 import PricingModal from '@/components/PricingModal';
+import InstallBanner from '@/components/InstallBanner';
+import InstallAppLink from '@/components/InstallAppLink';
 import { Map as MapView, MapMarker, MarkerContent, MapArc } from '@/components/ui/map';
 import { MAP_MARKERS, hashSeed, cityStats, arcPointAt, useCityTour } from '@/lib/city-tour';
 
@@ -1210,7 +1212,7 @@ export default function LandingPage() {
       </section>
 
       {/* ============ STEPS ============ */}
-      <section className="relative overflow-hidden pb-16">
+      <section className="relative overflow-hidden pb-20 md:pb-24">
         <div className="relative mx-auto w-[min(1400px,calc(100%-40px))]">
           <div className="mx-auto flex flex-col items-center gap-4.5 text-center">
             <Reveal><span className="inline-flex items-center gap-2.5 rounded-full border border-dashed border-[#16a34a]/35 bg-[#16a34a]/5 py-2 pl-3 pr-4 text-[13.5px] font-medium text-[#16a34a]"><i className="h-[7px] w-[7px] rounded-full bg-[#16a34a] animate-pulse" />How it works</span></Reveal>
@@ -1233,6 +1235,15 @@ export default function LandingPage() {
               </Reveal>
             ))}
           </div>
+        </div>
+      </section>
+
+      {/* ============ WEB APP BANNER ============ */}
+      <section id="install-app" className="pb-16 md:pb-24">
+        <div className="mx-auto w-[min(1400px,calc(100%-40px))]">
+          <Reveal type="scale">
+            <InstallBanner />
+          </Reveal>
         </div>
       </section>
 
@@ -1374,7 +1385,7 @@ export default function LandingPage() {
 
       {/* ============ PRICING ============ */}
       <section id="pricing" className="pb-16">
-        <div className="mx-auto w-[min(1400px,calc(100%-40px))] rounded-[34px] border border-black/[0.08] bg-white px-6 py-12 sm:px-10 sm:py-16">
+        <div className="mx-auto w-[min(1400px,calc(100%-40px))] rounded-[34px] border border-black/[0.08] bg-white px-6 py-12 sm:px-10 sm:py-12">
           <div className="mx-auto flex flex-col items-center gap-4.5 text-center">
             <Reveal><span className="inline-flex items-center gap-2.5 rounded-full border border-dashed border-[#16a34a]/35 bg-[#16a34a]/5 py-2 pl-3 pr-4 text-[13.5px] font-medium text-[#16a34a]"><i className="h-[7px] w-[7px] rounded-full bg-[#16a34a] animate-pulse" />Pricing</span></Reveal>
             <Reveal delay={80}><h2 className="text-[30px] tracking-[-0.035em]">Start free, upgrade when you&apos;re ready</h2></Reveal>
@@ -1426,6 +1437,10 @@ export default function LandingPage() {
               </Reveal>
             ))}
           </div>
+
+          <Reveal delay={200}>
+            <InstallAppLink className="mt-16 -mb-4" />
+          </Reveal>
         </div>
       </section>
 
@@ -1504,6 +1519,7 @@ export default function LandingPage() {
                 <button type="submit" className="whitespace-nowrap rounded-full bg-[#0b0b0c] px-[18px] py-3.5 text-[14px] font-medium text-white">Subscribe</button>
               </form>
               <small className="mt-2.5 block text-[#16a34a] transition-opacity duration-400" style={{ opacity: subscribed ? 1 : 0 }}>Thanks, you&apos;re on the list.</small>
+              <InstallAppLink align="start" className="mt-1" />
             </Reveal>
           </div>
           <div className="mt-14 flex flex-wrap items-center justify-between gap-4 border-t border-black/[0.08] pt-6 text-[14px] text-black/55">
