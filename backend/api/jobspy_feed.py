@@ -29,7 +29,7 @@ from django.utils import timezone
 
 logger = logging.getLogger(__name__)
 
-PER_SITE = 15         # jobs asked from each site per run
+PER_SITE = 50         # jobs asked from each site per run
 # Nominatim `addresstype`s that count as a real city/area. Judged by type, not
 # place_rank: big cities that are also administrative areas rank like states
 # (London 9, Berlin 8, New York 10) but are still addresstype 'city', while

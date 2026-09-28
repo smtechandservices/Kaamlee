@@ -43,7 +43,8 @@ interface FeedState {
   runs_page: number;
   runs_pages: number;
   runs_page_size: number;
-  totals: { runs: number; saved: number; jobs_in_db: number };}
+  totals: { runs: number; saved: number; jobs_in_db: number };
+}
 
 const SITE_LABELS: Record<string, string> = { linkedin: 'LinkedIn', indeed: 'Indeed', bayt: 'Bayt' };
 const DROP_LABELS: [keyof Run['dropped'], string][] = [
@@ -229,7 +230,13 @@ export default function JobSpyScraperPage() {
             <p className="text-xs text-[#0b0b0c]/50 mt-2">Every {state.interval_minutes} minutes</p>
           </div>
           <Stat icon={Clock} label="Runs" value={state.totals.runs} />
-          <Stat icon={CheckCircle2} label="Jobs saved (all runs)" value={state.totals.saved} />        </div>
+          <Stat
+            icon={CheckCircle2}
+            label="Jobs saved (all runs)"
+            value={state.totals.saved}
+            note={`${state.totals.jobs_in_db.toLocaleString()} in database now`}
+          />
+        </div>
 
         <section className="bg-white border border-black/[0.08] rounded-3xl p-6 mb-6">
           <div className="flex items-center justify-between mb-4">
@@ -320,13 +327,14 @@ export default function JobSpyScraperPage() {
   );
 }
 
-function Stat({ icon: Icon, label, value }: { icon: typeof Clock; label: string; value: number }) {
+function Stat({ icon: Icon, label, value, note }: { icon: typeof Clock; label: string; value: number; note?: string }) {
   return (
     <div className="bg-white border border-black/[0.08] rounded-3xl p-5">
       <div className="text-[10px] font-black uppercase tracking-[0.2em] text-[#0b0b0c]/50 mb-2 flex items-center gap-1.5">
         <Icon size={12} /> {label}
       </div>
       <div className="text-2xl font-bold">{value.toLocaleString()}</div>
+      {note && <p className="text-xs text-[#0b0b0c]/50 mt-1">{note}</p>}
     </div>
   );
 }
