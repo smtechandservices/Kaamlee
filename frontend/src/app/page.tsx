@@ -680,7 +680,7 @@ export default function LandingPage() {
               ? '0 1px 0 rgba(255,255,255,.7) inset, 0 16px 40px -22px rgba(16,18,26,.5)'
               : '0 1px 0 rgba(255,255,255,.7) inset',
           }}
-        >
+        > 
           <Link href="#top" className="flex items-center gap-[10px] whitespace-nowrap text-[19px] font-semibold tracking-[-0.03em]">
             <BrandMark size={38} />
             <span className="uppercase tracking-[0.15em] text-[16px] sm:text-[18px]">Kaamlee</span>
