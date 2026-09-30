@@ -1,6 +1,6 @@
 'use client';
 
-import { COMMUNITY_URL } from '@/lib/constants';
+import { COMMUNITY_URL, SUPPORT_EMAIL } from '@/lib/constants';
 import React, { useEffect, useRef, useState } from 'react';
 import Link from 'next/link';
 import Image from 'next/image';
@@ -9,6 +9,7 @@ import {
   ShieldCheck, Bell, Kanban, LogOut, Plus,
   Star, Menu as MenuIcon, X as XIcon, Clock, Search, CheckCircle2,
   Building2, Users, ChevronDown, ChevronRight,
+  GraduationCap, Handshake, Award, Megaphone, Mail,
 } from 'lucide-react';
 import { useAuth } from '@/context/AuthContext';
 import { useRouter } from 'next/navigation';
@@ -347,7 +348,7 @@ const ABOUT_SUB_DETAILS: Record<'solutions' | 'features', { t: string; d: string
   ],
 };
 
-const NAV_LINKS: [string, string][] = [['#b2b', 'Employers'], ['#ambassadors', 'Ambassadors'], ['#pricing', 'Pricing'], ['#faq', 'FAQ']];
+const NAV_LINKS: [string, string][] = [['#b2b', 'Employers'], ['#colleges', 'Colleges'], ['#ambassadors', 'Ambassadors'], ['#pricing', 'Pricing'], ['#faq', 'FAQ']];
 
 const B2B_FEATURES = [
   { icon: Building2, t: 'Direct job posting', d: 'Post roles and manage the whole pipeline from one dashboardp no third-party listing needed.' },
@@ -364,6 +365,58 @@ const AMBASSADOR_FEATURES = [
 ];
 
 const CAMPUS_NAMES = ['VIT Vellore', 'NIT Surathkal', 'SRM Chennai', 'BITS Pilani', 'DTU Delhi', 'Manipal', 'Christ Bengaluru', 'Symbiosis Pune'];
+
+/* ============ COLLEGE PARTNERS ============
+ * Pulled from the admin Colleges page via the public /api/colleges/ endpoint. */
+type PartnerCollege = {
+  id: number;
+  name: string;
+  ownership: 'public' | 'private';
+  courses_offered: number;
+  logo_url: string;
+  location: string;
+  established: number | null;
+};
+type CollegesPayload = { total: number; public: number; private: number; courses: number; colleges: PartnerCollege[] };
+
+const COLLEGE_TINTS = ['#1d4ed8', '#0e7490', '#7c2d12', '#b45309', '#9f1239', '#4338ca', '#15803d', '#c2410c'];
+
+// Initials from the meaningful words: "Indian Institute of Technology, Bombay" -> "IITB".
+function collegeMono(name: string) {
+  const words = name.replace(/[^A-Za-z\s]/g, ' ').split(/\s+/).filter((w) => w && !/^(of|and|the|for|in|at)$/i.test(w));
+  return words.map((w) => w[0].toUpperCase()).join('').slice(0, 4) || '??';
+}
+
+const PARTNER_TRACKS = [
+  {
+    key: 'placement' as const,
+    icon: Handshake,
+    accent: '#16a34a',
+    t: 'For placement cells',
+    d: 'Sign an MoU and we prepare your whole batch for placements, then plug them into live roles from employers hiring on Kaamlee.',
+    points: [
+      'Aptitude and skill-improvement programs for every batch',
+      'Proctored aptitude and skill tests with batch-wise results',
+      'Mock interviews with feedback, plus end-to-end placement prep',
+      'Campus drives with employers hiring directly on Kaamlee',
+      'Job map, AI resume matching and tailored CVs for your students',
+      'One point of contact for your training & placement office',
+    ],
+  },
+  {
+    key: 'ambassador' as const,
+    icon: Megaphone,
+    accent: '#4f46e5',
+    t: 'For ambassador chapters',
+    d: 'Students run the Kaamlee chapter on campus, with the college backing events and workshops through the MoU.',
+    points: [
+      'An official Kaamlee chapter recognised by the college',
+      'Resume clinics, hiring meetups and portfolio workshops',
+      'Per-registration and per-event rewards for ambassadors',
+      'A program certificate for every active ambassador',
+    ],
+  },
+];
 
 const WHO_CAN_APPLY = [
   { rotate: '-rotate-1', bg: '#34D399', fg: '#04231A', t: 'Full-time student in India' },
@@ -500,6 +553,7 @@ export default function LandingPage() {
   const [mobileAboutOpen, setMobileAboutOpen] = useState(false);
   const aboutRef = useRef<HTMLDivElement>(null);
   const [subscribed, setSubscribed] = useState(false);
+  const [partnerData, setPartnerData] = useState<CollegesPayload | null>(null);
   const dashRef = useRef<HTMLDivElement>(null);
   const { cityIndex, prevCityIndex, cityCardVisible, arcProgress } = useCityTour();
 
@@ -538,6 +592,21 @@ export default function LandingPage() {
           if (data && !data.error && !data.detail) {
             setCache('stats', data);
             setStats(data);
+          }
+        })
+        .catch(() => {});
+    }
+
+    const cachedColleges = getCached('colleges');
+    if (cachedColleges) {
+      setPartnerData(cachedColleges);
+    } else {
+      fetch(`${process.env.NEXT_PUBLIC_API_URL}/api/colleges/?limit=10`)
+        .then((res) => res.json())
+        .then((data) => {
+          if (data && Array.isArray(data.colleges)) {
+            setCache('colleges', data);
+            setPartnerData(data);
           }
         })
         .catch(() => {});
@@ -589,6 +658,11 @@ export default function LandingPage() {
   const totalJobsLabel = stats?.total_jobs ? Number(stats.total_jobs) : 42800;
   const marqueeJobs = (Array.isArray(recentJobs) && recentJobs.length ? [...recentJobs, ...recentJobs] : []).slice(0, 24);
   const sidebarJobs = Array.isArray(recentJobs) ? recentJobs.slice(0, 10) : [];
+  const partnerColleges = partnerData?.colleges ?? [];
+  // Repeat short lists so one half of the marquee always overflows the viewport.
+  const partnerLoop = partnerColleges.length
+    ? Array.from({ length: Math.ceil(8 / partnerColleges.length) }, () => partnerColleges).flat()
+    : [];
 
   return (
     <main
@@ -1288,6 +1362,92 @@ export default function LandingPage() {
             </Link>
             <span className="text-[13px] text-[rgba(61,61,61,0.72)]">Built for teams hiring early-career and campus talent</span>
           </Reveal>
+        </div>
+      </section>
+
+      {/* ============ COLLEGE PARTNERS (MoUs) ============ */}
+      <section id="colleges" className="pb-16">
+        <div className="mx-auto w-[min(1400px,calc(100%-40px))]">
+          {/* Showcase */}
+          <div className="overflow-hidden rounded-[34px] border border-black/[0.08] bg-white py-12 sm:py-14">
+            <div className="px-6 sm:px-10">
+              <Reveal><span className="inline-flex items-center gap-2.5 rounded-full border border-dashed border-[#16a34a]/35 bg-[#16a34a]/5 py-2 pl-3 pr-4 text-[13.5px] font-medium text-[#16a34a]"><i className="h-[7px] w-[7px] rounded-full bg-[#16a34a] animate-pulse" />College partnerships</span></Reveal>
+              <Reveal delay={60}><h2 className="mt-5 text-[30px] tracking-[-0.035em]">Our partner colleges</h2></Reveal>
+              <Reveal delay={80}><p className="mt-2 max-w-[56ch] text-[15px] leading-relaxed text-[rgba(61,61,61,0.72)]">Campuses working with Kaamlee through their placement cell, their ambassador chapter, or both.</p></Reveal>
+            </div>
+
+            {partnerLoop.length > 0 && (
+              <Reveal delay={140} className="mt-10 overflow-hidden" style={{ WebkitMaskImage: 'linear-gradient(90deg,transparent,#000 6%,#000 94%,transparent)', maskImage: 'linear-gradient(90deg,transparent,#000 6%,#000 94%,transparent)' }}>
+                <div className="flex w-max gap-4 py-2 will-change-transform hover:[animation-play-state:paused]" style={{ animation: `awlMarquee ${partnerLoop.length * 5}s linear infinite` }}>
+                  {[...partnerLoop, ...partnerLoop].map((c, i) => {
+                    const tint = COLLEGE_TINTS[c.id % COLLEGE_TINTS.length];
+                    return (
+                      <article key={i} aria-hidden={i >= partnerLoop.length} className="flex w-[290px] flex-none flex-col rounded-[22px] border border-black/[0.08] bg-white p-5 transition-all duration-400 hover:-translate-y-1 hover:shadow-[0_2px_4px_rgba(16,18,26,.04),0_18px_40px_-18px_rgba(16,18,26,.22)] sm:w-[320px]">
+                        <div className="flex items-center gap-3">
+                          {c.logo_url ? (
+                            // eslint-disable-next-line @next/next/no-img-element
+                            <img src={c.logo_url} alt="" loading="lazy" className="h-12 w-12 flex-none rounded-[14px] border border-black/[0.06] bg-white object-contain p-1" />
+                          ) : (
+                            <span className="grid h-12 w-12 flex-none place-items-center rounded-[14px] text-[12px] font-bold tracking-[0.02em] text-white" style={{ background: tint }}>{collegeMono(c.name)}</span>
+                          )}
+                          <div className="min-w-0">
+                            <h4 className="line-clamp-2 text-[15.5px] font-medium leading-snug tracking-[-0.02em]">{c.name}</h4>
+                          </div>
+                        </div>
+                        <div className="mt-auto flex flex-wrap gap-1.5 pt-4">
+                          <span className={`rounded-full px-2.5 py-1 text-[11.5px] font-semibold ${c.ownership === 'public' ? 'bg-[#eff6ff] text-[#1d4ed8]' : 'bg-[#f3eeff] text-[#7c4dff]'}`}>
+                            {c.ownership === 'public' ? 'Public' : 'Private'}
+                          </span>
+                          {c.established && (
+                            <span className="inline-flex items-center gap-1 rounded-full bg-[#fff7e0] px-2.5 py-1 text-[11.5px] font-semibold text-[#8a5a00]">
+                              <Award size={12} strokeWidth={2.2} /> Est. {c.established}
+                            </span>
+                          )}
+                          {c.courses_offered > 0 && (
+                            <span className="inline-flex items-center gap-1 rounded-full bg-[#ecfdf5] px-2.5 py-1 text-[11.5px] font-semibold text-[#15803d]">
+                              <GraduationCap size={12} strokeWidth={2.2} /> {c.courses_offered} courses
+                            </span>
+                          )}
+                        </div>
+                      </article>
+                    );
+                  })}
+                </div>
+              </Reveal>
+            )}
+
+            <div className="px-6 sm:px-10">
+              <div className="mt-10 grid grid-cols-1 gap-4 lg:grid-cols-2">
+                {PARTNER_TRACKS.map((t, i) => (
+                  <Reveal key={t.key} delay={i * 120} type={i === 0 ? 'left' : 'right'}>
+                    <div className="flex h-full flex-col rounded-[26px] border border-black/[0.08] bg-[#fafafa] p-6 sm:p-7">
+                      <div className="flex items-center gap-3">
+                        <span className="grid h-11 w-11 place-items-center rounded-[13px] border border-black/[0.08] bg-white shadow-[0_1px_2px_rgba(16,18,26,.05),0_6px_16px_-8px_rgba(16,18,26,.10)]" style={{ color: t.accent }}>
+                          <t.icon size={19} strokeWidth={1.7} />
+                        </span>
+                        <h3 className="text-[20px] tracking-[-0.02em]">{t.t}</h3>
+                      </div>
+                      <p className="mt-3 text-[14.5px] leading-relaxed text-[rgba(61,61,61,0.72)]">{t.d}</p>
+                      <ul className="mt-5 flex flex-1 flex-col gap-2.5">
+                        {t.points.map((p) => (
+                          <li key={p} className="flex items-start gap-2.5 text-[14px] text-[#3d3d3d]"><Tick />{p}</li>
+                        ))}
+                      </ul>
+                      {t.key === 'placement' ? (
+                        <a href={`mailto:${SUPPORT_EMAIL}?subject=${encodeURIComponent('Placement cell MoU with Kaamlee')}`} className="group mt-6 inline-flex w-fit items-center gap-2 rounded-full border border-black/[0.10] bg-white px-[18px] py-2.5 text-[14px] transition-all hover:border-[#0b0b0c] hover:bg-[#0b0b0c] hover:text-white">
+                          <Mail size={14} /> Request an MoU <ArrowChevron />
+                        </a>
+                      ) : (
+                        <a href={process.env.NEXT_PUBLIC_AMBASSADOR_URL || 'https://ambassador.kaamlee.in'} className="group mt-6 inline-flex w-fit items-center gap-2 rounded-full border border-black/[0.10] bg-white px-[18px] py-2.5 text-[14px] transition-all hover:border-[#0b0b0c] hover:bg-[#0b0b0c] hover:text-white">
+                          Apply as an ambassador <ArrowChevron />
+                        </a>
+                      )}
+                    </div>
+                  </Reveal>
+                ))}
+              </div>
+            </div>
+          </div>
         </div>
       </section>
 

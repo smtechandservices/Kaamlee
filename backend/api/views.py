@@ -31,7 +31,7 @@ from scripts.cv_export import render_cv_pdf, render_cv_docx
 from django.http import HttpResponse, StreamingHttpResponse
 from django.shortcuts import get_object_or_404
 from django.db import models
-from django.db.models import Exists, OuterRef, Q, Count
+from django.db.models import Exists, OuterRef, Q, Count, Sum
 from django.db.models.functions import TruncMonth, RowNumber, Lower
 from django.core.cache import cache
 from django.contrib.auth.models import User
@@ -962,6 +962,39 @@ class CollegeViewSet(viewsets.ModelViewSet):
         if ownership in ('public', 'private'):
             queryset = queryset.filter(ownership=ownership)
         return queryset
+
+class PublicCollegesView(views.APIView):
+    """Landing-page showcase: a random handful of the colleges Kaamlee
+    collaborates with (managed from the admin Colleges page), plus totals
+    for the banner. Public — only exposes display fields."""
+    permission_classes = [permissions.AllowAny]
+
+    def get(self, request):
+        try:
+            limit = max(1, min(int(request.query_params.get('limit', 10)), 30))
+        except ValueError:
+            limit = 10
+        totals = College.objects.aggregate(
+            total=Count('id'),
+            public=Count('id', filter=models.Q(ownership='public')),
+            private=Count('id', filter=models.Q(ownership='private')),
+            courses=Sum('courses_offered'),
+        )
+        colleges = College.objects.order_by('?')[:limit]
+        return Response({
+            'total': totals['total'],
+            'public': totals['public'],
+            'private': totals['private'],
+            'courses': totals['courses'] or 0,
+            'colleges': [
+                {
+                    'id': c.id, 'name': c.name, 'ownership': c.ownership,
+                    'courses_offered': c.courses_offered, 'logo_url': c.logo_url,
+                    'location': c.location, 'established': c.established,
+                }
+                for c in colleges
+            ],
+        })
 
 # ------------------------------------------------------------------
 # JobSpy live search (scripts/jobspy/combined.py) — shared by the admin

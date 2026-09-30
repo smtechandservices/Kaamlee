@@ -60,10 +60,10 @@ const REQUIREMENTS = [
 ];
 
 const STEPS = [
-  { n: 1, when: '15–30 SEP', title: 'Apply', body: 'Five-minute form. No resume, no cover letter.' },
-  { n: 2, when: '2–6 OCT', title: 'Short call', body: '15 minutes on video with the campus team.' },
-  { n: 3, when: '10 OCT', title: 'Onboard', body: 'Dashboard, asset kit and referral link go live.' },
-  { n: 4, when: 'OCT–MAR', title: 'Run the term', body: 'Refer friends and earn rewards!' },
+  { n: 1, when: '15–30 OCT', title: 'Apply', body: 'Five-minute form. No resume, no cover letter.' },
+  { n: 2, when: '2–6 NOV', title: 'Short call', body: '15 minutes on video with the campus team.' },
+  { n: 3, when: '10 NOV', title: 'Onboard', body: 'Dashboard, asset kit and referral link go live.' },
+  { n: 4, when: 'NOV–MAR', title: 'Run the term', body: 'Refer friends and earn rewards!' },
 ];
 
 const TESTIMONIALS = [
@@ -178,7 +178,7 @@ export default function AmbassadorPage() {
             ))}
           </nav>
           <div className="ml-auto flex items-center gap-4 whitespace-nowrap">
-            <span className="hidden md:inline text-xs font-semibold text-[#6B7280] font-mono">CLOSES 30 SEP</span>
+            <span className="hidden md:inline text-xs font-semibold text-[#6B7280] font-mono">CLOSES 30 OCT</span>
             <Link
               href="/apply"
               className="text-sm font-bold text-white bg-[#16A34A] hover:bg-[#0A0A0A] transition-colors px-5 py-2.5 rounded-full font-[var(--font-outfit)]"
@@ -497,7 +497,7 @@ export default function AmbassadorPage() {
             style={{ clipPath: 'polygon(50% 0%,60% 40%,100% 50%,60% 60%,50% 100%,40% 60%,0% 50%,40% 40%)' }}
           />
           <div className="relative">
-            <span className={`${caveat.className} text-3xl md:text-[44px] font-bold`}>last date 30 september</span>
+            <span className={`${caveat.className} text-3xl md:text-[44px] font-bold`}>last date 30 october</span>
             <h2 className="mt-1 font-[var(--font-outfit)] text-5xl md:text-7xl lg:text-[88px] leading-[0.94] font-semibold tracking-tighter">
               Put your campus
               <br />on the map.

@@ -1,7 +1,7 @@
 from django.urls import path, include
 from rest_framework.routers import DefaultRouter
 from .views import (
-    JobViewSet, StatsView, CompaniesView, CompanyViewSet, CollegeViewSet,
+    JobViewSet, StatsView, CompaniesView, CompanyViewSet, CollegeViewSet, PublicCollegesView,
     AdminJobSpyOptionsView, AdminJobSpySearchView, JobSpyOptionsView, JobSpySearchView,
     AdminJobSpyFeedView, AdminJobSpyFeedRunView, AdminJobSpyRoleListView, AdminJobSpyRoleDetailView,
     AdminJobSpyJobsView,
@@ -87,6 +87,7 @@ urlpatterns = [
     # ADMIN
     # ==========================================
     path('stats/', StatsView.as_view(), name='stats'),
+    path('colleges/', PublicCollegesView.as_view(), name='public-colleges'),
     path('companies/', CompaniesView.as_view(), name='companies'),
     path('admin/jobs/', AdminJobsView.as_view(), name='admin-jobs'),
     path('admin/run-script/', RunScraperScriptView.as_view(), name='admin-run-script'),
