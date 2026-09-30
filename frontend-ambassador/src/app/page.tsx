@@ -1,13 +1,14 @@
 'use client';
 
-import { Caveat } from 'next/font/google';
+import localFont from 'next/font/local';
 import Image from "next/image";
 import Link from 'next/link';
 import { motion, useInView, type Variants } from 'framer-motion';
 import { useEffect, useRef, useState } from 'react';
 import { ChevronLeft } from 'lucide-react';
 
-const caveat = Caveat({ subsets: ['latin'], weight: ['500', '600', '700'], variable: '--font-caveat' });
+// Self-hosted so builds don't depend on fetching from fonts.gstatic.com
+const caveat = localFont({ src: './fonts/Caveat-Variable.woff2', weight: '400 700', variable: '--font-caveat' });
 
 const MAIN_SITE_URL = process.env.NEXT_PUBLIC_KAAMLEE_URL || 'https://kaamlee.in';
 

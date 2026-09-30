@@ -1,6 +1,7 @@
 import Script from "next/script";
 import type { Metadata, Viewport } from "next";
-import { Geist, Geist_Mono, Inter, Outfit, Caveat } from "next/font/google";
+import { Geist, Geist_Mono, Inter, Outfit } from "next/font/google";
+import localFont from "next/font/local";
 import { Analytics } from "@vercel/analytics/next";
 import "./globals.css";
  
@@ -24,10 +25,11 @@ const outfit = Outfit({
   subsets: ["latin"],
 });
 
-const caveat = Caveat({
+// Self-hosted so builds don't depend on fetching from fonts.gstatic.com
+const caveat = localFont({
+  src: "./fonts/Caveat-Variable.woff2",
   variable: "--font-caveat",
-  subsets: ["latin"],
-  weight: ["600", "700"],
+  weight: "400 700",
 });
 
 export const metadata: Metadata = {
