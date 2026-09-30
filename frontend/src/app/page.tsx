@@ -756,7 +756,14 @@ export default function LandingPage() {
             {!user ? (
               <>
                 <Link href="/login" className="hidden sm:inline-block whitespace-nowrap rounded-full px-4 py-[11px] text-[14px] font-medium text-[#3d3d3d] transition-colors hover:text-[#0b0b0c]">Log in</Link>
-                <button onClick={handleMapClick} className="cursor-pointer group relative hidden md:inline-flex items-center gap-2 overflow-hidden whitespace-nowrap rounded-full px-[18px] py-[11px] text-[14px] font-medium text-white shadow-[0_1px_0_rgba(255,255,255,.45)_inset,0_10px_24px_-10px_rgba(22,163,74,.85)] transition-transform duration-300 hover:-translate-y-0.5" style={{ background: 'linear-gradient(180deg,#4ade80,#16a34a 55%,#15803d)' }}>
+                {/* Revealed once the page is scrolled, alongside the nav widening */}
+                <button
+                  onClick={handleMapClick}
+                  aria-hidden={!navStuck}
+                  tabIndex={navStuck ? 0 : -1}
+                  className={`cursor-pointer group relative hidden md:inline-flex items-center gap-2 overflow-hidden whitespace-nowrap rounded-full py-[11px] text-[14px] font-medium text-white shadow-[0_1px_0_rgba(255,255,255,.45)_inset,0_10px_24px_-10px_rgba(22,163,74,.85)] transition-[max-width,padding,margin,opacity,transform] duration-500 ease-out hover:-translate-y-0.5 ${navStuck ? 'max-w-[220px] px-[18px] opacity-100' : 'pointer-events-none -ml-2 max-w-0 px-0 opacity-0'}`}
+                  style={{ background: 'linear-gradient(180deg,#4ade80,#16a34a 55%,#15803d)' }}
+                >
                   Open the map <ArrowChevron />
                 </button>
               </>
